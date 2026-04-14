@@ -15,6 +15,9 @@ LogicalResult tpu::SortOp::inference(InferenceParameter &p) {
   sort_param_t param = {.axis = (int)getAxis(), .descending = getDescending()};
   auto shape = module::getShape(getInput());
   int dims = shape.size();
+  if (param.axis < 0) {
+    param.axis += dims;
+  }
   std::vector<int> shape_v(dims);
   for (int i = 0; i < dims; ++i) {
     shape_v[i] = shape[i];

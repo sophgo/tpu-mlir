@@ -34,7 +34,13 @@ LogicalResult tpu::UpsampleOp::inference(InferenceParameter &p) {
 
   if (getDoRelu()) {
     auto limit = getReluLimit().convertToDouble();
-    function_relu(p.outputs[0], p.outputs[0], num_elem, limit);
+    float zero_point = 0.f;
+    if (module::isUniformQuantized(getOutput())) {
+      auto qtype = module::getUniformQuantizedType(getOutput());
+      zero_point = qtype.getZeroPoint();
+    }
+    function_relu(p.outputs[0], p.outputs[0], num_elem, limit, nullptr,
+                  zero_point);
   }
   return success();
 }
@@ -42,7 +48,7 @@ LogicalResult tpu::UpsampleOp::inference(InferenceParameter &p) {
 LogicalResult tpu::UpsampleOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
                                          int64_t out_idx, int64_t out_slice) {
   auto unit = getScaleH();
-  if (module::isBM1684XFamily()) {
+  if (module::isBM1684XFamily()|| module::isBM1684X2()) {
     int64_t out_start = out_idx;
     int64_t out_end = out_idx + out_slice - 1;
     int64_t in_start = out_start / unit;
@@ -62,7 +68,7 @@ LogicalResult tpu::UpsampleOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
 LogicalResult tpu::UpsampleOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
                                          int64_t out_idx, int64_t out_slice) {
   auto unit = getScaleW();
-  if (module::isBM1684XFamily()) {
+  if (module::isBM1684XFamily()|| module::isBM1684X2()) {
     int64_t out_start = out_idx;
     int64_t out_end = out_idx + out_slice - 1;
     int64_t in_start = out_start / unit;

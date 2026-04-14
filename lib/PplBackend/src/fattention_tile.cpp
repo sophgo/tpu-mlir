@@ -88,10 +88,10 @@ static ATTENTION get_attention_func(bool is_fp16, bool is_mha,
 
 static int *get_block_split(bool is_fp16, bool is_mha, bool is_decode,
                             bool is_v2, const std::string &chip) {
-  int chip_idx = (chip == PPL_BM1688) ? 0 : 1; // 0 for bm1688, 1 for bm1684x
-  int mha_idx = is_mha ? 0 : 1;                // 0 for MHA, 1 for GQA
-  int f16_idx = is_fp16 ? 1 : 0;               // 0 for bf16, 1 for fp16
-  int dc_idx = is_decode ? 0 : 1;              // 0 for decode, 1 for encode
+  int chip_idx = (chip == PPL_BM1684X) ? 1 : 0; // 0 for bm1688, 1 for bm1684x
+  int mha_idx = is_mha ? 0 : 1;                 // 0 for MHA, 1 for GQA
+  int f16_idx = is_fp16 ? 1 : 0;                // 0 for bf16, 1 for fp16
+  int dc_idx = is_decode ? 0 : 1;               // 0 for decode, 1 for encode
   return is_v2 ? v2_configs[chip_idx][mha_idx][f16_idx][dc_idx].block
                : v1_configs[chip_idx][mha_idx][f16_idx][dc_idx].block;
 }
@@ -139,7 +139,7 @@ int fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
     }
     break;
   }
-  if (block_m <= 0 || block_k <= 0) {
+  if (block_m <= 0 || block_k <= 0 || ret != 0) {
     printf("Error: block split failed!!!\n");
     exit(-1);
     return ret;

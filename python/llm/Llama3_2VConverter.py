@@ -935,7 +935,7 @@ class Llama3_2VConverter(LlmConverter):
             rotary_cos + ".weight": self.cos,
             rotary_sin + ".weight": self.sin,
         }
-        self.set_common_weight(input_ln, weight_dict, WeightType.RMS_NORM)
+        self.set_common_weight(input_ln, weight_dict, self.rmsnorm_type)
         if idx not in self.llm_config.cross_attention_layers:
             self.set_linear_weight(q_proj, weight_dict)
             self.set_linear_weight(k_proj, weight_dict)
@@ -946,17 +946,17 @@ class Llama3_2VConverter(LlmConverter):
             self.set_linear_weight(c_k_proj, weight_dict)
             self.set_linear_weight(c_v_proj, weight_dict)
             self.set_linear_weight(c_o_proj, weight_dict)
-            self.set_common_weight(c_q_norm, weight_dict, WeightType.RMS_NORM)
-            self.set_common_weight(c_k_norm, weight_dict, WeightType.RMS_NORM)
+            self.set_common_weight(c_q_norm, weight_dict, self.rmsnorm_type)
+            self.set_common_weight(c_k_norm, weight_dict, self.rmsnorm_type)
             self.set_common_weight(c_attn_gate, weight_dict)
             self.set_common_weight(c_mlp_gate, weight_dict)
 
-        self.set_common_weight(post_attn_ln, weight_dict, WeightType.RMS_NORM)
+        self.set_common_weight(post_attn_ln, weight_dict, self.rmsnorm_type)
         self.set_linear_weight(mlp_gate, weight_dict)
         self.set_linear_weight(mlp_up, weight_dict)
         self.set_linear_weight(mlp_down, weight_dict)
         if do_norm:
-            self.set_common_weight(norm, weight_dict, WeightType.RMS_NORM)
+            self.set_common_weight(norm, weight_dict, self.rmsnorm_type)
 
         np.savez(weight_file, **weight_dict)
 

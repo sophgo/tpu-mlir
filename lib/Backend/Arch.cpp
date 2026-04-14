@@ -7,6 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
+#include "tpu_mlir/Backend/BM168x/BM1684X2.h"
 #include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include "tpu_mlir/Backend/BM168x/BM1690.h"
 #include "tpu_mlir/Backend/BM168x/BM1690E.h"
@@ -67,6 +68,8 @@ void Arch::init(uint64_t freq) {
       inst = &SG2380::instance();
     } else if (chip == module::Chip::SG2262) {
       inst = &BM1690::instance();
+    } else if (chip == module::Chip::BM1684X2) {
+      inst = &BM1684X2::instance();
     } else {
       llvm_unreachable("unsupport chip\n");
     }
@@ -85,6 +88,9 @@ void Arch::init(uint64_t freq) {
       break;
     case module::Chip::CV184X:
       chip_str = PPL_CV184X;
+      break;
+    case module::Chip::BM1690E:
+      chip_str = PPL_BM1690E;
       break;
     default:
       // llvm::errs() << "ppl unsupport this chip\n";

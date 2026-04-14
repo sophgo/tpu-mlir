@@ -18,7 +18,7 @@ node_idx = 0
 
 
 class BM1684Runner(CModelRunner):
-    lib_name = "libcmodel_1684.so"
+    lib_name = "libcmodel_bm1684.so"
 
     def __init__(self, memory_size):
         super().__init__()

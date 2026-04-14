@@ -32,7 +32,9 @@ public:
       return failure();
     }
     if (op.use_empty()) {
-      return failure();
+      op.setPath(
+          mlir::StringAttr::get(op.getContext(), "top.Weight.Placeholder"));
+      return success();
     }
     auto user_op = *op->user_begin();
     std::string path = user_op->getName().getStringRef().str();

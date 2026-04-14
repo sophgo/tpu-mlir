@@ -255,8 +255,9 @@ Value WeightOp::create(Operation *OwnerOp, llvm::StringRef suffix,
   auto nameAttr = builder.getStringAttr(new_name);
   auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), type,
                                              ValueRange{}, attrs);
-  auto stmodeAttr = builder.getStringAttr(
-      store_mode == 0 ? "1N" : store_mode == 1 ? "2N" : "4N");
+  auto stmodeAttr = builder.getStringAttr(store_mode == 0   ? "1N"
+                                          : store_mode == 1 ? "2N"
+                                                            : "4N");
   if (stmodeAttr != "1N")
     newOp.setStoreModeAttr(stmodeAttr);
   if (module::getWeightInMemFlag()) {
@@ -322,7 +323,7 @@ Value WeightOp::clone_bf16(Operation *OwnerOp, std::string name) {
   std::string new_name;
   if (name.empty()) {
     new_name = module::getName(getOperation()).str() + "_bf16";
-    if (!getOperation()->hasOneUse()) {
+    if (module::getNumUsers(getResult()) > 1) {
       new_name = module::getName(OwnerOp).str() + new_name;
     }
   } else {
@@ -365,7 +366,7 @@ Value WeightOp::clone_f16(Operation *OwnerOp) {
   builder.setInsertionPoint(OwnerOp);
   // if the weightop will be used by 2 ops, it need to create a new WeightOp
   std::string new_name = module::getName(getOperation()).str() + "_f16";
-  if (!getOperation()->hasOneUse()) {
+  if (module::getNumUsers(getResult()) > 1) {
     new_name = module::getName(OwnerOp).str() + new_name;
   }
   auto new_type = RankedTensorType::get(type.getShape(), builder.getF16Type());
@@ -473,7 +474,7 @@ Value WeightOp::clone_f8e4m3(Operation *OwnerOp, bool per_channel_scale,
   builder.setInsertionPoint(OwnerOp);
   // if the weightop will be used by 2 ops, it need to create a new WeightOp
   std::string new_name = module::getName(getOperation()).str() + "_f8e4m3";
-  if (!getOperation()->hasOneUse()) {
+  if (module::getNumUsers(getResult()) > 1) {
     new_name = module::getName(OwnerOp).str() + new_name;
   }
   auto new_type =
@@ -516,7 +517,7 @@ Value WeightOp::clone_f8e5m2(Operation *OwnerOp) {
   builder.setInsertionPoint(OwnerOp);
   // if the weightop will be used by 2 ops, it need to create a new WeightOp
   std::string new_name = module::getName(getOperation()).str() + "_f8e5m2";
-  if (!getOperation()->hasOneUse()) {
+  if (module::getNumUsers(getResult()) > 1) {
     new_name = module::getName(OwnerOp).str() + new_name;
   }
   auto new_type = RankedTensorType::get(
@@ -556,7 +557,7 @@ Value WeightOp::clone_int(Operation *OwnerOp) {
   builder.setInsertionPoint(OwnerOp);
   // if the weightop will be used by 2 ops, it need to create a new WeightOp
   std::string new_name = module::getName(getOperation()).str() + "_int";
-  if (!getOperation()->hasOneUse()) {
+  if (module::getNumUsers(getResult()) > 1) {
     new_name = module::getName(OwnerOp).str() + new_name;
   }
   auto new_type = RankedTensorType::get(type.getShape(), builder.getI32Type());

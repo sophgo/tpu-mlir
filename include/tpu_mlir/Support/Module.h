@@ -153,6 +153,7 @@ Location getLoc();
 MLIRContext *getCtx();
 
 top::NoneOp getNoneOp(Operation *op);
+int getNumUsers(Value v);
 Value getOriValue(Value v);
 Operation *getNextOp(Operation *op, int i = 0);
 Value getOperand(Operation *op, int i);
@@ -254,7 +255,8 @@ bool isSGTPUV8();
 bool isSG2262();
 bool isMultiCoreArch();
 bool isBM1690E();
-
+bool isBM1690();
+bool isBM1684X2();
 //-----------------------------------------------------------------
 // Helper Functions for submodule
 //-----------------------------------------------------------------

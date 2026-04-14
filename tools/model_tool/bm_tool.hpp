@@ -157,6 +157,8 @@ void bm_show(const string &filename, bool all) {
     cout << "kernel_module name: " << kernel_module->file_name()->c_str()
          << endl;
     cout << "kernel_module size: " << module_size << endl;
+    cout << "kernel mode: " << (kernel_module->mode() == 1 ? "rvti" : "normal")
+         << endl;
   }
   bool is_4k_aligned = true;
   auto bin_offset =
@@ -327,6 +329,20 @@ void bm_show_chip(const string &filename) {
   }
   auto model = model_ctx.model();
   cout << model->chip()->c_str();
+}
+
+void bm_show_kernel_mode(const string &filename) {
+  ModelCtx model_ctx(filename);
+  if (!model_ctx) {
+    FATAL("file[%s] is not correct", filename.c_str());
+  }
+  auto model = model_ctx.model();
+  auto kernel_module = model->kernel_module();
+  if (!kernel_module) {
+    cout << "no kernel_module" << endl;
+  } else {
+    cout << kernel_module->mode();
+  }
 }
 
 // print weight of model
@@ -906,15 +922,16 @@ static void write_input_output_ref(vector<shared_ptr<MODEL_CTX_T>> &model_vec) {
 }
 
 static bool add_kernel_module(ModelGen &model_gen,
-                              shared_ptr<ModelCtx> &model_ctx) {
+                              shared_ptr<ModelCtx> &model_ctx, int32_t &mode) {
   auto km = model_ctx->model()->kernel_module();
   if (km) {
     auto binary = km->binary();
+    mode = km->mode();
     uint8_t *data = new uint8_t[binary->size()];
     model_ctx->read_binary(binary, data);
     auto new_binary = model_gen.WriteBinary(binary->size(), data);
     auto filename = km->file_name()->str();
-    model_gen.AddKernelModule(filename, new_binary);
+    model_gen.AddKernelModule(filename, new_binary, mode == 1);
     delete[] data;
     return true;
   }
@@ -928,6 +945,7 @@ static void combine_bmodels(ModelGen &model_gen,
   auto &builder = model_gen.Builder();
   bool kernel_load = false;
   uint32_t device_num = 0;
+  int32_t kernel_mode = 0;
   for (uint32_t model_idx = 0; model_idx < model_vec.size(); model_idx++) {
     auto &model_info = model_vec[model_idx];
     auto model = model_info->model_ctx->model();
@@ -935,7 +953,13 @@ static void combine_bmodels(ModelGen &model_gen,
       device_num = model->device_num();
     }
     if (kernel_load == false) {
-      kernel_load = add_kernel_module(model_gen, model_info->model_ctx);
+      kernel_load =
+          add_kernel_module(model_gen, model_info->model_ctx, kernel_mode);
+    } else {
+      auto km = model_info->model_ctx->model()->kernel_module();
+      if (km != nullptr && km->mode() != kernel_mode) {
+        FATAL("Inconsistent kernel module mode among models");
+      }
     }
     for (uint32_t net_idx = 0; net_idx < model->net()->size(); net_idx++) {
       auto net = model->net()->Get(net_idx);

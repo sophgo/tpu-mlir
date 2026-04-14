@@ -168,7 +168,7 @@ Notes:1.At this point, it is necessary to select the processor parameter, which 
 2. ``inference_num`` corresponds to the number of inference data required for the ``search_threshold`` process (this data will be extracted from the dataset you provide).
 The larger the ``inference_num``, the more accurate the ``search_threshold`` result, but the longer the quantization time required. Here, the default for ``inference_num`` is set to 30, which can be customized according to the actual situation.
 
-case2: When quantizing your model for the first time, you already know which calibration method is suitable for the model. At this point, you can directly choose a fixed calibration method based on the ``cali_method`` parameter. The specific operation is as follows:
+case2: When quantizing your model for the first time, you already know which calibration method is suitable for the model or you want to try specific method/methods. At this point, you can directly choose a fixed calibration method based on the ``cali_method`` parameter. The specific operation is as follows:
 
 .. code-block:: shell
 
@@ -178,7 +178,7 @@ case2: When quantizing your model for the first time, you already know which cal
        --cali_method mse \
        -o cali_table
 
-Notes:1.when the ``cali_method`` parameter is not added, the default KLD calibration method will be used. 2.currently, the ``cali_method`` supports five options, including ``mse``, ``max``, ``percentile9999``, ``aciq_gauss`` and ``aciq_laplace``.
+Notes:1.when the ``cali_method`` parameter is not specified, the default KLD calibration method will be used. 2.currently, the ``cali_method`` supports other five options: ``mse``, ``max``, ``percentile9999``, ``aciq_gauss`` and ``aciq_laplace``.
 
 case3: When you are sensitive to quantization time and wish to generate the calibration table ``cali_table`` as quickly as possible, but you are unsure how to choose a calibration method, it is recommended to select a fixed calibration method based on the ``cali_method`` parameter.
 In comparison to the quantization speed of TPU-MLIR V1.8, the V1.9 version shows a 100% speed improvement for individual calibration methods, resulting in an average time reduction of around 50%. The acceleration effect is significant.
@@ -217,7 +217,7 @@ If neither of the above two methods meets the accuracy requirements, you may nee
 
 If the ``max`` method also fails to meet the requirements, at this point, you may need to adopt a mixed precision strategy. You can then try the mixed precision methods that will be introduced later.
 
-Apart from the overall selection rules mentioned above, here are some specific details for choosing calibration methods:1.If your model is a YOLO series object detection model, it is recommended to use the default KLD calibration method.2.If your model is a multi-output classification model,
+Apart from the overall selection rules mentioned above, here are some specific details for choosing calibration methods:1.If your model is a YOLO series object detection model, it is recommended to use the default KLD calibration method, for yolo26 series models, it is recommended to use ``mse`` or ``percentile9999`` calibration method.2.If your model is a multi-output classification model,
 it is also recommended to use the default KLD calibration method.
 
 case4: When your model is deployed on the bm1684 processor and the full int8 quantized model obtained through the methods mentioned above has poor accuracy,
@@ -277,12 +277,14 @@ pattern-match
 
 The ``pattern-match`` method is integrated into ``run_calibration`` and does not require explicit parameter specification.
 Currently, there are two type of models for which experience ``qtable`` is provided: one is the YOLO series, and the other is the Transformer series (e.g., BERT).
-After obtaining the ``cali_table`` , if the model matches an existing pattern, a qtable will be generated in the ``path/to/cali_table/`` folder. Before calibration, purpose of every op is judged, if it is calculating shape or position, it will be set float and included in qtable.
+After obtaining the ``cali_table`` , if the model matches an existing pattern, a qtable will be generated in the ``path/to/cali_table/`` folder.
+
+Before calibration, purpose of every op is judged, if it is calculating shape or position, it is treated as special pattern, and will be set float and included in qtable.
 
 YOLO Series Automatic Mixed Precision Method
 -----------------------------------------------
 
-Currently ``pattern-match`` method supported YOLO  models include YOLOV5, V6, V7, V8, V9, V10, V11, and V12.
+Currently ``pattern-match`` method supported YOLO  models include YOLOV5, V6, V7, V8, V9, V10, V11, V12 and yolo26.
 
 YOLO series models are classic and widely used. When exporting models through official support,
 post-processing branches with significantly different numerical values are often merged for output, leading to large accuracy loss when quantizing the model to full INT8.
@@ -827,3 +829,80 @@ Parameter Description
    * - o
      - Y
      - output quantization table
+
+example of multi-input calibration dataset
+==============================================
+
+For multi-input models, the calibration dataset can be saved in npz file, each npz contains one sample, and key of npz complies with model inputs, following is open_clip as example.
+
+.. open_clip.png:
+.. figure:: ../assets/open_clip.png
+   :align: center
+
+   OpenClip multi-input model
+
+As there are three inputs in open_clip, one floating-point image and two integer idx and mask, you can create a calibration dataset following the function below:
+
+.. code-block:: shell
+
+  def process_images(input_dir, output_file, image_size=(224, 224),
+                    normalize=False, mean=None, std=None,samples=100,
+                    channels_first=True, dtype='float32'):
+      # Get all image files
+      extensions = ['*.jpg', '*.jpeg', '*.JPG', '*.JPEG']
+      image_files = []
+      for ext in extensions:
+          image_files.extend(Path(input_dir).glob(ext))
+
+      image_files = list(set(image_files))  # Remove duplicates
+
+      # Default normalization (ImageNet stats)
+      if normalize:
+          if mean is None:
+              mean = [0.485, 0.456, 0.406]
+          if std is None:
+              std = [0.229, 0.224, 0.225]
+
+      # Build transformation pipeline
+      transform_list = [transforms.Resize(image_size)]
+
+      if normalize:
+          transform_list.extend([
+              transforms.ToTensor(),
+              transforms.Normalize(mean=mean, std=std)
+          ])
+      else:
+          transform_list.append(transforms.ToTensor())
+
+      transform = transforms.Compose(transform_list)
+
+      # Process images
+      filenames = []
+
+      for i, img_path in enumerate(image_files):
+          try:
+              inputs={}
+              img = Image.open(img_path).convert('RGB')
+              tensor = transform(img)
+
+              # Convert to numpy
+              img_array = tensor.numpy()  # default float32
+              img_array = np.expand_dims(img_array, axis=0)
+              inputs['pixel_values'] = img_array
+              inputs['input_ids'] = np.random.randint(0,100,size=(2,77))
+              inputs['attention_mask'] = np.random.randint(0,1,size=(2,77))
+              np.savez(f'{output_file}_{i}',**inputs)
+              if i+1 >= samples:
+                  print(f"Processed {i + 1}/{len(image_files)} images")
+                  break
+              filenames.append(str(img_path.name))
+
+              if (i + 1) % 10 == 0:
+                  print(f"Processed {i + 1}/{len(image_files)} images")
+
+          except Exception as e:
+              print(f"Error processing {img_path}: {e}")
+
+
+
+  **NOTE: above code is for demo only, pre-processing must be aligned with training phase when creating npz files for calibration. Real calibration data can be captured during training.**

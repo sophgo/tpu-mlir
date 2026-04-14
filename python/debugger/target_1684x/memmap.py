@@ -18,7 +18,7 @@ class BM1684XInfo:
 
     def __init__(self) -> None:
         self.lib_name = (
-            "libcmodel_1684x.so" if platform.machine() == "x86_64" else
+            "libcmodel_bm1684x.so" if platform.machine() == "x86_64" else
             "libbm1684x_atomic_kernel.so"  # do not use libbm1684x_kernel_module, which may cause nan error
         )
         self._lib = None

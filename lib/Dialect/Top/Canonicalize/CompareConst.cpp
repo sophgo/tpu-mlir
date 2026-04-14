@@ -24,7 +24,8 @@ struct CompareConstWhereToMinConst
                                     PatternRewriter &rewriter) const override {
 
     auto compare_c_v = op.getConstVal().convertToDouble();
-    if (op.getMode().str() == "Less" && op.getResult().hasOneUse() &&
+    if ((op.getMode().str() == "Less" || op.getMode().str() == "Greater") &&
+        op.getResult().hasOneUse() &&
         isa<WhereOp>(*op.getResult().getUsers().begin())) {
       auto where_op = dyn_cast<WhereOp>(*op.getResult().getUsers().begin());
       auto where_loc = module::getLoc(where_op.getOutput());
@@ -35,9 +36,15 @@ struct CompareConstWhereToMinConst
           attrs.push_back(rewriter.getNamedAttr(
               "const_val", rewriter.getF64FloatAttr(compare_c_v)));
           where_op.replaceAllUsesWith(op.getOutput());
-          auto new_ctx = rewriter.replaceOpWithNewOp<MinConstOp>(
-              op, op.getOutput().getType(), op.getInput(), attrs);
-          module::setLoc(new_ctx, where_loc);
+          if (op.getMode().str() == "Less") {
+            auto new_ctx = rewriter.replaceOpWithNewOp<MaxConstOp>(
+                op, op.getOutput().getType(), op.getInput(), attrs);
+            module::setLoc(new_ctx, where_loc);
+          } else {
+            auto new_ctx = rewriter.replaceOpWithNewOp<MinConstOp>(
+                op, op.getOutput().getType(), op.getInput(), attrs);
+            module::setLoc(new_ctx, where_loc);
+          }
         }
       }
     }

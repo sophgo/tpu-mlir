@@ -85,13 +85,15 @@ public:
   // specific global info
   static constexpr llvm::StringRef LIB_KERNEL_NAME =
       "libbm1690e_kernel_module.so";
+  static constexpr llvm::StringRef LIB_RVTI_KERNEL_NAME =
+      "libbm1690erv_kernel_module.so";
 
 private:
   enum TagType {
     TAG_USERS = 0,
     TAG_WEIGHT = (1ul << 40),
     TAG_ACTIVATION = (2ul << 40),
-    TAG_L2MEM =  (30ul << 40),
+    TAG_L2MEM = (30ul << 40),
   };
 
 protected:
@@ -113,6 +115,7 @@ protected:
     L2_SRAM_SIZE = 0x1000000;
     SUPPORT_MEM_TAG = true;
     LIB_BACKEND_NAME = "libbackend_bm1690e.so";
+    LIB_PPL_DYN_HOST_NAME = "libppl_dyn_host_bm1690e.so";
     // GDMA format
     GDMA_VALUE_FORMAT_INT8 = 0;
     GDMA_VALUE_FORMAT_FLOAT16 = 1;

@@ -22,7 +22,7 @@ from typing import List
 
 
 class BM1688Runner(CModelRunner):
-    lib_name = "libcmodel_1688.so"
+    lib_name = "libcmodel_bm1688.so"
     # tag, range from 0 to 31, set as defined in /nntoolchain/TPU1686/bm1686/firmware_base/src/fullnet/nodechip_multi_fullnet.c
     TAG_WEIGHT = 1  # coeff
     TAG_ACTIVATION = 2  # neuron

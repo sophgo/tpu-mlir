@@ -62,8 +62,9 @@ void top::RMSNormOp::shape_inference() {
   auto dims = in_shape.size();
   if (!module::isNone(getGamma())) {
     auto normalized_shape = module::getShape(getGamma());
-    ASSERT_THIS(normalized_shape.size() == 1 &&
-                normalized_shape[0] == in_shape[dims - 1]);
+    auto num_dim = normalized_shape.size();
+    ASSERT_THIS(num_dim == 1 || num_dim == dims);
+    ASSERT_THIS(normalized_shape[num_dim - 1] == in_shape[dims - 1]);
   }
   module::setShapeOrVerify(getOutput(), in_shape);
 

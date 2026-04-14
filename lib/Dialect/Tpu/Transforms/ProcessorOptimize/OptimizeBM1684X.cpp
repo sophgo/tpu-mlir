@@ -5885,8 +5885,12 @@ struct ConvToMatMulPattern : public OpRewriterPatternEx<tpu::Conv2DOp> {
     auto reshapeL_type = module::getTypeLike(input, reshapeL_shape);
     auto reshapeR_type = module::getTypeLike(filter, reshapeR_shape);
     rewriter.setInsertionPointAfter(convOp);
+    std::vector<NamedAttribute> attrs;
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "shape", rewriter.getI64ArrayAttr({-1, -1, reshapeL_shape[2]})));
     auto reshapeL_op = rewriter.create<tpu::ReshapeOp>(
-        reshapeL_loc, reshapeL_type, ValueRange{input});
+        reshapeL_loc, reshapeL_type, ValueRange{input}, attrs);
+    attrs.clear();
     rewriter.setInsertionPointAfter(reshapeL_op);
     auto reshapeR_op = rewriter.create<tpu::ReshapeOp>(
         reshapeR_loc, reshapeR_type, ValueRange{filter});
@@ -5898,7 +5902,6 @@ struct ConvToMatMulPattern : public OpRewriterPatternEx<tpu::Conv2DOp> {
     auto matmul_type = RankedTensorType::get(
         matmul_shape, module::getElementType(convOp.getOutput()));
     rewriter.setInsertionPointAfter(reshapeR_op);
-    std::vector<NamedAttribute> attrs;
     // right_transpose
     attrs.push_back(
         rewriter.getNamedAttr("right_transpose", rewriter.getBoolAttr(true)));
@@ -6349,7 +6352,7 @@ public:
   LogicalResult matchAndRewriteImpl(tpu::UpsampleOp op,
                                     PatternRewriter &rewriter) const override {
 
-    if (!module::isBM1684XFamily()) {
+    if (!module::isBM1684XFamily() && !module::isBM1684X2()) {
       return failure();
     }
     auto input = op.getInput();

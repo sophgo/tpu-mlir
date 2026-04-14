@@ -1,19 +1,21 @@
 add_subdirectory(cnpy)
 
-install(FILES nntoolchain/lib/libbackend_1684.so
-              nntoolchain/lib/libbackend_1684x.so
-              nntoolchain/lib/libbackend_1688.so
+install(FILES nntoolchain/lib/libbackend_bm1684.so
+              nntoolchain/lib/libbackend_bm1684x.so
+              nntoolchain/lib/libbackend_bm1688.so
               nntoolchain/lib/libbackend_cv184x.so
               nntoolchain/lib/libbackend_bm1690.so
               nntoolchain/lib/libbackend_bm1690e.so
               nntoolchain/lib/libbackend_sg2380.so
               nntoolchain/lib/libbackend_sgtpuv8.so
+              nntoolchain/lib/libbackend_bm1684x2.so
               nntoolchain/lib/libbmlib.so
               nntoolchain/lib/libbmlib.so.0
-              nntoolchain/lib/libcmodel_1684.so
+              nntoolchain/lib/libcmodel_bm1684.so
               nntoolchain/lib/libcmodel_cv184x.so
               nntoolchain/lib/libcmodel_sg2380.so
               nntoolchain/lib/libcmodel_sgtpuv8.so
+              nntoolchain/lib/libcmodel_bm1684x2.so
               nntoolchain/lib/libcmodel.so
               nntoolchain/lib/libbmrt.so
               nntoolchain/lib/libbmrt.so.1.0
@@ -49,18 +51,22 @@ install(FILES nntoolchain/lib/libbackend_1684.so
               atomic_exec/libbm1684x_atomic_kernel.so
               # ppl (nntoolchain/ppl/README.md for details)
               # cmodel libs
-              nntoolchain/ppl/libcmodel_1684x.so
-              nntoolchain/ppl/libcmodel_1688.so
+              nntoolchain/ppl/libcmodel_bm1684x.so
+              nntoolchain/ppl/libcmodel_bm1688.so
               nntoolchain/ppl/libtpuv7_emulator.so
               nntoolchain/ppl/libtpuv7.1_emulator.so
+              nntoolchain/ppl/libtpuv7.1rv_emulator.so
               # device libs
               nntoolchain/ppl/libbm1684x_kernel_module.so
               nntoolchain/ppl/libbmtpulv60_kernel_module.so
               nntoolchain/ppl/libbm1690_kernel_module.so
+              nntoolchain/ppl/libbm1690e_kernel_module.so
+              nntoolchain/ppl/libbm1690erv_kernel_module.so
               # dyn host libs
               nntoolchain/ppl/libppl_dyn_host_bm1684x.so
               nntoolchain/ppl/libppl_dyn_host_bm1688.so
               nntoolchain/ppl/libppl_dyn_host_bm1690.so
+              nntoolchain/ppl/libppl_dyn_host_bm1690e.so
               # static host lib
               nntoolchain/ppl/libppl_host.so
         DESTINATION lib)

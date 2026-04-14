@@ -36,11 +36,20 @@ void py_cuda::cudaSoftmaxOp(tpu::SoftmaxOp op) {
     auto table2 = getCudaData(op.getReciprocalTable());
     auto table3 = getCudaData(op.getReciprocalMantissaTable());
     auto buffer = cuda_malloc(outer_dim * inner_dim * sizeof(uint16_t));
+    uint16_t *input_buffer = nullptr;
     float scale = BF16(256.0 / 30.0); // EXP_BF16_LUT_RANGE
     float offset = 0.0f;
-    cuda::cvSoftmax(input, buffer.get(), output, table0, table1, table2, table3,
+    if (op.getLog()) {
+      cudaMalloc(&input_buffer, module::getNumElements(op.getInput()) * sizeof(uint16_t));
+      cudaMemcpy(input_buffer, input, module::getNumElements(op.getInput()) * sizeof(uint16_t), cudaMemcpyDeviceToDevice);
+    }
+    cuda::cvSoftmax(op.getLog() ? input_buffer : input, buffer.get(), output,
+                    table0, table1, table2, table3,
                     outer_dim, axis_dim, inner_dim, scale, offset, op.getLog());
     buffer.reset();
+    if (op.getLog()) {
+      cudaFree(input_buffer);
+    }
   } else {
     auto buffer = cuda_malloc(outer_dim * inner_dim * sizeof(float));
     auto f32_output = cuda_malloc(outer_dim*inner_dim*axis_dim*sizeof(float));

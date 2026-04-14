@@ -131,8 +131,9 @@ public:
     if (isa<top::NoneOp>(cur_op)) {
       cur_op = cur_op->getNextNode();
     }
-    for (auto weight : weights_v) {
-      weight->moveBefore(cur_op);
+    for (auto it = weights_v.rbegin(); it != weights_v.rend(); ++it) {
+      (*it)->moveBefore(cur_op);
+      cur_op = it->getOperation();
     }
     return success();
   }
@@ -161,8 +162,10 @@ public:
         module::applyPatternOnce<ConcatMergePattern>(s);
         module::applyPatternOnce<ConcatFusePattern>(s);
         module::applyPatternOnce<ConcatSlicePattern>(s);
-        if (module::getLoraRank() > 0) {
+        if (module::isPlatform(module::Platform::LLM)) {
           // make sure all weight ops are reordered by name
+          // this is required by the address assign strategy of LLM models,
+          // which assigns addresses to weights in order of their names.
           module::applyPatternOnce<ReorderWeightsByNamePattern>(s);
         }
         BMAddressAssign addr_assign;

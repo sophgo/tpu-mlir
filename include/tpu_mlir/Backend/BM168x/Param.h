@@ -24,6 +24,7 @@ extern "C" {
 #define PPL_SG2262 "sg2262"
 #define PPL_SG2380 "sg2380"
 #define PPL_CV184X "cv184x"
+#define PPL_BM1690E "bm1690e"
 #define PPL_BM1684XE "bm1684xe"
 
 // -------------------------------------------------------------------
@@ -446,6 +447,10 @@ typedef struct correlation_global_param {
   uint32_t max_disp;
   uint32_t num_groups;
 } correlation_global_param_t;
+
+typedef struct concat_volume_global_param {
+  int64_t max_disp;
+} concat_volume_global_param_t;
 
 typedef struct {
   uint64_t input_global_addr;

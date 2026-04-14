@@ -21,7 +21,8 @@ namespace tpu {
 class BMCodegen {
 public:
   BMCodegen() {}
-  void init(ModuleOp m, const std::string &filename, bool bmodel_only);
+  void init(ModuleOp m, const std::string &filename, bool bmodel_only,
+            bool is_rvti = false);
   void run(ModuleOp s, bool embed_debug_info = false, bool gdma_check = true);
   void store();
 
@@ -84,6 +85,7 @@ private:
   void updateAllHidden();
   void updateFullnetIOAddress();
   std::string getfilename();
+  std::string getKernelModuleName(bool is_rvti = false);
 
 private:
   StringRef state;

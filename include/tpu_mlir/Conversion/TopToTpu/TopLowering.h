@@ -419,8 +419,8 @@ public:
 // newType
 template <typename OpTy>
 static OpTy lowering_common(PatternRewriter &rewriter, Operation *from,
-                            Type newType, int num_operands = 0) {
-  auto stype = module::getStorageType(newType);
+                            std::vector<Type> newTypes, int num_operands = 0) {
+  auto stype = module::getStorageType(newTypes[0]);
   std::vector<Value> operands;
   int in_num_ops = from->getNumOperands();
   if (num_operands > 0) {
@@ -452,8 +452,15 @@ static OpTy lowering_common(PatternRewriter &rewriter, Operation *from,
       operands.push_back(noneOp);
     }
   }
-  return rewriter.replaceOpWithNewOp<OpTy>(from, newType, operands,
+  return rewriter.replaceOpWithNewOp<OpTy>(from, newTypes, operands,
                                            from->getAttrs());
+}
+
+template <typename OpTy>
+static OpTy lowering_common(PatternRewriter &rewriter, Operation *from,
+                            Type newType, int num_operands = 0) {
+  return lowering_common<OpTy>(rewriter, from, std::vector<Type>{newType},
+                               num_operands);
 }
 
 // lowering to a new Operation, with same operands and same attrs, and quantize
@@ -521,9 +528,11 @@ static mlir::Type getQuantF16Type(Value v) {
 template <typename OpTy, typename ElemTy>
 static OpTy lowering_common_float(PatternRewriter &rewriter, Operation *from,
                                   int num_operands = 0) {
-  assert(from->getNumResults() == 1);
-  auto newType = getQuantFloatType<ElemTy>(from->getResult(0));
-  return lowering_common<OpTy>(rewriter, from, newType, num_operands);
+  std::vector<Type> newTypes;
+  for (auto result : from->getResults()) {
+    newTypes.push_back(getQuantFloatType<ElemTy>(result));
+  }
+  return lowering_common<OpTy>(rewriter, from, newTypes, num_operands);
 }
 
 template <typename OpTy>

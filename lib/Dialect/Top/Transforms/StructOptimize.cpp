@@ -15,6 +15,7 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/OpRewriterPatternEx.h"
 #include "tpu_mlir/Support/RewriterConfigUtils.h"
+#include "llvm/ADT/DenseSet.h"
 #include "llvm/Support/raw_ostream.h"
 
 #define CONFIG_FILE_NAME                                                       \
@@ -687,8 +688,8 @@ public:
       return failure();
     }
 
-    // Infer num_groups from reshape1
-    int64_t num_groups = 0; // Default value
+    // Infer num_groups from reshape2
+    int64_t num_groups = 0;
     auto shape_array = module::getI64Array(reshape2.getShapeAttr());
     if (!shape_array || shape_array->size() < 3) {
       return failure();
@@ -698,39 +699,446 @@ public:
       return failure();
     }
 
-    // Step 6: Create Correlation operation
+    // Step 6: Find the initial Weight tensor to determine output dimensions
+    // Trace back through ScatterND chain to find the first ScatterND's data
+    // input
+    int64_t target_output_dims = 0;
+    std::vector<int64_t> weight_shape;
+    Operation *current_scatter = op;
+    while (current_scatter) {
+      auto scatter_op = dyn_cast<top::ScatterNDOp>(current_scatter);
+      if (!scatter_op)
+        break;
+
+      auto data_input = scatter_op.getInputData();
+      auto data_def_op = data_input.getDefiningOp();
+
+      // Check if data input is a Weight (initial tensor) or another ScatterND
+      if (auto weight_op = dyn_cast<top::WeightOp>(data_def_op)) {
+        // Found the initial Weight tensor, get its dimensions
+        if (auto shaped_type = data_input.getType().dyn_cast<ShapedType>()) {
+          if (shaped_type.hasRank()) {
+            target_output_dims = shaped_type.getRank();
+            for (auto dim : shaped_type.getShape()) {
+              weight_shape.push_back(dim);
+            }
+          }
+        }
+        break;
+      } else if (auto prev_scatter = dyn_cast<top::ScatterNDOp>(data_def_op)) {
+        // Continue tracing back
+        current_scatter = prev_scatter;
+      } else {
+        break;
+      }
+    }
+
+    // If we couldn't determine from Weight, fall back to input dimensions
+    if (target_output_dims == 0) {
+      if (auto shaped_type = left_input.getType().dyn_cast<ShapedType>()) {
+        if (shaped_type.hasRank()) {
+          target_output_dims = shaped_type.getRank();
+        }
+      }
+    }
+
+    // Step 7: Get input shape to determine if we need 5D->4D reshape
+    // Since input types may be unranked (tensor<*xf32>), we infer dimensions
+    // from weight_shape
+    auto left_shaped_type = left_input.getType().dyn_cast<ShapedType>();
+    int64_t input_dims = 0;
+    std::vector<int64_t> input_shape_vec;
+
+    if (left_shaped_type && left_shaped_type.hasRank()) {
+      auto input_shape = left_shaped_type.getShape();
+      input_dims = input_shape.size();
+      for (auto dim : input_shape) {
+        input_shape_vec.push_back(dim);
+      }
+    } else {
+      // Input is unranked, infer from weight_shape
+      // weight_shape is [B, num_groups, max_disp, H, W]
+      // input_shape should be [B, num_groups, C, H, W] where C is inferred
+      if (weight_shape.size() == 5) {
+        input_dims = 5;
+        // Trace back to find a Reshape op with 5D shape attribute
+        // Use generic traversal - follow first input of any op until we find
+        // Reshape
+        Value trace_val = left_input;
+        bool found_shape = false;
+        for (int i = 0; i < 20 && !found_shape; ++i) {
+          auto def_op = trace_val.getDefiningOp();
+          if (!def_op)
+            break;
+
+          if (auto reshape_op = dyn_cast<top::ReshapeOp>(def_op)) {
+            auto shape_attr = module::getI64Array(reshape_op.getShapeAttr());
+            if (shape_attr && shape_attr->size() == 5) {
+              for (auto dim : *shape_attr) {
+                input_shape_vec.push_back(dim);
+              }
+              found_shape = true;
+              break;
+            }
+            trace_val = reshape_op.getInput();
+          } else if (def_op->getNumOperands() > 0) {
+            // Generic: follow first operand of any op
+            trace_val = def_op->getOperand(0);
+          } else {
+            break;
+          }
+        }
+
+        if (!found_shape) {
+          return failure();
+        }
+      } else {
+        return failure();
+      }
+    }
+
+    // Check if we have valid input shape
+    if (input_shape_vec.empty() || input_dims == 0) {
+      llvm::errs() << "  FAIL: Could not determine input shape\n";
+      return failure();
+    }
+
+    // Infer element type from input type (use f32 as default for unranked
+    // tensors)
+    Type element_type = rewriter.getF32Type();
+    if (left_shaped_type) {
+      element_type = left_shaped_type.getElementType();
+    }
+
     auto max_disp_attr = rewriter.getI64IntegerAttr(max_disp);
     auto num_groups_attr = rewriter.getI64IntegerAttr(num_groups);
 
-    // Infer element type from input type
-    Type element_type = rewriter.getF32Type(); // Default f32
-    if (auto shaped_type = left_input.getType().dyn_cast<ShapedType>()) {
-      element_type = shaped_type.getElementType();
+    Value corr_left_input = left_input;
+    Value corr_right_input = right_input;
+    int64_t batch_size = 1;
+
+    // Step 8: Handle 5D input case - reshape to 4D before Correlation
+    // 5D input: [B, num_groups, C, H, W] -> 4D: [B, num_groups*C, H, W]
+    if (input_dims == 5 && input_shape_vec.size() == 5) {
+      batch_size = input_shape_vec[0];
+      int64_t ng = input_shape_vec[1]; // num_groups
+      int64_t c = input_shape_vec[2];  // C
+      int64_t h = input_shape_vec[3];  // H
+      int64_t w = input_shape_vec[4];  // W
+
+      // Create 4D shape: [B, num_groups*C, H, W]
+      std::vector<int64_t> reshape_4d_shape = {batch_size, ng * c, h, w};
+      auto reshape_4d_type =
+          RankedTensorType::get(reshape_4d_shape, element_type);
+
+      // Create Reshape for left input: 5D -> 4D
+      auto left_reshape_op = rewriter.create<top::ReshapeOp>(
+          mlir::NameLoc::get(
+              rewriter.getStringAttr("corr_left_reshape_5d_to_4d")),
+          reshape_4d_type, left_input);
+      corr_left_input = left_reshape_op.getResult();
+
+      // Create Reshape for right input: 5D -> 4D
+      auto right_reshape_op = rewriter.create<top::ReshapeOp>(
+          mlir::NameLoc::get(
+              rewriter.getStringAttr("corr_right_reshape_5d_to_4d")),
+          reshape_4d_type, right_input);
+      corr_right_input = right_reshape_op.getResult();
     }
+
+    // Step 9: Create Correlation operation (with 4D inputs)
     auto correlation_type = UnrankedTensorType::get(element_type);
 
     auto correlation_op = rewriter.create<top::CorrelationOp>(
         mlir::NameLoc::get(rewriter.getStringAttr("fused_correlation")),
-        correlation_type, ValueRange{left_input, right_input}, max_disp_attr,
-        num_groups_attr);
+        correlation_type, ValueRange{corr_left_input, corr_right_input},
+        max_disp_attr, num_groups_attr);
 
-    // Step 7: Create Unsqueeze operation to get 5D output, if 4D output, skip
-    if (shape_array->size() == 4) {
-      rewriter.replaceOp(op, correlation_op.getResult());
-    } else if (shape_array->size() == 5) {
-      auto axes_attr = rewriter.getI64ArrayAttr({0});
-      auto unsqueeze_type = UnrankedTensorType::get(element_type);
+    Value final_output = correlation_op.getResult();
 
-      auto unsqueeze_op = rewriter.create<top::UnsqueezeOp>(
-          mlir::NameLoc::get(
-              rewriter.getStringAttr("fused_correlation_unsqueeze")),
-          unsqueeze_type, correlation_op.getResult(), axes_attr);
-
-      // Step 8: Replace final ScatterND operation
-      rewriter.replaceOp(op, unsqueeze_op.getResult());
-    } else {
-      llvm_unreachable("Not Support this Correlation!");
+    // Step 10: Handle output dimension mismatch
+    // Correlation output is 4D: [num_groups, max_disp, H, W]
+    // Target may be 5D: [B, num_groups, max_disp, H, W]
+    if (target_output_dims == 5 && weight_shape.size() == 5) {
+      if (input_dims == 5) {
+        // 5D input case: reshape Correlation 4D output back to 5D
+        auto reshape_5d_type =
+            RankedTensorType::get(weight_shape, element_type);
+        auto output_reshape_op = rewriter.create<top::ReshapeOp>(
+            mlir::NameLoc::get(rewriter.getStringAttr("corr_reshape_4d_to_5d")),
+            reshape_5d_type, final_output);
+        final_output = output_reshape_op.getResult();
+      } else if (input_dims == 4) {
+        // 4D input case: Unsqueeze to add batch dimension
+        // Correlation output 4D -> Unsqueeze axes=[0] -> 5D
+        auto unsqueeze_type = UnrankedTensorType::get(element_type);
+        auto axes_attr = rewriter.getI64ArrayAttr({0});
+        auto unsqueeze_op = rewriter.create<top::UnsqueezeOp>(
+            mlir::NameLoc::get(rewriter.getStringAttr("corr_unsqueeze_batch")),
+            unsqueeze_type, final_output, axes_attr);
+        final_output = unsqueeze_op.getResult();
+      }
     }
+
+    // Step 11: Replace the final ScatterND with final output
+    rewriter.replaceOp(op, final_output);
+    return success();
+  }
+};
+
+// Pattern to fuse ConcatVolume computation chain into a single ConcatVolume op
+// ConcatVolume is used in stereo matching to build concatenation cost volume
+//
+// The ConcatVolume pattern in MLIR looks like a chain of ScatterND operations:
+// Pattern structure (from actual MLIR):
+// 1. Two Conv outputs: left_feature and right_feature
+// 2. Initial Weight tensor with shape [1, 2*C, max_disp, H, W] (zeros)
+// 3. For disparity d=0:
+//    - left_feature -> Expand -> Reshape[1,C,1,H,W] -> ScatterND
+//    - right_feature -> Expand -> Reshape[1,C,1,H,W] -> ScatterND
+// 4. For disparity d>0:
+//    - left_feature -> Expand -> Reshape[1,C,1,H,W] -> ScatterND (same as d=0)
+//    - right_feature -> Slice(ends=[-d]) -> Expand -> Reshape[1,C,1,H,W-d] ->
+//    ScatterND
+//
+// Key observations:
+// - Slice uses axes=[3] (width dimension) with ends=[-d] for d>0
+// - left_feature is never sliced, right_feature is sliced for d>0
+// - Each disparity level has 2 ScatterND operations (one for left, one for
+// right)
+class ConvertFuseConcatVolumePattern
+    : public OpRewritePattern<top::ScatterNDOp> {
+public:
+  ConvertFuseConcatVolumePattern(mlir::MLIRContext *context,
+                                 PatternBenefit benefit)
+      : OpRewritePattern<top::ScatterNDOp>(context, benefit) {}
+
+  LogicalResult matchAndRewrite(top::ScatterNDOp op,
+                                PatternRewriter &rewriter) const override {
+    // Step 1: Check if this is the LAST ScatterND in the chain
+    // (not used by another ScatterND)
+    bool is_final_scatter = true;
+    for (auto user : op.getResult().getUsers()) {
+      if (dyn_cast<top::ScatterNDOp>(user)) {
+        is_final_scatter = false;
+        break;
+      }
+    }
+
+    if (!is_final_scatter) {
+      return failure();
+    }
+
+    auto block = op->getBlock();
+
+    // Step 2: Trace back through the ScatterND chain to collect all operations
+    std::vector<top::ScatterNDOp> scatter_chain;
+    llvm::DenseSet<Value> source_inputs;
+    int64_t max_slice_offset = 0;
+    Value sliced_input; // The input that gets sliced (right_feature)
+
+    // llvm::errs() << "=== ConcatVolume Pattern Matching Debug ===\n";
+
+    Operation *current_op = op;
+    while (current_op) {
+      auto scatter_op = dyn_cast<top::ScatterNDOp>(current_op);
+      if (!scatter_op)
+        break;
+
+      scatter_chain.push_back(scatter_op);
+
+      // Analyze the updates input:
+      // Pattern 1: Reshape <- Expand <- [Slice] <- source (with Expand)
+      // Pattern 2: Reshape <- [Slice] <- source (without Expand, for
+      // ConcatVolume)
+      // Pattern 3: Reshape <- Slice(width) <- Slice(channel) <- source
+      // (ConcatVolume with channel slice first)
+      // Pattern 4: Reshape <- Slice(channel) <- source (no width slice, d=0)
+      auto updates = scatter_op.getUpdates();
+      auto reshape = dyn_cast<top::ReshapeOp>(updates.getDefiningOp());
+      if (reshape) {
+        auto reshape_shape = module::getI64Array(reshape.getShapeAttr());
+        // Check if this is a 5D reshape with shape [1, C, 1, H, W]
+        if (reshape_shape && reshape_shape->size() == 5 &&
+            (*reshape_shape)[2] == 1) {
+          Value reshape_input = reshape.getInput();
+          Value source;
+
+          // Try Pattern 1: Reshape <- Expand <- [Slice] <- source
+          auto expand = dyn_cast<top::ExpandOp>(reshape_input.getDefiningOp());
+          if (expand) {
+            source = expand.getInput();
+          } else {
+            // Pattern 2/3/4: Reshape <- [Slice] <- source (no Expand)
+            source = reshape_input;
+          }
+
+          // Check if source is a Slice operation
+          auto slice = dyn_cast<top::SliceOp>(source.getDefiningOp());
+          if (slice) {
+            // Check if this is a width slice (ends=[..., -d]) or channel slice
+            auto ends_array = module::getI64Array(slice.getEndsAttr());
+            bool is_width_slice = false;
+            // llvm::errs() << "  Found Slice, ends=[";
+            // if (ends_array) {
+            //   for (size_t i = 0; i < ends_array->size(); i++) {
+            //     llvm::errs() << (*ends_array)[i];
+            //     if (i < ends_array->size() - 1)
+            //       llvm::errs() << ",";
+            //   }
+            // }
+            // llvm::errs() << "]\n";
+
+            if (ends_array && !ends_array->empty()) {
+              // Check the last element for width slice (ends=[..., -d])
+              int64_t end_val = ends_array->back();
+              if (end_val < 0) {
+                // This is a width slice with negative end
+                is_width_slice = true;
+                int64_t offset = -end_val;
+                // llvm::errs() << "  -> Width slice detected, offset=" <<
+                // offset
+                //              << "\n";
+                if (offset > max_slice_offset) {
+                  max_slice_offset = offset;
+                }
+                // The sliced input is the input to this width slice
+                // (which is the channel-sliced tensor)
+                sliced_input = slice.getInput();
+              }
+            }
+
+            if (is_width_slice) {
+              // Pattern 3: Reshape <- Slice(width) <- Slice(channel) <- source
+              // Move source to the input of the width slice (channel-sliced
+              // tensor)
+              source = slice.getInput();
+              // llvm::errs() << "  -> Source updated to width slice input\n";
+              // source is now the channel-sliced tensor, add it to
+              // source_inputs This is the "right" feature that gets
+              // width-sliced
+            } else {
+              // Pattern 4: Reshape <- Slice(channel) <- source (no width slice)
+              // This is for d=0 case, source is the channel-sliced tensor
+              // Don't move source further, keep it as the channel-sliced result
+              // Actually, we want the channel-sliced tensor as source
+              // source is already pointing to the channel slice result
+              // llvm::errs() << "  -> Channel slice (d=0), source unchanged\n";
+            }
+          } else {
+            // llvm::errs() << "  No Slice found for reshape input\n";
+          }
+          // llvm::errs() << "  Adding source to source_inputs\n";
+          source_inputs.insert(source);
+        }
+      }
+
+      // Move to the input ScatterND (the data input)
+      auto data_input = scatter_op.getInputData();
+      current_op = data_input.getDefiningOp();
+    }
+
+    // Step 3: Validate the pattern
+    // llvm::errs() << "=== Validation ===\n";
+    // llvm::errs() << "  scatter_chain.size() = " << scatter_chain.size() <<
+    // "\n"; llvm::errs() << "  source_inputs.size() = " << source_inputs.size()
+    // << "\n"; llvm::errs() << "  max_slice_offset = " << max_slice_offset <<
+    // "\n";
+
+    // We need exactly 2 source inputs (left and right features)
+    if (source_inputs.size() != 2) {
+      // llvm::errs() << "  FAILED: source_inputs.size() != 2\n";
+      return failure();
+    }
+
+    // The chain should have at least 4 ScatterND operations
+    if (scatter_chain.size() < 4) {
+      return failure();
+    }
+
+    // Calculate max_disp from the maximum slice offset
+    // max_slice_offset is the largest d value, so max_disp = max_slice_offset +
+    // 1
+    int64_t max_disp = max_slice_offset + 1;
+
+    // Validate: number of ScatterND should be approximately 2 * max_disp
+    if (scatter_chain.size() < (size_t)(max_disp * 2)) {
+      return failure();
+    }
+
+    // Step 4: Check if ConcatVolume already exists for these inputs
+    std::vector<Value> input_vec(source_inputs.begin(), source_inputs.end());
+    for (auto &block_op : *block) {
+      if (auto concat_vol_op = dyn_cast<top::ConcatVolumeOp>(&block_op)) {
+        auto inputs = concat_vol_op.getInputs();
+        if (inputs.size() == 2) {
+          bool match1 =
+              (inputs[0] == input_vec[0] && inputs[1] == input_vec[1]);
+          bool match2 =
+              (inputs[0] == input_vec[1] && inputs[1] == input_vec[0]);
+          if (match1 || match2) {
+            return failure(); // Already processed
+          }
+        }
+      }
+    }
+
+    // Step 5: Determine which input is left and which is right
+    // The right input is the one that gets sliced (sliced_input)
+    // The left input is the other one
+    Value left_input, right_input;
+
+    if (sliced_input) {
+      right_input = sliced_input;
+      for (auto &src : source_inputs) {
+        if (src != right_input) {
+          left_input = src;
+          break;
+        }
+      }
+    } else {
+      // Fallback: scan block for Slice operations
+      for (auto &block_op : *block) {
+        if (auto slice_op = dyn_cast<top::SliceOp>(&block_op)) {
+          Value slice_source = slice_op.getInput();
+          if (source_inputs.count(slice_source)) {
+            right_input = slice_source;
+            break;
+          }
+        }
+      }
+      for (auto &src : source_inputs) {
+        if (src != right_input) {
+          left_input = src;
+          break;
+        }
+      }
+    }
+
+    if (!left_input || !right_input) {
+      // If we still can't determine, use the order from the set
+      left_input = input_vec[0];
+      right_input = input_vec[1];
+    }
+
+    // Step 6: Create ConcatVolume operation
+    auto max_disp_attr = rewriter.getI64IntegerAttr(max_disp);
+
+    // Infer element type from input type
+    Type element_type = rewriter.getF32Type();
+    if (auto shaped_type = left_input.getType().dyn_cast<ShapedType>()) {
+      element_type = shaped_type.getElementType();
+    }
+
+    auto concat_volume_type = UnrankedTensorType::get(element_type);
+
+    auto concat_volume_op = rewriter.create<top::ConcatVolumeOp>(
+        mlir::NameLoc::get(rewriter.getStringAttr("fused_concat_volume")),
+        concat_volume_type, ValueRange{left_input, right_input}, max_disp_attr);
+
+    // Step 7: Replace final ScatterND operation
+    rewriter.replaceOp(op, concat_volume_op.getResult());
+
     return success();
   }
 };
@@ -739,6 +1147,7 @@ void populateStructOptimizePatterns(RewritePatternSet *patterns,
                                     const std::vector<RewriterRule> &rules) {
   // Always-on fixed patterns (independent of external rules)
   patterns->add<ConvertFuseCorrelationPattern>(patterns->getContext(), 8);
+  patterns->add<ConvertFuseConcatVolumePattern>(patterns->getContext(), 8);
 
   // Rule-driven patterns (enabled only when rules are provided)
   if (!rules.empty()) {

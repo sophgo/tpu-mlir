@@ -103,6 +103,11 @@ class DeployTool:
         if self.lg_debugger == 0 and args.debug:
             self.lg_debugger = 1
         self.debug_cmd = args.debug_cmd
+        if args.global_op_types:
+            for op_type in args.global_op_types.split(","):
+                op_type = op_type.strip()
+                if op_type:
+                    self.debug_cmd += ",global_op_type-tpu.{}".format(op_type)
         self.bmodel_path = args.model
         self.ref_npz = args.test_reference
         self.fazzy_match = args.fazzy_match
@@ -132,6 +137,7 @@ class DeployTool:
         self.in_f32_npz = self.module_name + "_in_f32.npz"
         self.prefix = "{}_{}_{}".format(self.module_name, self.chip, self.quantize)
         self.dynamic = args.dynamic
+        self.rvti = args.rvti
         self.compare_all = args.compare_all
 
         self.skip_validation = args.skip_validation
@@ -171,6 +177,7 @@ class DeployTool:
         if self.trunc_final:
             self.compare_all = True
         self.opt_post_processor = args.opt_post_processor
+        self.weight_deduplicate = args.weight_deduplicate
 
         self.context_dir = os.path.splitext(self.bmodel_path)[0]
         os.makedirs(self.context_dir, exist_ok=True)
@@ -426,6 +433,7 @@ class DeployTool:
                     quant_input_int8=self.quant_input_int8,
                     quant_output_int8=self.quant_output_int8,
                     opt_post_processor=self.opt_post_processor,
+                    weight_deduplicate=self.weight_deduplicate,
                     gdma_check=self.gdma_check,
                     lg_debugger=self.lg_debugger,
                     time_fixed_subnet=self.time_fixed_subnet,
@@ -437,7 +445,8 @@ class DeployTool:
                     enable_lghash=self.enable_lghash,
                     lghash_dir=self.lghash_dir,
                     log_level="normal" if self.log_level == 0 else "simple",
-                    disable_topo_sort=self.disable_topo_sort)
+                    disable_topo_sort=self.disable_topo_sort,
+                    rvti=self.rvti)
                 if not self.skip_validation and self.do_validate:
                     self.validate_model()
 
@@ -494,7 +503,7 @@ if __name__ == '__main__':
     parser.add_argument("--mlir", required=True, help="top mlir from model_transform.py")
     parser.add_argument("--chip", "--processor", required=True, type=str.lower,
                         choices=['bm1688', 'bm1684x', 'bm1684', 'bm1690', 'bm1690e', 'cv184x', 'sgtpuv8', 'sg2380',
-                                 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'sg2262', 'cpu'],
+                                 'bm1684x2', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'sg2262', 'cpu'],
                         help="chip platform name")
     parser.add_argument("--quantize", default="F32", type=str.upper,
                         choices=['F32', 'BF16', 'F16', 'INT8', 'INT4', 'W8F16', 'W8BF16',
@@ -575,11 +584,12 @@ if __name__ == '__main__':
                         )
     parser.add_argument("--disable_structure_detect_opt", action='store_true',
                         help="Disable structure detect optimization in layer group pass")
+    # The io_tag option is deprecated. Addr_mode  will be set as io_tag automatically when the processor supports IO_MEM_TAG
     parser.add_argument("--addr_mode", default="auto", type=str.lower,
                         choices=['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse', 'io_reloc', 'in_reuse'],
                         help="set address assign mode, if not set, auto as default")
     parser.add_argument("--same_addr", default="", type=str,
-                        help="use same address for the specified inputs and outputs")
+                        help="use same address for the specified inputs and outputs, like 0:0,1:2,4:4")
     parser.add_argument("--not_gen_bmodel", action="store_true",
                         help="for qat intergation, only gen tpu.mlir")
     parser.add_argument("--use_rewriter_config", action="store_true",
@@ -588,6 +598,7 @@ if __name__ == '__main__':
                         help="Whether to disable topo sort pass before layer group pass")
     parser.add_argument("--enable_lghash", action='store_true', help="dump hash file if set, load hash file by default whether set or not")
     parser.add_argument("--lghash_dir", default="", type=str, help='directory to dump and load lghash file')
+    parser.add_argument("--rvti", action='store_true', help="enable RVTI kernel module")
     # ========== Debug Options ==============
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     parser.add_argument("--log_level", default=0, type=int, choices=[0, 1], help='log level, 0 prints normal bmodel transform info, 1 prints all pattern apply info')
@@ -626,6 +637,8 @@ if __name__ == '__main__':
     # for cv184x
     parser.add_argument("--opt_post_processor", action="store_true", default=False,
                         help="opt_post_processor")
+    parser.add_argument("--weight_deduplicate", action="store_true", default=False,
+                        help="enable weight deduplicate pass")
     # regression test only, not for users
     parser.add_argument("--patterns_count", type=str2dict, default=dict(),
                     help='used for regression test, check if patterns are successfully applied a specific number of times')
@@ -642,6 +655,8 @@ if __name__ == '__main__':
     # ========== MaskRCNN Options ==============
     parser.add_argument("--enable_maskrcnn", action="store_true", default=False,
                         help="enable maskrcnn")
+    parser.add_argument("--global_op_types", default="", type=str,
+                        help="comma-separated op type names to force global, e.g. 'Upsample,Deconv'")
     parser.add_argument("--debug_cmd", default="", type=str,
                         help="debug cmd")
 
@@ -661,6 +676,8 @@ if __name__ == '__main__':
         args.aligned_input = True
     if not args.fuse_preprocess and args.customization_format:
         assert (0 and "Error! If not fuse_preprocess, customization_format shouldn't be set.")
+    if args.rvti:
+        args.dynamic = True
     tool = DeployTool(args)
     # lowering to tpu/tosa
     if args.not_gen_bmodel:

@@ -22,10 +22,34 @@ LogicalResult top::CastOp::inference(InferenceParameter &p) {
   // auto out_type = module::getStorageType(getOutput());
   auto round_mode = round_mode_convert(getRoundMode().str());
   auto to = getTo();
-  if (to == "INT32") {
+  if (to == "INT32" || to == "UINT32") {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t i = 0; i < num_elem; i++) {
       p.outputs[0][i] = to_int<float>(p.inputs[0][i], round_mode);
+    }
+    return success();
+  } else if (to == "INT16") {
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+    for (int64_t i = 0; i < num_elem; i++) {
+      p.outputs[0][i] = to_int16<float>(p.inputs[0][i], round_mode);
+    }
+    return success();
+  } else if (to == "UINT16") {
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+    for (int64_t i = 0; i < num_elem; i++) {
+      p.outputs[0][i] = to_uint16<float>(p.inputs[0][i], round_mode);
+    }
+    return success();
+  } else if (to == "INT8") {
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+    for (int64_t i = 0; i < num_elem; i++) {
+      p.outputs[0][i] = to_int8<float>(p.inputs[0][i], round_mode);
+    }
+    return success();
+  } else if (to == "UINT8") {
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+    for (int64_t i = 0; i < num_elem; i++) {
+      p.outputs[0][i] = to_uint8<float>(p.inputs[0][i], round_mode);
     }
     return success();
   } else if (to == "F32") {

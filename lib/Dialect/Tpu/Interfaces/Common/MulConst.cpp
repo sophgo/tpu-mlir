@@ -32,6 +32,12 @@ LogicalResult tpu::MulConstOp::inference(InferenceParameter &p) {
     p.outputs[0][i] = p.inputs[0][i] * (float)const_v;
   }
   if (out_type.isa<FloatType>()) {
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+    for (int64_t i = 0; i < num_elem; i++) {
+      if (getDoRelu() && p.outputs[0][i] < 0) {
+        p.outputs[0][i] = 0;
+      }
+    }
     if (out_type.isBF16()) {
       BF16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isF16()) {

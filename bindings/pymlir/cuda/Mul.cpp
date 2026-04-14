@@ -17,18 +17,32 @@ void py_cuda::cudaMulOp(tpu::MulOp op) {
   module::getNCHW(op.getInputs()[0], n0, c0, h0, w0, false);
   module::getNCHW(op.getInputs()[1], n1, c1, h1, w1, false);
   module::getNCHW(op.getOutput(), n2, c2, h2, w2, false);
-  auto shape0 = module::getShape(op.getInputs()[0]);
-  auto shape1 = module::getShape(op.getInputs()[1]);
-  if (shape0.size() != shape1.size()) {
-    UNREACHABLE_OP("Not supported", op);
-  }
   if (module::isUniformQuantized(op.getInputs()[0])) {
     auto multiplier = op.getMultiplier();
     auto rshift = op.getRshift();
-
-    cuda::mulInt8(getCudaData(op.getInputs()[0]), getCudaData(op.getInputs()[1]), getCudaData(op.getOutput()), n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2,
-            !module::getStorageType(op.getInputs()[0]).isUnsignedInteger(), !module::getStorageType(op.getInputs()[1]).isUnsignedInteger(), !module::getStorageType(op.getOutput()).isUnsignedInteger(), multiplier, rshift,
-             false, op.getDoRelu());
+    auto o_qtype = module::getUniformQuantizedType(op.getOutput());
+    auto l_qtype = module::getUniformQuantizedType(op.getInputs()[0]);
+    int lzp = l_qtype.getZeroPoint();
+    int ozp = o_qtype.getZeroPoint();
+    int rzp = 0;
+    if (!module::isWeight(op.getInputs()[1])) {
+      auto r_qtype = module::getUniformQuantizedType(op.getInputs()[1]);
+      rzp = r_qtype.getZeroPoint();
+    }
+    bool is_cv18xx = module::isCV18xx();
+    cuda::requant_mode_t rqmode = static_cast<cuda::requant_mode_t>(op.getQuantMode());
+    cuda::rounding_mode_t rmode = cuda::RD_HALF_UP;
+    if (is_cv18xx && !module::isAsymmetric()) {
+      rmode = cuda::RD_HALF_AWAY_FROM_ZERO;
+    }
+    cuda::mulInt8(getCudaData(op.getInputs()[0]), getCudaData(op.getInputs()[1]),
+                  getCudaData(op.getOutput()),
+                  n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2,
+                  !module::getStorageType(op.getInputs()[0]).isUnsignedInteger(),
+                  !module::getStorageType(op.getInputs()[1]).isUnsignedInteger(),
+                  !module::getStorageType(op.getOutput()).isUnsignedInteger(),
+                  multiplier, rshift, op.getDoRelu(),
+                  lzp, rzp, ozp, rqmode, rmode, is_cv18xx);
   } else if (module::getStorageType(op.getInputs()[0]).isF32()) {
     cuda::mul4DF32(getCudaData(op.getInputs()[0]), getCudaData(op.getInputs()[1]), getCudaData(op.getOutput()), op.getDoRelu(),
                   n0, c0, h0, w0,
@@ -42,6 +56,14 @@ void py_cuda::cudaMulOp(tpu::MulOp op) {
                   n0, c0, h0, w0,
                   n1, c1, h1, w1,
                   n2, c2, h2, w2);
+    if (module::getStorageType(op.getInputs()[0]).isFloat8E4M3FN()) {
+        if (!op.getOutF8Scales().has_value())
+          llvm_unreachable("should have out scale for Mul in f8 mode");
+        f64_array_t scales = module::getF64Array(op.getOutF8Scales().value());
+        [[maybe_unused]] auto out_scale = scales->at(0);
+        cuda::mulConst6DF32(output_f32.get(), out_scale, output_f32.get(), false,
+                  n2, c2, h2, w2, 1, 1);
+    }
     cuda::convertType(output_f32.get(), getCudaData(op.getOutput()), module::getNumElements(op.getOutput()), cuda::DT_F32,
                       getCudaType(op.getOutput()));
     input0_f32.reset();

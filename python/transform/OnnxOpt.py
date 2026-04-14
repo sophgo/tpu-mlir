@@ -1343,6 +1343,47 @@ def SelectiveScan(c, deltaA, deltaB_u, u, D):
     return out
 
 
+############ ConcatVolume ############
+@onnx_op(
+    op_type="tpu_mlir::ConcatVolume",
+    inputs=[
+        PyOp.dt_float,  # 0: left_features
+        PyOp.dt_float,  # 1: right_features
+    ],
+    outputs=[PyOp.dt_float],
+    attrs={"max_disp": PyOp.dt_int64})
+def concat_volume(left_features, right_features, max_disp):
+    """
+    ConcatVolume operator for stereo matching cost volume construction.
+
+    Concatenates left and right features with disparity shifts to build
+    a 5D cost volume tensor.
+
+    Parameters:
+        left_features:  left image features [B, C, H, W]
+        right_features: right image features [B, C, H, W]
+        max_disp:       maximum disparity value
+
+    Returns:
+        volume: cost volume tensor [B, 2*C, max_disp, H, W]
+    """
+    B, C, H, W = left_features.shape
+    volume = np.zeros([B, 2 * C, max_disp, H, W], dtype=left_features.dtype)
+
+    for i in range(max_disp):
+        if i > 0:
+            # Copy left feature to first C channels
+            volume[:, :C, i, :, :] = left_features[:, :, :, :]
+            # Copy right feature (shifted) to last C channels
+            volume[:, C:, i, :, i:] = right_features[:, :, :, :-i]
+        else:
+            # i=0: direct concatenation without shift
+            volume[:, :C, i, :, :] = left_features
+            volume[:, C:, i, :, :] = right_features
+
+    return volume
+
+
 def remove_tensor_from_input(model):
     tensor_names = [x.name for x in model.graph.initializer]
     tensor_names.extend([x.name for x in model.graph.node if x.op_type == "Constant"])

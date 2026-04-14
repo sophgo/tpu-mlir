@@ -20,7 +20,7 @@ import onnxsim.onnx_simplifier as onnxsim
 from utils.preprocess import get_preprocess_parser, preprocess
 from utils.mlir_parser import *
 from utils.misc import *
-from tools.model_runner import get_chip_from_model, round_away_from_zero
+from tools.model_runner import get_chip_from_model, round_away_from_zero, get_kernel_mode_from_model
 
 
 class common_inference():
@@ -122,22 +122,29 @@ class bmodel_inference(common_inference):
         if self.args.model_file.endswith(".bmodel"):
             pyruntime = pyruntime + "bm"
             chip = get_chip_from_model(self.args.model_file)
+            kernel_mode = get_kernel_mode_from_model(self.args.model_file)
+            is_rvti = kernel_mode == "1"
             # trick for runtime link chip cmodel
-            lib_so = 'libcmodel_1684x.so'
+            lib_so = 'libcmodel_bm1684x.so'
             if chip == 'BM1688' or chip == 'CV186X':
-                lib_so = 'libcmodel_1688.so'
+                lib_so = 'libcmodel_bm1688.so'
             elif chip == 'BM1684':
-                lib_so = 'libcmodel_1684.so'
+                lib_so = 'libcmodel_bm1684.so'
             elif chip == "BM1690":
                 lib_so = 'libtpuv7_emulator.so'
             elif chip == "BM1690E":
-                lib_so = 'libtpuv7.1_emulator.so'
+                if is_rvti:
+                    lib_so = 'libtpuv7.1rv_emulator.so'
+                else:
+                    lib_so = 'libtpuv7.1_emulator.so'
             elif chip == "CV184X":
                 lib_so = 'libcmodel_cv184x.so'
             elif chip == "SG2380":
                 lib_so = 'libcmodel_sg2380.so'
             elif chip == "SGTPUV8":
                 lib_so = 'libcmodel_sgtpuv8.so'
+            elif chip == "BM1684X2":
+                lib_so = 'libcmodel_bm1684x2.so'
             cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel.so'.format(lib_so)
             os.system(cmd)
         elif self.args.model_file.endswith(".cvimodel"):

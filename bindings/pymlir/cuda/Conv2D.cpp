@@ -13,8 +13,10 @@
 void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
   auto p = op.parseParam();
   auto num_out = module::getNumElements(op.getOutput());
+  bool zp_is_zero = !module::isUniformQuantized(op.getInput()) ||
+    module::getUniformQuantizedType(op.getInput()).getZeroPoint() == 0;
   auto out_stype = module::getStorageType(op.getOutput());
-  bool need_pad = p.pht != p.phb || p.pwl != p.pwr;
+  bool need_pad = p.pht != p.phb || p.pwl != p.pwr || !zp_is_zero;
   cuda_ptr in_f32;
   int ih = p.ih, iw = p.iw;
   int pad_h = p.phb, pad_w = p.pwr;
@@ -32,7 +34,7 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
       auto pad_in = cuda_malloc(num);
       auto input = getCudaData(op.getInput());
       cuda::pad4D(input, pad_in.get(), p.n, p.ic, p.ih, p.iw, p.pht, p.phb, p.pwl,
-                  p.pwr, 1);
+                  p.pwr, 1, p.pad_value);
       in_f32 = cuda_malloc(num * sizeof(float));
       cuda::convertType(pad_in.get(), in_f32.get(), num,
                         getCudaType(op.getInput()), cuda::DT_F32);
@@ -41,11 +43,11 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
       if (module::getStorageType(op.getInput()).isF32()) {
         auto input = getCudaData(op.getInput());
         cuda::pad4D(input, in_f32.get(), p.n, p.ic, p.ih, p.iw, p.pht, p.phb, p.pwl,
-                    p.pwr, sizeof(float));
+                    p.pwr, sizeof(float), p.pad_value);
       } else {
         auto input = newCudaData(op.getInput(), cuda::DT_F32);
         cuda::pad4D(input.get(), in_f32.get(), p.n, p.ic, p.ih, p.iw, p.pht, p.phb, p.pwl,
-                    p.pwr, sizeof(float));
+                    p.pwr, sizeof(float), p.pad_value);
         input.reset();
       }
     }
@@ -133,9 +135,7 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
     }
     cudnnDestroyTensorDescriptor(bias_desc);
   }
-  if (p.do_relu) {
-    doRelu(out_f32.get(), num_out, cuda::DT_F32);
-  }
+
   if (module::isUniformQuantized(op.getOutput())) {
     auto out_i32 =
         newCudaData(out_f32.get(), num_out, cuda::DT_F32, cuda::DT_INT32);
@@ -144,6 +144,7 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
     //-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
     // 3. multiplier + shift i32 => i8
     auto output = getCudaData(op.getOutput());
+    auto zero_point = module::getUniformQuantizedType(op.getOutput()).getZeroPoint();
     auto cudaMults = cuda_malloc(p.oc * sizeof(int32_t));
     auto cudaShifts = cuda_malloc(p.oc * sizeof(int32_t));
     auto rshift_v = module::getI64Array(op.getRshift().value());
@@ -157,18 +158,28 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
                           rs.size() * sizeof(int32_t), cudaMemcpyHostToDevice));
     if (out_stype.isInteger(16)) { // output int16 to improve accuracy when next op is float
       cuda::requantInt16Perchannel(out_i32.get(), output, cudaMults.get(),
-                                  cudaShifts.get(), p.n, p.oc, p.oh, p.ow, p.do_relu);
+                                  cudaShifts.get(), p.n, p.oc, p.oh, p.ow, p.do_relu, zero_point);
     } else {
       bool sign = !out_stype.isUnsignedInteger(8);
-      bool qdm = op.getQuantMode() == tpu::RequantMode::QDM;
+      auto qmode = op.getQuantMode();
+      if (qmode >= tpu::RequantMode::OnlyScale) {
+        llvm_unreachable("unsupported quant mode");
+      }
+      cuda::requant_mode_t rqmode = static_cast<cuda::requant_mode_t>(qmode);
+      bool is_tf = qmode == tpu::RequantMode::QDM ||
+                   qmode == tpu::RequantMode::TFLite ||
+                   qmode == tpu::RequantMode::TFLite_LShift;
+      auto rmode = is_tf ? cuda::RD_HALF_AWAY_FROM_ZERO : cuda::RD_HALF_UP;
+
       bool relu = sign && p.do_relu;
+      bool is_cv18xx = module::isCV18xx();
       cuda::requantInt8Perchannel(out_i32.get(), output, cudaMults.get(),
                                   cudaShifts.get(), p.n, p.oc, p.oh, p.ow, sign,
-                                  qdm, relu);
+                                  relu, zero_point, is_cv18xx, rqmode, rmode);
     }
     cudaMults.reset();
     cudaShifts.reset();
-  }else {
+  } else {
     // directly copy float output
     if (!module::getStorageType(op.getOutput()).isF32()) {
       if (module::getStorageType(op.getOutput()).isFloat8E4M3FN()){
@@ -184,10 +195,16 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
                                     p.n, p.oc, p.oh, p.ow, relu, true);
         cudaMults.reset();
       } else {
+        if (p.do_relu) {
+          doRelu(out_f32.get(), num_out, cuda::DT_F32);
+        }
         cuda::convertType(out_f32.get(), getCudaData(op.getOutput()), num_out,
                         cuda::DT_F32, getCudaType(op.getOutput()));
       }
     } else {
+      if (p.do_relu) {
+        doRelu(out_f32.get(), num_out, cuda::DT_F32);
+      }
       cudaMemcpy(getCudaData(op.getOutput()), out_f32.get(),
                  num_out * sizeof(float), cudaMemcpyDeviceToDevice);
     }

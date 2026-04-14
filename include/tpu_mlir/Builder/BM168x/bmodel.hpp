@@ -89,7 +89,8 @@ public:
               const flatbuffers::Offset<NetParameter> &parameter,
               int32_t addr_mode = 0);
   // firmware_core.so save into bmodel
-  void AddKernelModule(std::string &filename, Binary &tpu_module);
+  void AddKernelModule(std::string &filename, Binary &tpu_module,
+                       bool is_rvti = false);
   void AddCpuModule(std::string &version, Binary &lib_cpu);
   void AddBmodelType(const uint32_t type);
   void AddLibBackend(Binary &lib_backend);
@@ -123,6 +124,7 @@ private:
   typedef struct {
     std::string file_name;
     Binary binary;
+    int32_t mode; // 0: normal kernel module; 1: RVTI kernel module
   } KERNEL_MODULE_T;
 
   typedef struct {

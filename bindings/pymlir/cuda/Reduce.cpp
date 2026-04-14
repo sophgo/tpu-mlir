@@ -45,6 +45,7 @@ enum ReductionMode getReductionMode(std::string type_val) {
 void py_cuda::cudaReduceOp(tpu::ReduceOp op) {
   std::string type_val = std::string(op.getMode().str());
   std::vector<int32_t> axes;
+  bool is_cv18xx = module::isCV18xx();
   auto axes_ = module::getI64Array(op.getAxes());
   axes.assign(axes_->begin(), axes_->end());
   auto input_shape = std::vector<int64_t>(module::getShape(op.getInput()));
@@ -69,13 +70,28 @@ void py_cuda::cudaReduceOp(tpu::ReduceOp op) {
   if (module::getStorageType(op.getInput()).isF32()) {
     auto in_f32 = getCudaData(op.getInput());
     auto out_f32 = getCudaData(op.getOutput());
-    cuda::bmReduce(in_f32, out_f32, num_dims, (void *)_in_shape.data(), (void *)reduce_mask.data(), (int)getReductionMode(type_val));
-  } {
+    cuda::bmReduce(in_f32, out_f32, num_dims, (void *)_in_shape.data(),
+                   (void *)reduce_mask.data(), (int)getReductionMode(type_val), false);
+  } else {
     auto in_f32 = newCudaData(op.getInput(), cuda::DT_F32);
     auto out_f32 = newCudaData(op.getOutput(), cuda::DT_F32);
-    cuda::bmReduce(in_f32.get(), out_f32.get(), num_dims, (void *)_in_shape.data(), (void *)reduce_mask.data(), (int)getReductionMode(type_val));
-    cuda::convertType(out_f32.get(), getCudaData(op.getOutput()), module::getNumElements(op.getOutput()), cuda::DT_F32,
+    auto out_type = module::getStorageType(op.getOutput());
+    // int reduce prod may overflow
+    cuda::bmReduce(in_f32.get(), out_f32.get(), num_dims, (void *)_in_shape.data(),
+                   (void *)reduce_mask.data(), (int)getReductionMode(type_val),
+                   is_cv18xx && module::isUniformQuantized(op.getOutput()));
+    if (out_type.isa<FloatType>()) {
+      cuda::convertType(out_f32.get(), getCudaData(op.getOutput()),
+                      module::getNumElements(op.getOutput()), cuda::DT_F32,
                       getCudaType(op.getOutput()));
+    } else if (module::isUniformQuantized(op.getOutput())) {
+      int64_t shift = module::getI64Array(op.getRshift().value())->at(0);
+      int64_t multi = module::getI64Array(op.getMultiplier().value())->at(0);
+      float scale = (float)multi / (1 << shift);
+      cuda::mulShiftFloat(out_f32.get(), getCudaData(op.getOutput()),
+                          scale, 0, cuda::RD_HALF_UP,
+                          module::getNumElements(op.getOutput()), getCudaType(op.getOutput()));
+    }
     in_f32.reset();
     out_f32.reset();
   }
