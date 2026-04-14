@@ -513,6 +513,70 @@ public:
                                 PatternBenefit benefit)
       : OpRewritePattern<top::ScatterNDOp>(context, benefit) {}
 
+private:
+  // Extract the logical slice offset used by correlation fusion.
+  //
+  // Supported forms:
+  // 1. Legacy form: axes=[axis], offset=[disp]
+  // 2. Param-converted form: axes=[], hasparamConvert_axes=[axis],
+  //    offset=[0, ..., disp, ...]
+  //
+  // For backward compatibility, keep accepting single-element offset arrays
+  // even when the logical axis is not 0.
+  static bool getCorrelationSliceOffset(top::SliceOp slice_op,
+                                        int64_t &slice_offset) {
+    auto offset_array = module::getI64Array(slice_op.getOffsetAttr());
+    if (!offset_array || offset_array->empty()) {
+      return false;
+    }
+
+    // Preserve the old behaviour first.
+    if (offset_array->size() == 1) {
+      slice_offset = (*offset_array)[0];
+      return true;
+    }
+
+    auto param_axes =
+        module::getI64Array(slice_op.getHasparamConvertAxesAttr());
+    auto axes = module::getI64Array(slice_op.getAxesAttr());
+
+    std::vector<int64_t> axis_vec;
+    if (param_axes && !param_axes->empty()) {
+      axis_vec.assign(param_axes->begin(), param_axes->end());
+    } else if (axes && !axes->empty()) {
+      axis_vec.assign(axes->begin(), axes->end());
+    }
+
+    if (axis_vec.size() == 1) {
+      auto axis = axis_vec[0];
+      if (axis < 0 || axis >= static_cast<int64_t>(offset_array->size())) {
+        return false;
+      }
+      slice_offset = (*offset_array)[axis];
+      return true;
+    }
+
+    // Fallback: infer from the unique non-zero offset dimension.
+    int64_t non_zero_axis = -1;
+    for (size_t i = 0; i < offset_array->size(); ++i) {
+      if ((*offset_array)[i] != 0) {
+        if (non_zero_axis != -1) {
+          return false;
+        }
+        non_zero_axis = static_cast<int64_t>(i);
+      }
+    }
+
+    if (non_zero_axis == -1) {
+      slice_offset = 0;
+      return true;
+    }
+
+    slice_offset = (*offset_array)[non_zero_axis];
+    return true;
+  }
+
+public:
   LogicalResult matchAndRewrite(top::ScatterNDOp op,
                                 PatternRewriter &rewriter) const override {
     // Step 1: Check if this ScatterND has users (output is used by other
@@ -667,10 +731,9 @@ public:
               // Extract offset information
               auto left_slice =
                   (sc_slice1.getInput() == left_input) ? sc_slice1 : sc_slice2;
-              auto offset_array =
-                  module::getI64Array(left_slice.getOffsetAttr());
-              if (offset_array && offset_array->size() == 1) {
-                all_offsets.insert((*offset_array)[0]);
+              int64_t slice_offset = 0;
+              if (getCorrelationSliceOffset(left_slice, slice_offset)) {
+                all_offsets.insert(slice_offset);
               }
             }
           }
@@ -742,9 +805,12 @@ public:
       }
     }
 
-    // Step 7: Get input shape to determine if we need 5D->4D reshape
-    // Since input types may be unranked (tensor<*xf32>), we infer dimensions
-    // from weight_shape
+    // Step 7: Get input shape to determine if we need 5D->4D reshape.
+    //
+    // When the inputs are still unranked before shape-infer, distinguish:
+    // 1. True 5D input: trace back to an explicit 5D reshape.
+    // 2. 4D input expanded by the correlation subgraph itself:
+    //    infer [B, num_groups * channels_per_group, H, W] from reshape1.
     auto left_shaped_type = left_input.getType().dyn_cast<ShapedType>();
     int64_t input_dims = 0;
     std::vector<int64_t> input_shape_vec;
@@ -756,16 +822,12 @@ public:
         input_shape_vec.push_back(dim);
       }
     } else {
-      // Input is unranked, infer from weight_shape
-      // weight_shape is [B, num_groups, max_disp, H, W]
-      // input_shape should be [B, num_groups, C, H, W] where C is inferred
+      // Input is unranked, infer shape from surrounding correlation structure.
       if (weight_shape.size() == 5) {
-        input_dims = 5;
-        // Trace back to find a Reshape op with 5D shape attribute
-        // Use generic traversal - follow first input of any op until we find
-        // Reshape
         Value trace_val = left_input;
         bool found_shape = false;
+
+        // First prefer the real 5D input case if an upstream reshape exists.
         for (int i = 0; i < 20 && !found_shape; ++i) {
           auto def_op = trace_val.getDefiningOp();
           if (!def_op)
@@ -789,6 +851,21 @@ public:
           }
         }
 
+        if (!found_shape && reshape1) {
+          auto mul_reshape_shape = module::getI64Array(reshape1.getShapeAttr());
+          if (mul_reshape_shape && mul_reshape_shape->size() == 5) {
+            // reshape1 is [B, num_groups, channels_per_group, H, W].
+            // If no upstream 5D reshape exists, treat the original inputs as
+            // 4D.
+            input_dims = 4;
+            input_shape_vec = {
+                (*mul_reshape_shape)[0],
+                (*mul_reshape_shape)[1] * (*mul_reshape_shape)[2],
+                (*mul_reshape_shape)[3], (*mul_reshape_shape)[4]};
+            found_shape = true;
+          }
+        }
+
         if (!found_shape) {
           return failure();
         }
@@ -799,7 +876,6 @@ public:
 
     // Check if we have valid input shape
     if (input_shape_vec.empty() || input_dims == 0) {
-      llvm::errs() << "  FAIL: Could not determine input shape\n";
       return failure();
     }
 

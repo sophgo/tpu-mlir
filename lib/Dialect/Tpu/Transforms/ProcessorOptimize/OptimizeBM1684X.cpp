@@ -4387,8 +4387,120 @@ struct CanCutGridSamplerFusePattern
     }
     auto before_op = op.getInput().getDefiningOp();
     auto next_op = *op.getOutput().user_begin();
+
     if (!isa<tpu::PermuteOp>(before_op) || !isa<tpu::PermuteOp>(next_op)) {
-      return failure();
+      auto before_cast = dyn_cast<tpu::CastOp>(before_op);
+      auto next_cast = dyn_cast<tpu::CastOp>(next_op);
+      if (!before_cast || !next_cast || !next_cast->hasOneUse()) {
+        return failure();
+      }
+      auto before_permute =
+          dyn_cast<tpu::PermuteOp>(before_cast.getInput().getDefiningOp());
+      auto next_permute =
+          dyn_cast<tpu::PermuteOp>(*next_cast.getOutput().user_begin());
+      auto grid_cast = dyn_cast<tpu::CastOp>(op.getGrid().getDefiningOp());
+      if (!before_permute || !next_permute || !grid_cast) {
+        return failure();
+      }
+      auto concat_tail =
+          dyn_cast<tpu::ConcatOp>(grid_cast.getInput().getDefiningOp());
+      if (!concat_tail || concat_tail.getInputs().size() != 2) {
+        return failure();
+      }
+
+      auto getSliceSource = [](Value branch) -> tpu::CastOp {
+        auto branch_op = branch.getDefiningOp();
+        for (int depth = 0; depth < 8 && branch_op; ++depth) {
+          if (auto slice = dyn_cast<tpu::SliceOp>(branch_op)) {
+            return dyn_cast<tpu::CastOp>(slice.getInput().getDefiningOp());
+          }
+          if (auto add_const = dyn_cast<tpu::AddConstOp>(branch_op)) {
+            branch_op = add_const.getInput().getDefiningOp();
+            continue;
+          }
+          if (auto mul_shift = dyn_cast<tpu::MulShiftOp>(branch_op)) {
+            branch_op = mul_shift.getInput().getDefiningOp();
+            continue;
+          }
+          break;
+        }
+        return nullptr;
+      };
+
+      auto slice_source_a = getSliceSource(concat_tail.getInputs()[0]);
+      auto slice_source_b = getSliceSource(concat_tail.getInputs()[1]);
+      if (!slice_source_a || slice_source_a != slice_source_b) {
+        return failure();
+      }
+      auto concat_head =
+          dyn_cast<tpu::ConcatOp>(slice_source_a.getInput().getDefiningOp());
+      if (!concat_head) {
+        return failure();
+      }
+      tpu::PermuteOp permute = nullptr;
+      for (auto input : concat_head.getInputs()) {
+        auto input_op = input.getDefiningOp();
+        if (!input_op) {
+          continue;
+        }
+        if (auto cast_op = dyn_cast<tpu::CastOp>(input_op)) {
+          input_op = cast_op.getInput().getDefiningOp();
+        }
+        if (auto v = dyn_cast<tpu::PermuteOp>(input_op)) {
+          permute = v;
+          break;
+        }
+      }
+      if (!permute) {
+        return failure();
+      }
+
+      auto makeCastName = [&](StringRef suffix) {
+        return module::getName(op.getOperation(), 0).str() + suffix.str();
+      };
+
+      rewriter.setInsertionPoint(op);
+      auto input_cast_type = module::getTypeLike(
+          op.getInput(), module::getShape(before_permute.getInput()));
+      auto new_input_cast = rewriter.create<tpu::CastOp>(
+          NameLoc::get(
+              rewriter.getStringAttr(makeCastName("_need_permute_input_cast"))),
+          input_cast_type, ValueRange{before_permute.getInput()});
+      new_input_cast->setAttrs(before_cast->getAttrs());
+
+      auto grid_cast_type = module::getTypeLike(
+          op.getGrid(), module::getShape(permute.getInput()));
+      auto new_grid_cast = rewriter.create<tpu::CastOp>(
+          NameLoc::get(
+              rewriter.getStringAttr(makeCastName("_need_permute_grid_cast"))),
+          grid_cast_type, ValueRange{permute.getInput()});
+      new_grid_cast->setAttrs(grid_cast->getAttrs());
+
+      op->setOperand(0, new_input_cast.getOutput());
+      op->setOperand(1, new_grid_cast.getOutput());
+      op->getResult(0).setType(module::getTypeLike(
+          op.getOutput(), module::getShape(next_permute.getOutput())));
+      op->setAttr("need_permute", rewriter.getBoolAttr(true));
+
+      rewriter.setInsertionPointAfter(op);
+      auto new_output_cast = rewriter.create<tpu::CastOp>(
+          NameLoc::get(rewriter.getStringAttr(
+              makeCastName("_need_permute_output_cast"))),
+          next_permute.getOutput().getType(), ValueRange{op.getOutput()});
+      new_output_cast->setAttrs(next_cast->getAttrs());
+
+      if (before_cast->use_empty()) {
+        rewriter.eraseOp(before_cast);
+      }
+      if (before_permute->use_empty()) {
+        rewriter.eraseOp(before_permute);
+      }
+      rewriter.replaceOp(next_permute,
+                         ArrayRef<Value>{new_output_cast.getOutput()});
+      if (next_cast->use_empty()) {
+        rewriter.eraseOp(next_cast);
+      }
+      return success();
     }
     auto grid = op.getGrid();
     auto concat_tail = dyn_cast<tpu::ConcatOp>(grid.getDefiningOp());
