@@ -201,8 +201,7 @@ LogicalResult tpu::MeanStdScaleOp::inference(InferenceParameter &p) {
         float mean_float = mean->at(chn_idx);
 
         int32_t tmp = (int32_t)round_float_number(
-            (int32_t)(p.inputs[0][global_idx] - mean_float) *
-                (1 / std->at(chn_idx)),
+            (p.inputs[0][global_idx] - mean_float) * (1 / std->at(chn_idx)),
             round_mode);
         res.push_back(tmp);
       }

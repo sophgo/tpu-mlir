@@ -7,6 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
+#include <limits>
 #include <string.h>
 #define DEBUG_TYPE "lowering-MeanStdScale"
 namespace tpu_mlir {
@@ -55,6 +56,8 @@ static void op_lowering_common(PatternRewriter &rewriter,
   auto std = *module::getF64Array(std_attr);
   auto mean = *module::getF64Array(mean_attr);
   int chn_num = std.size();
+  auto lowered_scale = scale;
+  auto lowered_std = std;
 
   if ((idtype.isUnsignedInteger(8) || idtype.isSignedInteger(8)) &&
       odtype.isSignedInteger(8)) {
@@ -81,20 +84,25 @@ static void op_lowering_common(PatternRewriter &rewriter,
       f32Param.push_back(floatValue3);
     }
   } else if (idtype.isF32() && odtype.isSignedInteger(8)) {
-    int multi = 0;
-    int rshift = 0;
-    int sub_rshift = 0;
+    int multi = 1;
+    int zero = 0;
+    float floatValue1, floatValue2;
+    std::memcpy(&floatValue1, &multi, sizeof(int32_t));
+    std::memcpy(&floatValue2, &zero, sizeof(int32_t));
+    lowered_scale = {1.0, 1.0};
     for (int i = 0; i < chn_num; i++) {
-      QuantizeMultiplier(scale[0] / (1 / scale[1]), 1, 16, &multi, &rshift);
-      sub_rshift = -rshift;
-      vector_multi.push_back(IntegerAttr::get(rewriter.getI32Type(), multi));
-      vector_rshift.push_back(IntegerAttr::get(rewriter.getI32Type(), rshift));
+      double effective_scale = 0.0;
+      if (scale[0] != 0.0 && scale[1] != 0.0) {
+        effective_scale = scale[0] / (std[i] * scale[1]);
+        lowered_std[i] = std[i] * scale[1] / scale[0];
+      } else {
+        lowered_std[i] = std::numeric_limits<double>::infinity();
+      }
+      vector_multi.push_back(IntegerAttr::get(rewriter.getI32Type(), 1));
+      vector_rshift.push_back(IntegerAttr::get(rewriter.getI32Type(), 0));
       vector_offset.push_back(IntegerAttr::get(rewriter.getI32Type(), 0));
-      f32Param.push_back(double(1.0) / std[i]);
+      f32Param.push_back(effective_scale);
       f32Param.push_back(mean[i]);
-      float floatValue1, floatValue2;
-      std::memcpy(&floatValue1, &multi, sizeof(int32_t));
-      std::memcpy(&floatValue2, &sub_rshift, sizeof(int32_t));
       f32Param.push_back(floatValue1);
       f32Param.push_back(floatValue2);
       f32Param.push_back(0);
@@ -134,8 +142,9 @@ static void op_lowering_common(PatternRewriter &rewriter,
   auto newOp = rewriter.create<tpu::MeanStdScaleOp>(
       op.getLoc(), type, op.getInput(), f32ParamTensor, op.getQuantMode(),
       op.getCustomizationFormat(), op.getChannelOrder(), op.getSign(),
-      scale_attr, std_attr, mean_attr, op.getZeroPoints(), op.getResizeDims(),
-      ArrayAttr::get(context, vector_multi),
+      rewriter.getF64ArrayAttr(lowered_scale),
+      rewriter.getF64ArrayAttr(lowered_std), mean_attr, op.getZeroPoints(),
+      op.getResizeDims(), ArrayAttr::get(context, vector_multi),
       ArrayAttr::get(context, vector_rshift),
       ArrayAttr::get(context, vector_offset),
       roundmodeflag == 0
@@ -169,7 +178,8 @@ void MeanStdScaleLowering::LoweringBF16(PatternRewriter &rewriter,
 void MeanStdScaleLowering::LoweringF32(PatternRewriter &rewriter,
                                        top::MeanStdScaleOp op) const {
   // lowering_common_f32<tpu::MeanStdScaleOp>(rewriter, op, 1);
-  UNREACHABLE_OP("Not Implemented", op);
+  // UNREACHABLE_OP("Not Implemented", op);
+  LoweringF16(rewriter, op);
 }
 
 void MeanStdScaleLowering::LoweringF16(PatternRewriter &rewriter,
