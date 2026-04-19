@@ -12,14 +12,36 @@
 
 # 编译工程
 
-首先需要安装指定的Docker，然后可以选择用预编译包或者编译源码。
+对于仓库开发，推荐直接使用仓库内置的 Dev Container + `uv` 流程。现有的 Docker 和 `pip` 步骤仍然保留，方便手工搭环境或仅安装发布包。
+
+## Dev Container + uv（推荐开发方式）
+
+在 VS Code 中打开仓库后，可直接选择以下开发容器：
+
+* `TPU-MLIR Development` 对应 `.devcontainer/default/devcontainer.json`
+* `TPU-MLIR Development (GPU)` 对应 `.devcontainer/gpu/devcontainer.json`
+
+容器首次创建时会自动执行 `/setup.sh cpu` 或 `/setup.sh gpu`，在 `/workspace/.venv` 中创建 Python 环境，并通过 `uv` 同步依赖。
+
+Dev Container 中的新终端会自动激活 `.venv` 并执行 `/workspace/envsetup.sh`，因此无需再手工执行 `source ./envsetup.sh` 就能获得 TPU-MLIR 的环境变量。
+
+常用维护命令如下：
+
+``` shell
+uv sync
+uv sync --group torch-gpu --no-group torch-cpu
+./build.sh
+./build.sh RELEASE CUDA
+```
+
+如果不使用 VS Code Dev Container，也可以继续使用下文的手工 Docker 流程。
 
 ## 安装Docker
 
 * 从[dockerhub](https://hub.docker.com/r/sophgo/tpuc_dev)下载所需的镜像。
 
 ``` shell
-docker pull sophgo/tpuc_dev:latest
+docker pull sophgo/tpuc_dev:v3.4
 
 ```
 
@@ -34,7 +56,7 @@ docker load -i tpuc_dev_v3.4.tar.gz
 
 ``` shell
 # myname1234 just a example, you can set your own name
-docker run --privileged --name myname1234 -v $PWD:/workspace -it sophgo/tpuc_dev:latest
+docker run --privileged --name myname1234 -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4
 ```
 
 ## 预编译包 (方式一)
@@ -58,6 +80,8 @@ cd tpu-mlir
 source ./envsetup.sh
 ./build.sh
 ```
+
+如果使用仓库内置的 Dev Container，新终端会自动激活 `.venv` 并执行 `envsetup.sh`，因此在仓库根目录直接运行 `./build.sh` 即可。
 
 # 使用方法 (Qwen2.5-VL为例)
 

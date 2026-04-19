@@ -13,14 +13,36 @@ It also supports compiling [HuggingFace](https://huggingface.co) LLM models. Cur
 
 # How to Build
 
-First, you need to install the specified Docker, and then you can choose either to use the prebuilt package or to compile from source.
+For repository development, the recommended workflow is the provided Dev Container plus `uv`. The existing Docker and `pip` steps are still kept for manual setup and end-user installation.
+
+## Dev Container + uv (Recommended for development)
+
+Open the repository in VS Code and choose one of the bundled development containers:
+
+* `TPU-MLIR Development` uses `.devcontainer/default/devcontainer.json`
+* `TPU-MLIR Development (GPU)` uses `.devcontainer/gpu/devcontainer.json`
+
+On first creation, the container runs `/setup.sh cpu` or `/setup.sh gpu`, creates `/workspace/.venv`, and syncs Python dependencies with `uv`.
+
+New terminals inside the devcontainer automatically activate `.venv` and source `/workspace/envsetup.sh`, so the usual TPU-MLIR environment variables are available without running `source ./envsetup.sh` manually.
+
+Common maintenance commands:
+
+``` shell
+uv sync
+uv sync --group torch-gpu --no-group torch-cpu
+./build.sh
+./build.sh RELEASE CUDA
+```
+
+If you prefer to work without VS Code Dev Containers, continue with the manual Docker flow below.
 
 ## Install Docker
 
 * Download the required image from [dockerhub](https://hub.docker.com/r/sophgo/tpuc_dev).
 
 ``` shell
-docker pull sophgo/tpuc_dev:latest
+docker pull sophgo/tpuc_dev:v3.4
 ```
 
 * If the pulling failed, you can download it in the following way:
@@ -34,7 +56,7 @@ docker load -i tpuc_dev_v3.4.tar.gz
 
 ``` shell
 # myname1234 is just an example, you can set your own name
-docker run --privileged --name myname1234 -v $PWD:/workspace -it sophgo/tpuc_dev:latest
+docker run --privileged --name myname1234 -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4
 ```
 
 ## Using prebuilt package (Method One)
@@ -59,6 +81,8 @@ cd tpu-mlir
 source ./envsetup.sh
 ./build.sh
 ```
+
+If you are using the provided devcontainer, new terminals already activate `.venv` and source `envsetup.sh`, so running `./build.sh` from the repository root is enough.
 
 # Usage (Example: Qwen2.5-VL)
 

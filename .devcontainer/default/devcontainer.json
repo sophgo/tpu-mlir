@@ -1,0 +1,52 @@
+{
+  "name": "TPU-MLIR Development",
+  "dockerFile": "../Dockerfile",
+  "runArgs": [
+    "--network=host",
+    "--cap-add=SYS_PTRACE",
+    "--security-opt=seccomp:unconfined",
+    "--security-opt=apparmor:unconfined",
+    "--shm-size=16g"
+  ],
+  "mounts": [
+    "type=volume,source=tpu-mlir-uv-cache,target=/home/vscode/.cache/uv"
+  ],
+  "containerEnv": {
+    "UV_CACHE_DIR": "/home/vscode/.cache/uv",
+    "UV_NO_MANAGED_PYTHON": "1"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "llvm-vs-code-extensions.vscode-clangd",
+        "ms-vscode.cmake-tools",
+        "eamodio.gitlens",
+        "tamasfe.even-better-toml"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/workspace/.venv/bin/python",
+        "remote.autoForwardPorts": false,
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "terminal.integrated.profiles.linux": {
+          "bash": {
+            "path": "bash",
+            "icon": "terminal-bash"
+          },
+          "zsh": {
+            "path": "zsh"
+          }
+        },
+        "clangd.arguments": [
+          "--header-insertion=never",
+          "--compile-commands-dir=${workspaceFolder}/build",
+          "--query-driver=**"
+        ]
+      }
+    }
+  },
+  "remoteUser": "vscode",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "workspaceFolder": "/workspace",
+  "postCreateCommand": "/setup.sh cpu"
+}

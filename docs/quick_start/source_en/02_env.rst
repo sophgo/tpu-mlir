@@ -3,6 +3,33 @@ Environment Setup
 
 First check whether the current system environment meets ubuntu 22.04 and python 3.10. If not, please proceed to the next section *Basic Environment Configuration*; if satisfied, jump directly to *Install tpu_mlir*.
 
+For repository development, we recommend the provided Dev Container plus ``uv`` workflow before using the manual Docker steps below.
+
+Dev Container + uv (recommended for development)
+------------------------------------------------
+
+Open the repository in VS Code and choose one of the bundled development containers:
+
+.. code-block:: text
+
+   TPU-MLIR Development
+   TPU-MLIR Development (GPU)
+
+These correspond to ``.devcontainer/default/devcontainer.json`` and ``.devcontainer/gpu/devcontainer.json`` respectively.
+
+On first creation, the container runs ``/setup.sh cpu`` or ``/setup.sh gpu``, creates ``/workspace/.venv``, and syncs dependencies with ``uv``.
+
+New terminals in the devcontainer automatically activate ``.venv`` and source ``/workspace/envsetup.sh``.
+
+To resync dependencies manually, use:
+
+.. code-block:: shell
+
+   $ uv sync
+   $ uv sync --group torch-gpu --no-group torch-cpu
+
+If you only need the published wheel, or prefer to set up the environment manually, continue with the Docker-based workflow below.
+
 .. _env setup:
 
 Basic Environment Configuration
@@ -38,7 +65,7 @@ If you download the image file, make sure the image file is in the current direc
 .. code-block:: shell
 
   # use --privileged to get root permission, if you don't need root permission, please remove this parameter
-  $ docker run --privileged --name myname -v $PWD:/workspace -it tpuc_dev:v3.4
+  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4
 
 where ``myname`` is the name of the container, which can be customized; ``$PWD`` is the current directory, synchronized with the container's ``/workspace`` directory.
 
@@ -106,4 +133,3 @@ Similarly, the offline installation method allows you to install additional depe
    $ pip install tpu_mlir-*-py3-none-any.whl[onnx]
    # install all dependency
    $ pip install tpu_mlir-*-py3-none-any.whl[all]
-
