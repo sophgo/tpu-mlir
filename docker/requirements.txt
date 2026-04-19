@@ -1,3 +1,5 @@
+# Legacy dependency snapshot for Docker image builds and older pip-based workflows.
+# Source-tree development should prefer `uv sync` from the repository root.
 argcomplete==3.1.1
 build==1.0.3
 Cython==3.0.0

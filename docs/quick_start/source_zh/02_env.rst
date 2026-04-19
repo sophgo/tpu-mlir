@@ -111,3 +111,32 @@ TPU-MLIR在对不同框架模型处理时所需的依赖不同，在线安装和
    # 安装全部依赖
    $ pip install tpu_mlir-*-py3-none-any.whl[all]
 
+
+用 uv 管理源码仓开发环境
+------------------
+
+如果你是在 ``tpu-mlir`` 源码仓里直接开发，可以使用 ``uv`` 管理 Python 虚拟环境和依赖，同时继续使用 ``envsetup.sh`` 或 ``envsetup.fish`` 负责运行时路径和 TPU 相关环境变量。
+
+.. code-block:: shell
+
+   $ curl -LsSf https://astral.sh/uv/install.sh | sh
+   $ uv python install 3.10
+   $ cd /workspace/tpu-mlir
+   $ uv sync
+   $ source ./envsetup.sh
+   # 或
+   $ source ./envsetup.fish
+
+源码仓当前定义了如下依赖分组，可按需安装：
+
+.. code-block:: shell
+
+   base, onnx, torch, tensorflow, caffe, paddle, build, docs, notebook, web, test, all
+
+例如，只创建较小的 ONNX 环境时，可执行：
+
+.. code-block:: shell
+
+   $ uv sync --no-default-groups --group base --group onnx
+
+在执行 ``source envsetup`` 之后，推荐通过 ``uv run`` 调用 Python 工具。

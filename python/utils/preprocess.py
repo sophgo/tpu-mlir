@@ -6,10 +6,27 @@ import ast
 import argparse
 from enum import Enum
 from utils.log_setting import setup_logger
-from utils.mlir_parser import *
 from utils.misc import *
 from PIL import Image
 import math
+
+# `preprocess.py` is imported by both MLIR-aware tooling and lightweight sample
+# scripts that only need constants such as `supported_customization_format`.
+#
+# Historically this module imported `utils.mlir_parser` at import time, which in
+# turn imports the compiled `mlir` Python bindings. That made even pure ONNX
+# sample flows fail during startup when the source tree had Python dependencies
+# installed but had not yet built or installed MLIR bindings into the runtime
+# environment.
+#
+# We therefore treat `Operation` as an optional dependency here: code paths that
+# only need preprocessing helpers can continue to work without `mlir`, while the
+# MLIR-specific `load_config()` path below still fails loudly and explicitly if
+# the bindings are actually required.
+try:
+    from utils.mlir_parser import Operation
+except ModuleNotFoundError:
+    Operation = None
 
 logger = setup_logger('root', log_level="INFO")
 
@@ -24,11 +41,7 @@ supported_customization_format = [
     'RGB_PLANAR', 'RGB_PACKED', 'BGR_PLANAR', 'BGR_PACKED', 'GRAYSCALE', 'YUV420_PLANAR',
     'YUV_NV21', 'YUV_NV12', 'RGBA_PLANAR', 'GBRG_RAW', 'GRBG_RAW', 'BGGR_RAW', 'RGGB_RAW', ''
 ]
-supported_yuv_type = [
-    'YUV420_PLANAR',
-    'YUV_NV21',
-    'YUV_NV12'
-]
+supported_yuv_type = ['YUV420_PLANAR', 'YUV_NV21', 'YUV_NV12']
 customization_format_attributes = {
     'RGB_PLANAR': ('rgb', 'nchw'),
     'RGB_PACKED': ('rgb', 'nhwc'),
@@ -303,6 +316,13 @@ class preprocess(object):
         logger.info(info_str)
 
     def load_config(self, input_op):
+        # `load_config()` parses attributes from an MLIR input op, so unlike the
+        # ONNX-only helper paths above it genuinely requires `Operation` and the
+        # underlying `mlir` bindings. Keep the failure explicit here instead of
+        # silently degrading, so MLIR-based workflows still get a clear error.
+        if Operation is None:
+            raise RuntimeError(
+                "MLIR Python bindings are required to load preprocess config from MLIR input ops.")
         self.input_name = Operation.name(input_op)
         shape = Operation.shape(input_op)
         self.net_input_dims = []
@@ -409,8 +429,8 @@ class preprocess(object):
         with open(path, 'rb') as f:
             data = f.read()
         assert len(data) == h * w, "YUV data size is not correct"
-        yuv = np.frombuffer(data, dtype=np.uint8).reshape((h , w))
-        if self.pixel_format =='rgb':
+        yuv = np.frombuffer(data, dtype=np.uint8).reshape((h, w))
+        if self.pixel_format == 'rgb':
             if self.yuv_type == 'YUV420_PLANAR':
                 rgb = cv2.cvtColor(yuv, cv2.COLOR_YUV2RGB_I420)
             elif self.yuv_type == 'YUV_NV12':
@@ -450,7 +470,8 @@ class preprocess(object):
             ratio = min(self.net_input_dims[0] / height, self.net_input_dims[1] / width)
         else:
             if image_path.endswith('.yuv'):
-                assert self.channel_num == 3, "YUV image unsupport {} channe".format(self.channel_num)
+                assert self.channel_num == 3, "YUV image unsupport {} channe".format(
+                    self.channel_num)
             if self.channel_num == 1:
                 image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
             elif self.channel_num == 3:
@@ -470,8 +491,8 @@ class preprocess(object):
                         self.net_input_dims[1] / image.shape[1])
         if self.keep_aspect_ratio:
             if image_path.endswith('.yuv'):
-                logger.info("YUV image unsupport keep_aspect_ratio");
-                assert(0)
+                logger.info("YUV image unsupport keep_aspect_ratio")
+                assert (0)
             if self.keep_ratio_mode == "letterbox":
                 image = ImageResizeTool.letterbox_resize(image, self.resize_dims[0],
                                                          self.resize_dims[1], self.pad_value,
@@ -481,11 +502,12 @@ class preprocess(object):
                                                                 self.resize_dims[1], use_pil_resize)
         else:
             if image_path.endswith('.yuv'):
-                image = ImageResizeTool.stretch_resize(
-                    image, math.ceil(self.resize_dims[0]/3*2), self.resize_dims[1], use_pil_resize)
+                image = ImageResizeTool.stretch_resize(image,
+                                                       math.ceil(self.resize_dims[0] / 3 * 2),
+                                                       self.resize_dims[1], use_pil_resize)
             else:
-                image = ImageResizeTool.stretch_resize(image, self.resize_dims[0], self.resize_dims[1],
-                                                    use_pil_resize)
+                image = ImageResizeTool.stretch_resize(image, self.resize_dims[0],
+                                                       self.resize_dims[1], use_pil_resize)
 
         if self.channel_num == 1:
             # if grapscale image, expand dim to (1, h, w)
@@ -584,8 +606,8 @@ class preprocess(object):
         with open(input, 'rb') as f:
             data = f.read()
         assert len(data) == h * w, "YUV data size is not correct"
-        yuv = np.frombuffer(data, dtype=np.uint8).reshape((h*w))
-        return yuv.reshape(-1,1,1)
+        yuv = np.frombuffer(data, dtype=np.uint8).reshape((h * w))
+        return yuv.reshape(-1, 1, 1)
 
     def run(self, input):
         # load and resize image, the output image is chw format.
@@ -613,7 +635,7 @@ class preprocess(object):
                 x = x.astype(np.uint8)
             elif self.customization_format.find("YUV") >= 0:
                 if input.endswith('.yuv'):
-                    x=self.readyuv(input, self.resize_dims[0], self.resize_dims[1])
+                    x = self.readyuv(input, self.resize_dims[0], self.resize_dims[1])
                 else:
                     # swap to 'rgb'
                     pixel_type = YuvType.YUV420_PLANAR
@@ -627,7 +649,7 @@ class preprocess(object):
                     x = np.transpose(x, (1, 2, 0))
                     x = self.rgb2yuv420(x, pixel_type)
                     x = x.astype(np.uint8)
-                assert(self.batch_size == 1)
+                assert (self.batch_size == 1)
             elif self.customization_format.find("_PLANAR") >= 0:
                 if self.pixel_format == 'rgb':
                     x = x[[2, 1, 0], :, :]

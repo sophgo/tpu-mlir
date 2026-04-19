@@ -57,7 +57,37 @@ Run the following command in the project directory:
 ``` shell
 cd tpu-mlir
 source ./envsetup.sh
+# For fish users:
+# source ./envsetup.fish
 ./build.sh
+```
+
+## Manage Source-Tree Python Dependencies With uv
+
+When developing directly in the source tree, you can use `uv` to manage the Python virtual environment and dependencies, while keeping `envsetup.sh` / `envsetup.fish` responsible for runtime paths and TPU-related environment variables.
+
+``` shell
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv python install 3.10
+uv sync
+source ./envsetup.sh
+# For fish users:
+# source ./envsetup.fish
+```
+
+`uv sync` installs every dependency group by default. If you only need the ONNX toolchain for a smaller environment, use:
+
+``` shell
+uv sync --no-default-groups --group base --group onnx
+```
+
+After sourcing `envsetup`, run Python tools through `uv run`, for example:
+
+``` shell
+uv run python python/samples/detect_yolov5.py \
+  --input regression/image/dog.jpg \
+  --model regression/model/yolov5s.onnx \
+  --output dog_onnx.jpg
 ```
 
 # Usage (Example: Qwen2.5-VL)
@@ -265,6 +295,16 @@ detect_yolov5.py \
   --input ../image/dog.jpg \
   --model ../yolov5s.onnx \
   --output dog_origin.jpg
+```
+
+If you are running from the source tree with `uv`, the equivalent command is:
+
+``` shell
+source ./envsetup.sh
+uv run python python/samples/detect_yolov5.py \
+  --input regression/image/dog.jpg \
+  --model regression/model/yolov5s.onnx \
+  --output dog_onnx.jpg
 ```
 
 

@@ -56,7 +56,38 @@ pip install tpu_mlir
 ``` shell
 cd tpu-mlir
 source ./envsetup.sh
+# fish 用户请执行:
+# source ./envsetup.fish
 ./build.sh
+```
+
+## 用 uv 管理源码仓 Python 依赖
+
+如果你是在源码仓里直接开发，可以用 `uv` 管理 Python 虚拟环境和依赖，同时继续让 `envsetup.sh` / `envsetup.fish` 负责运行时路径和 TPU 相关环境变量。
+
+``` shell
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv python install 3.10
+cd tpu-mlir
+uv sync
+source ./envsetup.sh
+# fish 用户请执行:
+# source ./envsetup.fish
+```
+
+`uv sync` 默认会安装全部依赖分组。如果只想保留较小的 ONNX 环境，可执行：
+
+``` shell
+uv sync --no-default-groups --group base --group onnx
+```
+
+在 `source envsetup` 之后，推荐通过 `uv run` 执行 Python 工具，例如：
+
+``` shell
+uv run python python/samples/detect_yolov5.py \
+  --input regression/image/dog.jpg \
+  --model regression/model/yolov5s.onnx \
+  --output dog_onnx.jpg
 ```
 
 # 使用方法 (Qwen2.5-VL为例)
@@ -252,6 +283,16 @@ onnx模型的执行方式如下，得到`dog_onnx.jpg`：
 detect_yolov5.py \
   --input ../image/dog.jpg \
   --model ../yolov5s.onnx \
+  --output dog_onnx.jpg
+```
+
+如果是在源码仓里结合 `uv` 运行，对应命令如下：
+
+``` shell
+source ./envsetup.sh
+uv run python python/samples/detect_yolov5.py \
+  --input regression/image/dog.jpg \
+  --model regression/model/yolov5s.onnx \
   --output dog_onnx.jpg
 ```
 

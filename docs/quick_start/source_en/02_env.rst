@@ -107,3 +107,32 @@ Similarly, the offline installation method allows you to install additional depe
    # install all dependency
    $ pip install tpu_mlir-*-py3-none-any.whl[all]
 
+
+Develop from the source tree with uv
+------------------------------------
+
+If you are working directly in the ``tpu-mlir`` source tree, you can use ``uv`` to manage the Python virtual environment and dependencies, while continuing to use ``envsetup.sh`` or ``envsetup.fish`` for runtime paths and TPU-related environment variables.
+
+.. code-block:: shell
+
+   $ curl -LsSf https://astral.sh/uv/install.sh | sh
+   $ uv python install 3.10
+   $ cd /workspace/tpu-mlir
+   $ uv sync
+   $ source ./envsetup.sh
+   # or
+   $ source ./envsetup.fish
+
+The source tree defines the following dependency groups for selective installation:
+
+.. code-block:: shell
+
+   base, onnx, torch, tensorflow, caffe, paddle, build, docs, notebook, web, test, all
+
+For example, a smaller ONNX-only environment can be created with:
+
+.. code-block:: shell
+
+   $ uv sync --no-default-groups --group base --group onnx
+
+After sourcing ``envsetup``, execute Python tools with ``uv run``.

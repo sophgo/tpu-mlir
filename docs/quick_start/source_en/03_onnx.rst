@@ -36,6 +36,15 @@ Go to the Docker container and execute the following command to install tpu_mlir
    # or
    $ pip install tpu_mlir-*-py3-none-any.whl[onnx]
 
+If you are working in the source tree instead of installing the wheel, you can use ``uv`` to manage the Python environment:
+
+.. code-block:: shell
+
+   $ uv python install 3.10
+   $ cd /workspace/tpu-mlir
+   $ uv sync --no-default-groups --group base --group onnx
+   $ source ./envsetup.sh
+
 
 Prepare working directory
 -------------------------
@@ -304,6 +313,17 @@ The onnx model is run as follows to get ``dog_onnx.jpg``:
    $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model ../yolov5s.onnx \
+       --output dog_onnx.jpg
+
+When running from the source tree with ``uv``, the equivalent command is:
+
+.. code-block:: shell
+
+   $ cd /workspace/tpu-mlir
+   $ source ./envsetup.sh
+   $ uv run python python/samples/detect_yolov5.py \
+       --input regression/image/dog.jpg \
+       --model regression/model/yolov5s.onnx \
        --output dog_onnx.jpg
 
 

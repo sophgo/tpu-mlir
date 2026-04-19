@@ -34,6 +34,15 @@
    # or
    $ pip install tpu_mlir-*-py3-none-any.whl[onnx]
 
+如果你是在源码仓中直接开发，而不是安装 wheel 包，也可以用 ``uv`` 管理 Python 环境：
+
+.. code-block:: shell
+
+   $ uv python install 3.10
+   $ cd /workspace/tpu-mlir
+   $ uv sync --no-default-groups --group base --group onnx
+   $ source ./envsetup.sh
+
 
 准备工作目录
 ------------------
@@ -305,6 +314,17 @@ onnx模型的执行方式如下，得到 ``dog_onnx.jpg`` :
    $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model ../yolov5s.onnx \
+       --output dog_onnx.jpg
+
+如果是在源码仓里结合 ``uv`` 运行，对应命令如下：
+
+.. code-block:: shell
+
+   $ cd /workspace/tpu-mlir
+   $ source ./envsetup.sh
+   $ uv run python python/samples/detect_yolov5.py \
+       --input regression/image/dog.jpg \
+       --model regression/model/yolov5s.onnx \
        --output dog_onnx.jpg
 
 f16 bmodel的执行方式如下，得到 ``dog_f16.jpg`` :
