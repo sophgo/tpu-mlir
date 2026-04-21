@@ -226,11 +226,16 @@ static void addIndexingMapsToOpsForLoad(ModuleOp mOp) {
       if (!sliceOp->hasAttr("indexing_map_s2l")) {
         auto offset = sliceOp.getOffset();
         auto steps = sliceOp.getSteps();
+        auto inputShape = module::getShape(sliceOp.getInput());
         auto rank = module::getShape(sliceOp.getOutput()).size();
         SmallVector<AffineExpr> exprs;
         for (int i = 0; i < rank; ++i) {
           int64_t off = offset[i].cast<IntegerAttr>().getInt();
           int64_t step = steps[i].cast<IntegerAttr>().getInt();
+          // Normalize negative (Python-style) offsets using input dimension
+          // size
+          if (off < 0 && i < (int)inputShape.size() && inputShape[i] > 0)
+            off += inputShape[i];
           exprs.push_back(getAffineConstantExpr(off, ctx) +
                           getAffineDimExpr(i, ctx) *
                               getAffineConstantExpr(step, ctx));
@@ -287,11 +292,16 @@ static void addIndexingMapsToOpsForStore(ModuleOp mOp) {
       if (!sliceOp->hasAttr("indexing_map_l2s")) {
         auto offset = sliceOp.getOffset();
         auto steps = sliceOp.getSteps();
+        auto inputShape = module::getShape(sliceOp.getInput());
         auto rank = module::getShape(sliceOp.getOutput()).size();
         SmallVector<AffineExpr> exprs;
         for (int i = 0; i < rank; ++i) {
           int64_t off = offset[i].cast<IntegerAttr>().getInt();
           int64_t step = steps[i].cast<IntegerAttr>().getInt();
+          // Normalize negative (Python-style) offsets using input dimension
+          // size
+          if (off < 0 && i < (int)inputShape.size() && inputShape[i] > 0)
+            off += inputShape[i];
           auto diff =
               getAffineDimExpr(i, ctx) - getAffineConstantExpr(off, ctx);
           exprs.push_back(diff.floorDiv(getAffineConstantExpr(step, ctx)));
@@ -604,7 +614,7 @@ estimateAffineDmaQuality(AffineMap indexingMap, ArrayRef<int64_t> iShape,
         analyzeContiguousBlocks(indexingMap, scan_dim_idx, iStride);
   }
 
-  constexpr int64_t MAX_AFFINE_DMA_ENTRIES = 128;
+  constexpr int64_t MAX_AFFINE_DMA_ENTRIES = 16;
   constexpr int64_t MAX_EST_ENTRIES = 200000;
 
   std::vector<FreeTensorDmaInfo> free_tensor_dma_infos;
