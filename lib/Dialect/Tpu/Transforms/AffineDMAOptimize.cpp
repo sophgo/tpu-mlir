@@ -604,7 +604,7 @@ estimateAffineDmaQuality(AffineMap indexingMap, ArrayRef<int64_t> iShape,
         analyzeContiguousBlocks(indexingMap, scan_dim_idx, iStride);
   }
 
-  constexpr int64_t MAX_AFFINE_DMA_ENTRIES = 128;
+  constexpr int64_t MAX_AFFINE_DMA_ENTRIES = 16;
   constexpr int64_t MAX_EST_ENTRIES = 200000;
 
   std::vector<FreeTensorDmaInfo> free_tensor_dma_infos;

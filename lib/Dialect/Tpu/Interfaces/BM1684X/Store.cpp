@@ -261,90 +261,6 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     const int64_t h_idx = gi.h_idx;
     const int64_t w_idx = gi.w_idx;
 
-    // Extract FloorDiv info for step alignment checks
-    struct FloorDivInfo {
-      int dim = -1;
-      int64_t offset = 0;
-      int64_t divisor = 1;
-    };
-
-    auto isConst = [&](AffineExpr expr, int64_t &val) -> bool {
-      if (auto c = expr.dyn_cast<AffineConstantExpr>()) {
-        val = c.getValue();
-        return true;
-      }
-      return false;
-    };
-
-    std::function<bool(AffineExpr, int &, int64_t &)> matchDimPlusConst;
-    matchDimPlusConst = [&](AffineExpr expr, int &dim,
-                            int64_t &offset) -> bool {
-      if (auto d = expr.dyn_cast<AffineDimExpr>()) {
-        dim = d.getPosition();
-        offset = 0;
-        return true;
-      }
-      if (auto bin = expr.dyn_cast<AffineBinaryOpExpr>()) {
-        int64_t cval = 0;
-        int tmpDim = -1;
-        int64_t tmpOff = 0;
-        if (bin.getKind() == AffineExprKind::Add) {
-          if (isConst(bin.getRHS(), cval) &&
-              matchDimPlusConst(bin.getLHS(), tmpDim, tmpOff)) {
-            dim = tmpDim;
-            offset = tmpOff + cval;
-            return true;
-          }
-          if (isConst(bin.getLHS(), cval) &&
-              matchDimPlusConst(bin.getRHS(), tmpDim, tmpOff)) {
-            dim = tmpDim;
-            offset = tmpOff + cval;
-            return true;
-          }
-        }
-      }
-      return false;
-    };
-
-    std::function<bool(AffineExpr, FloorDivInfo &)> extractFloorDiv;
-    extractFloorDiv = [&](AffineExpr expr, FloorDivInfo &info) -> bool {
-      if (auto bin = expr.dyn_cast<AffineBinaryOpExpr>()) {
-        if (bin.getKind() == AffineExprKind::FloorDiv) {
-          int64_t divisor = 1;
-          if (!isConst(bin.getRHS(), divisor) || divisor == 0)
-            return false;
-          int dim = -1;
-          int64_t offset = 0;
-          if (!matchDimPlusConst(bin.getLHS(), dim, offset))
-            return false;
-          info.dim = dim;
-          info.offset = offset;
-          info.divisor = divisor;
-          return true;
-        }
-        if (bin.getKind() == AffineExprKind::Add) {
-          FloorDivInfo tmp;
-          if (extractFloorDiv(bin.getLHS(), tmp)) {
-            info = tmp;
-            return true;
-          }
-          if (extractFloorDiv(bin.getRHS(), tmp)) {
-            info = tmp;
-            return true;
-          }
-        }
-      }
-      return false;
-    };
-
-    SmallVector<FloorDivInfo, 4> floorDivInfos;
-    for (auto expr : indexingMap.getResults()) {
-      FloorDivInfo info;
-      if (extractFloorDiv(expr, info)) {
-        floorDivInfos.push_back(info);
-      }
-    }
-
     std::vector<FreeTensorDmaInfo> normal_dma_infos;
 
     auto is_coords_in_src = [&](const std::vector<int64_t> &coords) {
@@ -454,21 +370,13 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                 map_input_coords[2] = iCoord_ext_2;
                 map_input_coords[3] = iCoord_ext_3;
               } else {
-                int64_t iOffset_ext =
-                    iCoord_ext_0 * iStride_ext_0 +
-                    iCoord_ext_1 * iStride_ext_1 +
-                    iCoord_ext_2 * iStride_ext_2 +
-                    iCoord_ext_3 * iStride_ext_3;
+                int64_t iOffset_ext = iCoord_ext_0 * iStride_ext_0 +
+                                      iCoord_ext_1 * iStride_ext_1 +
+                                      iCoord_ext_2 * iStride_ext_2 +
+                                      iCoord_ext_3 * iStride_ext_3;
                 map_input_coords = offset_2_coords(iOffset_ext, iStride);
                 if ((int64_t)map_input_coords.size() != map_num_inputs)
                   return false;
-              }
-              for (auto &info : floorDivInfos) {
-                if (info.dim >= 0 && info.dim < (int)map_input_coords.size()) {
-                  int64_t val = map_input_coords[info.dim] + info.offset;
-                  if (val < 0 || val % info.divisor != 0)
-                    return false;
-                }
               }
               evalCompiledMapInto(compiled_map, map_input_coords, oCoords);
               if (!is_coords_in_src(oCoords))
@@ -479,8 +387,8 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
 
             const auto &first_block = pattern.blocks.front();
             int64_t cur_first_gOffset = 0;
-            bool delta_valid = get_mapped_gOffset_quick(
-                first_block.scan_pos, cur_first_gOffset);
+            bool delta_valid = get_mapped_gOffset_quick(first_block.scan_pos,
+                                                        cur_first_gOffset);
 
             if (delta_valid) {
               int64_t g_delta = cur_first_gOffset - pattern.ref_first_gOffset;
@@ -507,9 +415,9 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                   int64_t new_l_cidx =
                       (new_lOffset % lStride_ext_0) / lStride_ext_1;
                   out_infos.push_back(FreeTensorDmaInfo{
-                      blk.gOffset + g_delta, new_lOffset, 1, 1, 1,
-                      blk.entry_W, blk.entry_W, blk.entry_W, blk.entry_W,
-                      new_l_nidx, new_l_cidx});
+                      blk.gOffset + g_delta, new_lOffset, 1, 1, 1, blk.entry_W,
+                      blk.entry_W, blk.entry_W, blk.entry_W, new_l_nidx,
+                      new_l_cidx});
                 }
                 continue;
               }
@@ -540,14 +448,6 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
               }
             }
 
-            for (auto &info : floorDivInfos) {
-              if (info.dim >= 0 && info.dim < (int)map_input_coords.size()) {
-                int64_t val = map_input_coords[info.dim] + info.offset;
-                if (val < 0 || val % info.divisor != 0)
-                  return false;
-              }
-            }
-
             evalCompiledMapInto(compiled_map, map_input_coords, oCoords);
             if (!is_coords_in_src(oCoords)) {
               return false;
@@ -565,9 +465,9 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
               continue;
             }
 
-            int64_t entry_W = findContiguousLength(
-                block_analysis, scan_pos, scan_size, gOffset,
-                get_mapped_gOffset);
+            int64_t entry_W =
+                findContiguousLength(block_analysis, scan_pos, scan_size,
+                                     gOffset, get_mapped_gOffset);
 
             int64_t h_local = hslice_as_wslice ? scan_pos : h_local_base;
             int64_t w_local = hslice_as_wslice ? 0 : scan_pos;
@@ -580,9 +480,8 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
             out_infos.push_back(FreeTensorDmaInfo{gOffset, lOffset, 1, 1, 1,
                                                   entry_W, entry_W, entry_W,
                                                   entry_W, l_nidx, l_cidx});
-            row_blocks.push_back(
-                RowBlockEntry{scan_pos, entry_W, gOffset, lOffset,
-                              l_nidx, l_cidx});
+            row_blocks.push_back(RowBlockEntry{scan_pos, entry_W, gOffset,
+                                               lOffset, l_nidx, l_cidx});
 
             scan_pos += entry_W;
           }
