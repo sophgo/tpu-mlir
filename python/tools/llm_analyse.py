@@ -201,62 +201,213 @@ def export_llm_excel(modules_data,
     try:
         from openpyxl import Workbook
         from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.formatting.rule import CellIsRule
         from openpyxl.utils import get_column_letter
     except ImportError:
         import subprocess
         subprocess.check_call([sys.executable, "-m", "pip", "install", "openpyxl"])
         from openpyxl import Workbook
         from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.formatting.rule import CellIsRule
         from openpyxl.utils import get_column_letter
 
     if vector_tops is None:
         vector_tops = chip_tops / 8.0
 
+    # ---------- Color palette ----------
+    C_TITLE = "1F4E79"  # deep blue - main title
+    C_SECTION = "2E75B6"  # medium blue - section banners
+    C_COLHDR = "4472C4"  # column headers
+    C_RESULT = "1F4E79"  # result highlight
+    C_EDIT = "E2EFDA"  # editable (soft green)
+    C_EDIT_TXT = "375623"
+    C_KEY = "FFF2CC"  # key operator (soft yellow)
+    C_SUM = "DDEBF7"  # summary row (soft blue)
+    C_PHASE = "FCE4D6"  # phase total (soft peach)
+    C_PHASE_TXT = "833C0B"
+    C_ZEBRA = "F7F9FC"  # alternating row
+    C_UTIL = "D9E7F5"  # utilization value background
+
     # ---------- Styles ----------
     wb = Workbook()
-    hdr_font = Font(bold=True, color="FFFFFF", size=11)
-    hdr_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-    key_fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
-    sum_fill = PatternFill(start_color="D9E2F3", end_color="D9E2F3", fill_type="solid")
-    edit_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
-    phase_fill = PatternFill(start_color="F4B084", end_color="F4B084", fill_type="solid")
-    # Overview section styles
-    param_hdr_fill = PatternFill(start_color="3B3838", end_color="3B3838", fill_type="solid")
-    param_hdr_font = Font(bold=True, color="FFFFFF", size=11)
-    ratio_hdr_fill = PatternFill(start_color="BF8F00", end_color="BF8F00", fill_type="solid")
-    ratio_hdr_font = Font(bold=True, color="FFFFFF", size=11)
-    mod_hdr_fill = PatternFill(start_color="2E75B6", end_color="2E75B6", fill_type="solid")
-    mod_hdr_font = Font(bold=True, color="FFFFFF", size=11)
-    phase_font = Font(bold=True, color="833C0B")
+    title_font = Font(bold=True, color="FFFFFF", size=14)
+    title_fill = PatternFill(start_color=C_TITLE, end_color=C_TITLE, fill_type="solid")
+    section_font = Font(bold=True, color="FFFFFF", size=11)
+    section_fill = PatternFill(start_color=C_SECTION, end_color=C_SECTION, fill_type="solid")
+    col_hdr_font = Font(bold=True, color="FFFFFF", size=10)
+    col_hdr_fill = PatternFill(start_color=C_COLHDR, end_color=C_COLHDR, fill_type="solid")
+    key_fill = PatternFill(start_color=C_KEY, end_color=C_KEY, fill_type="solid")
+    zebra_fill = PatternFill(start_color=C_ZEBRA, end_color=C_ZEBRA, fill_type="solid")
+    sum_fill = PatternFill(start_color=C_SUM, end_color=C_SUM, fill_type="solid")
+    edit_fill = PatternFill(start_color=C_EDIT, end_color=C_EDIT, fill_type="solid")
+    edit_font = Font(bold=True, color=C_EDIT_TXT)
+    phase_fill = PatternFill(start_color=C_PHASE, end_color=C_PHASE, fill_type="solid")
+    phase_font = Font(bold=True, color=C_PHASE_TXT)
+    result_fill = PatternFill(start_color=C_RESULT, end_color=C_RESULT, fill_type="solid")
+    result_font = Font(bold=True, color="FFFFFF", size=12)
+    util_fill = PatternFill(start_color=C_UTIL, end_color=C_UTIL, fill_type="solid")
+    util_font = Font(bold=True, color=C_TITLE, size=10)
     bold = Font(bold=True)
-    thin = Border(*(Side(style="thin"), ) * 4)
-    center = Alignment(horizontal="center", wrap_text=True)
-
-    def _write_header(ws, headers):
-        for c, h in enumerate(headers, 1):
-            cell = ws.cell(row=1, column=c, value=h)
-            cell.font = hdr_font
-            cell.fill = hdr_fill
-            cell.alignment = center
-            cell.border = thin
+    thin = Border(*(Side(style="thin", color="BFBFBF"), ) * 4)
+    center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    left = Alignment(horizontal="left", vertical="center", wrap_text=True)
 
     def _set_col_widths(ws, widths):
         for c, w in enumerate(widths, 1):
             ws.column_dimensions[get_column_letter(c)].width = w
 
-    # Formula references to Overview editable cells
-    TOPS_REF = "Overview!$B$2"
-    BW_REF = "Overview!$B$3"
-    VECTOR_TOPS_REF = "Overview!$B$4"
-    CU_REF = "Overview!$B$5"
-    BU_REF = "Overview!$B$6"
-    PAR_REF = "Overview!$B$8"
-    CPU_CALL_REF = "Overview!$B$9"
-    PREPROCESS_TIME_REF = "Overview!$B$10"
-    FATTENTION_RATIO_REF = "Overview!$B$12"
-    GATHER_RATIO_REF = "Overview!$B$13"
-    PERMUTE_CONCAT_RATIO_REF = "Overview!$B$14"
-    CHUNKGATEDDELTARULE_RATIO_REF = "Overview!$B$15"
+    def _banner(ws, row, text, span, fill=section_fill, font=section_font, height=22):
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=span)
+        cell = ws.cell(row=row, column=1, value=text)
+        cell.font = font
+        cell.fill = fill
+        cell.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+        ws.row_dimensions[row].height = height
+
+    # ============ Overview sheet ============
+    ws0 = wb.active
+    ws0.title = "Overview"
+    TOTAL_COLS = 7
+
+    # Row 1: Title banner
+    _banner(ws0,
+            1,
+            "  LLM Performance Analysis",
+            TOTAL_COLS,
+            fill=title_fill,
+            font=title_font,
+            height=30)
+
+    # --- Performance Summary (rows 3-5) ---
+    _banner(ws0, 3, "Performance Summary", TOTAL_COLS)
+
+    # We fill rows 4-5 with TTFT/Tokens/s; values reference phase totals below (computed later).
+    # Placeholder cells styled now, formulas injected after we know phase_r.
+    for r in (4, 5):
+        for c in range(1, TOTAL_COLS + 1):
+            ws0.cell(row=r, column=c).border = thin
+        ws0.row_dimensions[r].height = 22
+    ws0.cell(row=4, column=1, value="TTFT (s)").font = result_font
+    ws0.cell(row=4, column=1).fill = result_fill
+    ws0.cell(row=4, column=1).alignment = center
+    ws0.cell(row=5, column=1, value="Tokens/s").font = result_font
+    ws0.cell(row=5, column=1).fill = result_fill
+    ws0.cell(row=5, column=1).alignment = center
+    for r in (4, 5):
+        vcell = ws0.cell(row=r, column=2)
+        vcell.font = result_font
+        vcell.fill = result_fill
+        vcell.alignment = center
+        # Utilization labels
+        for col, label in ((3, "MFU Util"), (5, "BW Util")):
+            lc = ws0.cell(row=r, column=col, value=label)
+            lc.font = util_font
+            lc.fill = util_fill
+            lc.alignment = center
+        for col in (4, 6):
+            vc = ws0.cell(row=r, column=col)
+            vc.font = util_font
+            vc.fill = util_fill
+            vc.alignment = center
+            vc.number_format = "0.00%"
+
+    # --- Hardware & Utilization (rows 7 onward) ---
+    _banner(ws0, 7, "Hardware & Utilization", TOTAL_COLS)
+    for c, h in enumerate(["Parameter", "Value", "Unit"], 1):
+        cell = ws0.cell(row=8, column=c, value=h)
+        cell.font = col_hdr_font
+        cell.fill = col_hdr_fill
+        cell.alignment = center
+        cell.border = thin
+
+    # params start at row 9
+    params = [
+        ("Chip Compute Power", chip_tops, "TOPS", "#,##0.##"),
+        ("Vector Compute Power", vector_tops, "TOPS", "#,##0.##"),
+        ("Chip Bandwidth", bw_gbps, "GB/s", "#,##0.##"),
+        ("uArch Rate", uarch_rate, "", "0%"),
+        ("Bandwidth Utilization", bw_util, "", "0%"),
+        ("Parallelism", parallelism, "", "0%"),
+        ("Serialism", "=1-B14", "", "0%"),
+        ("CPU Call", 100, "us", "#,##0"),
+        ("Preprocess Time", 0.1, "s", "#,##0.000"),
+    ]
+    PARAM_START = 9
+    for i, (label, val, unit, fmt) in enumerate(params):
+        r = PARAM_START + i
+        ws0.cell(row=r, column=1, value=label).border = thin
+        c = ws0.cell(row=r, column=2, value=val)
+        c.border = thin
+        c.number_format = fmt
+        c.alignment = center
+        # All except computed Serialism are editable
+        if label != "Serialism":
+            c.fill = edit_fill
+            c.font = edit_font
+        else:
+            c.font = bold
+        uc = ws0.cell(row=r, column=3, value=unit)
+        uc.border = thin
+        uc.alignment = center
+
+    # Formula references (must match absolute positions above)
+    TOPS_REF = "Overview!$B$9"
+    VECTOR_TOPS_REF = "Overview!$B$10"
+    BW_REF = "Overview!$B$11"
+    CU_REF = "Overview!$B$12"
+    BU_REF = "Overview!$B$13"
+    PAR_REF = "Overview!$B$14"
+    CPU_CALL_REF = "Overview!$B$16"
+    PREPROCESS_TIME_REF = "Overview!$B$17"
+
+    # --- Special Ratios (rows 19+) ---
+    RATIO_BANNER = PARAM_START + len(params) + 1  # 19
+    _banner(ws0, RATIO_BANNER, "Special Op Ratios", TOTAL_COLS)
+    for c, h in enumerate(["Operation", "Ratio"], 1):
+        cell = ws0.cell(row=RATIO_BANNER + 1, column=c, value=h)
+        cell.font = col_hdr_font
+        cell.fill = col_hdr_fill
+        cell.alignment = center
+        cell.border = thin
+
+    special_ratios = [
+        ("FAttention (Prefill)", 3.0),
+        ("FAttention (Decode)", 2.0),
+        ("Gather", 5.0),
+        ("Permute/Concat", 2.0),
+        ("ChunkGatedDeltaRule", 3.0),
+        ("RecurrentGatedDeltaRule", 2.0),
+    ]
+    RATIO_START = RATIO_BANNER + 2  # 21
+    for i, (label, val) in enumerate(special_ratios):
+        r = RATIO_START + i
+        ws0.cell(row=r, column=1, value=label).border = thin
+        c = ws0.cell(row=r, column=2, value=val)
+        c.fill = edit_fill
+        c.font = edit_font
+        c.number_format = "0%"
+        c.border = thin
+        c.alignment = center
+    FATTENTION_RATIO_REF = f"Overview!$B${RATIO_START}"
+    FATTENTION_DECODE_RATIO_REF = f"Overview!$B${RATIO_START+1}"
+    GATHER_RATIO_REF = f"Overview!$B${RATIO_START+2}"
+    PERMUTE_CONCAT_RATIO_REF = f"Overview!$B${RATIO_START+3}"
+    CHUNKGATEDDELTARULE_RATIO_REF = f"Overview!$B${RATIO_START+4}"
+    RECURRENTGATEDDELTARULE_RATIO_REF = f"Overview!$B${RATIO_START+5}"
+
+    # --- Module Breakdown ---
+    MOD_BANNER = RATIO_START + len(special_ratios) + 1  # 28
+    _banner(ws0, MOD_BANNER, "Module Breakdown", TOTAL_COLS)
+    sum_hdr = MOD_BANNER + 1
+    sum_headers = [
+        "Module", "Count", "GOPs", "I/O (MB)", "Est. Time (s)", "Total Time (s)", "Phase"
+    ]
+    for c, h in enumerate(sum_headers, 1):
+        cell = ws0.cell(row=sum_hdr, column=c, value=h)
+        cell.font = col_hdr_font
+        cell.fill = col_hdr_fill
+        cell.alignment = center
+        cell.border = thin
 
     def _compute_formula(gops_cell, tops_ref=TOPS_REF):
         return f"=IF({tops_ref}=0,0,{gops_cell}/({tops_ref}*{CU_REF})*1000)"
@@ -264,78 +415,17 @@ def export_llm_excel(modules_data,
     def _memory_formula(io_cell):
         return f"=IF({BW_REF}=0,0,{io_cell}/({BW_REF}*{BU_REF})*1000)"
 
-    # ============ Overview sheet (default / first) ============
-    ws0 = wb.active
-    ws0.title = "Overview"
-
-    # Row 1: header
-    for c, h in enumerate(["Parameter", "Value", "Unit"], 1):
-        cell = ws0.cell(row=1, column=c, value=h)
-        cell.font = param_hdr_font
-        cell.fill = param_hdr_fill
-        cell.border = thin
-
-    # Rows 2-10: editable parameters
-    params = [
-        ("Chip Compute Power", chip_tops, "TOPS", "#,##0.##"),
-        ("Chip Bandwidth", bw_gbps, "GB/s", "#,##0.##"),
-        ("Vector Compute Power", vector_tops, "TOPS", "#,##0.##"),
-        ("uArch Rate", uarch_rate, "", "0%"),
-        ("Bandwidth Utilization", bw_util, "", "0%"),
-        ("Parallelism", parallelism, "", "0%"),
-        ("Serialism", "=1-B7", "", "0%"),
-        ("Cpu Call", 200, "us", "#,##0"),
-        ("Preprocess Time", 0.1, "s", "#,##0.000"),
-    ]
-    for r, (label, val, unit, fmt) in enumerate(params, 2):
-        ws0.cell(row=r, column=1, value=label)
-        c = ws0.cell(row=r, column=2, value=val)
-        c.fill = edit_fill
-        c.font = Font(bold=True, color="006100")
-        c.number_format = fmt
-        ws0.cell(row=r, column=3, value=unit)
-
-    # Row 11: Special Ratio header + rows 12-15
-    for c, h in enumerate(["Special Ratio", "Value"], 1):
-        cell = ws0.cell(row=11, column=c, value=h)
-        cell.font = ratio_hdr_font
-        cell.fill = ratio_hdr_fill
-        cell.border = thin
-    special_ratios = [
-        ("FAttention Ratio", 3.0, "0%"),
-        ("Gather Ratio", 5.0, "0%"),
-        ("Permute/Concat Ratio", 2.0, "0%"),
-        ("ChunkGatedDeltaRule Ratio", 3.0, "0%"),
-    ]
-    for r, (label, val, fmt) in enumerate(special_ratios, 12):
-        ws0.cell(row=r, column=1, value=label)
-        c = ws0.cell(row=r, column=2, value=val)
-        c.fill = edit_fill
-        c.font = Font(bold=True, color="006100")
-        c.number_format = fmt
-
-    # Row 17: Module summary table header
-    sum_hdr = 17
-    sum_headers = [
-        "Module", "Count", "GOPs", "Total I/O (MB)", "Est. Time (s)", "Total Time (s)", "Phase"
-    ]
-    for c, h in enumerate(sum_headers, 1):
-        cell = ws0.cell(row=sum_hdr, column=c, value=h)
-        cell.font = mod_hdr_font
-        cell.fill = mod_hdr_fill
-        cell.alignment = center
-        cell.border = thin
-
-    # ============ Create module sheets & fill Overview rows ============
+    # Per-module sheet columns (no "No." column - Excel row numbers suffice)
+    # 1:Op Type 2:Input Shapes 3:Output Shapes 4:GOPs 5:Read 6:Write 7:I/O
+    # 8:Compute(us) 9:Memory(us) 10:Est.Time 11:Bottleneck 12:Name
     op_headers = [
-        "No.",
         "Op Type",
         "Input Shapes",
         "Output Shapes",
         "GOPs",
         "Read (MB)",
         "Write (MB)",
-        "Total I/O (MB)",
+        "I/O (MB)",
         "Compute (us)",
         "Memory (us)",
         "Est. Time (us)",
@@ -351,61 +441,96 @@ def export_llm_excel(modules_data,
     for mi, (mod_name, count, rows_data, totals) in enumerate(modules_data):
         # --- Create module sheet ---
         ws = wb.create_sheet(mod_name)
-        _write_header(ws, op_headers)
+        for c, h in enumerate(op_headers, 1):
+            cell = ws.cell(row=1, column=c, value=h)
+            cell.font = col_hdr_font
+            cell.fill = col_hdr_fill
+            cell.alignment = center
+            cell.border = thin
+        ws.row_dimensions[1].height = 28
+        is_decode_mod = mod_name in DECODE_MODULES and mod_name not in PREFILL_MODULES
 
         for idx, d in enumerate(rows_data, 1):
             r = idx + 1
-            for c, v in enumerate([
-                    idx,
-                    d["opn"],
-                    d["inp_shapes"],
-                    d["out_shapes"],
-                    d["flops"] / 1e9,
-                    d["rb"] / 1024.0 / 1024.0,
-                    d["wb"] / 1024.0 / 1024.0,
-                    d["total_io"] / 1024.0 / 1024.0,
-            ], 1):
+            use_zebra = (idx % 2 == 0) and not d["is_key"]
+            row_fill = key_fill if d["is_key"] else (zebra_fill if use_zebra else None)
+            values = [
+                d["opn"],
+                d["inp_shapes"],
+                d["out_shapes"],
+                d["flops"] / 1e9,
+                d["rb"] / 1024.0 / 1024.0,
+                d["wb"] / 1024.0 / 1024.0,
+                d["total_io"] / 1024.0 / 1024.0,
+            ]
+            for c, v in enumerate(values, 1):
                 cell = ws.cell(row=r, column=c, value=v)
                 cell.border = thin
-                if d["is_key"]:
-                    cell.fill = key_fill
-                if c in (5, 6, 7, 8):
+                if row_fill is not None:
+                    cell.fill = row_fill
+                if c == 4:
+                    cell.number_format = "#,##0.000000"
+                elif c in (5, 6, 7):
                     cell.number_format = "#,##0.000"
 
             tops_ref = TOPS_REF if d["is_key"] else VECTOR_TOPS_REF
-            # I: Compute(us)
+            # H: Compute(us) - from GOPs column D
+            cell_h = ws.cell(row=r, column=8)
+            cell_h.value = _compute_formula(f"D{r}", tops_ref)
+            cell_h.number_format = "#,##0.000"
+            cell_h.border = thin
+            # I: Memory(us) - from I/O column G
             cell_i = ws.cell(row=r, column=9)
-            cell_i.value = _compute_formula(f"E{r}", tops_ref)
+            cell_i.value = _memory_formula(f"G{r}")
             cell_i.number_format = "#,##0.000"
             cell_i.border = thin
-            # J: Memory(us)
+            # J: Est.Time = MAX(H,I)+PAR*MIN(H,I), with special OP ratio
             cell_j = ws.cell(row=r, column=10)
-            cell_j.value = _memory_formula(f"H{r}")
+            base_time = f"MAX(H{r},I{r})+{PAR_REF}*MIN(H{r},I{r})"
+            if d["base_opn"] == "FAttention":
+                fa_ref = FATTENTION_DECODE_RATIO_REF if is_decode_mod else FATTENTION_RATIO_REF
+                cell_j.value = f"=({base_time})*{fa_ref}"
+            elif d["base_opn"] == "Gather":
+                cell_j.value = f"=({base_time})*{GATHER_RATIO_REF}"
+            elif d["base_opn"] in ("Permute", "Concat"):
+                cell_j.value = f"=({base_time})*{PERMUTE_CONCAT_RATIO_REF}"
+            elif d["base_opn"] == "ChunkGatedDeltaRule":
+                cell_j.value = f"=({base_time})*{CHUNKGATEDDELTARULE_RATIO_REF}"
+            elif d["base_opn"] == "RecurrentGatedDeltaRule":
+                cell_j.value = f"=({base_time})*{RECURRENTGATEDDELTARULE_RATIO_REF}"
+            else:
+                cell_j.value = f"={base_time}"
             cell_j.number_format = "#,##0.000"
             cell_j.border = thin
-            # K: Est.Time = MAX(I,J) + Serialism * MIN(I,J), with special OP ratio
-            cell_k = ws.cell(row=r, column=11)
-            base_time = f"MAX(I{r},J{r})+{PAR_REF}*MIN(I{r},J{r})"
-            if d["base_opn"] == "FAttention":
-                cell_k.value = f"=({base_time})*{FATTENTION_RATIO_REF}"
-            elif d["base_opn"] == "Gather":
-                cell_k.value = f"=({base_time})*{GATHER_RATIO_REF}"
-            elif d["base_opn"] in ("Permute", "Concat"):
-                cell_k.value = f"=({base_time})*{PERMUTE_CONCAT_RATIO_REF}"
-            elif d["base_opn"] == "ChunkGatedDeltaRule":
-                cell_k.value = f"=({base_time})*{CHUNKGATEDDELTARULE_RATIO_REF}"
-            else:
-                cell_k.value = f"={base_time}"
-            cell_k.number_format = "#,##0.000"
+            # K: Bottleneck
+            cell_k = ws.cell(row=r, column=11, value=f'=IF(H{r}>=I{r},"Compute","Memory")')
             cell_k.border = thin
-            # L: Bottleneck
-            ws.cell(row=r, column=12, value=f'=IF(I{r}>=J{r},"Compute","Memory")').border = thin
-            # N: Name
-            ws.cell(row=r, column=13, value=d["loc"]).border = thin
+            cell_k.alignment = center
+            # L: Name
+            ws.cell(row=r, column=12, value=d["loc"]).border = thin
 
-            if d["is_key"]:
-                for c in range(9, 14):
-                    ws.cell(row=r, column=c).fill = key_fill
+            if row_fill is not None:
+                for c in range(8, 13):
+                    ws.cell(row=r, column=c).fill = row_fill
+
+        # Conditional formatting on Bottleneck column (K)
+        nrows = len(rows_data)
+        if nrows > 0:
+            rng = f"K2:K{nrows + 1}"
+            compute_rule = CellIsRule(operator="equal",
+                                      formula=['"Compute"'],
+                                      font=Font(bold=True, color="1F4E79"),
+                                      fill=PatternFill(start_color="BDD7EE",
+                                                       end_color="BDD7EE",
+                                                       fill_type="solid"))
+            memory_rule = CellIsRule(operator="equal",
+                                     formula=['"Memory"'],
+                                     font=Font(bold=True, color="9C0006"),
+                                     fill=PatternFill(start_color="FFC7CE",
+                                                      end_color="FFC7CE",
+                                                      fill_type="solid"))
+            ws.conditional_formatting.add(rng, compute_rule)
+            ws.conditional_formatting.add(rng, memory_rule)
 
         # Summary row
         sr = len(rows_data) + 3
@@ -414,15 +539,15 @@ def export_llm_excel(modules_data,
             cell.fill = sum_fill
             cell.font = bold
             cell.border = thin
-        ws.cell(row=sr, column=1, value="TOTAL")
+        ws.cell(row=sr, column=1, value="TOTAL").alignment = center
         fd, ld = 2, len(rows_data) + 1
+        ws.cell(row=sr, column=4, value=f"=SUM(D{fd}:D{ld})").number_format = "#,##0.000000"
         ws.cell(row=sr, column=5, value=f"=SUM(E{fd}:E{ld})").number_format = "#,##0.000"
         ws.cell(row=sr, column=6, value=f"=SUM(F{fd}:F{ld})").number_format = "#,##0.000"
         ws.cell(row=sr, column=7, value=f"=SUM(G{fd}:G{ld})").number_format = "#,##0.000"
-        ws.cell(row=sr, column=8, value=f"=SUM(H{fd}:H{ld})").number_format = "#,##0.000"
-        ws.cell(row=sr, column=11, value=f"=SUM(K{fd}:K{ld})").number_format = "#,##0.000"
+        ws.cell(row=sr, column=10, value=f"=SUM(J{fd}:J{ld})").number_format = "#,##0.000"
         ws.freeze_panes = "A2"
-        _set_col_widths(ws, [5, 18, 22, 16, 10, 10, 10, 12, 12, 12, 12, 11, 10, 20])
+        _set_col_widths(ws, [20, 24, 18, 11, 11, 11, 11, 12, 12, 12, 12, 24])
 
         # --- Fill Overview module row ---
         ov_r = cur_ov_row
@@ -432,25 +557,26 @@ def export_llm_excel(modules_data,
         c_count = ws0.cell(row=ov_r, column=2, value=count)
         c_count.border = thin
         c_count.number_format = "0"
+        c_count.alignment = center
         if count > 1:
             c_count.fill = edit_fill
-            c_count.font = Font(bold=True, color="006100")
-        # C: GOPs (reference sheet total)
+            c_count.font = edit_font
+        # C: GOPs
         c_gops = ws0.cell(row=ov_r, column=3)
-        c_gops.value = f"='{mod_name}'!E{sr}"
-        c_gops.number_format = "#,##0.000"
+        c_gops.value = f"='{mod_name}'!D{sr}"
+        c_gops.number_format = "#,##0.000000"
         c_gops.border = thin
-        # D: Total I/O (MB)
+        # D: I/O (MB)
         c_io = ws0.cell(row=ov_r, column=4)
-        c_io.value = f"='{mod_name}'!H{sr}"
+        c_io.value = f"='{mod_name}'!G{sr}"
         c_io.number_format = "#,##0.000"
         c_io.border = thin
-        # E: Est. Time (s) per instance (module sheet K is in us, /1e6 -> s)
+        # E: Est. Time (s)
         c_est = ws0.cell(row=ov_r, column=5)
-        c_est.value = f"='{mod_name}'!K{sr}/1000000"
+        c_est.value = f"='{mod_name}'!J{sr}/1000000"
         c_est.number_format = "#,##0.000000"
         c_est.border = thin
-        # F: Total Time (s) = Est.Time * Count + Count * CpuCall(us) / 1e6
+        # F: Total Time (s)
         c_total = ws0.cell(row=ov_r, column=6)
         c_total.value = f"=E{ov_r}*B{ov_r}+B{ov_r}*{CPU_CALL_REF}/1000000"
         c_total.number_format = "#,##0.000000"
@@ -464,7 +590,9 @@ def export_llm_excel(modules_data,
             phase = "Decode"
         else:
             phase = ""
-        ws0.cell(row=ov_r, column=7, value=phase).border = thin
+        c_phase = ws0.cell(row=ov_r, column=7, value=phase)
+        c_phase.border = thin
+        c_phase.alignment = center
 
         if mod_name in PREFILL_MODULES:
             prefill_rows.append(ov_r)
@@ -485,108 +613,48 @@ def export_llm_excel(modules_data,
             cell.fill = phase_fill
             cell.font = phase_font
             cell.border = thin
-        ws0.cell(row=r, column=1, value=label)
+            cell.alignment = center
+        ws0.cell(row=r, column=1, value=label).alignment = left
         if rows:
             total_time_formula = "+".join(f"F{x}" for x in rows)
             if label == "Prefill Total" and has_vit:
                 total_time_formula += f"+{PREPROCESS_TIME_REF}"
-            ws0.cell(
-                row=r,
-                column=3,
-                value="=" + "+".join(f"C{x}*B{x}" for x in rows),
-            ).number_format = "#,##0.000"
-            ws0.cell(
-                row=r,
-                column=4,
-                value="=" + "+".join(f"D{x}*B{x}" for x in rows),
-            ).number_format = "#,##0.000"
-            ws0.cell(
-                row=r,
-                column=6,
-                value="=" + total_time_formula,
-            ).number_format = "#,##0.000000"
+            ws0.cell(row=r, column=3,
+                     value="=" + "+".join(f"C{x}*B{x}"
+                                          for x in rows)).number_format = "#,##0.000000"
+            ws0.cell(row=r, column=4,
+                     value="=" + "+".join(f"D{x}*B{x}" for x in rows)).number_format = "#,##0.000"
+            ws0.cell(row=r, column=6, value="=" + total_time_formula).number_format = "#,##0.000000"
 
-    # ============ TTFT and Tokens/s ============
-    ttft_r = phase_r + 3
-    # Styles for result section
-    result_fill = PatternFill(start_color="2F75B5", end_color="2F75B5", fill_type="solid")
-    result_font = Font(bold=True, color="FFFFFF", size=12)
-    util_label_font = Font(bold=True, color="333333", size=10)
-    util_fill = PatternFill(start_color="D6E4F0", end_color="D6E4F0", fill_type="solid")
-    util_font = Font(bold=True, color="1F4E79", size=10)
+    # ============ Back-fill TTFT / Tokens/s at top (rows 4, 5) ============
+    # TTFT row (4)
+    ws0.cell(row=4, column=2, value=f"=F{phase_r}").number_format = "#,##0.000000"
+    ws0.cell(row=4, column=4, value=f"=IF(F{phase_r}=0,0,C{phase_r}/{TOPS_REF}/1000/F{phase_r})")
+    ws0.cell(row=4, column=6, value=f"=IF(F{phase_r}=0,0,D{phase_r}/{BW_REF}/1000/F{phase_r})")
+    # Tokens/s row (5)
+    ws0.cell(row=5, column=2,
+             value=f"=IF(F{phase_r+1}=0,0,1/F{phase_r+1})").number_format = "#,##0.00"
+    ws0.cell(row=5,
+             column=4,
+             value=f"=IF(F{phase_r+1}=0,0,C{phase_r+1}/{TOPS_REF}/1000/F{phase_r+1})")
+    ws0.cell(row=5,
+             column=6,
+             value=f"=IF(F{phase_r+1}=0,0,D{phase_r+1}/{BW_REF}/1000/F{phase_r+1})")
+    # Re-apply number format for util cells (set before formula insertion was overwritten)
+    for r in (4, 5):
+        for c in (4, 6):
+            ws0.cell(row=r, column=c).number_format = "0.00%"
+            ws0.cell(row=r, column=c).font = util_font
+            ws0.cell(row=r, column=c).fill = util_fill
+            ws0.cell(row=r, column=c).alignment = center
+        ws0.cell(row=r, column=2).font = result_font
+        ws0.cell(row=r, column=2).fill = result_fill
+        ws0.cell(row=r, column=2).alignment = center
 
-    # -- TTFT row --
-    c_ttft_label = ws0.cell(row=ttft_r, column=1, value="TTFT (s)")
-    c_ttft_label.font = result_font
-    c_ttft_label.fill = result_fill
-    c_ttft_label.border = thin
-    c_ttft = ws0.cell(row=ttft_r, column=2)
-    c_ttft.value = f"=F{phase_r}"
-    c_ttft.number_format = "#,##0.000000"
-    c_ttft.font = result_font
-    c_ttft.fill = result_fill
-    c_ttft.border = thin
-    # Prefill compute utilization
-    c_pcl = ws0.cell(row=ttft_r, column=3, value="MFU Util")
-    c_pcl.font = util_label_font
-    c_pcl.fill = util_fill
-    c_pcl.border = thin
-    c_pcu = ws0.cell(row=ttft_r, column=4)
-    c_pcu.value = f"=IF(F{phase_r}=0,0,C{phase_r}/{TOPS_REF}/1000/F{phase_r})"
-    c_pcu.number_format = "0.00%"
-    c_pcu.font = util_font
-    c_pcu.fill = util_fill
-    c_pcu.border = thin
-    # Prefill BW utilization
-    c_pbl = ws0.cell(row=ttft_r, column=5, value="BW Util")
-    c_pbl.font = util_label_font
-    c_pbl.fill = util_fill
-    c_pbl.border = thin
-    c_pbu = ws0.cell(row=ttft_r, column=6)
-    c_pbu.value = f"=IF(F{phase_r}=0,0,D{phase_r}/{BW_REF}/1000/F{phase_r})"
-    c_pbu.number_format = "0.00%"
-    c_pbu.font = util_font
-    c_pbu.fill = util_fill
-    c_pbu.border = thin
-
-    # -- Tokens/s row --
-    c_tps_label = ws0.cell(row=ttft_r + 1, column=1, value="Tokens/s")
-    c_tps_label.font = result_font
-    c_tps_label.fill = result_fill
-    c_tps_label.border = thin
-    c_tps = ws0.cell(row=ttft_r + 1, column=2)
-    c_tps.value = f"=IF(F{phase_r+1}=0,0,1/F{phase_r+1})"
-    c_tps.number_format = "#,##0.00"
-    c_tps.font = result_font
-    c_tps.fill = result_fill
-    c_tps.border = thin
-    # Decode compute utilization
-    c_dcl = ws0.cell(row=ttft_r + 1, column=3, value="MFU Util")
-    c_dcl.font = util_label_font
-    c_dcl.fill = util_fill
-    c_dcl.border = thin
-    c_dcu = ws0.cell(row=ttft_r + 1, column=4)
-    c_dcu.value = f"=IF(F{phase_r+1}=0,0,C{phase_r+1}/{TOPS_REF}/1000/F{phase_r+1})"
-    c_dcu.number_format = "0.00%"
-    c_dcu.font = util_font
-    c_dcu.fill = util_fill
-    c_dcu.border = thin
-    # Decode BW utilization
-    c_dbl = ws0.cell(row=ttft_r + 1, column=5, value="BW Util")
-    c_dbl.font = util_label_font
-    c_dbl.fill = util_fill
-    c_dbl.border = thin
-    c_dbu = ws0.cell(row=ttft_r + 1, column=6)
-    c_dbu.value = f"=IF(F{phase_r+1}=0,0,D{phase_r+1}/{BW_REF}/1000/F{phase_r+1})"
-    c_dbu.number_format = "0.00%"
-    c_dbu.font = util_font
-    c_dbu.fill = util_fill
-    c_dbu.border = thin
-
-    # ============ Model Architecture section ============
-    arch_r = ttft_r + 3
+    # ============ Model Architecture ============
+    arch_banner = phase_r + 3
     if model_config:
-        ws0.cell(row=arch_r, column=1, value="Model Architecture").font = Font(bold=True, size=12)
+        _banner(ws0, arch_banner, "Model Architecture", TOTAL_COLS)
         arch_fields = [
             ("Model", llm_path),
             ("Architecture", model_config.get("architectures", "")),
@@ -597,37 +665,49 @@ def export_llm_excel(modules_data,
             ("Intermediate Size", model_config.get("intermediate_size", "")),
             ("Vocab Size", model_config.get("vocab_size", "")),
             ("Head Dim", model_config.get("head_dim", "")),
-            ("Command", cmdline if cmdline else ""),
-            ("Dtype Mode", dtype_mode),
             ("Seq Length", seq_length if seq_length else ""),
             ("Max Pixels", max_pixels if max_pixels else ""),
+            ("Command", cmdline if cmdline else ""),
         ]
-        # Filter out empty values
         arch_fields = [(k, v) for k, v in arch_fields if v != ""]
         for r_off, (k, v) in enumerate(arch_fields, 1):
-            ws0.cell(row=arch_r + r_off, column=1, value=k).border = thin
-            c_val = ws0.cell(row=arch_r + r_off, column=2, value=v)
+            kc = ws0.cell(row=arch_banner + r_off, column=1, value=k)
+            kc.border = thin
+            kc.font = bold
+            # Span value over remaining columns for readability
+            ws0.merge_cells(start_row=arch_banner + r_off,
+                            start_column=2,
+                            end_row=arch_banner + r_off,
+                            end_column=TOTAL_COLS)
+            c_val = ws0.cell(row=arch_banner + r_off, column=2, value=v)
             c_val.border = thin
+            c_val.alignment = left
             if isinstance(v, (int, float)):
                 c_val.number_format = "#,##0"
-        info_r = arch_r + len(arch_fields) + 3
+        info_banner = arch_banner + len(arch_fields) + 2
     else:
-        info_r = arch_r + 2
-        ws0.cell(row=info_r - 1, column=1, value="Model").border = thin
-        ws0.cell(row=info_r - 1, column=2, value=llm_path).border = thin
+        info_banner = arch_banner
 
-    # ============ Info section ============
-    info_items = [
-        ("Note", "Modify B2-B10 and B12-B15 (green cells) to update all performance estimates."),
-        ("Note", "Block counts (green) in the module table are also editable."),
-        ("Note", "Est.Time = max(Compute, Memory) + Serialism * min(Compute, Memory)"),
-        ("Note", "block/block_cache are analyzed from the first block as representative."),
+    # ============ Notes ============
+    _banner(ws0, info_banner, "Notes", TOTAL_COLS)
+    notes = [
+        "Green cells (parameters, ratios, block counts) are editable; all estimates auto-update.",
+        "Est.Time = max(Compute, Memory) + Serialism * min(Compute, Memory).",
+        "block / block_cache use the first block as representative, multiplied by Count.",
+        "Key operators are highlighted in yellow; use chip TOPS (else vector TOPS) for compute.",
     ]
-    for r_off, (k, v) in enumerate(info_items):
-        ws0.cell(row=info_r + r_off, column=1, value=k)
-        ws0.cell(row=info_r + r_off, column=2, value=v)
+    for i, txt in enumerate(notes, 1):
+        ws0.merge_cells(start_row=info_banner + i,
+                        start_column=1,
+                        end_row=info_banner + i,
+                        end_column=TOTAL_COLS)
+        cell = ws0.cell(row=info_banner + i, column=1, value=f"• {txt}")
+        cell.alignment = left
+        cell.font = Font(italic=True, color="595959")
 
-    _set_col_widths(ws0, [26, 28, 14, 16, 16, 16, 10])
+    # Freeze top summary rows for navigation
+    ws0.freeze_panes = "A6"
+    _set_col_widths(ws0, [26, 16, 14, 14, 16, 16, 12])
     file = os.path.join(out_dir, f"{os.path.basename(out_dir)}.xlsx")
     wb.save(file)
     print(f"\nExcel saved: {file}")
