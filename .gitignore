@@ -21,6 +21,7 @@ onnx_test_*/
 torch_test_*/
 tpulang_test_*/
 .cache
+.venv/
 *.xlsx
 bmodel_fbs.py
 .ipynb_checkpoints/
