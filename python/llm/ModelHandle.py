@@ -12,6 +12,7 @@ import re
 
 from .LlmInfo import WeightType
 from transform.MLIRImporter import Platform
+from .LlmInfo import LlmType
 import logging
 
 logger = logging.getLogger(__name__)
@@ -152,11 +153,19 @@ class SafetensorsModelHandle(ModelHandle):
         K, N = qweight.shape
         Kz, Nz = qzeros.shape
         unpacked_zeros = np.zeros((Kz, Nz * compress_ratio), dtype=np.uint8)
-        unpack_mlp_weights = False
-        if conv.use_mlp:
+        need_int8_zeros = False
+        if conv.fused_mlp:
             if conv.model_info.weights[LlmList.MLP_GATE] in path or conv.model_info.weights[
                     LlmList.MLP_UP] in path or conv.model_info.weights[LlmList.MLP_DOWN] in path:
-                unpack_mlp_weights = True
+                need_int8_zeros = True
+            if conv.model_info.weights[
+                    LlmList.SHARED_EXPERT_GATE] in path or conv.model_info.weights[
+                        LlmList.SHARED_EXPERT_UP] in path or conv.model_info.weights[
+                            LlmList.SHARED_EXPERT_DOWN] in path:
+                need_int8_zeros = True
+        if conv.llm_type in [LlmType.QWEN3_5_MOE, LlmType.QWEN2_MOE]:
+            if conv.check_experts_gate_up(path) or conv.check_experts_down(path):
+                need_int8_zeros = True
 
         if quant_mode == "gptq":
             unpacked_weights = np.zeros((K * compress_ratio, N), dtype=dtype)
@@ -197,7 +206,7 @@ class SafetensorsModelHandle(ModelHandle):
         if bits == 8:
             pack_int8_weights = unpacked_weights.astype("uint8")
 
-        if unpack_mlp_weights:
+        if need_int8_zeros:
             pack_int8_zeros = np.zeros((Kz // 2, Nz * compress_ratio), dtype=np.uint8)
             if quant_mode == "gptq":
                 unpacked_zeros += 1
@@ -261,8 +270,8 @@ class SafetensorsModelHandle(ModelHandle):
             weight_path = path + ".weight"
             if self.model.is_exist(weight_path):
                 data = self.model.read(weight_path)
-                if conv.use_mlp and (conv.model_info.weights[LlmList.MLP_GATE] in path
-                                     or conv.model_info.weights[LlmList.MLP_UP] in path):
+                if conv.fused_mlp and (conv.model_info.weights[LlmList.MLP_GATE] in path
+                                       or conv.model_info.weights[LlmList.MLP_UP] in path):
                     weight_dict[weight_path] = np.ascontiguousarray(data)
                 else:
                     weight_dict[weight_path] = np.ascontiguousarray(np.transpose(data, (1, 0)))
@@ -279,7 +288,7 @@ class SafetensorsModelHandle(ModelHandle):
             zp_data = self.model.read(zp_path)
             _, pack_int8_weights, unpacked_zeros = self.unpack_weights(
                 conv, qweight_data, zp_data, conv.quant_bits, conv.quant_mode, path)
-            if conv.use_mlp and (conv.model_info.weights[LlmList.MLP_DOWN] in path):
+            if conv.fused_mlp and (conv.model_info.weights[LlmList.MLP_DOWN] in path):
                 weight_dict[qweight_path] = np.ascontiguousarray(
                     np.transpose(pack_int8_weights.reshape(-1, conv.q_group_size, conv.hidden_size),
                                  (0, 2, 1)).reshape(-1, conv.hidden_size * conv.q_group_size))

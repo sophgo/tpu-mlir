@@ -7710,7 +7710,10 @@ def Tpu_TopKOp : Tpu_Op<"TopK"> {
     values_used_only: whether to return only the values of the top K elements without their corresponding indices.;
     buffer_val: the provision of a buffer tensor where the output values can be stored.;
     buffer_idx: the provision of a buffer tensor for storing the output indices of the top K elements.;
+    buffer_scatter_idx: the provision of a buffer tensor for storing the scatter indices used in the sorting process.;
+    buffer_seq_idx: the provision of a buffer tensor for storing the sequence indices used in the sorting process.;
     replace_topk_indices: whether to replace the indices of the top K elements in the output with new indices.;
+    use_hau: whether the operator uses hau to implement.;
     multicore: whether op supports multicore execution.;
   }];
   let arguments = (ins
@@ -7723,7 +7726,10 @@ def Tpu_TopKOp : Tpu_Op<"TopK"> {
     DefaultValuedAttr<BoolAttr, "false">:$values_used_only,
     AnyTensorOrNone:$buffer_val,
     AnyTensorOrNone:$buffer_idx,
+    AnyTensorOrNone:$buffer_scatter_idx,
+    AnyTensorOrNone:$buffer_seq_idx,
     DefaultValuedAttr<BoolAttr, "false">:$replace_topk_indices,
+    DefaultValuedAttr<BoolAttr, "true">:$use_hau,
     OptionalAttr<BoolAttr>:$multicore
   );
   let results = (outs

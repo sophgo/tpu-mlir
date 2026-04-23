@@ -86,6 +86,12 @@ static void LoweringTopK(PatternRewriter &rewriter, top::TopKOp op, Type type) {
                                               builder.getNoneType());
   operands.push_back(NoneOp_0);
   operands.push_back(NoneOp_1);
+  auto NoneOp_2 = builder.create<top::NoneOp>(builder.getUnknownLoc(),
+                                              builder.getNoneType());
+  auto NoneOp_3 = builder.create<top::NoneOp>(builder.getUnknownLoc(),
+                                              builder.getNoneType());
+  operands.push_back(NoneOp_2);
+  operands.push_back(NoneOp_3);
   rewriter.replaceOpWithNewOp<tpu::TopKOp>(op, new_types, operands, attrs);
   return;
 }

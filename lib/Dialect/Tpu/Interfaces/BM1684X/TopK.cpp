@@ -14,16 +14,21 @@ using namespace tpu_mlir::backend;
 // GlobalGenInterface
 // =========================================
 void tpu::TopKOp::codegen_global_bm1684x() {
-  // auto op = getOperation();
-  // auto input_spec = BM168x::get_input_spec(op);
-  // auto output_spec = BM168x::get_output_spec(op);
-  // topk_spec_t spec = {0};
-  // spec.k = getK();
-  // spec.dim = getAxis();
-  // spec.descending = getLargest();
-  // BM168x::call_global_func("backend_api_topk_global", &spec, sizeof(spec),
-  //                          input_spec->data(), output_spec->data());
-  llvm_unreachable("Only support dynamic codegen");
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+  topk_spec_t spec = {0};
+  spec.k = getK();
+  spec.dim = getAxis();
+  spec.descending = getLargest();
+  spec.buffer_val_addr = module::getAddress(getBufferVal());
+  spec.buffer_idx_addr = module::getAddress(getBufferIdx());
+  spec.buffer_scatter_idx_addr = module::getAddress(getBufferScatterIdx());
+  spec.seq_index_addr = module::getAddress(getBufferSeqIdx());
+  BM168x::call_ppl_global_func("api_all_sorted_topk_global", &spec,
+                               sizeof(spec), input_spec->data(),
+                               output_spec->data());
+  // llvm_unreachable("Only support dynamic codegen");
 }
 
 // ======================================

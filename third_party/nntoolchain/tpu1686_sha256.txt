@@ -1,10 +1,24 @@
 === bm1684x2 ===
-commit caf8d7b1bccf1a5010c189a7e6071e2ebc352960
-Author: pengchao.hu <pengchao.hu@sophgo.com>
-Date:   Fri May 22 11:04:14 2026 +0800
+commit 57fb3b8c0311f7eaeb00ae4fcece71d46693052f
+Author: liang.wang01 <liang.wang01@sophgo.com>
+Date:   Wed Apr 15 17:22:02 2026 +0800
 
-    fix: keep id_node for mlir
+    feat: fused_moe support w4a16
     
-    - or it would cause id_node missing and hang
+    Change-Id: I3f4d70055d2881fa546e023e19654ba747c2fafa
+=== bm1684x ===
+commit 57fb3b8c0311f7eaeb00ae4fcece71d46693052f
+Author: liang.wang01 <liang.wang01@sophgo.com>
+Date:   Wed Apr 15 17:22:02 2026 +0800
+
+    feat: fused_moe support w4a16
     
-    Change-Id: Ia6185bf3687ce6eecef206b0bd6521ac609cffd3
+    Change-Id: I3f4d70055d2881fa546e023e19654ba747c2fafa
+=== bm1688 ===
+commit 57fb3b8c0311f7eaeb00ae4fcece71d46693052f
+Author: liang.wang01 <liang.wang01@sophgo.com>
+Date:   Wed Apr 15 17:22:02 2026 +0800
+
+    feat: fused_moe support w4a16
+    
+    Change-Id: I3f4d70055d2881fa546e023e19654ba747c2fafa

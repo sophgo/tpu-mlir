@@ -1607,6 +1607,8 @@ typedef struct {
   int descending;
   uint64_t buffer_val_addr;
   uint64_t buffer_idx_addr;
+  uint64_t buffer_scatter_idx_addr;
+  uint64_t seq_index_addr;
 } topk_spec_t;
 
 typedef struct attention_common_spec {

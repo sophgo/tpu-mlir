@@ -6384,6 +6384,7 @@ def Top_TopKOp : Top_Op<"TopK"> {
     largest: whether to retrieve the largest or smallest values.;
     sorted: whether the output values should be sorted in descending order (if largest is true) or ascending order (if largest is false).;
     kT: provide a specific tensor for K values. This allows for dynamic specification of K.;
+    use_hau: whether the operator uses hau to implement.;
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -6392,7 +6393,8 @@ def Top_TopKOp : Top_Op<"TopK"> {
     DefaultValuedAttr<BoolAttr, "true">:$largest,
     DefaultValuedAttr<BoolAttr, "true">:$sorted,
     Optional<AnyTensor>:$kT,
-    DefaultValuedAttr<BoolAttr, "false">:$replace_topk_indices
+    DefaultValuedAttr<BoolAttr, "false">:$replace_topk_indices,
+    DefaultValuedAttr<BoolAttr, "true">:$use_hau
   );
   let results = (outs
     AnyTensorOrNone:$values,

@@ -77,4 +77,4 @@ LogicalResult tpu::TopKOp::inference(InferenceParameter &p) {
   return success();
 }
 
-bool tpu::TopKOp::support_multi_core() { return false; }
+bool tpu::TopKOp::support_multi_core() { return !getUseHau(); }

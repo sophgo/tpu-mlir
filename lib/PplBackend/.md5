@@ -9,6 +9,8 @@ src/add_const_fp.pl 02f8ff02149b0897406b9fba4e854841
 src/add_const_fp_api.cpp 6208054936d70e87c86c0ad650d23c9a
 src/add_const_fp_local.pl f9c19364f128a661313553d4ebe2887b
 src/add_const_fp_tile.cpp b46c1b04b4bbaa364892da3923778b93
+src/all_sorted_topk.cpp d3e315094a4f2cbc379208577802821e
+src/all_sorted_topk.pl 670204d1eecd7543780e99dc510878f3
 src/chunk_gated_delta_rule.cpp 3f86b30ae2beaf7449e96f137616c488
 src/chunk_gated_delta_rule.pl 2f225bf33bde4ba2e5d89feaa357bac3
 src/concat_slice.cpp ccb6b0b1072cd7beb93c82714cf208e8

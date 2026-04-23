@@ -573,6 +573,10 @@ public:
       return failure();
     }
 
+    if (mlpOp.getIsExpert()) {
+      return failure();
+    }
+
     uint64_t num_elements;
     auto output_shape = module::getShape(mlpOp.getOutput());
     auto output_dim = output_shape.size();
@@ -1162,7 +1166,10 @@ public:
   LogicalResult matchAndRewriteImpl(tpu::TopKOp TopKOp,
                                     PatternRewriter &rewriter) const override {
     if (!module::isNone(TopKOp.getBufferVal()) ||
-        !module::isNone(TopKOp.getBufferIdx())) {
+        !module::isNone(TopKOp.getBufferIdx()) ||
+        (!TopKOp.getUseHau() &&
+         !module::isNone(TopKOp.getBufferScatterIdx())) ||
+        (!TopKOp.getUseHau() && !module::isNone(TopKOp.getBufferSeqIdx()))) {
       return failure();
     }
 
@@ -1179,9 +1186,29 @@ public:
     auto val_buf_op = builder.create<tpu::BufferOp>(val_loc, val_buffer_type);
     auto idx_loc = module::getLocLike(TopKOp, "buffer_idx");
     auto idx_buf_op = builder.create<tpu::BufferOp>(idx_loc, idx_buffer_type);
-
-    TopKOp.setOperand(TopKOp.getNumOperands() - 2, val_buf_op);
-    TopKOp.setOperand(TopKOp.getNumOperands() - 1, idx_buf_op);
+    TopKOp.setOperand(TopKOp.getNumOperands() - 4, val_buf_op);
+    TopKOp.setOperand(TopKOp.getNumOperands() - 3, idx_buf_op);
+    if (!TopKOp.getUseHau()) {
+      // to do: check buffer size
+      auto scatter_idx_loc = module::getLocLike(TopKOp, "buffer_scatter");
+      auto scatter_idx_buf_op = builder.create<tpu::BufferOp>(
+          scatter_idx_loc,
+          RankedTensorType::get(
+              {module::getCoreNum() *
+               module::getShape(TopKOp.getInput())[TopKOp.getAxis()]},
+              idx_type));
+      auto seq_idx_loc = module::getLocLike(TopKOp, "buffer_seq_idx");
+      auto seq_idx_buf_op = builder.create<tpu::BufferOp>(
+          seq_idx_loc,
+          RankedTensorType::get(
+              {module::getCoreNum() *
+               module::getShape(TopKOp.getInput())[TopKOp.getAxis()]},
+              idx_type));
+      TopKOp.setOperand(TopKOp.getNumOperands() - 4, val_buf_op);
+      TopKOp.setOperand(TopKOp.getNumOperands() - 3, idx_buf_op);
+      TopKOp.setOperand(TopKOp.getNumOperands() - 2, scatter_idx_buf_op);
+      TopKOp.setOperand(TopKOp.getNumOperands() - 1, seq_idx_buf_op);
+    }
     return success();
   }
   bool shouldPrint(tpu::TopKOp TopKOp) const override { return false; }

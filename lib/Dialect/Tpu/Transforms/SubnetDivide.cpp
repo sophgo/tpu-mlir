@@ -485,9 +485,11 @@ public:
   }
 
   static bool force_dynamic_run(Operation *op) {
-    if (isa<TopKOp, YoloDetectionOp, DetectionOutputOp, RoiAlignOp, NonZeroOp,
-            NmsOp, SortOp>(op)) {
+    if (isa<YoloDetectionOp, DetectionOutputOp, RoiAlignOp, NonZeroOp, NmsOp,
+            SortOp>(op)) {
       return true;
+    } else if (isa<TopKOp>(op)) {
+      return dyn_cast<TopKOp>(op).getUseHau();
     } else if (isa<MaskRCNNRPNGetBboxesOp, MaskRCNNBboxPoolerOp,
                    MaskRCNNGetBboxBOp, MaskRCNNMaskPoolerOp>(op)) {
       return true;
