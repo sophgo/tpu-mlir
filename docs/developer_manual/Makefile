@@ -29,12 +29,13 @@ help:
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR_zh)" "$(BUILDDIR_zh)" $(SPHINXOPTS) $(O)
 
 pdf: latex
-	@cd $(BUILDDIR_en)/latex && xelatex $(module_name).tex
-	@cd $(BUILDDIR_en)/latex && xelatex $(module_name).tex
+	@cd $(BUILDDIR_en)/latex && xelatex -interaction=nonstopmode -halt-on-error $(module_name).tex  > /dev/null
+	@cd $(BUILDDIR_en)/latex && xelatex -interaction=nonstopmode -halt-on-error $(module_name).tex  > /dev/null
 	@mv $(BUILDDIR_en)/latex/$(module_name).pdf $(BUILDDIR_en)/"${pdf_name_en}" && rm -rf $(BUILDDIR_en)/latex
 
-	@cd $(BUILDDIR_zh)/latex && xelatex $(module_name).tex
-	@cd $(BUILDDIR_zh)/latex && xelatex $(module_name).tex
+
+	@cd $(BUILDDIR_zh)/latex && xelatex -interaction=nonstopmode -halt-on-error $(module_name).tex > /dev/null
+	@cd $(BUILDDIR_zh)/latex && xelatex -interaction=nonstopmode -halt-on-error $(module_name).tex > /dev/null
 	@mv $(BUILDDIR_zh)/latex/$(module_name).pdf $(BUILDDIR_zh)/"${pdf_name_zh}" && rm -rf $(BUILDDIR_zh)/latex
 
 web: html

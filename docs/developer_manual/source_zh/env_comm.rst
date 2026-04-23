@@ -1,4 +1,4 @@
-以下操作需要在Docker容器中。关于Docker的使用, 请参考 :ref:`Docker配置 <docker container_setup>` 。
+以下操作需要在Docker容器中。关于Docker的使用, 请参考 :ref:`Docker配置 <env_setup>` 。
 
 
 .. code-block:: shell

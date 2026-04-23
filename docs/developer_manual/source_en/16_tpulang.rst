@@ -211,7 +211,7 @@ TpuLang is currently only applicable to the inference portion of inference frame
 when integrating the network with TpuLang, users need to first initialize with tpul.init('processor') (where 'processor' can be BM1684X or BM1688).
 Next, prepare the tensors, use operators to build the network, and finally, call the tpul.compile interface to compile and generate bmodel.
 The detailed steps for each of these processes are explained below.
-You can find detailed information on various interfaces used (such as tpul.init, deinit, Tensor, and operator interfaces) in appx02 (:ref:`Appendix 02: Basic Elements of TpuLang`).
+You can find detailed information on various interfaces used (such as tpul.init, deinit, Tensor, and operator interfaces) in appx02 (:ref:`Appendix 02 Basic Elements of TpuLang`).
 
 The following steps assume that the loading of the tpu-mlir release package has been completed.
 
@@ -285,7 +285,7 @@ compile
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-Call the tpul.compile function (:ref:`compile`). After compilation, you will get `example_f32.bmodel`:
+Call the tpul.compile function (:ref:`compile <compile>`). After compilation, you will get `example_f32.bmodel`:
 
    .. code-block:: python
 

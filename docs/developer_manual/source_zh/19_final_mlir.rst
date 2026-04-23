@@ -11,7 +11,8 @@ final.mlir 截断方式
 * 建议使用插件：MLIR。
 
 `final.mlir` 结构介绍
--------------------
+--------------------------------------
+
 `final.mlir` 中的单个算子组成部分如下：
 
 .. figure:: ../assets/op_sample.png

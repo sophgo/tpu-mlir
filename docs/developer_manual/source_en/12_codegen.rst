@@ -88,9 +88,10 @@ The backend is placed as a dynamic library in the TPU-MLIR project, specifically
 The loading method of the backend function is: first define the function pointer, and then load the dynamic library so that the function pointer points to the function in the dynamic library.
 
 Take the synchronization function tpu_sync_all as an example, as we will add multi-core support later, it needs to be well-defined in the relevant backend cmodel library.
-  1. Make sure to keep the function name and parameters consistent: `typedef void (*tpu_sync_all)();
-  2. Add this function member within the class: `tpu_sync_all, dl_tpu_sync_all;
-  3. Add the macro, CAST_FUNCTION(tpu_sync_all), to the implementation of this type of load_functions function; This macro can point dl_tpu_sync_all to the function in the dynamic library.
+  1. Make sure to keep the function name and parameters consistent: ``typedef void (*tpu_sync_all)()``;
+  2. Add this function member within the class: ``tpu_sync_all``, ``dl_tpu_sync_all``;
+  3. Add the macro, ``CAST_FUNCTION(tpu_sync_all)`` , to the implementation of this type of load_functions function; This macro can point dl_tpu_sync_all to the function in the dynamic library.
+
 After obtaining an instance of this class, we can use the functions in the dynamic library.
 
 Backend `store_cmd`

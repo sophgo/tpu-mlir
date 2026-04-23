@@ -4,10 +4,11 @@ Appendix.03: BM168x Guidance
 BM168x series processor currently supports ONNX, pytorch, Caffe and TFLite models.
 This chapter takes the BM1684x processor as an example to introduce merging bmodel files of the BM168x series processors.
 
-.. _merge weight:
+.. _merge weight bm168x:
 
 Merge bmodel Files
 ---------------------------
+
 For the same model, independent bmodel files can be generated according to the input batch size and resolution(different H and W). However, in order to save storage, you can merge these related bmodel files into one bmodel file and share its weight part. The steps are as follows:
 
 Step 0: generate the bmodel for batch 1
