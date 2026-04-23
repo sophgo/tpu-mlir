@@ -73,6 +73,7 @@ git clone git@hf.co:Qwen/Qwen2.5-VL-3B-Instruct-AWQ
 2) 在docker环境下编译 `Qwen2.5-VL`, 如下:
 
 ``` shell
+# 如果有提示transformers/torch版本问题，pip3 install transformers torchvision -U
 llm_convert.py -m /workspace/Qwen2.5-VL-3B-Instruct-AWQ -s 2048  -c bm1684x  --max_pixels 672,896 -o qwen2.5vl_3b
 ```
 

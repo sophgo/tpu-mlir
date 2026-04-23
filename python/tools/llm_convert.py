@@ -89,8 +89,6 @@ if __name__ == '__main__':
                         help='enable rvti, only for bm1684x2 and bm1690e')
     parser.add_argument("--again", action='store_true',
                         help='continue to convert the model, default is False')
-    parser.add_argument("--qwen_asr", action='store_true',
-                        help='convert Qwen_ASR, default is False')
     parser.add_argument("-V", "--version", action='version', version='%(prog)s ' + pymlir.__version__)
     parser.add_argument('-o', '--out_dir', type=str, default='./tmp',
                         help='output mlir/bmodel path, default `./tmp`')
@@ -130,9 +128,20 @@ if __name__ == '__main__':
         args.max_shape = None
 
     from transformers import AutoConfig
-    if args.qwen_asr:
-        import qwen_asr  # otherwise AutoConfig will fail
-    config = AutoConfig.from_pretrained(args.model_path, trust_remote_code=True)
+
+    # Qwen-ASR uses a custom model type; importing qwen_asr registers it with
+    # transformers so AutoConfig can resolve it.
+    _path_lower = args.model_path.lower()
+    if "qwen" in _path_lower and "asr" in _path_lower:
+        import qwen_asr  # noqa: F401
+    try:
+        config = AutoConfig.from_pretrained(args.model_path, trust_remote_code=True)
+    except Exception as e:
+        raise RuntimeError("Failed to load model config from '{}': {}\n"
+                           "Hint: your transformers/torchvision may be outdated. "
+                           "Try updating them and run again:\n"
+                           "    pip3 install transformers torchvision -U".format(
+                               args.model_path, e)) from e
 
     if config.model_type in ["qwen3", "qwen2", "llama", "minicpm", "qwen2_moe"]:
         from llm.LlmConverter import LlmConverter

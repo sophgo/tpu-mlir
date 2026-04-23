@@ -1458,6 +1458,17 @@ class Qwen3_5Converter(LlmConverter):
                                in0_norm_op, [self.hidden_size, value_dim],
                                [self.batch, 1, value_dim],
                                do_lora=self.do_lora)
+            a_op = self.linear(block_mlir,
+                               in_proj_a,
+                               in0_norm_op, [self.hidden_size, num_v_heads],
+                               [self.batch, 1, num_v_heads],
+                               force_bias=True,
+                               do_lora=self.do_lora)
+            b_op = self.linear(block_mlir,
+                               in_proj_b,
+                               in0_norm_op, [self.hidden_size, num_v_heads],
+                               [self.batch, 1, num_v_heads],
+                               do_lora=self.do_lora)
             # q_proj
             mixed_qkv_op = self.linear(block_mlir,
                                        in_proj_qkv,
@@ -1489,22 +1500,12 @@ class Qwen3_5Converter(LlmConverter):
                                         mode=StringAttr.get("ReduceSum"),
                                         loc=L(conv1d + ".reduce_sum"),
                                         ip=ip).output
-            b_op = self.linear(block_mlir,
-                               in_proj_b,
-                               in0_norm_op, [self.hidden_size, num_v_heads],
-                               [self.batch, 1, num_v_heads],
-                               do_lora=self.do_lora)
+
             beta_op = top.SigmoidOp(T([self.batch, 1, num_v_heads]),
                                     b_op,
                                     loc=L(in_proj_b + ".sigmoid"),
                                     ip=ip).output
             # g = -self.A_log.float().exp() * F.softplus(a.float() + self.dt_bias)
-            a_op = self.linear(block_mlir,
-                               in_proj_a,
-                               in0_norm_op, [self.hidden_size, num_v_heads],
-                               [self.batch, 1, num_v_heads],
-                               force_bias=True,
-                               do_lora=self.do_lora)
             a_op = top.SoftplusOp(T([self.batch, 1, num_v_heads]),
                                   a_op,
                                   loc=L(in_proj_a + ".softplus"),
