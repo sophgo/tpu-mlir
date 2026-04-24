@@ -296,11 +296,8 @@ class Qwen3VLConverter(LlmConverter):
             weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
 
-        def T(shape: list):
-            return vit_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, vit_mlir)
+        T = vit_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, vit_mlir)
 
         def vision_block(id: int, in_op, cos_op, sin_op, mask_op):
             norm1 = f"{self.vit_path}.blocks.{id}.norm1"

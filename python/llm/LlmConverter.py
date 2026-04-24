@@ -54,14 +54,8 @@ class LlmConverter(BaseConverter):
         self.lmhead_with_topk = False if args.do_sample or self.do_lora else True
         self.position_shape = [1, 1, self.max_input_length
                                ] if self.use_insert else [1, self.max_input_length]
-        self.num_core = args.num_core
-        if self.num_core == 0:
-            if args.chip == "bm1688":
-                self.num_core = 2
-            elif args.chip == "bm1690":
-                self.num_core = 8
-            else:
-                self.num_core = 1
+        self.num_core = args.num_core if args.num_core > 0 else self.get_core_num(self.chip)
+
         self.quant_mode = None
         self.quant_bits = 0
         self.vit_f16_out_bf16 = False  # force vit f16, output bf16
@@ -104,13 +98,25 @@ class LlmConverter(BaseConverter):
         self.all_bmodels_without_bytes = []
         self.extern_block_weights = {}
         # store all weights name because some weights like qkv.weights may be splitted
-        self.weights = []
+        self.weight_keys = []
         self.use_mlp = True
         if args.chip not in ["bm1690"]:
             self.use_mlp = False
         if self.quant_mode is not None:
             if self.quant_mode not in ["gptq", "awq"] or self.quant_bits != 4:
                 self.use_mlp = False
+
+    def get_core_num(self, chip):
+        core_map = {
+            "bm1684x": 1,
+            "bm1688": 2,
+            "cv186x": 1,
+            "bm1690": 8,
+            "bm1684x2": 4,
+        }
+        if chip in core_map:
+            return core_map[chip]
+        return 1
 
     def run(self):
         os.makedirs(self.bmodel_dir, exist_ok=True)
@@ -141,7 +147,7 @@ class LlmConverter(BaseConverter):
             return True
         if self.model.is_exist(key + ".weight_packed"):
             return True
-        if key + ".qweight" in self.weights:
+        if key + ".qweight" in self.weight_keys:
             return True
         return False
 
@@ -846,11 +852,8 @@ class LlmConverter(BaseConverter):
             weight_file="../sample_head_top_weights.npz")
         ip = sample_head_mlir.insert_point
 
-        def T(shape: list):
-            return sample_head_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, sample_head_mlir)
+        T = sample_head_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, sample_head_mlir)
 
         kwargs = {}
         kwargs['shape_tensor'] = [max_top_k]
@@ -1678,7 +1681,7 @@ class LlmConverter(BaseConverter):
             self.set_common_weight(norm, weight_dict, self.rmsnorm_type)
         if self.extern_block_weights:
             weight_dict.update(self.extern_block_weights)
-        self.weights.extend(list(weight_dict.keys()))
+        self.weight_keys.extend(list(weight_dict.keys()))
         np.savez(weight_file, **weight_dict)
 
         def gen_mlp(mlir_gen, input_shape, in_op):
@@ -1780,11 +1783,8 @@ class LlmConverter(BaseConverter):
                                       lora_rank=self.lora_rank,
                                       weight_file=f"../{weight_file}")
 
-            def T(shape: list):
-                return block_mlir.get_tensor_type(shape)
-
-            def L(name: str):
-                return self.get_loc(name, block_mlir)
+            T = block_mlir.get_tensor_type
+            L = lambda name: self.get_loc(name, block_mlir)
 
             ip = block_mlir.insert_point
 
@@ -1909,11 +1909,8 @@ class LlmConverter(BaseConverter):
                 lora_rank=self.lora_rank,
                 weight_file=f"../{weight_file}")
 
-            def T(shape: list):
-                return block_mlir.get_tensor_type(shape)
-
-            def L(name: str):
-                return self.get_loc(name, block_mlir)
+            T = block_mlir.get_tensor_type
+            L = lambda name: self.get_loc(name, block_mlir)
 
             ip = block_mlir.insert_point
 
@@ -2048,11 +2045,8 @@ class LlmConverter(BaseConverter):
                 lora_rank=self.lora_rank,
                 weight_file=f"../{weight_file}")
 
-            def T(shape: list):
-                return block_mlir.get_tensor_type(shape)
-
-            def L(name: str):
-                return self.get_loc(name, block_mlir)
+            T = block_mlir.get_tensor_type
+            L = lambda name: self.get_loc(name, block_mlir)
 
             ip = block_mlir.insert_point
 

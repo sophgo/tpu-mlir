@@ -67,11 +67,8 @@ class LFM2VLConverter(LlmConverter):
                                loc=""):
         ip = mlir.insert_point
 
-        def T(shape: list):
-            return mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, mlir)
+        T = mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, mlir)
 
         k_shape1 = reorder(kv_shape, [0, 1, 3, 2])
         k_op = top.PermuteOp(T(k_shape1), k_op, order=[0, 1, 3, 2], loc=L(loc + ".permute"),
@@ -127,11 +124,8 @@ class LFM2VLConverter(LlmConverter):
         norm2 = f"{self.vit_path}.vision_model.encoder.layers.{id}.layer_norm2"
         ip = vit_mlir.insert_point
 
-        def T(shape: list):
-            return vit_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, vit_mlir)
+        T = vit_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, vit_mlir)
 
         def vision_attention(in_op, mask_op):
             hidden_shape = [1, self.num_patches, self.embed_dim]
@@ -316,11 +310,8 @@ class LFM2VLConverter(LlmConverter):
                                 weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
 
-        def T(shape: list):
-            return vit_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, vit_mlir)
+        T = vit_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, vit_mlir)
 
         def vision_embedding(pixel_values_op):  #, position_ids_op):
             #patch_embedding
@@ -469,7 +460,7 @@ class LFM2VLConverter(LlmConverter):
             self.set_common_weight(norm, weight_dict, WeightType.RMSNORM)
         if self.extern_block_weights:
             weight_dict.update(self.extern_block_weights)
-        self.weights.extend(list(weight_dict.keys()))
+        self.weight_keys.extend(list(weight_dict.keys()))
         np.savez(weight_file, **weight_dict)
 
         def gen_mlp(mlir_gen, input_shape, in_op):
@@ -538,11 +529,8 @@ class LFM2VLConverter(LlmConverter):
                                       lora_rank=self.lora_rank,
                                       weight_file=f"../{weight_file}")
 
-            def T(shape: list):
-                return block_mlir.get_tensor_type(shape)
-
-            def L(name: str):
-                return self.get_loc(name, block_mlir)
+            T = block_mlir.get_tensor_type
+            L = lambda name: self.get_loc(name, block_mlir)
 
             ip = block_mlir.insert_point
 
@@ -778,11 +766,8 @@ class LFM2VLConverter(LlmConverter):
                                       lora_rank=self.lora_rank,
                                       weight_file=f"../{weight_file}")
 
-            def T(shape: list):
-                return block_mlir.get_tensor_type(shape)
-
-            def L(name: str):
-                return self.get_loc(name, block_mlir)
+            T = block_mlir.get_tensor_type
+            L = lambda name: self.get_loc(name, block_mlir)
 
             ip = block_mlir.insert_point
 

@@ -374,11 +374,8 @@ class Chatglm3Converter(LlmConverter):
                                       self.platform, ["F32", "INT32", "F32"],
                                       weight_file=f"../{weight_file}")
 
-            def T(shape: list):
-                return block_mlir.get_tensor_type(shape)
-
-            def L(name: str):
-                return self.get_loc(name, block_mlir)
+            T = block_mlir.get_tensor_type
+            L = lambda name: self.get_loc(name, block_mlir)
 
             ip = block_mlir.insert_point
 
@@ -465,11 +462,8 @@ class Chatglm3Converter(LlmConverter):
                 self.platform, ["F32", "INT32", "F32", "F32", "F32"],
                 weight_file=f"../{weight_file}")
 
-            def T(shape: list):
-                return block_mlir.get_tensor_type(shape)
-
-            def L(name: str):
-                return self.get_loc(name, block_mlir)
+            T = block_mlir.get_tensor_type
+            L = lambda name: self.get_loc(name, block_mlir)
 
             ip = block_mlir.insert_point
 

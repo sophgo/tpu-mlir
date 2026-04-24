@@ -98,11 +98,8 @@ class Gemma3Converter(LlmConverter):
                                 weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
 
-        def T(shape: list):
-            return vit_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, vit_mlir)
+        T = vit_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, vit_mlir)
 
         in_op = vit_mlir.create_input_op(L('pixel_values'), 0)
         new_op = top.ReshapeOp(T(

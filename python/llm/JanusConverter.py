@@ -116,11 +116,8 @@ class JanusConverter(LlmConverter):
         norm2 = f"{self.vit_path}.blocks.{id}.norm2"
         ip = vit_mlir.insert_point
 
-        def T(shape: list):
-            return vit_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, vit_mlir)
+        T = vit_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, vit_mlir)
 
         def vision_attention(in_op):
             norm1_op = self.layer_norm(vit_mlir, in_op, norm1, eps=1e-6)
@@ -262,11 +259,8 @@ class JanusConverter(LlmConverter):
                                 weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
 
-        def T(shape: list):
-            return vit_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, vit_mlir)
+        T = vit_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, vit_mlir)
 
         in0_op = vit_mlir.create_input_op(L('pixel_values'), 0)
 

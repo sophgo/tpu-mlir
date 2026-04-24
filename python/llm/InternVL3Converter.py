@@ -49,11 +49,8 @@ class InternVL3Converter(LlmConverter):
         ls2 = f"vision_model.encoder.layers.{idx}.ls2"
         ip = vit_mlir.insert_point
 
-        def T(shape: list):
-            return vit_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, vit_mlir)
+        T = vit_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, vit_mlir)
 
         def vision_attention(in_op):
             weight_op0 = vit_mlir.create_weight_op(norm1 + ".weight", [1, 1, self.vit_hidden_size])
@@ -285,11 +282,8 @@ class InternVL3Converter(LlmConverter):
                                 weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
 
-        def T(shape: list):
-            return vit_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, vit_mlir)
+        T = vit_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, vit_mlir)
 
         in_op = vit_mlir.create_input_op(L('pixel_value'), 0)
         # embedding

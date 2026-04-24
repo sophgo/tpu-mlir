@@ -117,11 +117,8 @@ class MiniCPMV4Converter(LlmConverter):
         attn_out = f"vpm.encoder.layers.{idx}.self_attn.out_proj"
         ip = vit_mlir.insert_point
 
-        def T(shape: list):
-            return vit_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, vit_mlir)
+        T = vit_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, vit_mlir)
 
         # modeling_glm4v.py:Glm4vVisionAttention
         def vision_attention(in_op):
@@ -296,7 +293,7 @@ class MiniCPMV4Converter(LlmConverter):
                 self.set_linear_weight(layers + f".{i}.mlp.fc1", weights_dict)
                 self.set_linear_weight(layers + f".{i}.mlp.fc2", weights_dict)
             # save weights
-            self.weights.extend(weights_dict.keys())
+            self.weight_keys.extend(weights_dict.keys())
             np.savez(vit_npz, **weights_dict)
 
         # create mlir file
@@ -345,11 +342,8 @@ class MiniCPMV4Converter(LlmConverter):
         #                         weight_file=vit_npz)
         # ip = vit_mlir.insert_point
 
-        def T(shape: list):
-            return vit_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, vit_mlir)
+        T = vit_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, vit_mlir)
 
         def vision_resampler(hidden_state_op, pos_embed_ids_op, mask_op):
             kv_proj = "resampler.kv_proj"

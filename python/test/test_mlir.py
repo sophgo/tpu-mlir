@@ -21,7 +21,7 @@ import mlir.dialects.top as top
 from transform.MLIRImporter import MLIRImporter, Platform
 
 # Constants
-SUPPORTED_CHIPS = ["bm1684x", "bm1688", "bm1690", "bm1690e"]
+SUPPORTED_CHIPS = ["bm1684x", "bm1688", "bm1690", "bm1690e", "bm1684x2"]
 SUPPORTED_MODES = ["f32", "f16", "bf16"]  # Extend as needed
 
 
@@ -232,7 +232,7 @@ class MLIR_IR_TESTER(object):
 
         _, bm1684x_support, bm1688_support = self._test_functions[case]
 
-        if self.chip == "bm1684x" and bm1684x_support:
+        if self.chip in ["bm1684x", "bm1684x2"] and bm1684x_support:
             return True
         if self.chip == "bm1688" and bm1688_support:
             return True

@@ -122,11 +122,8 @@ class Qwen3AsrConverter(LlmConverter):
                                   weight_file=f"../{audio_npz}")
         ip = audio_mlir.insert_point
 
-        def T(shape: list):
-            return audio_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, audio_mlir)
+        T = audio_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, audio_mlir)
 
         in0_op = audio_mlir.create_input_op(L('input_states'), 0)
         weight_op = audio_mlir.create_weight_op(conv2d1 + ".weight",

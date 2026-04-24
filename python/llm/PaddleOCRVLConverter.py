@@ -96,11 +96,8 @@ class PaddleOCRVLConverter(LlmConverter):
         norm2 = f"{self.vit_path}.vision_model.encoder.layers.{id}.layer_norm2"
         ip = vit_mlir.insert_point
 
-        def T(shape: list):
-            return vit_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, vit_mlir)
+        T = vit_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, vit_mlir)
 
         def vision_attention(in_op):
             hidden_shape = [1, self.num_patches, self.embed_dim]
@@ -318,11 +315,8 @@ class PaddleOCRVLConverter(LlmConverter):
                                 weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
 
-        def T(shape: list):
-            return vit_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, vit_mlir)
+        T = vit_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, vit_mlir)
 
         def vision_embedding(pixel_values_op):  #, position_ids_op):
             output_shape = [self.num_patches, self.embed_dim]

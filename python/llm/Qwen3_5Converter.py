@@ -291,11 +291,8 @@ class Qwen3_5Converter(LlmConverter):
             weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
 
-        def T(shape: list):
-            return vit_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, vit_mlir)
+        T = vit_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, vit_mlir)
 
         def vision_block(id: int, in_op, cos_op, sin_op, mask_op):
             norm1 = f"{self.vit_path}.blocks.{id}.norm1"
@@ -563,7 +560,7 @@ class Qwen3_5Converter(LlmConverter):
             self.set_common_weight(norm, weight_dict, self.rmsnorm_type)
         if self.extern_block_weights:
             weight_dict.update(self.extern_block_weights)
-        self.weights.extend(list(weight_dict.keys()))
+        self.weight_keys.extend(list(weight_dict.keys()))
         np.savez(weight_file, **weight_dict)
 
         def gen_mlp(mlir_gen, input_shape, in_op):
@@ -633,11 +630,8 @@ class Qwen3_5Converter(LlmConverter):
                                       lora_rank=self.lora_rank,
                                       weight_file=f"../{weight_file}")
 
-            def T(shape: list):
-                return block_mlir.get_tensor_type(shape)
-
-            def L(name: str):
-                return self.get_loc(name, block_mlir)
+            T = block_mlir.get_tensor_type
+            L = lambda name: self.get_loc(name, block_mlir)
 
             ip = block_mlir.insert_point
 
@@ -790,11 +784,8 @@ class Qwen3_5Converter(LlmConverter):
                 lora_rank=self.lora_rank,
                 weight_file=f"../{weight_file}")
 
-            def T(shape: list):
-                return block_mlir.get_tensor_type(shape)
-
-            def L(name: str):
-                return self.get_loc(name, block_mlir)
+            T = block_mlir.get_tensor_type
+            L = lambda name: self.get_loc(name, block_mlir)
 
             ip = block_mlir.insert_point
 
@@ -958,11 +949,8 @@ class Qwen3_5Converter(LlmConverter):
                 lora_rank=self.lora_rank,
                 weight_file=f"../{weight_file}")
 
-            def T(shape: list):
-                return block_mlir.get_tensor_type(shape)
-
-            def L(name: str):
-                return self.get_loc(name, block_mlir)
+            T = block_mlir.get_tensor_type
+            L = lambda name: self.get_loc(name, block_mlir)
 
             ip = block_mlir.insert_point
 
@@ -1230,11 +1218,8 @@ class Qwen3_5Converter(LlmConverter):
                                       lora_rank=self.lora_rank,
                                       weight_file=f"../{weight_file}")
 
-            def T(shape: list):
-                return block_mlir.get_tensor_type(shape)
-
-            def L(name: str):
-                return self.get_loc(name, block_mlir)
+            T = block_mlir.get_tensor_type
+            L = lambda name: self.get_loc(name, block_mlir)
 
             ip = block_mlir.insert_point
 
@@ -1433,11 +1418,8 @@ class Qwen3_5Converter(LlmConverter):
                                       lora_rank=self.lora_rank,
                                       weight_file=f"../{weight_file}")
 
-            def T(shape: list):
-                return block_mlir.get_tensor_type(shape)
-
-            def L(name: str):
-                return self.get_loc(name, block_mlir)
+            T = block_mlir.get_tensor_type
+            L = lambda name: self.get_loc(name, block_mlir)
 
             ip = block_mlir.insert_point
 
