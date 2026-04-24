@@ -120,7 +120,7 @@ class DeployTool:
         self.state = self.module.module_state
         self.disable_topo_sort = args.disable_topo_sort
         self.disable_layer_group = args.disable_layer_group
-        self.enable_affine = not args.disable_affine
+        self.enable_affine = args.enable_affine
         self.gdma_check = not args.disable_gdma_check
         self.opt = args.opt
         self.merge_weight = args.merge_weight
@@ -601,7 +601,7 @@ if __name__ == '__main__':
     parser.add_argument("--enable_lghash", action='store_true', help="dump hash file if set, load hash file by default whether set or not")
     parser.add_argument("--lghash_dir", default="", type=str, help='directory to dump and load lghash file')
     parser.add_argument("--rvti", action='store_true', help="enable RVTI kernel module")
-    parser.add_argument("--disable_affine", action='store_true', default=False, help="disable affine pass, which is used to optimize global permute, reshape, slice and pad")
+    parser.add_argument("--enable_affine", action='store_true', help="enable affine pass to optimize global permute, reshape, slice and pad")
     # ========== Debug Options ==============
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     parser.add_argument("--log_level", default=0, type=int, choices=[0, 1], help='log level, 0 prints normal bmodel transform info, 1 prints all pattern apply info')
