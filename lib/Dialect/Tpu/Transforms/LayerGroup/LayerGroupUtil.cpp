@@ -2888,7 +2888,7 @@ bool is_eu_align_bm168x(Value opd) {
 
   if (module::isWeight(opd) || module::isTrain()) {
     if (isa<tpu::GroupNormOp, tpu::LayerNormOp, tpu::PixelNormOp,
-            tpu::InstanceNormOp>(op)) {
+            tpu::InstanceNormOp, tpu::RMSNormOp>(op)) {
       if ((opd == op->getOperand(1) || opd == op->getOperand(2))) {
         return false;
       }
