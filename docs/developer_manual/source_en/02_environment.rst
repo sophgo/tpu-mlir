@@ -42,7 +42,7 @@ Make sure the installation package is in the current directory, and then create 
 
 .. code-block:: shell
 
-  $ docker run --privileged --name myname -v $PWD:/workspace -it tpuc_dev:v3.4
+  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4
   # "myname" is just an example, you can use any name you want
   # use --privileged to get root permission, if you don't need root permission, please remove this parameter
 

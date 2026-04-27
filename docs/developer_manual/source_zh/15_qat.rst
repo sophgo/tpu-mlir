@@ -26,7 +26,7 @@ tpu-mlir QAT实现方案及特点
 
 .. code-block:: shell
 
-    docker pull tpuc_dev:v3.4.6-cuda
+    docker pull sophgo/tpuc_dev:v3.4.6-cuda
 
 此镜像预装了torc2.1.0版本和cuda12.6,为tpu-mq支持的最新版本，另外此镜像也支持tpu-mlir工具直接部署网络到处理器.
 
