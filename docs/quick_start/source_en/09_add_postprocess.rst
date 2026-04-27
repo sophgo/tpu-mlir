@@ -2,7 +2,7 @@
 
 Use Tensor Computing Processor for Postprocessing
 ==================================================
-Currently, TPU-MLIR supports integrating the post-processing of YOLO series and SSD network models into the model. The processors currently supporting this function include BM1684X, BM1688, CV186X and BM1690. This chapter will take the conversion of YOLOv5s and YOLOv8s_seg to F16 model as an example to introduce how this function is used.
+Currently, TPU-MLIR supports integrating the post-processing of YOLO series and SSD network models into the model. The processors currently supporting this function include BM1684X, BM1688 and CV186X. This chapter will take the conversion of YOLOv5s and YOLOv8s_seg to F16 model as an example to introduce how this function is used.
 
 This chapter requires the tpu_mlir python package.
 
@@ -150,7 +150,7 @@ The command execution is as follows:
        --output dog_out.jpg
 
 Add segmentation post_processing(YOLOv8s_seg)
-------------------------------
+---------------------------------------------
 
 Prepare working directory
 ^^^^^^^^^^^^^^^^^^^^^^^^^

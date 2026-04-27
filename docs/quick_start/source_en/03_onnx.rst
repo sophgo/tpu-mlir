@@ -187,7 +187,7 @@ The main parameters of ``model_deploy`` are as follows (for a complete introduct
      - Quantization type (e.g., F32/F16/BF16/INT8), the quantization types supported by different processors are shown in the table below.
    * - processor
      - Y
-     - The platform that the model will use. Support bm1690/bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
+     - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
    * - calibration_table
      - N
      - The calibration table path. Required when it is INT8/F8E4M3 quantization
@@ -235,8 +235,6 @@ The main parameters of ``model_deploy`` are as follows (for a complete introduct
      - F32/F16/BF16/INT8/INT4
    * - CV183X/CV182X/CV181X/CV180X
      - BF16/INT8
-   * - BM1690
-     - F32/F16/BF16/INT8/F8E4M3/F8E5M2
 
 After compilation, a file named ``yolov5s_1684x_f16.bmodel`` is generated.
 

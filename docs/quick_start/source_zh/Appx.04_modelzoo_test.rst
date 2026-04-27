@@ -66,7 +66,7 @@ model-zoo的目录结构如下：
    $ sudo yum install make automake gcc gcc-c++ kernel-devel
    $ sudo yum install python-devel
    $ sudo yum install mesa-libGL
-   # 精度测试需要执行以下操作，性能测试可以不执行，推荐使用Anaconda等创建python3.7或以上的虚拟环境
+   # 精度测试需要执行以下操作，性能测试可以不执行，推荐使用Anaconda等创建python3.10或以上的虚拟环境
    $ cd path/to/model-zoo
    $ pip3 install -r requirements.txt
 
@@ -210,7 +210,7 @@ Vid4 (可选)
    $ cd ../model-zoo
    $ python3 -m tpu_perf.build --target BM1684X --mlir vision/classification/resnet18-v2/mlir.config.yaml
 
-其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 、 ``BM1690`` 、 ``CV186X`` 。
+其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 、 ``CV186X`` 。
 
 执行以下命令, 可以编译全部高优先级测试样例:
 
@@ -261,7 +261,7 @@ PCIe 板卡下运行以下命令, 测试生成的高优先级模型的 ``bmodel`
    $ cd model-zoo
    $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt --priority_filter high
 
-其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 、 ``BM1690`` 、 ``CV186X`` 。
+其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 、 ``CV186X`` 。
 
 注意：如果主机上安装了多块加速卡，可以在使用 ``tpu_perf`` 的时候，通过添加 ``--devices id`` 来指定 ``tpu_perf`` 的运行设备：
 
@@ -313,18 +313,18 @@ PCIe 板卡下运行以下命令, 测试生成的高优先级模型的 ``bmodel`
    $ cd model-zoo
    $ python3 -m tpu_perf.precision_benchmark --target BM1684X --mlir -l full_cases.txt --priority_filter high
 
-其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 、 ``BM1690`` 、 ``CV186X`` 。
+其中， ``--target`` 用于指定处理器型号，目前支持 ``BM1684``  、 ``BM1684X`` 、 ``BM1688`` 、 ``CV186X`` 。
 
 注意：
 
 - 如果主机上安装了多块加速卡，可以在使用 ``tpu_perf`` 的时候，通过添加
-``--devices id`` 来指定 ``tpu_perf`` 的运行设备。如：
+  ``--devices id`` 来指定 ``tpu_perf`` 的运行设备。如：
 
 .. code-block:: shell
 
    $ python3 -m tpu_perf.precision_benchmark --target BM1684X --devices 2 --mlir -l full_cases.txt --priority_filter high
 
-- ``BM1688`` 、 ``BM1690`` 、 ``CV186X`` 精度测试需要额外配置以下环境变量：
+- ``BM1688`` 、 ``CV186X`` 精度测试需要额外配置以下环境变量：
 
 .. code-block:: shell
 

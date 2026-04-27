@@ -9,36 +9,86 @@
 # ==============================================================================
 
 import argparse
+import importlib
+import os
 import pymlir
 
 
 def parse_max_pixels(value):
     """
-    If the input is a single number, convert it to an integer.
-    If it contains a comma, parse it as a tuple (or list) of two integers, e.g., "128,124".
+    Parse a "width,height" string and return [width, height].
     """
-    if ',' in value:
-        parts = value.split(',')
-        if len(parts) != 2:
-            raise argparse.ArgumentTypeError(
-                "The input must be two integers separated by a comma, e.g., 128,124")
-        try:
-            width = int(parts[0].strip())
-            height = int(parts[1].strip())
-        except ValueError:
-            raise argparse.ArgumentTypeError("The input values must be integers, e.g., 128,124")
-        return int(width * height), [width, height]
-    else:
-        try:
-            return int(value)
-        except ValueError:
-            raise argparse.ArgumentTypeError(
-                "The input must be an integer or two integers separated by a comma, e.g., 128,124")
+    if ',' not in value:
+        raise argparse.ArgumentTypeError(
+            "The input must be two integers separated by a comma, e.g., 672,896")
+    parts = value.split(',')
+    if len(parts) != 2:
+        raise argparse.ArgumentTypeError(
+            "The input must be two integers separated by a comma, e.g., 672,896")
+    try:
+        width = int(parts[0].strip())
+        height = int(parts[1].strip())
+    except ValueError:
+        raise argparse.ArgumentTypeError("The input values must be integers, e.g., 672,896")
+    return [width, height]
 
 
 def deprecated_option(cond, msg):
     if cond:
         raise RuntimeError(msg)
+
+
+# Dispatch table: model_type(s) -> (module, class, options).
+# Adding a new model = one line here; no if/elif edits.
+#   default_max_shape: per-model fallback when --max_pixels is omitted.
+#   force_dynamic    : flip args.dynamic on (with a notice).
+#   pixel_multiple   : require max_pixels % (m*m) == 0 (early validation).
+LLM_CONVERTERS = [
+    (("qwen3", "qwen2", "llama", "minicpm", "qwen2_moe"), "llm.LlmConverter", "LlmConverter", {}),
+    (("mllama", ), "llm.Llama3_2VConverter", "Llama3_2VConverter", {}),
+    (("chatglm", ), "llm.Chatglm3Converter", "Chatglm3Converter", {}),
+    (("phi3", ), "llm.Phi3Converter", "Phi3Converter", {}),
+    (("qwen2_vl", ), "llm.Qwen2VLConverter", "Qwen2VLConverter", {
+        "pixel_multiple": 28
+    }),
+    (("qwen2_5_vl", ), "llm.Qwen2_5VLConverter", "Qwen2_5VLConverter", {
+        "default_max_shape": (672, 896),
+        "pixel_multiple": 28
+    }),
+    (("qwen3_vl", ), "llm.Qwen3VLConverter", "Qwen3VLConverter", {
+        "pixel_multiple": 32
+    }),
+    (("qwen3_5", ), "llm.Qwen3_5Converter", "Qwen3_5Converter", {
+        "force_dynamic": True,
+        "pixel_multiple": 32
+    }),
+    (("qwen2_5_omni", ), "llm.Qwen2_5OConverter", "Qwen2_5OConverter", {}),
+    (("qwen3_asr", ), "llm.Qwen3AsrConverter", "Qwen3AsrConverter", {}),
+    (("internvl_chat", ), "llm.InternVL3Converter", "InternVL3Converter", {}),
+    (("gemma3", ), "llm.Gemma3Converter", "Gemma3Converter", {}),
+    (("glm4v", ), "llm.GLM4VConverter", "GLM4VConverter", {
+        "pixel_multiple": 28
+    }),
+    (("minicpmv", ), "llm.MiniCPMV4Converter", "MiniCPMV4Converter", {
+        "default_max_shape": (980, 980),
+        "pixel_multiple": 28
+    }),
+    (("janus", ), "llm.JanusConverter", "JanusConverter", {}),
+    (("paddleocr_vl", ), "llm.PaddleOCRVLConverter", "PaddleOCRVLConverter", {}),
+    (("lfm2_vl", ), "llm.LFM2VLConverter", "LFM2VLConverter", {}),
+]
+
+
+def find_converter_spec(model_type):
+    for types, module, cls, opts in LLM_CONVERTERS:
+        if model_type in types:
+            return module, cls, opts
+    raise RuntimeError("Unsupported model type: {}".format(model_type))
+
+
+def auto_out_dir(model_path, chip, quantize):
+    base = os.path.basename(os.path.normpath(model_path)).lower()
+    return "./{}_{}_{}".format(base, chip, quantize)
 
 
 if __name__ == '__main__':
@@ -78,8 +128,10 @@ if __name__ == '__main__':
                         help='max input length for prefill, default 0 means the same as seq_length')
     parser.add_argument('--max_prefill_kv_length', type=int, default=0,
                         help='max prefill kv length, default 0 means the same as seq_length')
-    parser.add_argument('--max_pixels', type=parse_max_pixels, default=0,
-                        help="max pixels for vit, for example: 240,420 or 100800")
+    parser.add_argument('--max_pixels', type=parse_max_pixels, default=None,
+                        help="max pixels for vit as 'width,height', e.g. 672,896. "
+                             "If unset, defaults are picked by model_type: "
+                             "qwen2_5_vl -> 672,896, minicpmv -> 980,980, others -> 768,768.")
     parser.add_argument('--dynamic', action='store_true',
                         help='enable dynamic compiling for llm prefill')
     parser.add_argument('--debug', action='store_true',
@@ -88,10 +140,15 @@ if __name__ == '__main__':
     parser.add_argument('--rvti', action='store_true',
                         help='enable rvti, only for bm1684x2 and bm1690e')
     parser.add_argument("--again", action='store_true',
-                        help='continue to convert the model, default is False')
+                        help='resume an interrupted conversion: skip stages whose '
+                             'outputs already exist in --out_dir.')
+    parser.add_argument('--dry_run', action='store_true',
+                        help='resolve the configuration, print it, and exit without '
+                             'invoking the converter')
     parser.add_argument("-V", "--version", action='version', version='%(prog)s ' + pymlir.__version__)
-    parser.add_argument('-o', '--out_dir', type=str, default='./tmp',
-                        help='output mlir/bmodel path, default `./tmp`')
+    parser.add_argument('-o', '--out_dir', type=str, default=None,
+                        help='output mlir/bmodel path. If unset, defaults to '
+                             './<model_name>_<chip>_<quantize>')
     #========== DEPRECATED Options ==============
     parser.add_argument("--dynamic_vit", action='store_true',
                         help='enable dynamic compiling for vit')
@@ -120,12 +177,11 @@ if __name__ == '__main__':
         raise ValueError(
             "max_prefill_kv_length should not be larger than seq_length, got: {}".format(
                 args.max_prefill_kv_length))
-    if isinstance(args.max_pixels, tuple):
-        max_pixels, max_shape = args.max_pixels
-        args.max_pixels = max_pixels
-        args.max_shape = max_shape
-    else:
-        args.max_shape = None
+
+    # Resolve out_dir before loading the model so --dry_run is fast.
+    if args.out_dir is None:
+        args.out_dir = auto_out_dir(args.model_path, args.chip, args.quantize)
+        print("Info: --out_dir not set, using '{}'".format(args.out_dir))
 
     from transformers import AutoConfig
 
@@ -143,58 +199,44 @@ if __name__ == '__main__':
                            "    pip3 install transformers torchvision -U".format(
                                args.model_path, e)) from e
 
-    if config.model_type in ["qwen3", "qwen2", "llama", "minicpm", "qwen2_moe"]:
-        from llm.LlmConverter import LlmConverter
-        converter = LlmConverter(args, config)
-    elif config.model_type in ["mllama"]:
-        from llm.Llama3_2VConverter import Llama3_2VConverter
-        converter = Llama3_2VConverter(args, config)
-    elif config.model_type in ["chatglm"]:
-        from llm.Chatglm3Converter import Chatglm3Converter
-        converter = Chatglm3Converter(args, config)
-    elif config.model_type in ["phi3"]:
-        from llm.Phi3Converter import Phi3Converter
-        converter = Phi3Converter(args, config)
-    elif config.model_type in ['qwen2_vl']:
-        from llm.Qwen2VLConverter import Qwen2VLConverter
-        converter = Qwen2VLConverter(args, config)
-    elif config.model_type in ['qwen2_5_vl']:
-        from llm.Qwen2_5VLConverter import Qwen2_5VLConverter
-        converter = Qwen2_5VLConverter(args, config)
-    elif config.model_type in ['qwen3_vl']:
-        from llm.Qwen3VLConverter import Qwen3VLConverter
-        converter = Qwen3VLConverter(args, config)
-    elif config.model_type in ['qwen3_5']:
-        from llm.Qwen3_5Converter import Qwen3_5Converter
-        args.dynamic = True  # Qwen3.5 always use dynamic compiling
-        converter = Qwen3_5Converter(args, config)
-    elif config.model_type in ['qwen2_5_omni']:
-        from llm.Qwen2_5OConverter import Qwen2_5OConverter
-        converter = Qwen2_5OConverter(args, config)
-    elif config.model_type in ['qwen3_asr']:
-        from llm.Qwen3AsrConverter import Qwen3AsrConverter
-        converter = Qwen3AsrConverter(args, config)
-    elif config.model_type in ['internvl_chat']:
-        from llm.InternVL3Converter import InternVL3Converter
-        converter = InternVL3Converter(args, config)
-    elif config.model_type in ['gemma3']:
-        from llm.Gemma3Converter import Gemma3Converter
-        converter = Gemma3Converter(args, config)
-    elif config.model_type in ['glm4v']:
-        from llm.GLM4VConverter import GLM4VConverter
-        converter = GLM4VConverter(args, config)
-    elif config.model_type in ['minicpmv']:
-        from llm.MiniCPMV4Converter import MiniCPMV4Converter
-        converter = MiniCPMV4Converter(args, config)
-    elif config.model_type in ['janus']:
-        from llm.JanusConverter import JanusConverter
-        converter = JanusConverter(args, config)
-    elif config.model_type in ['paddleocr_vl']:
-        from llm.PaddleOCRVLConverter import PaddleOCRVLConverter
-        converter = PaddleOCRVLConverter(args, config)
-    elif config.model_type in ['lfm2_vl']:
-        from llm.LFM2VLConverter import LFM2VLConverter
-        converter = LFM2VLConverter(args, config)
+    module_name, class_name, opts = find_converter_spec(config.model_type)
+
+    # Resolve max_pixels: user value > per-model default > generic 768x768.
+    if args.max_pixels is None:
+        default_shape = opts.get("default_max_shape", (768, 768))
+        args.max_shape = [int(default_shape[0]), int(default_shape[1])]
     else:
-        raise RuntimeError("Unsupported model type: {}".format(config.model_type))
+        args.max_shape = list(args.max_pixels)
+    args.max_pixels = args.max_shape[0] * args.max_shape[1]
+
+    pixel_multiple = opts.get("pixel_multiple")
+    if pixel_multiple and args.max_pixels % (pixel_multiple * pixel_multiple) != 0:
+        raise ValueError(
+            "max_pixels (={}, from {}x{}) must be a multiple of {}*{} for model_type '{}'.".format(
+                args.max_pixels, args.max_shape[0], args.max_shape[1], pixel_multiple,
+                pixel_multiple, config.model_type))
+
+    if opts.get("force_dynamic") and not args.dynamic:
+        print("Info: forcing --dynamic for model_type '{}'".format(config.model_type))
+        args.dynamic = True
+
+    if args.dry_run:
+        print("=== llm_convert dry-run ===")
+        for k in ("model_path", "model_type:" + config.model_type, "out_dir", "chip", "quantize",
+                  "seq_length", "max_input_length", "max_prefill_kv_length", "max_shape",
+                  "max_pixels", "num_device", "distribute_strategy", "num_core", "batch", "dynamic",
+                  "embedding_disk", "do_sample", "use_block_with_kv", "share_prompt",
+                  "lora_max_rank", "symmetric"):
+            if ":" in k:
+                key, value = k.split(":", 1)
+                print("  {:<22} = {}".format(key, value))
+            else:
+                print("  {:<22} = {}".format(k, getattr(args, k)))
+        print("  converter             = {}.{}".format(module_name, class_name))
+        import sys
+        sys.exit(0)
+
+    module = importlib.import_module(module_name)
+    converter_cls = getattr(module, class_name)
+    converter = converter_cls(args, config)
     converter.run()

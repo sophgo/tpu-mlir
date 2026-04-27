@@ -41,6 +41,8 @@ TPU-MLIR在Docker环境开发, 配置好Docker就可以编译和运行了。
    $ newgrp docker
 
 
+.. _docker container_setup:
+
 确保安装包在当前目录, 然后在当前目录创建容器如下:
 
 

@@ -1,3 +1,5 @@
+.. _appendix02_tpulang:
+
 Appendix 02: Basic Elements of TpuLang
 =============================================
 
@@ -122,7 +124,7 @@ The Scalar constructor has two parameters:
 
 * value: Variable type, i.e., int/float type, with no default value, and must be specified.
 * dtype: The data type of the Scalar. If the default value None is used, it is equivalent to "float32."
- Otherwise, it can take values such as "float32," "float16," "int32," "uint32," "int16," "uint16," "int8," and "uint8."
+  Otherwise, it can take values such as "float32," "float16," "int32," "uint32," "int16," "uint16," "int8," and "uint8."
 
 
 Example of usage:
@@ -159,6 +161,7 @@ The interface for the initialization function is as follows, where you choose th
 * The device parameter is of type string and can take values from the range "BM1684X"\|"BM1688"\|"CV183X".
 
 .. _compile:
+
 compile
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -217,7 +220,8 @@ Explanation of parameters
 * gdma_check: A boolean. Whether to enable gdma check.
 * layer_group_config: string type, which indicates the layer group configuration file path. The default value is "".
 
-.. _compile:
+.. _compile_f32:
+
 compile_f32
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -5139,13 +5143,13 @@ Transfer input tensor from yuv to rgb. Require tensor shape=[n,h*3/2,w], n repre
 
 Explanation of parameters
 """""""""""""""""""""""""""""""""
-* inputs: Tensor type, representing the input yuv tensor。Its dims must be 3, 1st dim represents `batch`, 2nd dim represents `pixels height`, 3rd dim represents `pixels width`.
-* src_format: Int type, representing the input format. `FORMAT_MAPPING_YUV420P_YU12`=0, `FORMAT_MAPPING_YUV420P_YV12`=1, `FORMAT_MAPPING_NV12`=2, `FORMAT_MAPPING_NV21`=3.
-* dst_format: Int type, representing the output format. `FORMAT_MAPPING_RGB`=4, `FORMAT_MAPPING_BGR`=5.
-* ImageOutFormatAttr: string type, representing the output dtype, currently only support `UINT8`.
-* formula_mode: string type, representing the formula to transfer from yuv to rgb, currently support `_601_limited`, `_601_full`.
-* round_mode: string type, currently support `HalfAwayFromZero`, `HalfToEven`.
-* out_name: string type, representing the name of output tensor, default= `None`.
+* inputs: Tensor type, representing the input yuv tensor。Its dims must be 3, 1st dim represents ``batch``, 2nd dim represents ``pixels height``, 3rd dim represents ``pixels width``.
+* src_format: Int type, representing the input format. ``FORMAT_MAPPING_YUV420P_YU12=0``, ``FORMAT_MAPPING_YUV420P_YV12=1``, ``FORMAT_MAPPING_NV12=2``, ``FORMAT_MAPPING_NV21=3``.
+* dst_format: Int type, representing the output format. ``FORMAT_MAPPING_RGB=4``, ``FORMAT_MAPPING_BGR=5``.
+* ImageOutFormatAttr: string type, representing the output dtype, currently only support ``UINT8``.
+* formula_mode: string type, representing the formula to transfer from yuv to rgb, currently support ``_601_limited``, ``_601_full``.
+* round_mode: string type, currently support ``HalfAwayFromZero``, ``HalfToEven``.
+* out_name: string type, representing the name of output tensor, default= ``None``.
 
 Return value
 """""""""""""""""""""""""""""""""
@@ -5190,12 +5194,12 @@ Parameters
 * PW: Int type, representing the width of the output.
 * sampling_ratio: Int type, representing the sample ratio for each level of the feature maps.
 * list_spatial_scale: List[int] or int, representing the spatial scale corresponding to each feature map level.
-        Please note that spatial scale follows mmdetection style, where one int value is initially given, and but its float reciprocal is adapted for roialign.
+  Please note that spatial scale follows mmdetection style, where one int value is initially given, and but its float reciprocal is adapted for roialign.
 * mode: string type, representing the implementation forms, now supporting two modes: DynNormal, or DynFuse.
-        Please note that in DynFuse mode, coordinates of rois can satisfy either mmdetection style, which is 5-length of [batch_id, x0, y0 x1, y1],
-                                          or customized style, which is 7-length of [a, b, x0, y0, x1, y1, c], please customize the position of batch_id.
-                         in DynNormal mode, a customized [a, b, x0, y0 x1, y1, c] coordinates style is adapted in case any customers desire to apply their models.
-* out_name: string type, representing the name of output tensor, default= `None`.
+  Please note that in DynFuse mode, coordinates of rois can satisfy either mmdetection style, which is 5-length of [batch_id, x0, y0 x1, y1],
+  or customized style, which is 7-length of [a, b, x0, y0, x1, y1, c], please customize the position of batch_id.
+  In DynNormal mode, a customized [a, b, x0, y0 x1, y1, c] coordinates style is adapted in case any customers desire to apply their models.
+* out_name: string type, representing the name of output tensor, default= ``None``.
 
 Returns
 """""""""""""""""""""""""""""""""
@@ -6013,7 +6017,8 @@ merger_matmul
 :::::::::::::::::
 
 The interface definition
-"""""""""""
+""""""""""""""""""""""""
+
     .. code-block:: python
 
       def merger_matmul(

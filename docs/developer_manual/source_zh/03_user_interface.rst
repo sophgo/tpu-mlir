@@ -466,7 +466,7 @@ model_deploy.py
      - 指定mlir文件
    * - processor
      - 是
-     - 指定模型将要用到的平台, 支持BM1684，BM1684X，BM1688，BM1690，CV186X，CV183X，CV182X，CV181X，CV180X
+     - 指定模型将要用到的平台, 支持BM1684，BM1684X，BM1688，CV186X，CV183X，CV182X，CV181X，CV180X
    * - quantize
      - 是
      - 指定默认量化类型, 支持F32/F16/BF16/INT8等, 不同处理器支持的量化类型如下表所示。
@@ -638,14 +638,13 @@ model_deploy.py
      - F32, F16, BF16, INT8, W4F16, W8F16, W4BF16, W8BF16
    * - BM1688
      - F32, F16, BF16, INT8, INT4, W4INT8, W4F16, W8F16, W4BF16, W8BF16
-   * - BM1690
-     - F32, F16, BF16, INT8, F8E4M3, F8E5M2, W4F16, W8F16, W4BF16, W8BF16
    * - CV186X
      - F32, F16, BF16, INT8, INT4
    * - CV183X, CV182X, CV181X, CV180X
      - BF16, INT8
    * - CV184X
      - BF16, INT8, W4INT8
+
 其中， ``W4A16`` 与 ``W8A16`` 的 ``Weight-only`` 量化模式仅作用于 MatMul 运算，其余算子根据实际情况仍会进行 ``F16`` 或 ``BF16`` 量化。 \
 ``W4INT8`` 量化模式在常规 ``INT8`` 量化的基础上，仅会将 Conv 和 MatMul 两类算子的权重进一步量化为 4 bits, 其余算子仍会按照 ``INT8`` 模式进行量化。
 

@@ -338,13 +338,18 @@ Prepare working directory
 Preparation and Usage Instructions for Single-Input Model Calibration Dataset (Taking mobilenet-v2 as an Example) :
 
 1. Establish a directory structure
-  Create a ``mobilenet-v2`` directory, and put both model files and image files into the ``mobilenet-v2`` directory. You can get mobilenet_v2.pt from tpu-mlir-resource.tar (provided in SDK package).
+
+   Create a ``mobilenet-v2`` directory, and put both model files and image files into the ``mobilenet-v2`` directory. You can get mobilenet_v2.pt from tpu-mlir-resource.tar (provided in SDK package).
+
 2. Prepare the calibration dataset
-  --dataset uses the ILSVRC2012 dataset, which contains 1000 types of images, with 1000 images in each type. Here, only 100 images from these are used for calibration
+
+   --dataset uses the ILSVRC2012 dataset, which contains 1000 types of images, with 1000 images in each type. Here, only 100 images from these are used for calibration
+
 3. Dataset format
-  Users can create a dataset directory by themselves and directly place image files (such as JPEG, PNG, etc.) into this directory.
-  run_calibration.py will automatically read the image and, based on the model input parameters such as shape, mean, and scale, automatically complete the preprocessing and format conversion into a numpy array as the model input.
-  However, multi-input models must use structured data (such as npz), because only these formats can clearly distinguish the name, shape, and dtype of each input.
+
+   Users can create a dataset directory by themselves and directly place image files (such as JPEG, PNG, etc.) into this directory.
+   run_calibration.py will automatically read the image and, based on the model input parameters such as shape, mean, and scale, automatically complete the preprocessing and format conversion into a numpy array as the model input.
+   However, multi-input models must use structured data (such as npz), because only these formats can clearly distinguish the name, shape, and dtype of each input.
 
 The operation is as follows:
 
@@ -361,12 +366,17 @@ Single-Input Model:
 Preparation and Usage Instructions for multi-input Model Calibration Dataset (taking bert_base_squad_uncased-2.11.0 as an example) :
 
 1. Establish a directory structure
-  Create the directory 'bert_base_squad_uncased-2.11.0' and put both the model file and the image file into the directory 'bert_base_squad_uncased-2.11.0'.
+
+   Create the directory 'bert_base_squad_uncased-2.11.0' and put both the model file and the image file into the directory 'bert_base_squad_uncased-2.11.0'.
+
 2. Prepare the calibration dataset
-  The --dataset uses the SQuAD dataset, which contains multiple samples, and each sample contains multiple input data.
+
+   The --dataset uses the SQuAD dataset, which contains multiple samples, and each sample contains multiple input data.
+
 3. Dataset format
-  Users can create a dataset directory by themselves. Under the directory, npz files must be placed. Each npz file represents a sample and contains all the input keys (the name, shape, and dtype must be consistent with the model input).
-  Pictures cannot be placed directly.
+
+   Users can create a dataset directory by themselves. Under the directory, npz files must be placed. Each npz file represents a sample and contains all the input keys (the name, shape, and dtype must be consistent with the model input).
+   Pictures cannot be placed directly.
 
 multi-input Model:
 
@@ -497,6 +507,8 @@ The classification information is displayed on the output image. The right label
 
    Execution Performance of classify_mobilenet_v2 in INT8
 
+.. _mix precision:
+
 To Mix Precision Model
 -----------------------
 
@@ -526,7 +538,7 @@ The parameters related to ``search_qtable`` in ``run_calibration`` are explained
      - The sample list (cannot be used together with "dataset")
    * - processor
      - Y
-     - The platform that the model will use. Support bm1690, bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x
+     - The platform that the model will use. Support bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x
    * - fp_type
      - N
      - Specifies the type of float used for mixing precision. Support auto,F16,F32,BF16. Default is auto, indicating that it is automatically selected by program
@@ -803,7 +815,7 @@ Parameter Description
      - mlir file
    * - processor
      - Y
-     - The platform that the model will use. Support bm1690, bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x.
+     - The platform that the model will use. Support bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x.
    * - fpfwd_inputs
      - N
      - Specify layers (including this layer) to skip quantization before them. Multiple inputs are separated by commas.

@@ -3,7 +3,7 @@
 Appendix.05：TPU Profile Tool Guidance
 ========================================
 
-This chapter mainly introduces how to use Profile data and Tensor Computing Processor Profile tools to visualize the complete running process of the model to facilitate model performance analysis. Currently, Profile tools support `BM1684`, `BM1684X`, `BM1688`, `CV186X` and `BM1690`.
+This chapter mainly introduces how to use Profile data and Tensor Computing Processor Profile tools to visualize the complete running process of the model to facilitate model performance analysis. Currently, Profile tools support `BM1684`, `BM1684X`, `BM1688` and `CV186X`.
 
 Compile Bmodel
 ------------------
@@ -79,7 +79,7 @@ Copy the ``bmprofile_data-1`` directory back to the tpu-mlir project environment
     ls bmprofile_out
     # echarts.min.js  profile_data.js  result.html
 
-For the `BM1688` or `CV186X` models, if you want to integrate layer information in the profile, you need to copy `tensor_location.json` and `final.mlir` in the `yolov5s_1684x_f16` directory (the same name as the bmodel) to the `bmprofile_data-1` directory. `BM1690` does not currently support displaying model layer information.
+For the `BM1688` or `CV186X` models, if you want to integrate layer information in the profile, you need to copy `tensor_location.json` and `final.mlir` in the `yolov5s_1684x_f16` directory (the same name as the bmodel) to the `bmprofile_data-1` directory.
 
 Open ``bmprofile_out/result.html`` with a browser to see the profile chart. In addition, there are other uses of this tool, which can be viewed through the command as follows:
 

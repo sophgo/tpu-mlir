@@ -2,14 +2,21 @@
 
 # TPU-MLIR
 
-For Chinese version: [README](https://github.com/sophgo/tpu-mlir/blob/master/README_cn.md).
+[简体中文](./README_cn.md)
 
-TPU-MLIR is an open-source machine-learning compiler based on MLIR for TPU. This project provides a complete toolchain, which can convert pre-trained neural networks from different frameworks into binary files `bmodel` that can be efficiently operated on TPUs.
+**TPU-MLIR** is an open-source MLIR-based machine-learning compiler for TPUs. It converts pre-trained neural networks from various frameworks into `bmodel` files that run efficiently on the TPU.
 
-Currently, supported Deep Learning frameworks are PyTorch, ONNX, TFLite and Caffe. Models from other frameworks need to be converted to ONNX models.
+- **Frameworks**: PyTorch, ONNX, TFLite, Caffe (other frameworks should be exported to ONNX first).
+- **LLMs from [HuggingFace](https://huggingface.co)**: Qwen3.5, MiniCPM-V, and more.
 
-It also supports compiling [HuggingFace](https://huggingface.co) LLM models. Currently, the qwen2 and llama series are supported, with more types of LLM models to be added in the future.
 
+## Table of Contents
+
+- [How to Build](#how-to-build)
+- [Usage (Example: Qwen3.5)](#usage-example-qwen35)
+- [Usage (Example: yolov5s)](#usage-example-yolov5s)
+- [Auxiliary Tools](#auxiliary-tools)
+- [Resources](#resources)
 
 # How to Build
 
@@ -56,26 +63,29 @@ Run the following command in the project directory:
 
 ``` shell
 cd tpu-mlir
+# Install Python dependencies first (recommended)
+pip install -r requirements.txt
 source ./envsetup.sh
 ./build.sh
 ```
 
-# Usage (Example: Qwen2.5-VL)
+# Usage (Example: Qwen3.5)
 
-Using `Qwen2.5-VL` as an example, here’s how to compile a [HuggingFace](https://huggingface.co) LLM model.
+Using `Qwen3.5` as an example, here’s how to compile a [HuggingFace](https://huggingface.co) LLM model.
 
-1) Download the `Qwen2.5-VL` model:
+1) Download the `Qwen3.5` model (a pre-quantized AWQ/GPTQ/AutoRound build is recommended):
 
 ```shell
 git lfs install
-git clone git@hf.co:Qwen/Qwen2.5-VL-3B-Instruct-AWQ
+git clone https://huggingface.co/Intel/Qwen3.5-2B-int4-AutoRound
 ```
 
-2) In a Docker environment, compile `Qwen2.5-VL`:
+2) In a Docker environment, compile `Qwen3.5`:
 
 ```shell
 # If you encounter transformers/torch version issues, run: pip3 install transformers torchvision -U
-llm_convert.py -m /workspace/Qwen2.5-VL-3B-Instruct-AWQ -s 2048 -c bm1684x --max_pixels 672,896 -o qwen2.5vl_3b
+# --max_input_length sets the max prefill length; if omitted it defaults to -s.
+llm_convert.py -m /workspace/Qwen3.5-2B-int4-AutoRound --max_input_length 1024 -s 2048 -c bm1684x --max_pixels 768,768 -o qwen3.5_2b
 ```
 
 The main arguments supported by `llm_convert.py` are:
@@ -87,7 +97,7 @@ The main arguments supported by `llm_convert.py` are:
 | quantize      | q     | Yes       | Quantization type (e.g., `auto`/`w4bf16`/`w4f16`/`bf16`/`f16`,etc.)                  |
 | q_group_size  | g     | No        | Group size for quantization; default is 64                                           |
 | chip          | c     | Yes       | Target platform (e.g., `bm1684x`/`bm1688`/`cv186ah`)                                  |
-| max_pixels    | —     | No        | Multi-modal parameter; maximum resolution, e.g., `672,896` or single integer `602112` |
+| max_pixels    | —     | No        | Multi-modal parameter; max resolution as `width,height`, e.g., `768,768`. Default is picked by model_type (qwen2_5_vl: 672,896; minicpmv: 980,980; otherwise 768,768) |
 | out_dir       | o     | Yes       | Output directory                                                                      |
 
 After the conversion completes, the corresponding bmodel file will be generated in the specified output directory.
@@ -95,7 +105,7 @@ The example here is quantized already, so no need to set `--quantize`
 
 3) Run the bmodel in a PCIe or SoC environment:
 
-- Copy the [python_demo](https://github.com/sophgo/LLM-TPU/tree/main/models/Qwen2_5_VL/python_demo) folder into your PCIe/SoC environment, then build:
+- Copy the [python_demo](https://github.com/sophgo/LLM-TPU/tree/main/models/Qwen3_5/python_demo) folder into your PCIe/SoC environment, then build:
 
   ```shell
   mkdir build && cd build
@@ -114,7 +124,7 @@ The example here is quantized already, so no need to set `--quantize`
 
 The execution result looks like this:
 
-![](./docs/assets/qwen2.5vl_en.png)
+![](./docs/assets/qwen3.5.png)
 
 # Usage (Example: yolov5s)
 
@@ -213,7 +223,7 @@ Main arguments of `model_deploy.py` (for complete information please check the t
 | processor           | Yes    | The platform that the model will use.      |
 | calibration_table   | No    | The quantization table path. Required when it is INT8 quantization                 |
 | tolerance           | No    | Tolerance for the minimum similarity between MLIR quantized and MLIR fp32 inference results |
-| correctnetss        | No    | Tolerance for the minimum similarity between simulator and MLIR quantized inference results. 0.99,0.90 by default |
+| correctness         | No    | Tolerance for the minimum similarity between simulator and MLIR quantized inference results. 0.99,0.90 by default |
 | excepts             | No    | Names of network layers that need to be excluded from validation. Separated by comma |
 | debug               | No    | if open debug, immediate model file will keep; or will remove after conversion done |
 | model               | Yes    | Name of output model file (including path)                                  |
@@ -344,7 +354,7 @@ Here are some resources to help you better understand the project:
 
 | Index | Topic | Video Links |
 | :---: | --- | --- |
-| 01 | What is Depp Learning Compiler? | [Depp Learning Compiler Intro](https://www.bilibili.com/video/BV1yP4y1d7gz/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|
+| 01 | What is a Deep Learning Compiler? | [Deep Learning Compiler Intro](https://www.bilibili.com/video/BV1yP4y1d7gz/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|
 | 02 | MLIR Intro | [Basic Syntax (1)](https://www.bilibili.com/video/BV1CP411n7fj/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Basic Syntax (2)](https://www.bilibili.com/video/BV1Gt4y1F7mt/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Basic Syntax (3)](https://www.bilibili.com/video/BV1UN4y1w72r/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Dialect Conversion](https://www.bilibili.com/video/BV1UG411c7nm/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Pattern Rewriting](https://www.bilibili.com/video/BV1R44y1d7xv/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|
 | 03 | TPU-MLIR Intro | [Overview](https://www.bilibili.com/video/BV19d4y1B7eR/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Front-end Conversion](https://www.bilibili.com/video/BV1yv4y1S7WT/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Lowering](https://www.bilibili.com/video/BV1gg411z7mC/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
 | 04 | Quantization | [Overview](https://www.bilibili.com/video/BV1d8411j7t4/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Formula Derivation](https://www.bilibili.com/video/BV1SW4y1H7Uu/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Calibration](https://www.bilibili.com/video/BV1qK411R75k/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [QAT](https://www.bilibili.com/video/BV12g411J7WQ/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|

@@ -11,7 +11,7 @@ Therefore, this chapter will analyze the structure of `final.mlir` and explain h
 * Plugin: MLIR.
 
 `final.mlir` structure introduction
--------------------
+-----------------------------------
 The components of a single operator in `final.mlir` are as follows:
 
 .. figure:: ../assets/op_sample.png

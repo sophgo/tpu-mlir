@@ -455,7 +455,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - Mlir file
    * - processor
      - Y
-     - The platform that the model will use. Support BM1684, BM1684X, BM1688, BM1690, CV186X, CV183X, CV182X, CV181X, CV180X
+     - The platform that the model will use. Support BM1684, BM1684X, BM1688, CV186X, CV183X, CV182X, CV181X, CV180X
    * - quantize
      - Y
      - Quantization type (e.g., F32/F16/BF16/INT8), the quantization types supported by different processors are shown in the table below.
@@ -627,8 +627,6 @@ The following table shows the correspondence between different processors and th
      - F32, F16, BF16, INT8, W4F16, W8F16, W4BF16, W8BF16
    * - BM1688
      - F32, F16, BF16, INT8, INT4, W4INT8, W4F16, W8F16, W4BF16, W8BF16
-   * - BM1690
-     - F32, F16, BF16, INT8, F8E4M3, F8E5M2, W4F16, W8F16, W4BF16, W8BF16
    * - CV186X
      - F32, F16, BF16, INT8, INT4
    * - CV183X, CV182X, CV181X, CV180X

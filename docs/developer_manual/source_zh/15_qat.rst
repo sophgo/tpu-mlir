@@ -75,10 +75,10 @@ tpu-mlir QAT实现方案及特点
     #使用torchvision model zoo里的预训练resnet18模型
     model = models.__dict__['resnet18'](pretrained=True)
 
-    #1.trace模型，使用字典来指定处理器类型为BM1690，量化模式为weight_activation，在该量化模式下，权重和激活都会被量化。指定量化策略为CNN类型
+    #1.trace模型，使用字典来指定处理器类型为BM1684X，量化模式为weight_activation，在该量化模式下，权重和激活都会被量化。指定量化策略为CNN类型
     extra_prepare_dict = {
     'quant_dict': {
-                    'chip': 'BM1690',
+                    'chip': 'BM1684X',
                     'quantmode': 'weight_activation',
                     'strategy': 'CNN',
                     },
@@ -86,9 +86,9 @@ tpu-mlir QAT实现方案及特点
     model_quantized = prepare_by_platform(model, prepare_custom_config_dict=extra_prepare_dict)
 
 
-当上面接口选择处理器为BM1690时，此时默认的量化配置如下图所示：
+当上面接口选择处理器为BM1684X时，此时默认的量化配置如下图所示：
 
-.. figure:: ../assets/bm1690_default_para.png
+.. figure:: ../assets/bm1684x_default_para.png
    :align: center
 
 上图量化配置中各项从上到下依次意义为：
@@ -182,7 +182,7 @@ tpu-mlir QAT实现方案及特点
         --evaluate \
         --train_data=/home/data/imagenet \
         --val_data=/home/data/imagenet \
-        --chip=BM1690 \
+        --chip=BM1684X \
         --quantmode=weight_activation \
         --deploy_batch_size=10 \
         --pre_eval_and_export \
