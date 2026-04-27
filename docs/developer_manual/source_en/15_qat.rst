@@ -28,7 +28,7 @@ tpu-mq is recommended to be used in docker container, the docker image can be pu
 
 .. code-block:: shell
 
-    docker pull tpuc_dev:v3.4.6-cuda
+    docker pull sophgo/tpuc_dev:v3.4.6-cuda
 
 The docker image includes pytorch 2.1.0 and cuda 12.6, and integrated the environment for tpu-mlir.
 

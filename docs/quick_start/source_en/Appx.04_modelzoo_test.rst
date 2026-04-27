@@ -175,14 +175,14 @@ It is recommended to use the toolchain software in a docker environment, see :re
 
 .. code-block:: shell
 
-   $ docker pull tpuc_dev:v3.4
-   $ docker run --name myname -v $PWD:/workspace -it tpuc_dev:v3.4
+   $ docker pull sophgo/tpuc_dev:v3.4
+   $ docker run --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4
 
 If you want to keep the container after it exits, simply remove the ``--rm`` parameter:
 
 .. code-block:: shell
 
-   $ docker run --name myname -v $PWD:/workspace -it tpuc_dev:v3.4 --rm
+   $ docker run --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4 --rm
 
 After running the command, it will be in a Docker container. You can the latest ``tpu-mlir`` wheel installation package from the SDK package, such as ``tpu_mlir-*-py3-none-any.whl``. Install tpu_mlir in the Docker container:
 

@@ -38,7 +38,7 @@ If you download the image file, make sure the image file is in the current direc
 .. code-block:: shell
 
   # use --privileged to get root permission, if you don't need root permission, please remove this parameter
-  $ docker run --privileged --name myname -v $PWD:/workspace -it tpuc_dev:v3.4
+  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4
 
 where ``myname`` is the name of the container, which can be customized; ``$PWD`` is the current directory, synchronized with the container's ``/workspace`` directory.
 

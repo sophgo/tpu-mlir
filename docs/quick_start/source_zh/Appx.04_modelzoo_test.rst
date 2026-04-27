@@ -177,14 +177,15 @@ Vid4 (可选)
 
 .. code-block:: shell
 
-   $ docker pull tpuc_dev:v3.4
-   $ docker run --name myname -v $PWD:/workspace -it tpuc_dev:v3.4
+   $ docker pull sophgo/tpuc_dev:v3.4
+   $ docker run --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4
 
 如果要让容器在退出后删除，可以添加 ``--rm`` 参数：
 
 .. code-block:: shell
 
-   $ docker run --name myname -v $PWD:/workspace -it tpuc_dev:v3.4 --r
+   $ docker run --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4 --r
+
 
 运行命令后会处于Docker的容器中，从提供的SDK包中获取最新的 ``tpu-mlir`` wheel安装包，例如 ``tpu_mlir-*-py3-none-any.whl``。在Docker容器中安装TPU-MLIR:
 
