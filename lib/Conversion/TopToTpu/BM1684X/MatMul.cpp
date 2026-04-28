@@ -61,7 +61,9 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
       LoweringF16(rewriter, op);
     return;
   }
-
+  if (p.do_relu) {
+    use_perchannel = false;
+  }
   // note: trick for imgToCol pattern
   const auto defByWeightOp = [&](Operation *Op) {
     using TYPE = std::function<std::pair<bool, Operation *>(Operation * op)>;
