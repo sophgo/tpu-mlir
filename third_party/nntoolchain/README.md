@@ -27,6 +27,7 @@ rebuild_firmware
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.a
 
 #bm1688 sha256: 4c58792e468249faae1c621ea02b149b1ee1b76f
+# fix clip prob: + 560960aeffbe8ba8f9b234ed3c614e8bb25daff0
 cd TPU1686
 source  scripts/envsetup.sh bm1686
 debug: rebuild_backend_lib_cmodel
