@@ -201,7 +201,7 @@ Vid4 (可选)
 
 模型编译过程需要在Docker内进行，Docker内需要按照上文要求安装 ``tpu_mlir``。
 
-``model-zoo`` 的相关 ``confg.yaml`` 配置了SDK的测试内容。以 ``resnet18-v2`` 为例，其配置文件为 ``model-zoo/vision/classification/resnet18-v2/mlir.config.yaml`` 。
+``model-zoo`` 的相关 ``config.yaml`` 配置了SDK的测试内容。以 ``resnet18-v2`` 为例，其配置文件为 ``model-zoo/vision/classification/resnet18-v2/mlir.config.yaml`` 。
 
 执行以下命令，可以编译 ``resnet18-v2`` 模型：
 

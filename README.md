@@ -1,210 +1,243 @@
-![](./docs/assets/sophgo_cover.png)
+<p align="center">
+  <img src="./docs/assets/sophgo_cover.png" alt="TPU-MLIR" />
+</p>
 
-# TPU-MLIR
+<h1 align="center">TPU-MLIR</h1>
 
-[简体中文](./README_cn.md)
+<p align="center">
+  <em>An open-source, MLIR-based machine-learning compiler for TPUs.</em>
+</p>
 
-**TPU-MLIR** is an open-source MLIR-based machine-learning compiler for TPUs. It converts pre-trained neural networks from various frameworks into `bmodel` files that run efficiently on the TPU.
+<p align="center">
+  <a href="https://github.com/sophgo/tpu-mlir/blob/master/LICENSE"><img src="https://img.shields.io/github/license/sophgo/tpu-mlir?color=blue" alt="License"></a>
+  <a href="https://pypi.org/project/tpu_mlir/"><img src="https://img.shields.io/pypi/v/tpu_mlir.svg" alt="PyPI"></a>
+  <a href="https://pypi.org/project/tpu_mlir/"><img src="https://img.shields.io/pypi/pyversions/tpu_mlir.svg" alt="Python"></a>
+  <a href="https://github.com/sophgo/tpu-mlir/stargazers"><img src="https://img.shields.io/github/stars/sophgo/tpu-mlir?style=social" alt="Stars"></a>
+  <a href="https://github.com/sophgo/tpu-mlir/issues"><img src="https://img.shields.io/github/issues/sophgo/tpu-mlir.svg" alt="Issues"></a>
+  <a href="https://arxiv.org/abs/2210.15016"><img src="https://img.shields.io/badge/arXiv-2210.15016-b31b1b.svg" alt="arXiv"></a>
+</p>
 
-- **Frameworks**: PyTorch, ONNX, TFLite, Caffe (other frameworks should be exported to ONNX first).
-- **LLMs from [HuggingFace](https://huggingface.co)**: Qwen3.5, MiniCPM-V, and more.
+<p align="center">
+  <a href="./README.md">English</a> · <a href="./README_cn.md">简体中文</a> ·
+  <a href="https://tpumlir.org/quick_start_en/index.html">Quick Start</a> ·
+  <a href="https://tpumlir.org/developer_manual_en/index.html">Docs</a> ·
+  <a href="https://github.com/sophgo/tpu-mlir/issues">Issues</a>
+</p>
+
+---
+
+## ✨ Overview
+
+**TPU-MLIR** converts pre-trained neural networks from mainstream frameworks into `bmodel` files that run efficiently on TPUs. Built on top of [MLIR](https://mlir.llvm.org/), it provides a unified IR, a clean lowering pipeline, and a rich set of tools for quantization, calibration, and deployment.
+
+```
+┌──────────────────┐    model_transform.py    ┌──────────┐    model_deploy.py    ┌──────────┐
+│ ONNX / PyTorch / │ ───────────────────────► │   MLIR   │ ────────────────────► │  bmodel  │
+│  TFLite / Caffe  │     (front-end import)   │  (TOP →  │  (lowering, quant,    │  on TPU  │
+│   HuggingFace    │                          │   TPU)   │   layer-group, …)     │          │
+└──────────────────┘                          └──────────┘                       └──────────┘
+```
+
+## 🚀 Highlights
+
+- **Multi-framework front-ends** — PyTorch, ONNX, TFLite, Caffe (other frameworks via ONNX).
+- **LLM-ready** — one-shot conversion of HuggingFace LLMs (Qwen, MiniCPM-V, …) via `llm_convert.py`.
+- **Full quantization toolchain** — F32 / BF16 / F16 / INT8 (symmetric & asymmetric), AWQ / GPTQ / AutoRound passthrough, calibration, QAT.
+- **MLIR-based pipeline** — clean dialects (Top / Tpu), pattern rewrites, layer-group memory planning.
+- **Production tooling** — `model_runner`, `model_tool`, accuracy validation, simulator, visualizer.
+- **Bilingual docs & active community** — English / 中文 manuals, papers, and video tutorials.
 
 
-## Table of Contents
+## 📚 Table of Contents
 
-- [How to Build](#how-to-build)
-- [Usage (Example: Qwen3.5)](#usage-example-qwen35)
-- [Usage (Example: yolov5s)](#usage-example-yolov5s)
-- [Auxiliary Tools](#auxiliary-tools)
-- [Resources](#resources)
+- [Installation](#-installation)
+- [Quick Start (LLM — Qwen)](#-quick-start--llm--qwen)
+- [Quick Start (Vision — YOLOv5)](#-quick-start--vision--yolov5)
+- [Auxiliary Tools](#-auxiliary-tools)
+- [Resources](#-resources)
+- [Citation](#-citation)
+- [Contributing](#-contributing)
+- [License](#-license)
 
-# How to Build
+---
 
-First, you need to install the specified Docker, and then you can choose either to use the prebuilt package or to compile from source.
+## 🔧 Installation
 
-## Install Docker
+TPU-MLIR runs inside a prebuilt Docker image. After the container is running you can either install the Python wheel or build from source.
 
-* Download the required image from [dockerhub](https://hub.docker.com/r/sophgo/tpuc_dev).
+### 1. Pull the Docker image
 
-``` shell
+```shell
 docker pull sophgo/tpuc_dev:latest
 ```
 
-* If the pulling failed, you can download it in the following way:
+If the pull fails, download the tarball and load it manually:
 
-``` shell
+```shell
 wget https://sophon-assets.sophon.cn/sophon-prod-s3/drive/25/04/15/16/tpuc_dev_v3.4.tar.gz
 docker load -i tpuc_dev_v3.4.tar.gz
 ```
 
-* Create the container:
+Create and enter the container:
 
-``` shell
-# myname1234 is just an example, you can set your own name
-docker run --privileged --name myname1234 -v $PWD:/workspace -it sophgo/tpuc_dev:latest
+```shell
+docker run --privileged --name tpu-mlir -v $PWD:/workspace -it sophgo/tpuc_dev:latest
 ```
 
-## Using prebuilt package (Method One)
+### 2a. Install the prebuilt wheel (recommended)
 
-We provide TPU-MLIR python package for quick installation by skipping the building step.
-Environment prerequisite: python >= 3.10 and ubuntu:22.04 (It is recommended to use our docker image directly).
+> Requires Python ≥ 3.10 on Ubuntu 22.04 (already satisfied inside the Docker image).
 
-``` shell
+```shell
 pip install tpu_mlir
 ```
 
-## Compile source (Method Two)
+### 2b. Build from source
 
-After the container is created, the directory of the code in docker should be `/workspace/tpu-mlir`.
-
-* Building
-
-Run the following command in the project directory:
-
-``` shell
-cd tpu-mlir
-# Install Python dependencies first (recommended)
+```shell
+cd /workspace/tpu-mlir
 pip install -r requirements.txt
 source ./envsetup.sh
 ./build.sh
 ```
 
-# Usage (Example: Qwen3.5)
+---
 
-Using `Qwen3.5` as an example, here’s how to compile a [HuggingFace](https://huggingface.co) LLM model.
+## 🤖 Quick Start — LLM (Qwen)
 
-1) Download the `Qwen3.5` model (a pre-quantized AWQ/GPTQ/AutoRound build is recommended):
+Convert and run a HuggingFace LLM (here: Qwen) on a TPU.
+
+<details>
+<summary><b>Click to expand the full LLM walkthrough</b></summary>
+
+### 1. Download the model
+
+A pre-quantized AWQ / GPTQ / AutoRound build is recommended.
 
 ```shell
 git lfs install
 git clone https://huggingface.co/Intel/Qwen3.5-2B-int4-AutoRound
 ```
 
-2) In a Docker environment, compile `Qwen3.5`:
+### 2. Compile to bmodel
 
 ```shell
-# If you encounter transformers/torch version issues, run: pip3 install transformers torchvision -U
+# If you encounter transformers/torch version issues:
+#   pip3 install transformers torchvision -U
 # --max_input_length sets the max prefill length; if omitted it defaults to -s.
-llm_convert.py -m /workspace/Qwen3.5-2B-int4-AutoRound --max_input_length 1024 -s 2048 -c bm1684x --max_pixels 768,768 -o qwen3.5_2b
+llm_convert.py \
+  -m /workspace/Qwen3.5-2B-int4-AutoRound \
+  --max_input_length 1024 \
+  -s 2048 \
+  -c bm1684x \
+  --max_pixels 768,768 \
+  -o qwen3.5_2b
 ```
 
-The main arguments supported by `llm_convert.py` are:
+Main arguments of `llm_convert.py`:
 
-| Parameter     | Short | Required? | Description                                                                          |
-| ------------- | ----- | --------- | ------------------------------------------------------------------------------------ |
-| model_path    | m     | Yes       | Path to the model weights                                                            |
-| seq_length    | s     | Yes       | Maximum sequence length                                                               |
-| quantize      | q     | Yes       | Quantization type (e.g., `auto`/`w4bf16`/`w4f16`/`bf16`/`f16`,etc.)                  |
-| q_group_size  | g     | No        | Group size for quantization; default is 64                                           |
-| chip          | c     | Yes       | Target platform (e.g., `bm1684x`/`bm1688`/`cv186ah`)                                  |
-| max_pixels    | —     | No        | Multi-modal parameter; max resolution as `width,height`, e.g., `768,768`. Default is picked by model_type (qwen2_5_vl: 672,896; minicpmv: 980,980; otherwise 768,768) |
-| out_dir       | o     | Yes       | Output directory                                                                      |
+| Parameter      | Short | Required | Description                                                                                                                                    |
+| -------------- | :---: | :------: | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model_path`   |  `m`  |    ✅    | Path to the model weights                                                                                                                      |
+| `seq_length`   |  `s`  |    ✅    | Maximum sequence length                                                                                                                        |
+| `max_input_length` |  —  |    —    | Maximum input length; defaults to `seq_length` (`-s`) when omitted                                                                        |
+| `quantize`     |  `q`  |    ✅    | Quantization type: `auto` / `w4bf16` / `w4f16` / `bf16` / `f16`, etc. (omit if the source model is already quantized)                          |
+| `q_group_size` |  `g`  |    —    | Group size for quantization (default `64`)                                                                                                     |
+| `chip`         |  `c`  |    ✅    | Target platform: `bm1684x` / `bm1688` / `cv186ah`                                                                                              |
+| `max_pixels`   |   —   |    —    | Multi-modal max resolution `width,height`. Defaults vary by `model_type` (qwen2_5_vl: `672,896`; minicpmv: `980,980`; otherwise `768,768`)     |
+| `out_dir`      |  `o`  |    ✅    | Output directory                                                                                                                               |
 
-After the conversion completes, the corresponding bmodel file will be generated in the specified output directory.
-The example here is quantized already, so no need to set `--quantize`
+### 3. Run on PCIe / SoC
 
-3) Run the bmodel in a PCIe or SoC environment:
+Copy the [`python_demo`](https://github.com/sophgo/LLM-TPU/tree/main/models/Qwen3_5/python_demo) folder onto your device and build it:
 
-- Copy the [python_demo](https://github.com/sophgo/LLM-TPU/tree/main/models/Qwen3_5/python_demo) folder into your PCIe/SoC environment, then build:
+```shell
+mkdir build && cd build
+cmake ..
+make
+cp *cpython*.so ..
+cd ..
+```
 
-  ```shell
-  mkdir build && cd build
-  cmake ..
-  make
-  cp *cpython*.so ..
-  cd ..
-  ```
+Then run the bmodel:
 
-- Copy the generated bmodel to the runtime environment and execute:
+```shell
+python3 pipeline.py -m xxxx.bmodel -c config
+```
 
-  ```shell
-  # Replace xxxx.bmodel with your actual bmodel filename
-  python3 pipeline.py -m xxxx.bmodel -c config
-  ```
+Sample output:
 
-The execution result looks like this:
+![Qwen demo](./docs/assets/qwen3.5.png)
 
-![](./docs/assets/qwen3.5.png)
+</details>
 
-# Usage (Example: yolov5s)
+---
 
-Introduce the usage of `TPU-MLIR` by a simple example of compiling `yolov5s.onnx` and running it on the BM1684X TPU platform.
+## 🖼️ Quick Start — Vision (YOLOv5)
 
-The model comes from the official website of yolov5: <https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx>.
+Compile and run [`yolov5s.onnx`](https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx) on the BM1684X TPU. The model is bundled in `regression/model/yolov5s.onnx`.
 
-It has been placed in project path `regression/model/yolov5s.onnx`.
+<details>
+<summary><b>Click to expand the full YOLOv5 walkthrough</b></summary>
 
-## Preparation
+### 1. Prepare the working directory
 
-Firstly, create a `model_yolov5s` directory at the same level directory with this project. Then put both model and image files into it.
-
-The operation is as follows:
-
-``` shell
+```shell
 mkdir model_yolov5s && cd model_yolov5s
 cp ${REGRESSION_PATH}/model/yolov5s.onnx .
 cp -rf ${REGRESSION_PATH}/dataset/COCO2017 .
 cp -rf ${REGRESSION_PATH}/image .
 mkdir workspace && cd workspace
 ```
-## Model to MLIR
 
-If the model takes images as input, we need to learn its preprocessing before transforming. No preprocessing needs to be considered if the input is npz file. The preprocessing process is formulated as follows:
+### 2. Convert the model to MLIR
 
-$$
-y = （x - mean） \times scale,
-$$
+If the model takes images as input, the preprocessing must be specified. The preprocessing formula is:
 
-where `x` represents the input.
+$$y = (x - \text{mean}) \times \text{scale}$$
 
-The input of the official yolov5 is RGB image. Each value will be multiplied by `1/255`. Mean and scale are `0.0, 0.0, 0.0` and `0.0039216, 0.0039216, 0.0039216` respectively.
+YOLOv5's official input is RGB scaled by `1/255`, so `mean = 0,0,0` and `scale = 0.0039216,0.0039216,0.0039216`.
 
-The model conversion command:
-
-``` shell
+```shell
 model_transform.py \
-    --model_name yolov5s \
-    --model_def ../yolov5s.onnx \
-    --input_shapes [[1,3,640,640]] \
-    --mean 0.0,0.0,0.0 \
-    --scale 0.0039216,0.0039216,0.0039216 \
-    --keep_aspect_ratio \
-    --pixel_format rgb \
-    --output_names 350,498,646 \
-    --test_input ../image/dog.jpg \
-    --test_result yolov5s_top_outputs.npz \
-    --mlir yolov5s.mlir
+  --model_name yolov5s \
+  --model_def ../yolov5s.onnx \
+  --input_shapes [[1,3,640,640]] \
+  --mean 0.0,0.0,0.0 \
+  --scale 0.0039216,0.0039216,0.0039216 \
+  --keep_aspect_ratio \
+  --pixel_format rgb \
+  --output_names 350,498,646 \
+  --test_input ../image/dog.jpg \
+  --test_result yolov5s_top_outputs.npz \
+  --mlir yolov5s.mlir
 ```
 
-Main arguments of `model_transform.py` (for complete information please check the technical reference manual):
+Main arguments of `model_transform.py`:
 
-| **Argument**           | Required？ | **Description**            |
-| ------------------- |  :-:  | ------------------- |
-| model_name          | Yes    | Model name          |
-| model_def           | Yes    | Model definition file (`.onnx`,`.pt`,`.tflite` or `.prototxt`) |
-| model_data          | No    | Specify the model weight file, required when it is caffe model (corresponding to the '.caffemodel' file) |
-| input_shapes        | No    | The shape of the input, such as `[[1,3,640,640]]` (a two-dimensional array), which can support multiple inputs |
-| resize_dims         | No    | The size of the original image to be adjusted to. If not specified, it will be resized to the input size of the model |
-| keep_aspect_ratio   | No    | Whether to maintain the aspect ratio when resize. False by default. It will pad 0 to the insufficient part when setting |
-| mean                | No    | The mean of each channel of the image. The default is 0.0,0.0,0.0                    |
-| scale               | No    | The scale of each channel of the image. The default is 1.0,1.0,1.0                    |
-| pixel_format        | No    | Image type, can be rgb, bgr, gray or rgbd              |
-| output_names        | No    | The names of the output. Use the output of the model if not specified, otherwise use the specified names as the output |
-| test_input          | No    | The input file for validation, which can be an image, npy or npz. No validation will be carried out if it is not specified |
-| test_result         | No    | Output file to save validation result                                         |
-| excepts             | No    | Names of network layers that need to be excluded from validation. Separated by comma                      |
-| debug               | No    | if open debug, immediate model file will keep; or will remove after conversion done |
-| mlir                | Yes    | The output mlir file name (including path)                                       |
+| Argument             | Required | Description                                                                                              |
+| -------------------- | :------: | -------------------------------------------------------------------------------------------------------- |
+| `model_name`         |    ✅    | Model name                                                                                               |
+| `model_def`          |    ✅    | Model definition file (`.onnx`, `.pt`, `.tflite`, `.prototxt`)                                           |
+| `model_data`         |    —    | Caffe weight file (`.caffemodel`)                                                                        |
+| `input_shapes`       |    —    | Input shape, e.g. `[[1,3,640,640]]` — supports multiple inputs                                           |
+| `resize_dims`        |    —    | Image resize size before feeding into the model                                                          |
+| `keep_aspect_ratio`  |    —    | Keep aspect ratio (pads with 0). Off by default                                                          |
+| `mean`               |    —    | Per-channel mean (default `0,0,0`)                                                                       |
+| `scale`              |    —    | Per-channel scale (default `1,1,1`)                                                                      |
+| `pixel_format`       |    —    | `rgb` / `bgr` / `gray` / `rgbd`                                                                          |
+| `output_names`       |    —    | Output tensor names. Defaults to model outputs                                                           |
+| `test_input`         |    —    | Validation input (image / npy / npz). Skipped if not specified                                            |
+| `test_result`        |    —    | Output file for validation                                                                               |
+| `excepts`            |    —    | Comma-separated list of layers excluded from validation                                                  |
+| `debug`              |    —    | Keep intermediate files                                                                                   |
+| `mlir`               |    ✅    | Output MLIR file path                                                                                    |
 
+A `${model_name}_in_f32.npz` file containing the preprocessed input is generated after this step.
 
-After converting to mlir file, a `${model_name}_in_f32.npz` file containing preprocessed input will be generated.
+### 3. MLIR → F16 bmodel
 
-
-## MLIR to F16 bmodel
-
-Convert the mlir file to the F16 bmodel by the following command:
-
-``` shell
+```shell
 model_deploy.py \
   --mlir yolov5s.mlir \
   --quantize F16 \
@@ -214,41 +247,31 @@ model_deploy.py \
   --model yolov5s_1684x_f16.bmodel
 ```
 
-Main arguments of `model_deploy.py` (for complete information please check the technical reference manual):
+Main arguments of `model_deploy.py`:
 
-| **Argument**           | Required？ | **Description**                       |
-| ------------------- | :-: | ----------------------------- |
-| mlir                | Yes    | Mlir file                                             |
-| quantize            | Yes    | Quantization type (F32/BF16/F16/INT8)                     |
-| processor           | Yes    | The platform that the model will use.      |
-| calibration_table   | No    | The quantization table path. Required when it is INT8 quantization                 |
-| tolerance           | No    | Tolerance for the minimum similarity between MLIR quantized and MLIR fp32 inference results |
-| correctness         | No    | Tolerance for the minimum similarity between simulator and MLIR quantized inference results. 0.99,0.90 by default |
-| excepts             | No    | Names of network layers that need to be excluded from validation. Separated by comma |
-| debug               | No    | if open debug, immediate model file will keep; or will remove after conversion done |
-| model               | Yes    | Name of output model file (including path)                                  |
-| dynamic             | No     | dynamic codegen for to support dynamic shape                                |
+| Argument             | Required | Description                                                                                       |
+| -------------------- | :------: | ------------------------------------------------------------------------------------------------- |
+| `mlir`               |    ✅    | Input MLIR file                                                                                   |
+| `quantize`           |    ✅    | `F32` / `BF16` / `F16` / `INT8`                                                                   |
+| `processor`          |    ✅    | Target chip                                                                                       |
+| `calibration_table`  |    —    | Calibration table (required for INT8)                                                             |
+| `tolerance`          |    —    | Min similarity between MLIR-quantized and MLIR-fp32 inference                                     |
+| `correctness`        |    —    | Min similarity between simulator and MLIR-quantized inference (default `0.99,0.90`)               |
+| `excepts`            |    —    | Comma-separated layers excluded from validation                                                   |
+| `debug`              |    —    | Keep intermediate files                                                                           |
+| `model`              |    ✅    | Output bmodel path                                                                                |
+| `dynamic`            |    —    | Dynamic codegen for dynamic shapes                                                                |
 
-## MLIR to INT8 bmodel
+### 4. MLIR → INT8 bmodel
 
-Before converting to the INT8 model, you need to run calibration to get the calibration table. The number of input data is about 100 to 1000 according to the situation.
+Run calibration first (typically 100–1000 images). Prefer symmetric quantization unless accuracy demands asymmetric.
 
-Then use the calibration table to generate a symmetric int8 bmodel. It is generally not recommended to use the asymmetric one if the symmetric one already meets the requirements, because
-the performance of the asymmetric model will be slightly worse than the symmetric model.
-
-Here is an example of the existing 100 images from COCO2017 to perform calibration:
-
-``` shell
+```shell
 run_calibration.py yolov5s.mlir \
   --dataset ../COCO2017 \
   --input_num 100 \
   -o yolov5s_cali_table
-```
 
-
-Execute the following command to convert to the INT8 symmetric quantized model:
-
-``` shell
 model_deploy.py \
   --mlir yolov5s.mlir \
   --quantize INT8 \
@@ -260,105 +283,118 @@ model_deploy.py \
   --model yolov5s_1684x_int8.bmodel
 ```
 
-## Results Comparison
+### 5. Verify the results
 
-This project has a yolov5 sample written in python (path:  `python/samples/detect_yolov5.py`) for object detection. Read the code to learn how the model is used:
-  1. preprocess the input
-  2. model inference to get output
-  3. post-process the output
+The sample script lives at `python/samples/detect_yolov5.py`.
 
-The following code is used to verify the output of onnx/f32/int8 model respectively:
-
-* ONNX model:
-
-``` shell
-detect_yolov5.py \
-  --input ../image/dog.jpg \
-  --model ../yolov5s.onnx \
-  --output dog_origin.jpg
+```shell
+# ONNX
+detect_yolov5.py --input ../image/dog.jpg --model ../yolov5s.onnx          --output dog_origin.jpg
+# F16 bmodel
+detect_yolov5.py --input ../image/dog.jpg --model yolov5s_1684x_f16.bmodel --output dog_f16.jpg
+# INT8 bmodel
+detect_yolov5.py --input ../image/dog.jpg --model yolov5s_1684x_int8.bmodel --output dog_int8.jpg
 ```
 
+Comparison of outputs:
 
-* F16 bmodel:
+![YOLOv5 results](./docs/quick_start/assets/yolov5s.png)
 
-``` shell
-detect_yolov5.py \
-  --input ../image/dog.jpg \
-  --model yolov5s_1684x_f16.bmodel \
-  --output dog_f16.jpg
-```
+</details>
 
-* INT8 **symmetric quantized** bmodel:
+---
 
-``` shell
-detect_yolov5.py \
-  --input ../image/dog.jpg \
-  --model yolov5s_1684x_int8.bmodel \
-  --output dog_int8.jpg
-```
+## 🛠️ Auxiliary Tools
 
+### `model_runner.py` — universal inference runner
 
-Outputs of different models are compared below:
+Supports `bmodel` / `mlir` / PyTorch / ONNX / TFLite / Caffe.
 
-![](./docs/quick_start/assets/yolov5s.png)
-
-
-
-# Auxiliary Tools
-
-## Model Inference Tool `model_runner.py`
-
-Supports bmodel/mlir/pytorch/onnx/tflite/caffe.
-
-``` shell
+```shell
 model_runner.py \
-  --input resnet18_in_f32.npz \
-  --model resnet18_1684x_f32.bmodel \
+  --input  resnet18_in_f32.npz \
+  --model  resnet18_1684x_f32.bmodel \
   --output resnet18_output.npz
 ```
 
-## Tool for `bmodel`
+### `model_tool` — inspect & edit bmodel
 
-The `bmodel` file can be viewed and edited by `model_tool`:
-
-```
-  model_tool
-    --info model_file : show brief model info
-    --print model_file : show detailed model info
-    --extract model_file : extract one multi-net bmodel to multi one-net bmodels
-    --combine file1 .. fileN -o new_file: combine bmodels to one bmodel by filepath
-    --combine_dir dir1 .. dirN -o new_dir: combine bmodels to one bmodel by directory path
-    --dump model_file start_offset byte_size out_file: dump binary data to file from bmodel
+```text
+model_tool
+  --info     model_file                                : show brief model info
+  --print    model_file                                : show detailed model info
+  --extract  model_file                                : split a multi-net bmodel into single-net bmodels
+  --combine  file1 .. fileN -o new_file                : merge bmodels by file path
+  --combine_dir dir1 .. dirN -o new_dir                : merge bmodels by directory
+  --dump     model_file start_offset byte_size out_file: dump raw bytes from a bmodel
 ```
 
-For example, to get basic information of `bmodel`:
-
-``` shell
+```shell
 model_tool --info resnet18_1684x_f32.bmodel
 ```
 
-# Resources
+---
 
-Here are some resources to help you better understand the project:
+## 📖 Resources
 
-| Index | Documents |
-| :---: | --- |
-| 01 | [TPU-MLIR paper](https://arxiv.org/abs/2210.15016) |
-| 02 | [TPU-MLIR Technical Reference Manual](https://tpumlir.org/developer_manual_en/index.html) |
-| 03 | [TPU-MLIR Quick Start](https://tpumlir.org/quick_start_en/index.html) |
+### Documentation & Papers
 
-| Index | Sharing Sessions |
-| :---: | --- |
-| 01 | [TPU-MLIR Paper](https://www.bilibili.com/video/BV1My4y1o73Q/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
-| 02 | [LayerGroup](https://www.bilibili.com/video/BV1wo4y1z7AG/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
+| Type   | Link                                                                                       |
+| ------ | ------------------------------------------------------------------------------------------ |
+| Paper  | [TPU-MLIR (arXiv 2210.15016)](https://arxiv.org/abs/2210.15016)                            |
+| Manual | [Technical Reference Manual](https://tpumlir.org/developer_manual_en/index.html)           |
+| Guide  | [Quick Start](https://tpumlir.org/quick_start_en/index.html)                               |
 
-| Index | Topic | Video Links |
-| :---: | --- | --- |
-| 01 | What is a Deep Learning Compiler? | [Deep Learning Compiler Intro](https://www.bilibili.com/video/BV1yP4y1d7gz/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|
-| 02 | MLIR Intro | [Basic Syntax (1)](https://www.bilibili.com/video/BV1CP411n7fj/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Basic Syntax (2)](https://www.bilibili.com/video/BV1Gt4y1F7mt/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Basic Syntax (3)](https://www.bilibili.com/video/BV1UN4y1w72r/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Dialect Conversion](https://www.bilibili.com/video/BV1UG411c7nm/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Pattern Rewriting](https://www.bilibili.com/video/BV1R44y1d7xv/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|
-| 03 | TPU-MLIR Intro | [Overview](https://www.bilibili.com/video/BV19d4y1B7eR/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Front-end Conversion](https://www.bilibili.com/video/BV1yv4y1S7WT/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Lowering](https://www.bilibili.com/video/BV1gg411z7mC/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
-| 04 | Quantization | [Overview](https://www.bilibili.com/video/BV1d8411j7t4/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Formula Derivation](https://www.bilibili.com/video/BV1SW4y1H7Uu/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Calibration](https://www.bilibili.com/video/BV1qK411R75k/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [QAT](https://www.bilibili.com/video/BV12g411J7WQ/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|
-| 05 | TPU Memory | [Ep1](https://www.bilibili.com/video/BV1T24y1G7pu/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Ep2](https://www.bilibili.com/video/BV1VY4y1y7ET/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
-| 06 | TPU-MLIR Practice | [To Onnx Format](https://www.bilibili.com/video/BV1FD4y1H7pT/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Graph Optimization](https://www.bilibili.com/video/BV1AR4y1U7D6/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Operator Support](https://www.bilibili.com/video/BV1tL411r71p/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Model Support](https://www.bilibili.com/video/BV1mM411y7Ep/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Fuse Preprocess](https://www.bilibili.com/video/BV1ao4y1H7m8/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Accuracy Validation](https://www.bilibili.com/video/BV14e4y1M79d/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
+### Talks
 
-If you have any questions while doing the tasks above, you can ask or check the existing answers in our [Issues](https://github.com/sophgo/tpu-mlir/issues).
+- [TPU-MLIR Paper Walkthrough](https://www.bilibili.com/video/BV1My4y1o73Q/)
+- [LayerGroup](https://www.bilibili.com/video/BV1wo4y1z7AG/)
+
+### Video tutorials
+
+<details>
+<summary><b>Click to expand video index</b></summary>
+
+| # | Topic | Links |
+|:-:|-------|-------|
+| 01 | What is a Deep Learning Compiler?         | [Intro](https://www.bilibili.com/video/BV1yP4y1d7gz/) |
+| 02 | MLIR Intro                                | [Syntax 1](https://www.bilibili.com/video/BV1CP411n7fj/) · [Syntax 2](https://www.bilibili.com/video/BV1Gt4y1F7mt/) · [Syntax 3](https://www.bilibili.com/video/BV1UN4y1w72r/) · [Dialect Conversion](https://www.bilibili.com/video/BV1UG411c7nm/) · [Pattern Rewriting](https://www.bilibili.com/video/BV1R44y1d7xv/) |
+| 03 | TPU-MLIR Intro                            | [Overview](https://www.bilibili.com/video/BV19d4y1B7eR/) · [Front-end](https://www.bilibili.com/video/BV1yv4y1S7WT/) · [Lowering](https://www.bilibili.com/video/BV1gg411z7mC/) |
+| 04 | Quantization                              | [Overview](https://www.bilibili.com/video/BV1d8411j7t4/) · [Formula](https://www.bilibili.com/video/BV1SW4y1H7Uu/) · [Calibration](https://www.bilibili.com/video/BV1qK411R75k/) · [QAT](https://www.bilibili.com/video/BV12g411J7WQ/) |
+| 05 | TPU Memory                                | [Ep1](https://www.bilibili.com/video/BV1T24y1G7pu/) · [Ep2](https://www.bilibili.com/video/BV1VY4y1y7ET/) |
+| 06 | TPU-MLIR Practice                         | [To ONNX](https://www.bilibili.com/video/BV1FD4y1H7pT/) · [Graph Optimization](https://www.bilibili.com/video/BV1AR4y1U7D6/) · [Operator Support](https://www.bilibili.com/video/BV1tL411r71p/) · [Model Support](https://www.bilibili.com/video/BV1mM411y7Ep/) · [Fuse Preprocess](https://www.bilibili.com/video/BV1ao4y1H7m8/) · [Accuracy Validation](https://www.bilibili.com/video/BV14e4y1M79d/) |
+
+</details>
+
+---
+
+## 📝 Citation
+
+If TPU-MLIR helps your research, please cite:
+
+```bibtex
+@misc{tpumlir2022,
+  title         = {TPU-MLIR: A Compiler For TPU Using MLIR},
+  author        = {HuPengchao and LuMan and WangLei and JiangGuoyue},
+  year          = {2022},
+  eprint        = {2210.15016},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.PL}
+}
+```
+
+---
+
+## 🤝 Contributing
+
+Bug reports, feature requests and pull requests are welcome! Before you start:
+
+1. Search [existing issues](https://github.com/sophgo/tpu-mlir/issues) to avoid duplicates.
+2. For non-trivial changes, open an issue first to discuss the design.
+3. Run the regression tests under `regression/` before sending a PR.
+
+---
+
+## 📄 License
+
+This project is licensed under the terms of the [LICENSE](./LICENSE) file in the root of this repository.

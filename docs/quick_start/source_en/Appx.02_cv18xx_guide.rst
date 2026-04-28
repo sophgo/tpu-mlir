@@ -426,7 +426,7 @@ At the same time, the script is provided as a reference, and the execution effec
    ./run_classifier_fused_preprocess.sh
    ./run_classifier_multi_batch.sh
 
-There are more samples can be refered in the ``cvitek_tpu_sdk/samples/samples_extra``：
+There are more samples can be referred in the ``cvitek_tpu_sdk/samples/samples_extra``：
 
 .. code-block:: shell
 

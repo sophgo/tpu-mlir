@@ -5339,7 +5339,7 @@ bmodel_inference_combine
           dump_cmd_info: bool = True,
           skip_check: bool = True,  # disable data_check to increase processing speed
           run_by_op: bool = False, # enable to run_by_op, may cause timeout error when some OPs contain too many atomic cmds
-          desire_op: list = [], # set ["A","B","C"] to only dump tensor A/B/C, dump all tensor as defalt
+          desire_op: list = [], # set ["A","B","C"] to only dump tensor A/B/C, dump all tensor as default
           is_soc: bool = False,  # SoC mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
           using_memory_opt: bool = False, # required when is_soc=True
           enable_soc_log: bool = False, # required when is_soc=True

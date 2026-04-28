@@ -201,7 +201,7 @@ Compile the model
 
 The model compilation process needs to be done within Docker, where ``tpu_mlir`` need to be installed as described above.
 
-``confg.yaml`` in ``model-zoo`` configures the test content of the SDK. For example, the configuration file for resnet18 is ``model-zoo/vision/classification/resnet18-v2/mlir.config.yaml`` .
+``config.yaml`` in ``model-zoo`` configures the test content of the SDK. For example, the configuration file for resnet18 is ``model-zoo/vision/classification/resnet18-v2/mlir.config.yaml`` .
 
 Execute the following command to compile the ``resnet18-v2`` model:
 

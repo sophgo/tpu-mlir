@@ -262,7 +262,7 @@ Used to convert various neural network models into MLIR files (with ``.mlir`` su
      - Name list of inputs which influencing other tensors\' shape during inference, like:input1,input2. If set, test_input is required and '--dynamic' is required during model_deploy.
    * - dynamic
      - N
-     - Only valid for onnx model. If set, will automatically set inputs with dyanmic axis as dynamic_shape_input_names and set 1-d inputs as shape_influencing_input_names and '--dynamic' is required during model_deploy.
+     - Only valid for onnx model. If set, will automatically set inputs with dynamic axis as dynamic_shape_input_names and set 1-d inputs as shape_influencing_input_names and '--dynamic' is required during model_deploy.
    * - resize_dims
      - N
      - The original image size 'h,w', default is same as net input dims
@@ -399,7 +399,7 @@ Supported parameters:
      - Specify the mixed-precision types for the search_qtable. Currently supported options are 8_16 and 4_8
    * - cluster
      - N
-     - pecify that a clustering algorithm is used to detect sensitive layers during the search_qtable process
+     - specify that a clustering algorithm is used to detect sensitive layers during the search_qtable process
    * - quantize_table
      - N
      - The mixed-precision quantization table output by search_qtable
@@ -542,7 +542,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - Merge weights into one weight binary with previous generated cvimodel
    * - model_version
      - N
-     - If need old version cvimodel, set the verion, such as 1.2
+     - If need old version cvimodel, set the version, such as 1.2
    * - q_group_size
      - N
      - Group size for per-group quant, only used in W4A16/W8A16 quant mode
@@ -755,7 +755,7 @@ Supported parameters:
      - Export all the results, including intermediate ones, when specified
    * - out_fixed
      - N
-     - Remain integer output when the dtype of output is int8, instead of transforming to float32 automaticall
+     - Remain integer output when the dtype of output is int8, instead of transforming to float32 automatically
 
 
 npz_tool.py
@@ -821,7 +821,7 @@ Supported functions:
    * - host
      - Host ip, default:0.0.0.0
    * - manual_run
-     - if net will be automaticall inferenced when UI is opened, default is false for auto inference
+     - if net will be automatically inferenced when UI is opened, default is false for auto inference
 
 Notice: ``--debug`` flag should be opened during model_deploy.py to save intermediate files for visual.py. More details refer to (:ref:`visual-usage`)
 

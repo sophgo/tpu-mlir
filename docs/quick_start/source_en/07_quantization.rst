@@ -512,7 +512,7 @@ The classification information is displayed on the output image. The right label
 To Mix Precision Model
 -----------------------
 
-After int8 conversion, do these commands as beflow.
+After int8 conversion, do these commands as below.
 
 Step 1: Execute the ``search_qtable`` command
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -577,7 +577,7 @@ The parameters related to ``search_qtable`` in ``run_calibration`` are explained
      - Is it a transformer model? In ``search_qtable``, if it is a transformer model, a specific acceleration strategy can be assigned. The default is False
    * - quantize_method_list
      - N
-     - the calibration method used for searching in ``search_qtable``, default is MSE, with selectable range being mse, kl, max, percentile9999, combine them with seperator ','
+     - the calibration method used for searching in ``search_qtable``, default is MSE, with selectable range being mse, kl, max, percentile9999, combine them with separator ','
    * - quantize_table
      - Yes
      - qtable output path
@@ -652,7 +652,7 @@ In addition，this program generates a quantization table ``mobilenet_v2_qtable`
 In the table, the first column represents the corresponding layer, and the second column represents the type. Supported types are F32/F16/BF16/INT8. ``search_qtable`` will determine
 the number of mixed precision layers in the qtable based on the user-defined ``expected_cos`` parameter value. For example, if the ``expected_cos`` parameter value is equal to 0.99,
 the number of mixed precision layers in the qtable corresponds to the minimum number of mixed precision layers required to achieve that level of model output comparison.
-Of course, the number of mixed precision layers in the table will be limitted based on the number of model operators. If the minimum number of mixed precision layers exceeds the limitation,
+Of course, the number of mixed precision layers in the table will be limited based on the number of model operators. If the minimum number of mixed precision layers exceeds the limitation,
 only the limited quantity of mixed precision layers will be taken. Additionally, a log file ``Search_Qtable`` will be generated with the following content:
 
 .. code-block:: shell

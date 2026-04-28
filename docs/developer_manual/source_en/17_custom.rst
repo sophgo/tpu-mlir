@@ -69,9 +69,9 @@ Add TpuLang Custom Operator
 
 3. Plugins for compiler
 
-  In some cases, small modifications are needed for controling the behaviour of compiler for different type of custom operator with different parameters. Recently some Plugins are provided to realize the aims (please define them in file in directory ./plugin):
+  In some cases, small modifications are needed for controlling the behaviour of compiler for different type of custom operator with different parameters. Recently some Plugins are provided to realize the aims (please define them in file in directory ./plugin):
 
-  a. [Required] Inference function. This plugin is used for comparation of output data between TOP and TPU dialect. The form of plugin function is as follows:
+  a. [Required] Inference function. This plugin is used for comparison of output data between TOP and TPU dialect. The form of plugin function is as follows:
 
   .. code-block:: c
 
@@ -152,7 +152,7 @@ Add TpuLang Custom Operator
 
   Assuming the current path is $TPUC_ROOT/customlayer
 
-  a. Add the {op_name}.pl file in the ./PplBackend/src directory, where .pl is an implementation of the kernerl function using ppl syntax.
+  a. Add the {op_name}.pl file in the ./PplBackend/src directory, where .pl is an implementation of the kernel function using ppl syntax.
 
   b. Add the {op_name}_tile.cpp file in the ./PplBackend/src directory and implement the tiling func and specifies the kernel implementation corresponding to the dtype.
 
@@ -332,7 +332,7 @@ Add TpuLang Custom Operator
 
   b. Unit test
 
-    After defining the custom operator, one should test whether this inferface is reliable. In the directory `$TPUC_ROOT/customlayer/test_if/unittest`, create a python file named "test_{op_name}.py". In this file, create a class, which is derived from class `TestTPULangCustom` and create test functions.
+    After defining the custom operator, one should test whether this interface is reliable. In the directory `$TPUC_ROOT/customlayer/test_if/unittest`, create a python file named "test_{op_name}.py". In this file, create a class, which is derived from class `TestTPULangCustom` and create test functions.
 
     The shell command below would tries to automatically perform the unit tests:
 

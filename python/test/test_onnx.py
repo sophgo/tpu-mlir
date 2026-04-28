@@ -2928,13 +2928,14 @@ class ONNX_IR_TESTER(object):
 
     def test_AffineMap(self, case_name, n=1):
         """Test affine map optimization with different model variants"""
-        
+
         # Model 1: permute(0, 2, 1, 3) + reshape + conv + mul + add
         class Model1_PermConvMulAdd(nn.Module):
+
             def __init__(self):
                 super().__init__()
                 self.conv = nn.Conv2d(16, 16, 3, 1, 1)
-            
+
             def forward(self, x):
                 x = x.reshape(2, 8, 16, 16)
                 x = x.permute(0, 2, 1, 3)  # (2, 8, 16, 16) -> (2, 16, 8, 16)
@@ -2946,10 +2947,11 @@ class ONNX_IR_TESTER(object):
 
         # Model 2: conv + mul + add + permute(1, 2, 0, 3)
         class Model2_ConvMulAddPerm(nn.Module):
+
             def __init__(self):
                 super().__init__()
                 self.conv = nn.Conv2d(8, 8, 3, 1, 1)
-            
+
             def forward(self, x):
                 x = x.reshape(2, 8, 16, 16)
                 x = self.conv(x)
@@ -2960,10 +2962,11 @@ class ONNX_IR_TESTER(object):
 
         # Model 3: slice + conv + permute(1, 0, 2, 3) + mul + add
         class Model3_SliceConvMulAdd(nn.Module):
+
             def __init__(self):
                 super().__init__()
                 self.conv = nn.Conv2d(8, 8, 3, 1, 1)
-            
+
             def forward(self, x):
                 x = x.reshape(4, 8, 32, 32)
                 x = x[1:3, :, 4:28, :]  # (4, 8, 32, 32) -> (2, 8, 24, 32)
@@ -2975,10 +2978,11 @@ class ONNX_IR_TESTER(object):
 
         # Model 4: conv + mul + add + slice + permute(2, 0, 1, 3)
         class Model4_ConvMulAddSlice(nn.Module):
+
             def __init__(self):
                 super().__init__()
                 self.conv = nn.Conv2d(8, 8, 3, 1, 1)
-            
+
             def forward(self, x):
                 x = x.reshape(2, 8, 32, 32)
                 x = self.conv(x)
@@ -2990,10 +2994,11 @@ class ONNX_IR_TESTER(object):
 
         # Model 5: permute(2, 1, 0, 3) + reshape + slice + conv + mul + add
         class Model5_PermReshapeSliceConvMulAdd(nn.Module):
+
             def __init__(self):
                 super().__init__()
                 self.conv = nn.Conv2d(8, 8, 3, 1, 1)
-            
+
             def forward(self, x):
                 x = x.reshape(4, 8, 32, 16)
                 x = x.permute(2, 1, 0, 3)  # (4, 8, 32, 16) -> (16, 8, 4, 32)
@@ -3006,10 +3011,11 @@ class ONNX_IR_TESTER(object):
 
         # Model 6: conv + mul + add + permute(0, 2, 1, 3) + reshape + slice
         class Model6_ConvMulAddPermReshapeSlice(nn.Module):
+
             def __init__(self):
                 super().__init__()
                 self.conv = nn.Conv2d(8, 8, 3, 1, 1)
-            
+
             def forward(self, x):
                 x = x.reshape(2, 8, 32, 32)
                 x = self.conv(x)
@@ -3022,10 +3028,11 @@ class ONNX_IR_TESTER(object):
 
         # Model 7: conv + mul + add + permute(1, 2, 0, 3) + reshape + slice + pad
         class Model7_ConvMulAddPermReshapeSlicePad(nn.Module):
+
             def __init__(self):
                 super().__init__()
                 self.conv = nn.Conv2d(8, 8, 3, 1, 1)
-            
+
             def forward(self, x):
                 x = x.reshape(2, 8, 32, 32)
                 x = self.conv(x)
@@ -3041,21 +3048,26 @@ class ONNX_IR_TESTER(object):
         print(f"\n{'='*70}")
         print(f"Testing AffineMap with 7 comprehensive model variants")
         print(f"{'='*70}\n")
-        
+
         models_to_test = [
             (1, "perm_conv_mul_add", Model1_PermConvMulAdd(), torch.randn(2, 8, 16, 16).float()),
             (2, "conv_mul_add_perm", Model2_ConvMulAddPerm(), torch.randn(2, 8, 16, 16).float()),
-            (3, "slice_conv_perm_mul_add", Model3_SliceConvMulAdd(), torch.randn(4, 8, 32, 32).float()),
-            (4, "conv_mul_add_slice_perm", Model4_ConvMulAddSlice(), torch.randn(2, 8, 32, 32).float()),
-            (5, "perm_reshape_slice_conv_mul_add", Model5_PermReshapeSliceConvMulAdd(), torch.randn(4, 8, 32, 16).float()),
-            (6, "conv_mul_add_perm_reshape_slice", Model6_ConvMulAddPermReshapeSlice(), torch.randn(2, 8, 32, 32).float()),
-            (7, "conv_mul_add_perm_reshape_slice_pad", Model7_ConvMulAddPermReshapeSlicePad(), torch.randn(2, 8, 32, 32).float()),
+            (3, "slice_conv_perm_mul_add", Model3_SliceConvMulAdd(), torch.randn(4, 8, 32,
+                                                                                 32).float()),
+            (4, "conv_mul_add_slice_perm", Model4_ConvMulAddSlice(), torch.randn(2, 8, 32,
+                                                                                 32).float()),
+            (5, "perm_reshape_slice_conv_mul_add", Model5_PermReshapeSliceConvMulAdd(),
+             torch.randn(4, 8, 32, 16).float()),
+            (6, "conv_mul_add_perm_reshape_slice", Model6_ConvMulAddPermReshapeSlice(),
+             torch.randn(2, 8, 32, 32).float()),
+            (7, "conv_mul_add_perm_reshape_slice_pad", Model7_ConvMulAddPermReshapeSlicePad(),
+             torch.randn(2, 8, 32, 32).float()),
         ]
-        
+
         for idx, name, model, input_data in models_to_test:
             print(f"[{idx:1d}/7] Testing {name}...")
             self.torch_and_test(input_data, model, f"{case_name}_{name}")
-        
+
         print(f"\n{'='*70}")
         print(f"All AffineMap variants completed successfully!")
         print(f"{'='*70}\n")

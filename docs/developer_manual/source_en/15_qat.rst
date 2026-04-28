@@ -23,14 +23,14 @@ Feature 3: Based on the open-sourced mqbench training framework by SenseTime, tp
 Installation Method
 ---------------------------------------------------
 
-tpu-mq is recommanded to be used in docker container, the docker image can be pulled by:
+tpu-mq is recommended to be used in docker container, the docker image can be pulled by:
 
 
 .. code-block:: shell
 
     docker pull tpuc_dev:v3.4.6-cuda
 
-The docker image includes pytorch 2.1.0 and cuda 12.6, and intergrated the environment for tpu-mlir.
+The docker image includes pytorch 2.1.0 and cuda 12.6, and integrated the environment for tpu-mlir.
 
 Install with setup package
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -152,7 +152,7 @@ Step 4: Initiate the training
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The transformation deployment to sophg-tpu hardware was completed using the model_transform.py and model_deploy.py scripts of tpu-mlir；
 
-By introducing tpu-mlir in tpu-mq, user can use tpu-mlir inference interface to simulate the running of model on ASIC. By using this interface, model is generated and while trainning. User can replace traditional evaluation module with tpu-mlir inference, input and output to this interface are in numpy format, example code is as following:
+By introducing tpu-mlir in tpu-mq, user can use tpu-mlir inference interface to simulate the running of model on ASIC. By using this interface, model is generated and while training. User can replace traditional evaluation module with tpu-mlir inference, input and output to this interface are in numpy format, example code is as following:
 
 .. code-block:: python
 
@@ -232,7 +232,7 @@ c、In the case of asymmetric quantization, min and max above are calculated acc
 
 Tpu-mlir QAT test environment
 --------------------------------
-QAT model is targeted to ASIC, accuracy of the model can be verified with end to end verification program, usually it is deployed on processor. Within development environment, accuracy can be evaluated by tpu-mlir inference interface for convinence, sample code as following:
+QAT model is targeted to ASIC, accuracy of the model can be verified with end to end verification program, usually it is deployed on processor. Within development environment, accuracy can be evaluated by tpu-mlir inference interface for convenience, sample code as following:
 
 
 Adding a cfg File

@@ -18,7 +18,7 @@ The above processes are integrated and executed collectively, and the optimized 
 
 Introduction to the Working Environment
 ------------------------------------------
-Calibration runs in tpu-mlir recommanded docker environment, there are two docker image with and without gpu support, tpuc_dev:v3.4 and tpuc_dev:v3.4.6-cuda, the cuda image is much bigger.
+Calibration runs in tpu-mlir recommended docker environment, there are two docker image with and without gpu support, tpuc_dev:v3.4 and tpuc_dev:v3.4.6-cuda, the cuda image is much bigger.
 Following calibration algorithms are implemented in both cpu and gpu version, and partial op whose inference constitute the bulk of search_qtable duration have gpu support, too. Those ops with only cpu support will drop back to cpu automatically according the docker version and hardware environment.
 You can try different docker versions according to model size and hardware environment.For large models that may occupy most host memory before running calibration, the gpu version may be faster, but for small models, cpu version make good use of parallel and is fast enough.
 
@@ -102,7 +102,7 @@ Input format and preprocessing
 
 There is no need to specify the preprocessing parameters for the above two formats when calling run_calibration.py to call the mlir file for inference.
 
-.. list-table:: Methods of speciying parameters
+.. list-table:: Methods of specifying parameters
    :widths: 18 60
    :header-rows: 1
 
@@ -295,7 +295,7 @@ During the use of search_threshold, the following points need to be noted: 1. se
 search_qtable Algorithm
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-search_qtable is an automatic mixed-precision functionality integrated into the calibration process. When the accuracy of a fully int8 quantized model does not meet the requirements, you can try enabling the search_qtable algorithm. multi threshold from different algorithms will be tryed op by op to select the best one, and the influence to model accuracy of layers are sorted, too, which can be referred to in constructing qtable, it also generate a qtable.
+search_qtable is an automatic mixed-precision functionality integrated into the calibration process. When the accuracy of a fully int8 quantized model does not meet the requirements, you can try enabling the search_qtable algorithm. multi threshold from different algorithms will be tried op by op to select the best one, and the influence to model accuracy of layers are sorted, too, which can be referred to in constructing qtable, it also generate a qtable.
 
 Implementation: The output of search_qtable will generate mixed thresholds, meaning it performs optimal selection for the threshold of each layer of the model. That is, it chooses the best result from multiple threshold calculation methods specified by the user for each layer. This choice is based on the comparison of the similarity between the quantized model's current layer output and the original model's current layer output. In addition to generating mixed thresholds, search_qtable will also output the layers of the model that are mixed precision.
 When the user specifies the desired similarity between the mixed precision model and the original model's output, search_qtable will automatically output the minimum number of mixed precision layers required to achieve that similarity level.
@@ -303,7 +303,7 @@ When the user specifies the desired similarity between the mixed precision model
 mix_search and fast_search Option
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-search_qtable often consumes long compute time when model is large, and it has best result and is firstly recommanded, but it requires large memory and long time too, mix_search and fast_search are provided to have fast try.
+search_qtable often consumes long compute time when model is large, and it has best result and is firstly recommended, but it requires large memory and long time too, mix_search and fast_search are provided to have fast try.
 
 In mix_search, from beginning of model, if the op doesn't meet min_layer_cos, it will be set float and check if model meets expected_cos, if amount of layers tried reach max_float_layers or 1/4 of total layers, search will end.
 Because the float model and quantized model may have different layer names due to optimization introduced in lowerring, the search is coarse, and this algorithm is legacy and may be used on simple models.
@@ -544,7 +544,7 @@ search_qtable:
    * - --tune_num
      - num of images for tune
    * - --histogram_bin_num
-     - Specify histogram bin numer for kld calculate
+     - Specify histogram bin number for kld calculate
    * - --expected_cos
      - The expected similarity between the mixed-precision model output and the floating-point model output in search_qtable, with a value range of [0,1]
    * - --min_layer_cos
@@ -566,7 +566,7 @@ search_qtable:
    * - --transformer
      - Whether it is a transformer model, if it is, search_qtable can allocate specific acceleration strategies
    * - --quantize_method_list
-     - The threshold methods used for searching in search_qtable, The default is only MSE, but it supports free selection among kl, mse, max, and percentile9999, combine them with seperator ','.
+     - The threshold methods used for searching in search_qtable, The default is only MSE, but it supports free selection among kl, mse, max, and percentile9999, combine them with separator ','.
    * - --benchmark_method
      - Specifies the method for calculating similarity in search_threshold
    * - --kurtosis_analysis
@@ -642,13 +642,13 @@ to get output of every layer, if the nets are huge, it would took a long time to
    :width: 800px
    :align: center
 
-Areas of the UI is marked with light blue rectangle for reference, dark green comments on the areas, includeing:
+Areas of the UI is marked with light blue rectangle for reference, dark green comments on the areas, including:
    1. working directory and net file indication
    2. accuracy summary area
    3. layer information area
    4. graph display area
    5. tensor data compare figure area
-   6. infomation summary and tensor distribution area (by switching tabs)
+   6. information summary and tensor distribution area (by switching tabs)
 
 With scroll wheel over graph display area, the displayed net graph can be zoomed in and out, and hover or click on the nodes (layer), the attributes of
 it will be displayed in the layer information card, by clicking on the edges (tensor), the compare of tensor data in float and quantized net is displayed
