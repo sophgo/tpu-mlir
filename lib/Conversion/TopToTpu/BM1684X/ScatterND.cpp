@@ -54,7 +54,25 @@ static void RequantizeInt8(PatternRewriter &rewriter, top::ScatterNDOp op,
   auto output = op.getOutput();
   auto new_data = do_transfer(data, output, asymmetric);
   operands.push_back(new_data);
-  operands.push_back(op.getIndices());
+  auto indices_op = dyn_cast<top::WeightOp>(op.getIndices().getDefiningOp());
+  if (indices_op) {
+    // convert fp32 indices into int32
+    auto indices_data = indices_op.read<float>();
+    std::vector<int32_t> indices_int32_v(
+        module::getNumElements(op.getIndices()));
+    for (int i = 0; i < module::getNumElements(op.getIndices()); ++i) {
+      indices_int32_v[i] = static_cast<int32_t>(indices_data->at(i));
+    }
+    auto new_type = RankedTensorType::get(module::getShape(op.getIndices()),
+                                          rewriter.getI32Type());
+    i32_array_t indices_int32 =
+        std::make_shared<std::vector<int32_t>>(indices_int32_v);
+    auto new_indices_op =
+        top::WeightOp::create(op, "indices_int32", *indices_int32, new_type);
+    operands.push_back(new_indices_op);
+  } else {
+    operands.push_back(op.getIndices());
+  }
   if (isa<top::WeightOp>(updates.getDefiningOp())) {
     // qunat update with output scale
     if (!module::isCalibratedType(output)) {
@@ -101,7 +119,7 @@ void ScatterNDLowering::LoweringINT8(PatternRewriter &rewriter,
     LoweringF32(rewriter, op);
     return;
   }
-  auto new_type = getQuantFloatType(op.getOutput());
+  auto new_type = getQuantInt8Type(op.getOutput(), asymmetric);
   RequantizeInt8(rewriter, op, new_type, asymmetric);
 }
 

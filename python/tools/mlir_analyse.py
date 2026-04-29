@@ -268,19 +268,16 @@ def calc_matmul_flops(op: MLIROp) -> int:
     vi = _valid_inputs(op)
     if len(vi) < 2:
         return 0
-    lhs, rhs = vi[0], vi[1]
+    lhs = vi[0]
     out = op.output_types[0] if op.output_types else None
     if not out:
-        return 0
+        raise ValueError(f"MatMul op at line {op.line_num} has no output type")
     left_trans = op.attributes.get("left_transpose", "false") == "true"
-    right_trans = op.attributes.get("right_transpose", "false") == "true"
-    if left_trans:
-        M = lhs.shape[-1] if len(lhs.shape) >= 2 else 1
-        K = lhs.shape[-2] if len(lhs.shape) >= 2 else lhs.shape[-1]
-    else:
-        M = lhs.shape[-2] if len(lhs.shape) >= 2 else 1
-        K = lhs.shape[-1]
-    N = rhs.shape[-2] if right_trans and len(rhs.shape) >= 2 else rhs.shape[-1]
+    K = lhs.shape[-2] if left_trans else lhs.shape[-1]
+    # N is always the last dim of the output; this avoids ambiguity from packed
+    # weights (e.g. A16MatMul w4 qweight shape [N, K/2]).
+    M = out.shape[-2]
+    N = out.shape[-1]
     batch = 1
     for d in out.shape[:-2]:
         batch *= d
@@ -355,6 +352,33 @@ def calc_chunk_gated_delta_rule_flops(op: MLIROp) -> int:
     return B * H * num_chunks * per_chunk
 
 
+def calc_recurrent_gated_delta_rule_flops(op: MLIROp) -> int:
+    """Recurrent (token-by-token) gated delta rule.
+
+    Inputs: q[B,H,T,D], k[B,H,T,D], v[B,H,T,D],
+            alpha[B,H,T], beta[B,H,T], state[B,H,D,D]
+
+    Per token per head per batch:
+      k @ State        : 2*D*D   (predicted value)
+      delta = v - kS   :   D
+      beta * delta     :   D
+      outer k^T*delta  :   D*D
+      gate * State     :   D*D   (alpha gating, element-wise)
+      State += update  :   D*D   (element-wise add)
+      q @ State        : 2*D*D   (output projection)
+    Total ~ 6*D*D per step.
+    """
+    vi = _valid_inputs(op)
+    if len(vi) < 3:
+        return 0
+    v = vi[2]  # [B, H, T, D]
+    if len(v.shape) < 4:
+        return 0
+    B, H, T, D = v.shape[0], v.shape[1], v.shape[2], v.shape[3]
+    per_step = 2 * D * D + D + D + D * D + D * D + D * D + 2 * D * D
+    return B * H * T * per_step
+
+
 def _out_elements(op: MLIROp) -> int:
     """Return num_elements of the first output tensor, or 0."""
     out = op.output_types[0] if op.output_types else None
@@ -377,13 +401,20 @@ def calc_flops(op: MLIROp) -> int:
     # ---- Complex operators with dedicated calculators ----
     if name == "MatMul":
         return calc_matmul_flops(op)
+    elif name == "A16MatMul":
+        # Weight-only quantized MatMul; FLOPs same as regular MatMul.
+        # lhs [..., M, K]; rhs qweight is [N, K] (w8) or [N, K/2] (w4, ui8 packed).
+        # calc_matmul_flops uses lhs last dim as K and rhs[-2] as N (right_transpose),
+        # which is correct for both w4 and w8.
+        return calc_matmul_flops(op)
     elif name == "Conv":
         return calc_conv_flops(op)
     elif name == "FAttention":
         return calc_fattention_flops(op)
     elif name == "ChunkGatedDeltaRule":
         return calc_chunk_gated_delta_rule_flops(op)
-
+    elif name == "RecurrentGatedDeltaRule":
+        return calc_recurrent_gated_delta_rule_flops(op)
     # ---- Normalization layers ----
     # RMSNorm: 3 * num_elements
     elif name == "RMSNorm":
@@ -499,8 +530,8 @@ def calc_flops(op: MLIROp) -> int:
                   "GatherElements", "GatherND", "ScatterND", "ScatterElements", "Flatten",
                   "Squeeze", "Unsqueeze", "View", "Pad", "Tile", "Shape", "Size", "Range", "Arange",
                   "Depth2Space", "ShuffleChannel", "Pack", "Unpack", "ConstantFill", "RandnLike",
-                  "MeshGrid", "Loop", "If", "List", "Custom", "Mlp", "Correlation", "TopK", "Nms",
-                  "Einsum", "RequantFp", "IndexPut", "MaskRCNNGetBboxB"):
+                  "MeshGrid", "Loop", "If", "List", "Custom", "Mlp", "Correlation", "ConcatSlice",
+                  "TopK", "Nms", "Einsum", "RequantFp", "IndexPut", "MaskRCNNGetBboxB"):
         return 0
 
     # ---- Fallback: 0 ----
@@ -564,6 +595,20 @@ def calc_data_volume(op: MLIROp,
         return 0, 0
     elif opn in ['Permute', 'Gather']:
         return 0, wb
+    elif opn == "A16MatMul":
+        # Inputs: [act, qweight, scales, qzeros, bias]
+        # - act uses f16 (activation).
+        # - qweight: ui8 storage; for w4 each byte packs 2 weights, for w8 one weight
+        #   per byte. Either way, total bytes = qweight.num_elements (its storage size).
+        # - scales / qzeros: use their declared dtype size (typically small overhead).
+        # - bias (if present): use declared dtype size.
+        for idx, t in enumerate(op.input_types):
+            if not isinstance(t, TensorInfo):
+                continue
+            if idx == 0:
+                rb += _tensor_bytes(t, act_bytes)
+            else:
+                rb += t.size_bytes
     else:
         for idx, t in enumerate(op.input_types):
             if not isinstance(t, TensorInfo):
@@ -618,7 +663,7 @@ def fmt_time(us: float) -> str:
 # Excel export
 # ---------------------------------------------------------------------------
 
-KEY_OPS = {"MatMul", "Conv", "FAttention", "ChunkGatedDeltaRule"}
+KEY_OPS = {"MatMul", "Conv", "FAttention", "ChunkGatedDeltaRule", "A16MatMul"}
 SKIP_OPS = {"top.Weight", "top.None", "top.Input"}
 
 
@@ -658,6 +703,9 @@ def export_excel(ops: List[MLIROp],
         if opn == "MatMul" and ssa_op_map and len(op.operands) > 1:
             if ssa_op_map.get(op.operands[1], "") == "top.Weight":
                 opn = f"MatMul ({dtype_mode})"
+        elif opn == "A16MatMul":
+            wbits = _parse_int_attr(op.attributes.get("weight_bits", "4"), 4)
+            opn = f"A16MatMul (w{wbits}a16)"
         flops = calc_flops(op)
         rb, wb = calc_data_volume(op, dtype_mode, ssa_op_map)
         total_io = rb + wb

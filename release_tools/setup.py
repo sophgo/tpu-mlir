@@ -32,7 +32,7 @@ setup(
         "graphviz==0.20.1",
         "pycocotools==2.0.6",
         "scikit-image==0.21.0",
-        "transformers==5.3.0",
+        "transformers==5.6.2",
         "scikit-learn==1.6.1",
         "onnxruntime_extensions==0.14.0",
         "pandas==2.0.3",
@@ -40,8 +40,8 @@ setup(
     extras_require={
         "all": [
             # torch
-            "torch==2.1.0",
-            "torchvision==0.16.0",
+            "torch==2.11.0",
+            "torchvision==0.26.0",
             # onnx
             "onnx==1.14.1",
             "onnxruntime==1.16.3",
@@ -60,8 +60,8 @@ setup(
             "tensorboard==2.13.0",
         ],
         "torch": [
-            "torch==2.1.0",
-            "torchvision==0.16.0"
+            "torch==2.11.0",
+            "torchvision==0.26.0"
         ],
         "onnx": [
             "onnx==1.14.1",

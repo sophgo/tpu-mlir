@@ -1,191 +1,242 @@
-![](./docs/assets/sophgo_cover.png)
+<p align="center">
+  <img src="./docs/assets/sophgo_cover.png" alt="TPU-MLIR" />
+</p>
 
-# TPU-MLIR
+<h1 align="center">TPU-MLIR</h1>
 
-本项目是算能深度学处理器的TPU编译器工程。该工程提供了一套完整的工具链，其可以将不
-同框架下预训练的神经网络，转化为可以在算能TPU上高效运算的二进制文件`bmodel`。
+<p align="center">
+  <em>面向 TPU 的开源 MLIR 机器学习编译器。</em>
+</p>
 
-目前该工程直接支持的深度学习框架包括PyTorch、ONNX、TFLite和Caffe，其他框架模型需要转成ONNX。
+<p align="center">
+  <a href="https://pypi.org/project/tpu_mlir/"><img src="https://img.shields.io/pypi/v/tpu_mlir.svg" alt="PyPI"></a>
+  <a href="https://pypi.org/project/tpu_mlir/"><img src="https://img.shields.io/pypi/pyversions/tpu_mlir.svg" alt="Python"></a>
+  <a href="https://github.com/sophgo/tpu-mlir/stargazers"><img src="https://img.shields.io/github/stars/sophgo/tpu-mlir?style=social" alt="Stars"></a>
+  <a href="https://github.com/sophgo/tpu-mlir/issues"><img src="https://img.shields.io/github/issues/sophgo/tpu-mlir.svg" alt="Issues"></a>
+  <a href="https://arxiv.org/abs/2210.15016"><img src="https://img.shields.io/badge/arXiv-2210.15016-b31b1b.svg" alt="arXiv"></a>
+</p>
 
-也支持编译[HuggingFace](https://huggingface.co) LLM模型，目前支持qwen2系列/llama系列，后续会支持更多类型的LLM模型。
+<p align="center">
+  <a href="./README.md">English</a> · <a href="./README_cn.md">简体中文</a> ·
+  <a href="https://tpumlir.org/quick_start/index.html">快速入门</a> ·
+  <a href="https://tpumlir.org/developer_manual/index.html">开发手册</a> ·
+  <a href="https://github.com/sophgo/tpu-mlir/issues">Issues</a>
+</p>
 
+---
 
-# 编译工程
+## ✨ 项目简介
 
-首先需要安装指定的Docker，然后可以选择用预编译包或者编译源码。
-
-## 安装Docker
-
-* 从[dockerhub](https://hub.docker.com/r/sophgo/tpuc_dev)下载所需的镜像。
-
-``` shell
-docker pull sophgo/tpuc_dev:latest
+**TPU-MLIR** 提供完整的工具链，将主流框架下预训练的神经网络转换为可在 SOPHGO TPU 上高效运行的 `bmodel` 文件。基于 [MLIR](https://mlir.llvm.org/) 构建，提供统一 IR、清晰的下降流水线，以及完善的量化、校准与部署工具。
 
 ```
+┌──────────────────┐    model_transform.py    ┌──────────┐    model_deploy.py    ┌──────────┐
+│ ONNX / PyTorch / │ ───────────────────────► │   MLIR   │ ────────────────────► │  bmodel  │
+│  TFLite / Caffe  │      (前端导入)          │  (Top →  │  (lowering、量化、    │  TPU 部署 │
+│   HuggingFace    │                          │   Tpu)   │   layer-group …)      │          │
+└──────────────────┘                          └──────────┘                       └──────────┘
+```
 
-* 如果docker拉取失败，可通过以下方式进行下载：
+## 🚀 主要特性
 
-``` shell
+- **多框架前端** —— PyTorch、ONNX、TFLite、Caffe（其他框架请先导出为 ONNX）。
+- **LLM 一键转换** —— 通过 `llm_convert.py` 直接编译 HuggingFace 大模型（Qwen、MiniCPM-V 等）。
+- **完整量化工具链** —— F32 / BF16 / F16 / INT8（对称 & 非对称），兼容 AWQ / GPTQ / AutoRound，支持校准与 QAT。
+- **基于 MLIR 的流水线** —— 清晰的 Top / Tpu 方言、模式重写、layer-group 内存规划。
+- **完善的辅助工具** —— `model_runner`、`model_tool`、精度验证、模拟器、可视化工具。
+- **中英双语文档与活跃社区** —— 提供论文、技术手册与系列视频教程。
+
+
+## 📚 目录
+
+- [安装](#-安装)
+- [快速上手 — LLM (Qwen)](#-快速上手--llm-qwen)
+- [快速上手 — 视觉 (YOLOv5)](#-快速上手--视觉-yolov5)
+- [辅助工具](#-辅助工具)
+- [资源](#-资源)
+- [引用](#-引用)
+- [贡献](#-贡献)
+- [许可证](#-许可证)
+
+---
+
+## 🔧 安装
+
+TPU-MLIR 在指定的 Docker 镜像内运行。容器启动后，既可以直接安装预编译 wheel，也可以从源码编译。
+
+### 1. 拉取 Docker 镜像
+
+```shell
+docker pull sophgo/tpuc_dev:latest
+```
+
+如果拉取失败，可手动下载并加载镜像包：
+
+```shell
 wget https://sophon-assets.sophon.cn/sophon-prod-s3/drive/25/04/15/16/tpuc_dev_v3.4.tar.gz
 docker load -i tpuc_dev_v3.4.tar.gz
 ```
 
-* 创建所需镜像：
+创建并进入容器：
 
-``` shell
-# myname1234 just a example, you can set your own name
-docker run --privileged --name myname1234 -v $PWD:/workspace -it sophgo/tpuc_dev:latest
+```shell
+docker run --privileged --name tpu-mlir -v $PWD:/workspace -it sophgo/tpuc_dev:latest
 ```
 
-## 预编译包 (方式一)
+### 2a. 安装预编译 wheel（推荐）
 
-我们提供 TPU-MLIR Python 包以便跳过编译工程的步骤快速安装。环境要求：python >= 3.10 和 ubuntu:22.04（推荐直接使用我们的docker镜像）。
+> 要求 Python ≥ 3.10，Ubuntu 22.04（推荐直接使用上述 Docker 镜像）。
 
-``` shell
+```shell
 pip install tpu_mlir
 ```
 
-## 编译源码 (方式二)
+### 2b. 从源码编译
 
-容器建立后，代码在docker中的目录为`/workspace/tpu-mlir`。
-
-* 编译代码
-
-在工程目录下运行以下命令：
-
-``` shell
-cd tpu-mlir
+```shell
+cd /workspace/tpu-mlir
+pip install -r requirements.txt
 source ./envsetup.sh
 ./build.sh
 ```
 
-# 使用方法 (Qwen2.5-VL为例)
+---
 
-以 `Qwen2.5-VL` 为例，介绍如何编译[HuggingFace](https://huggingface.co) LLM模型。
+## 🤖 快速上手 — LLM (Qwen)
 
-1) 首先下载 `Qwen2.5-VL` 模型, 如下:
+将 HuggingFace 上的 LLM 编译为 TPU 上的 bmodel。
 
-``` shell
+<details>
+<summary><b>点击展开完整 LLM 流程</b></summary>
+
+### 1. 下载模型
+
+推荐使用预量化 (AWQ / GPTQ / AutoRound) 版本：
+
+```shell
 git lfs install
-git clone git@hf.co:Qwen/Qwen2.5-VL-3B-Instruct-AWQ
+git clone https://huggingface.co/Intel/Qwen3.5-2B-int4-AutoRound
 ```
 
-2) 在docker环境下编译 `Qwen2.5-VL`, 如下:
+### 2. 编译为 bmodel
 
-``` shell
-llm_convert.py -m /workspace/Qwen2.5-VL-3B-Instruct-AWQ -s 2048  -c bm1684x  --max_pixels 672,896 -o qwen2.5vl_3b
+```shell
+# 如遇 transformers / torch 版本问题：
+#   pip3 install transformers torchvision -U
+# --max_input_length 设置最大 prefill 长度，缺省时取 -s。
+llm_convert.py \
+  -m /workspace/Qwen3.5-2B-int4-AutoRound \
+  --max_input_length 1024 \
+  -s 2048 \
+  -c bm1684x \
+  --max_pixels 768,768 \
+  -o qwen3.5_2b
 ```
 
-`llm_convert.py` 支持的主要参数如下:
+`llm_convert.py` 主要参数：
 
-| **参数名**     | **简写** | 必选？ | **说明**            |
-| ------------- | -------- | ----- | ------------------- |
-| model_path    |  m       | 是    | 指定权重路径        |
-| seq_length    |  s       | 是    | 指定序列最大长度    |
-| quantize      |  q       | 是    | 指定量化类型, auto/w4bf16/w4f16/bf16/f16等等 |
-| q_group_size  |  g       | 否    | 指定每组量化的组大小, 默认64 |
-| chip          |  c       | 是    | 指定平台, 如bm1684x/bm1688/cv186ah |
-| max_pixels    |  -       | 否    | 多模态参数, 指定最大尺寸, 可以是`672,896`,也可以是`602112`  |
-| out_dir       |  o       | 是    | 指定输出目录 |
+| 参数            | 简写  | 必选 | 说明                                                                                                                                |
+| --------------- | :---: | :--: | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `model_path`    |  `m`  |  ✅  | 模型权重路径                                                                                                                        |
+| `seq_length`    |  `s`  |  ✅  | 最大序列长度                                                                                                                        |
+| `max_input_length` |  —  |  —   | 最大单次输入长度，缺省时取 `seq_length`（`-s`）                                                                                    |
+| `quantize`      |  `q`  |  ✅  | 量化方式：`auto` / `w4bf16` / `w4f16` / `bf16` / `f16` 等（如源模型已量化可省略）                                                   |
+| `q_group_size`  |  `g`  |  —   | 量化分组大小（默认 64）                                                                                                             |
+| `chip`          |  `c`  |  ✅  | 目标芯片：`bm1684x` / `bm1688` / `cv186ah`                                                                                          |
+| `max_pixels`    |   —   |  —   | 多模态最大分辨率 `width,height`，按 `model_type` 取默认值（qwen2_5_vl: `672,896`；minicpmv: `980,980`；其他：`768,768`）            |
+| `out_dir`       |  `o`  |  ✅  | 输出目录                                                                                                                            |
 
-执行完成后在指定目录会生成对应的bmodel。本例中的模型是已经量化的模型，所以不需要指定`--quantize`。
+### 3. 在 PCIe / SoC 环境运行
 
-3) 在PCIE或者SoC环境运行bmodel, 如下:
+将 [`python_demo`](https://github.com/sophgo/LLM-TPU/tree/main/models/Qwen3_5/python_demo) 拷贝到设备上并编译：
 
-将[python_demo](https://github.com/sophgo/LLM-TPU/tree/main/models/Qwen2_5_VL/python_demo)代码拷贝到PCIE或者SoC环境后如下编译代码:
-
-``` shell
-mkdir build && cd build && cmake .. && make && cp *cpython*.so .. && cd ..
+```shell
+mkdir build && cd build
+cmake ..
+make
+cp *cpython*.so ..
+cd ..
 ```
 
-将bmodel拷贝到运行环境后执行：
+执行 bmodel：
 
-``` shell
-# xxxx.bmodel请用实际名称
+```shell
 python3 pipeline.py -m xxxx.bmodel -c config
 ```
 
-执行效果图如下：
+运行示例：
 
-![](./docs/assets/qwen2.5vl_zh.png)
+![Qwen demo](./docs/assets/qwen3.5.png)
 
+</details>
 
-# 使用方法 (yolov5s为例)
+---
 
-以`yolov5s.onnx`为例，介绍如何编译迁移一个onnx模型至BM1684X TPU平台运行。
+## 🖼️ 快速上手 — 视觉 (YOLOv5)
 
-该模型来在yolov5的官网: <https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx>。
+以 [`yolov5s.onnx`](https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx) 为例，在 BM1684X TPU 上完成编译与部署。模型已置于 `regression/model/yolov5s.onnx`。
 
-在本工程已经放在`regression/model/yolov5s.onnx`。
+<details>
+<summary><b>点击展开完整 YOLOv5 流程</b></summary>
 
-## 准备模型和数据
+### 1. 准备工作目录
 
-建立`model_yolov5s`目录，注意是与本工程同级目录；并把模型文件和图片文件都放入`model_yolov5s`目录中。
-
-操作如下：
-
-``` shell
+```shell
 mkdir model_yolov5s && cd model_yolov5s
 cp ${REGRESSION_PATH}/model/yolov5s.onnx .
 cp -rf ${REGRESSION_PATH}/dataset/COCO2017 .
 cp -rf ${REGRESSION_PATH}/image .
 mkdir workspace && cd workspace
 ```
-## 将模型转化MLIR
 
-如果模型是图片输入，在转模型之前我们需要了解模型的预处理。如果模型用预处理后的npz文件做输入，则不需要考虑预处理。
-预处理过程用公式表达如下（x代表输入)：
-$$
-y = （x - mean） \times scale
-$$
+### 2. 模型转 MLIR
 
-官网yolov5的图片是rgb，每个值会乘以`1/255`，转换成mean和scale对应为`0.0,0.0,0.0`和`0.0039216,0.0039216,0.0039216`。
+如果模型以图像为输入，需指定预处理；输入为 npz 文件时则无需预处理。预处理公式为：
 
-模型转换命令如下：
+$$y = (x - \text{mean}) \times \text{scale}$$
 
-``` shell
+YOLOv5 官方输入为 RGB，每像素乘 `1/255`，因此 `mean = 0,0,0`、`scale = 0.0039216,0.0039216,0.0039216`。
+
+```shell
 model_transform.py \
-    --model_name yolov5s \
-    --model_def ../yolov5s.onnx \
-    --input_shapes [[1,3,640,640]] \
-    --mean 0.0,0.0,0.0 \
-    --scale 0.0039216,0.0039216,0.0039216 \
-    --keep_aspect_ratio \
-    --pixel_format rgb \
-    --output_names 350,498,646 \
-    --test_input ../image/dog.jpg \
-    --test_result yolov5s_top_outputs.npz \
-    --mlir yolov5s.mlir
+  --model_name yolov5s \
+  --model_def ../yolov5s.onnx \
+  --input_shapes [[1,3,640,640]] \
+  --mean 0.0,0.0,0.0 \
+  --scale 0.0039216,0.0039216,0.0039216 \
+  --keep_aspect_ratio \
+  --pixel_format rgb \
+  --output_names 350,498,646 \
+  --test_input ../image/dog.jpg \
+  --test_result yolov5s_top_outputs.npz \
+  --mlir yolov5s.mlir
 ```
 
-`model_transform.py`支持的主要参数如下（完整参数信息请查看开发参考手册）:
+`model_transform.py` 主要参数：
 
-| **参数名**           | 必选？ | **说明**            |
-| ------------------- | ----- | ------------------- |
-| model_name          | 是    | 指定模型名称          |
-| model_def           | 是    | 指定模型定义文件，比如`.onnx`或`.pt`或`.tflite`或`.prototxt`文件 |
-| model_data          | 否    | 指定模型权重文件，caffe模型需要，对应`.caffemodel`文件 |
-| input_shapes        | 否    | 指定输入的shape，例如`[[1,3,640,640]]`；二维数组，可以支持多输入情况 |
-| resize_dims         | 否    | 原始图片需要resize之后的尺寸；如果不指定，则resize成模型的输入尺寸 |
-| keep_aspect_ratio   | 否    | 在Resize时是否保持长宽比，默认为false；设置时会对不足部分补0 |
-| mean                | 否    | 图像每个通道的均值，默认为0.0,0.0,0.0                    |
-| scale               | 否    | 图片每个通道的比值，默认为1.0,1.0,1.0                    |
-| pixel_format        | 否    | 图片类型，可以是rgb、bgr、gray、rgbd四种情况              |
-| output_names        | 否    | 指定输出的名称，如果不指定，则用模型的输出；指定后用该指定名称做输出 |
-| test_input          | 否    | 指定输入文件用于验证，可以是图片或npy或npz；可以不指定，则不会正确性验证 |
-| test_result         | 否    | 指定验证后的输出文件                                         |
-| excepts             | 否    | 指定需要排除验证的网络层的名称，多个用,隔开                      |
-| debug               | 否    | 指定后保留中间临时文件；否则会清理掉中间临时文件 |
-| mlir                | 是    | 指定输出的mlir文件路径                                       |
+| 参数                  | 必选 | 说明                                                                                |
+| --------------------- | :--: | ----------------------------------------------------------------------------------- |
+| `model_name`          |  ✅  | 模型名称                                                                            |
+| `model_def`           |  ✅  | 模型定义文件（`.onnx` / `.pt` / `.tflite` / `.prototxt`）                            |
+| `model_data`          |  —   | Caffe 权重文件（`.caffemodel`）                                                     |
+| `input_shapes`        |  —   | 输入形状，例如 `[[1,3,640,640]]`，支持多输入                                         |
+| `resize_dims`         |  —   | 图像 resize 尺寸；不指定时按模型输入大小                                             |
+| `keep_aspect_ratio`   |  —   | 是否保持长宽比（不足部分补 0），默认关闭                                             |
+| `mean`                |  —   | 各通道均值，默认 `0,0,0`                                                            |
+| `scale`               |  —   | 各通道缩放，默认 `1,1,1`                                                            |
+| `pixel_format`        |  —   | `rgb` / `bgr` / `gray` / `rgbd`                                                     |
+| `output_names`        |  —   | 输出名；不指定时使用模型默认输出                                                     |
+| `test_input`          |  —   | 用于验证的输入文件（图像 / npy / npz），不指定则跳过验证                             |
+| `test_result`         |  —   | 验证结果保存路径                                                                    |
+| `excepts`             |  —   | 不参与验证的层名，逗号分隔                                                          |
+| `debug`               |  —   | 保留中间文件                                                                        |
+| `mlir`                |  ✅  | 输出 MLIR 文件路径                                                                  |
 
-转成mlir文件后，会生成一个`${model_name}_in_f32.npz`文件，该文件是模型的输入文件。它是通过对图片输入进行预处理后得到的数据。
+完成后会生成预处理后的 `${model_name}_in_f32.npz`。
 
+### 3. MLIR → F16 bmodel
 
-## MLIR转F16模型
-
-将mlir文件转换成f16的bmodel，操作方法如下：
-
-``` shell
+```shell
 model_deploy.py \
   --mlir yolov5s.mlir \
   --quantize F16 \
@@ -195,40 +246,31 @@ model_deploy.py \
   --model yolov5s_1684x_f16.bmodel
 ```
 
-model_deploy.py的主要参数说明如下（完整参数信息请查看开发参考手册）：
+`model_deploy.py` 主要参数：
 
-| **参数名**           | 必选？ | **说明**                       |
-| ------------------- | ----- | ----------------------------- |
-| mlir                | 是    | 指定mlir文件                                              |
-| quantize            | 是    | 指定默认量化类型，支持F32/BF16/F16/INT8         |
-| processor           | 是    | 指定模型将要用到的平台     |
-| calibration_table   | 否    | 指定量化表路径，当存在INT8量化的时候需要量化表                 |
-| tolerance           | 否    | 表示 MLIR 量化后的结果与 MLIR fp32推理结果相似度的误差容忍度 |
-| correctnetss        | 否    | 表示仿真器运行的结果与MLIR量化后的结果相似度的误差容忍度，默认0.99,0.99 |
-| excepts             | 否    | 指定需要排除验证的网络层的名称，多个用,隔开 |
-| debug               | 否    | 指定后保留中间临时文件；否则会清理掉中间临时文件 |
-| model               | 是    | 指定输出的model文件路径                                  |
-| dynamic             | 否    | 动态编译，支持动态shape                           |
+| 参数                  | 必选 | 说明                                                                          |
+| --------------------- | :--: | ----------------------------------------------------------------------------- |
+| `mlir`                |  ✅  | 输入 MLIR 文件                                                                |
+| `quantize`            |  ✅  | `F32` / `BF16` / `F16` / `INT8`                                               |
+| `processor`           |  ✅  | 目标芯片                                                                      |
+| `calibration_table`   |  —   | 量化校准表（INT8 必填）                                                       |
+| `tolerance`           |  —   | MLIR 量化与 fp32 推理结果的最小相似度                                          |
+| `correctness`         |  —   | 模拟器与 MLIR 量化推理结果的最小相似度（默认 `0.99,0.90`）                    |
+| `excepts`             |  —   | 不参与验证的层名，逗号分隔                                                    |
+| `debug`               |  —   | 保留中间文件                                                                  |
+| `model`               |  ✅  | 输出 bmodel 路径                                                              |
+| `dynamic`             |  —   | 动态 codegen，支持动态 shape                                                  |
 
-## MLIR转INT8模型
+### 4. MLIR → INT8 bmodel
 
-转INT8模型前需要跑calibration，得到量化表；输入数据的数量根据情况准备100~1000张左右。
+先做校准（一般 100~1000 张样本），优先使用对称量化。
 
-然后用量化表，生成对称或非对称bmodel。如果对称符合需求，一般不建议用非对称，因为非对称的性能会略差与对称模型。
-
-这里用现有的100张来自COCO2017的图片举例，执行calibration：
-
-``` shell
+```shell
 run_calibration.py yolov5s.mlir \
   --dataset ../COCO2017 \
   --input_num 100 \
   -o yolov5s_cali_table
-```
 
-
-转成INT8对称量化模型，执行如下命令：
-
-``` shell
 model_deploy.py \
   --mlir yolov5s.mlir \
   --quantize INT8 \
@@ -240,103 +282,118 @@ model_deploy.py \
   --model yolov5s_1684x_int8.bmodel
 ```
 
+### 5. 验证结果
 
+示例脚本位于 `python/samples/detect_yolov5.py`：
 
-## 效果对比
-
-本工程有用python写好的yolov5用例，源码路径`python/samples/detect_yolov5.py`，用于对图片进行目标检测。阅读该代码可以了解模型是如何使用的：先预处理得到模型的输入，然后推理得到输出，最后做后处理。以下用该代码分别来验证onnx/f32/int8的执行结果。
-
-onnx模型的执行方式如下，得到`dog_onnx.jpg`：
-
-``` shell
-detect_yolov5.py \
-  --input ../image/dog.jpg \
-  --model ../yolov5s.onnx \
-  --output dog_onnx.jpg
+```shell
+# ONNX
+detect_yolov5.py --input ../image/dog.jpg --model ../yolov5s.onnx          --output dog_origin.jpg
+# F16 bmodel
+detect_yolov5.py --input ../image/dog.jpg --model yolov5s_1684x_f16.bmodel --output dog_f16.jpg
+# INT8 bmodel
+detect_yolov5.py --input ../image/dog.jpg --model yolov5s_1684x_int8.bmodel --output dog_int8.jpg
 ```
 
+不同模型的输出对比：
 
-f16 bmodel的执行方式如下，得到`dog_f16.jpg`：
+![YOLOv5 results](./docs/quick_start/assets/yolov5s.png)
 
-``` shell
-detect_yolov5.py \
-  --input ../image/dog.jpg \
-  --model yolov5s_1684x_f16.bmodel \
-  --output dog_f16.jpg
-```
+</details>
 
+---
 
-int8 **对称**bmodel的执行方式如下，得到dog_int8_sym.jpg：
+## 🛠️ 辅助工具
 
-``` shell
-detect_yolov5.py \
-  --input ../image/dog.jpg \
-  --model yolov5s_1684x_int8.bmodel \
-  --output dog_int8.jpg
-```
+### `model_runner.py` —— 通用推理工具
 
-三张图片对比如下：
+支持 `bmodel` / `mlir` / PyTorch / ONNX / TFLite / Caffe。
 
-![](./docs/quick_start/assets/yolov5s.png)
-
-
-
-# 辅助工具
-
-## 模型推理工具`model_runner.py`
-
-支持 bmodel/mlir/onnx/tflite
-
-``` shell
+```shell
 model_runner.py \
-  --input resnet18_in_f32.npz \
-  --model resnet18_1684x_f32.bmodel \
+  --input  resnet18_in_f32.npz \
+  --model  resnet18_1684x_f32.bmodel \
   --output resnet18_output.npz
 ```
 
-## `bmodel`模型工具
+### `model_tool` —— bmodel 查看与编辑
 
-可以通过`model_tool`工具来查看和编辑`bmodel`文件, 用法参考以下列表:
-
-```
-  model_tool
-    --info model_file : show brief model info
-    --print model_file : show detailed model info
-    --extract model_file : extract one multi-net bmodel to multi one-net bmodels
-    --combine file1 .. fileN -o new_file: combine bmodels to one bmodel by filepath
-    --combine_dir dir1 .. dirN -o new_dir: combine bmodels to one bmodel by directory path
-    --dump model_file start_offset byte_size out_file: dump binary data to file from bmodel
+```text
+model_tool
+  --info     model_file                                 : 查看简要信息
+  --print    model_file                                 : 查看详细信息
+  --extract  model_file                                 : 将多网络 bmodel 拆分为多个单网络 bmodel
+  --combine  file1 .. fileN -o new_file                 : 按文件路径合并 bmodel
+  --combine_dir dir1 .. dirN -o new_dir                 : 按目录合并 bmodel
+  --dump     model_file start_offset byte_size out_file : 从 bmodel dump 二进制数据
 ```
 
-例如, 获取`bmodel`的基本信息：
-
-``` shell
+```shell
 model_tool --info resnet18_1684x_f32.bmodel
 ```
 
-# 资源
+---
 
-以下资源可以帮助你更好地了解TPU-MLIR：
+## 📖 资源
 
-| 序列 | 文档 |
-| :---: | --- |
-| 01 | [TPU-MLIR 论文](https://arxiv.org/abs/2210.15016) |
-| 02 | [TPU-MLIR 开发参考手册](https://tpumlir.org/developer_manual_zh/index.html) |
-| 03 | [TPU-MLIR 快速入门指南](https://tpumlir.org/quick_start_zh/index.html) |
+### 文档与论文
 
-| 序列 | 分享会 |
-| :---: | --- |
-| 01 | [TPU-MLIR 论文讲解](https://www.bilibili.com/video/BV1My4y1o73Q/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
-| 02 | [LayerGroup 讲解](https://www.bilibili.com/video/BV1wo4y1z7AG/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
+| 类型   | 链接                                                                                |
+| ------ | ----------------------------------------------------------------------------------- |
+| 论文   | [TPU-MLIR (arXiv 2210.15016)](https://arxiv.org/abs/2210.15016)                     |
+| 手册   | [技术参考手册](https://tpumlir.org/developer_manual/index.html)                     |
+| 入门   | [快速入门](https://tpumlir.org/quick_start/index.html)                              |
 
-| 序列 | 主题 | 视频链接 |
-| :---: | --- | --- |
-| 01 | 什么是深度学习编译器？ | [深度学习编译器简介](https://www.bilibili.com/video/BV1yP4y1d7gz/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|
-| 02 | MLIR 简介 | [基本语法(一)](https://www.bilibili.com/video/BV1CP411n7fj/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [基本语法(二)](https://www.bilibili.com/video/BV1Gt4y1F7mt/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [基本语法(三)](https://www.bilibili.com/video/BV1UN4y1w72r/?share_source=copy_web&vd_source=90fd7c624ed0c40dbaf08684), [Dialect Conversion](https://www.bilibili.com/video/BV1UG411c7nm/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Pattern Rewriting](https://www.bilibili.com/video/BV1R44y1d7xv/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
-| 03 | TPU-MLIR 介绍 | [概述](https://www.bilibili.com/video/BV19d4y1B7eR/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [前端转换](https://www.bilibili.com/video/BV1yv4y1S7WT/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Lowering](https://www.bilibili.com/video/BV1gg411z7mC/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
-| 04 | 量化 | [概述](https://www.bilibili.com/video/BV1d8411j7t4/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [公式推导](https://www.bilibili.com/video/BV1SW4y1H7Uu/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [校准](https://www.bilibili.com/video/BV1qK411R75k/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [QAT](https://www.bilibili.com/video/BV12g411J7WQ/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|
-| 05 | TPU 内存 | [Ep1](https://www.bilibili.com/video/BV1T24y1G7pu/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Ep2](https://www.bilibili.com/video/BV1VY4y1y7ET/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
-| 06 | TPU-MLIR 实践 | [转Onnx格式](https://www.bilibili.com/video/BV1FD4y1H7pT/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [图优化](https://www.bilibili.com/video/BV1AR4y1U7D6/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [算子支持](https://www.bilibili.com/video/BV1tL411r71p/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [模型支持](https://www.bilibili.com/video/BV1mM411y7Ep/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [融合预处理](https://www.bilibili.com/video/BV1ao4y1H7m8/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8ddhttpe8), [精度验证](https://www.bilibili.com/video/BV14e4y1M79d/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
+### 分享会
 
+- [TPU-MLIR 论文解读](https://www.bilibili.com/video/BV1My4y1o73Q/)
+- [LayerGroup](https://www.bilibili.com/video/BV1wo4y1z7AG/)
 
-如果你在完成上述任务时有任何疑问，可以在中[Issues](https://github.com/sophgo/tpu-mlir/issues)提问或查看现有答案。
+### 视频教程
+
+<details>
+<summary><b>点击展开视频目录</b></summary>
+
+| # | 主题 | 链接 |
+|:-:|------|------|
+| 01 | 什么是深度学习编译器？      | [入门](https://www.bilibili.com/video/BV1yP4y1d7gz/) |
+| 02 | MLIR 入门                   | [语法 1](https://www.bilibili.com/video/BV1CP411n7fj/) · [语法 2](https://www.bilibili.com/video/BV1Gt4y1F7mt/) · [语法 3](https://www.bilibili.com/video/BV1UN4y1w72r/) · [Dialect Conversion](https://www.bilibili.com/video/BV1UG411c7nm/) · [Pattern Rewriting](https://www.bilibili.com/video/BV1R44y1d7xv/) |
+| 03 | TPU-MLIR 概览               | [总览](https://www.bilibili.com/video/BV19d4y1B7eR/) · [前端转换](https://www.bilibili.com/video/BV1yv4y1S7WT/) · [Lowering](https://www.bilibili.com/video/BV1gg411z7mC/) |
+| 04 | 量化                        | [总览](https://www.bilibili.com/video/BV1d8411j7t4/) · [公式推导](https://www.bilibili.com/video/BV1SW4y1H7Uu/) · [校准](https://www.bilibili.com/video/BV1qK411R75k/) · [QAT](https://www.bilibili.com/video/BV12g411J7WQ/) |
+| 05 | TPU 内存                    | [Ep1](https://www.bilibili.com/video/BV1T24y1G7pu/) · [Ep2](https://www.bilibili.com/video/BV1VY4y1y7ET/) |
+| 06 | TPU-MLIR 实战               | [转 ONNX](https://www.bilibili.com/video/BV1FD4y1H7pT/) · [图优化](https://www.bilibili.com/video/BV1AR4y1U7D6/) · [算子支持](https://www.bilibili.com/video/BV1tL411r71p/) · [模型支持](https://www.bilibili.com/video/BV1mM411y7Ep/) · [融合预处理](https://www.bilibili.com/video/BV1ao4y1H7m8/) · [精度验证](https://www.bilibili.com/video/BV14e4y1M79d/) |
+
+</details>
+
+---
+
+## 📝 引用
+
+如果 TPU-MLIR 对您的研究有帮助，请按下列格式引用：
+
+```bibtex
+@misc{tpumlir2022,
+  title         = {TPU-MLIR: A Compiler For TPU Using MLIR},
+  author        = {HuPengchao and LuMan and WangLei and JiangGuoyue},
+  year          = {2022},
+  eprint        = {2210.15016},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.PL}
+}
+```
+
+---
+
+## 🤝 贡献
+
+欢迎提交 Bug、功能请求与 Pull Request！
+
+1. 提交前请先在 [Issues](https://github.com/sophgo/tpu-mlir/issues) 中检索，避免重复。
+2. 较大改动建议先开 Issue 讨论设计方案。
+3. PR 前请运行 `regression/` 下的回归测试。
+
+---
+
+## 📄 许可证
+
+本项目采用根目录下 [LICENSE](./LICENSE) 文件中规定的开源许可证。

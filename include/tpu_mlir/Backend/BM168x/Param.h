@@ -26,6 +26,7 @@ extern "C" {
 #define PPL_CV184X "cv184x"
 #define PPL_BM1690E "bm1690e"
 #define PPL_BM1684XE "bm1684xe"
+#define PPL_BM1684X2 "bm1684x2"
 
 // -------------------------------------------------------------------
 // Constant Definition
@@ -1347,9 +1348,12 @@ typedef struct mlp_spec {
   bool has_zp_down;
   bool has_bias_down;
   bool quantized;
+  bool is_expert;
   int weight_bits;
   int q_group_size;
   int use_multi_core;
+  int num_expert;
+  int num_expert_per_tok;
   uint64_t buffer_addr;
 } mlp_spec_t;
 
@@ -2416,6 +2420,27 @@ typedef struct {
   GridSamplePaddingMode padding_mode;
   int dtype;
 } grid_sample_in_deformable_attn_global_param_t;
+
+typedef struct chunk_gated_delta_rule_spec {
+  int num_k_heads;
+  int num_v_heads;
+  int d;
+  int chunk_size;
+  bool use_qk_l2norm;
+  float scale;
+} chunk_gated_delta_rule_spec_t;
+
+typedef struct recurrent_gated_delta_rule_spec {
+  int num_k_heads;
+  int num_v_heads;
+  int d;
+  bool use_qk_l2norm;
+  float scale;
+} recurrent_gated_delta_rule_spec_t;
+
+typedef struct concat_slice_spec {
+  int axis;
+} concat_slice_spec_t;
 
 typedef struct core_split_spec {
   int axis;

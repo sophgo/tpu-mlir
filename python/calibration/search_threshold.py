@@ -48,10 +48,12 @@ class SearchThreshold:
         self.mix_prec = MixPrecSearcher(args)
         self.debug_cmd = args.debug_cmd
         self.qtable = qtable
+        self.low_prec, self.high_prec = get_mix_prec(self.args.chip, self.args.mix_mode,
+                                                     self.args.fp_type)
 
     def run_search_calitable(self):
 
-        float_model = MixQuantModel(self.fp32_mlir, self.chip)
+        float_model = MixQuantModel(self.fp32_mlir, None, None, "F32")
         predictions_gt = []
         global_compare_layers, layers_rate, _ = self.mix_prec.extract_global_layers()
         quantize_method_list = ["kl", "max", "percentile9999", "mse"]
@@ -81,7 +83,8 @@ class SearchThreshold:
                 data = file.read()
             with open(new_cali_table_name, 'w') as file:
                 file.write(data)
-            int8_model = MixQuantModel(self.fp32_mlir, self.chip, new_cali_table_name, mix_table)
+            int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec, self.high_prec,
+                                       new_cali_table_name, mix_table)
             if self.benchmark_method == 'cos':
                 outputs = self.mix_prec.run_model(int8_model, False, global_compare_layers,
                                                   layers_rate, predictions_gt)

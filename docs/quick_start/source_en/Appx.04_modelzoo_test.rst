@@ -50,7 +50,7 @@ The directory structure of model-zoo is as follows:
 
 
 Prepare the runtime environment
-~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Install the dependencies needed to run ``model-zoo`` on your system (outside of the Docker container):
 
@@ -64,7 +64,7 @@ Install the dependencies needed to run ``model-zoo`` on your system (outside of 
    $ sudo yum install make automake gcc gcc-c++ kernel-devel
    $ sudo yum install python-devel
    $ sudo yum install mesa-libGL
-   # accuracy tests require the following operations to be performed, performance tests can be performed without, it is recommended to use Anaconda to create a virtual environment of python 3.7 or above
+   # accuracy tests require the following operations to be performed, performance tests can be performed without, it is recommended to use Anaconda to create a virtual environment of python 3.10 or above
    $ cd path/to/model-zoo
    $ pip3 install -r requirements.txt
 
@@ -72,7 +72,7 @@ In addition, tpu hardware needs to be invoked for performance and accuracy tests
 
 
 Configure SoC device
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Note: If your device is a PCIe board, you can skip this section directly.
 
@@ -142,7 +142,7 @@ After unzipping, move the data under ``Data/CLS_LOC/val`` to a directory like mo
 
 
 COCO (optional)
------------
+------------------------------
 
 If the precision test uses the coco dataset (networks trained with coco such as yolo), please download and unzip it as follows:
 
@@ -156,7 +156,7 @@ If the precision test uses the coco dataset (networks trained with coco such as 
 
 
 Vid4 (optional)
------------
+------------------------------
 
 If you need precision test on BasicVSR, please download and unzip the Vid4 dataset as follows:
 
@@ -169,20 +169,20 @@ If you need precision test on BasicVSR, please download and unzip the Vid4 datas
 
 
 Prepare the toolchain compilation environment
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 It is recommended to use the toolchain software in a docker environment, see :ref:`Base environment configuration <docker configuration>` to install Docker. and execute the following commands in your working directory (the directory which ``model-zoo`` is located) to create a Docker container:
 
 .. code-block:: shell
 
-   $ docker pull tpuc_dev:v3.4
-   $ docker run --name myname -v $PWD:/workspace -it tpuc_dev:v3.4
+   $ docker pull sophgo/tpuc_dev:v3.4
+   $ docker run --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4
 
 If you want to keep the container after it exits, simply remove the ``--rm`` parameter:
 
 .. code-block:: shell
 
-   $ docker run --name myname -v $PWD:/workspace -it tpuc_dev:v3.4 --rm
+   $ docker run --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4 --rm
 
 After running the command, it will be in a Docker container. You can the latest ``tpu-mlir`` wheel installation package from the SDK package, such as ``tpu_mlir-*-py3-none-any.whl``. Install tpu_mlir in the Docker container:
 
@@ -194,14 +194,14 @@ After running the command, it will be in a Docker container. You can the latest 
 .. _test_main:
 
 Model performance and accuracy testing process
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Compile the model
----------
+------------------------------
 
 The model compilation process needs to be done within Docker, where ``tpu_mlir`` need to be installed as described above.
 
-``confg.yaml`` in ``model-zoo`` configures the test content of the SDK. For example, the configuration file for resnet18 is ``model-zoo/vision/classification/resnet18-v2/mlir.config.yaml`` .
+``config.yaml`` in ``model-zoo`` configures the test content of the SDK. For example, the configuration file for resnet18 is ``model-zoo/vision/classification/resnet18-v2/mlir.config.yaml`` .
 
 Execute the following command to compile the ``resnet18-v2`` model:
 
@@ -210,7 +210,7 @@ Execute the following command to compile the ``resnet18-v2`` model:
    $ cd ../model-zoo
    $ python3 -m tpu_perf.build --target BM1684X --mlir vision/classification/resnet18-v2/mlir.config.yaml
 
-where the ``--target`` is used to specify the processor model, which currently supports ``BM1684`` , ``BM1684X`` , ``BM1688`` , ``BM1690`` and ``CV186X`` .
+where the ``--target`` is used to specify the processor model, which currently supports ``BM1684`` , ``BM1684X`` , ``BM1688`` and ``CV186X`` .
 
 Execute the following command to compile all the high priority test samples:
 
@@ -244,7 +244,7 @@ After the command is finished, you will see the newly generated ``output`` folde
 
 
 Performance test
----------
+------------------------------
 
 Running the test needs to be done in an environment outside Docker, it is assumed that you have installed and configured the runtime environment for the TPU hardware, so you can exit the Docker environment:
 
@@ -261,7 +261,7 @@ Run the following commands under the PCIe board to test the performance of the g
    $ cd model-zoo
    $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt --priority_filter high
 
-where the ``--target`` is used to specify the processor model, which currently supports ``BM1684`` , ``BM1684X`` , ``BM1688`` , ``BM1690`` and ``CV186X`` .
+where the ``--target`` is used to specify the processor model, which currently supports ``BM1684`` , ``BM1684X`` , ``BM1688`` and ``CV186X`` .
 
 Note: If multiple accelerator cards are installed on the host, you can
 specify the running device of ``tpu_perf`` by adding ``--devices id`` when using
@@ -296,7 +296,7 @@ After that, performance data is available in ``output/stats.csv``, in which the 
 
 
 Precision test
----------
+------------------------------
 
 Note: Due to the limited CPU resources of SoC devices, precision testing is not recommended. Therefore, the SoC device test can skip the precision test part.
 
@@ -313,19 +313,19 @@ Run the following commands under the PCIe board to test the precision of the gen
    $ cd model-zoo
    $ python3 -m tpu_perf.precision_benchmark --target BM1684X --mlir -l full_cases.txt --priority_filter high
 
-where the ``--target`` is used to specify the processor model, which currently supports ``BM1684`` , ``BM1684X`` , ``BM1688`` , ``BM1690`` and ``CV186X`` .
+where the ``--target`` is used to specify the processor model, which currently supports ``BM1684`` , ``BM1684X`` , ``BM1688`` and ``CV186X`` .
 
 Note:
 
 - If multiple accelerator cards are installed on the host, you can
-specify the running device of ``tpu_perf`` by adding ``--devices id`` when using
-``tpu_perf``. Such as:
+  specify the running device of ``tpu_perf`` by adding ``--devices id`` when using
+  ``tpu_perf``. Such as:
 
 .. code-block:: shell
 
    $ python3 -m tpu_perf.precision_benchmark --target BM1684X --devices 2 --mlir -l full_cases.txt --priority_filter high
 
-- The precision test of ``BM1688``, ``BM1690``, and ``CV186X`` requires additional configuration of the following environment variables:
+- The precision test of ``BM1688`` and ``CV186X`` requires additional configuration of the following environment variables:
 
 .. code-block:: shell
 

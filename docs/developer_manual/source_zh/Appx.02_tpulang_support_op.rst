@@ -1,3 +1,5 @@
+.. _appendix02_tpulang:
+
 附录02：TpuLang的基本元素
 ==============================
 
@@ -154,6 +156,7 @@ Control Functions
 * device：string类型。取值范围"BM1684X"\|"BM1688"\|"CV183X"。
 
 .. _compile:
+
 compile
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -214,7 +217,8 @@ compile
 * layer_group_config: string类型，表示layer group配置文件路径。默认值为""。
 
 
-.. _compile:
+.. _compile_f32:
+
 compile_f32
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -3527,14 +3531,14 @@ concat
 
     .. code-block:: python
 
-    def concat(inputs: List[Tensor],
-               scales: Optional[Union[List[float],List[int]]] = None,
-               zero_points: Optional[List[int]] = None,
-               axis: int = 0,
-               out_name: str = None,
-               dtype="float32",
-               round_mode: str="half_away_from_zero"):
-        #pass
+        def concat(inputs: List[Tensor],
+                   scales: Optional[Union[List[float],List[int]]] = None,
+                   zero_points: Optional[List[int]] = None,
+                   axis: int = 0,
+                   out_name: str = None,
+                   dtype="float32",
+                   round_mode: str="half_away_from_zero"):
+            #pass
 
 功能描述
 """"""""""""""""""""""""""""""""""""""""""""""
@@ -5113,11 +5117,11 @@ roiExtractor
 * PW：int类型，表示输出的width。
 * sampling_ratio：int类型，表示每层feature map的sample ratio。
 * list_spatial_scale：int，List[int]或Tuple[int]型，表示每层feature map对应的spatial scale。
-                      请注意，spatial scale遵循mmdetection风格，最初给定一个整数值，但其浮点倒数最終被用于RoIAlign。
+  请注意，spatial scale遵循mmdetection风格，最初给定一个整数值，但其浮点倒数最終被用于RoIAlign。
 * mode: string类型, 表示Op执行模式, 目前支持DynNormal, DynFuse。
-        请注意，在DynFuse模式下，输入rois的坐标  支持2类风格,1)遵循mmdetection的风格，即5长度[batch_id, x0, y0, x1, y1]。
-                                                       2)自定义的7长度[a, b, x0, y0, x1, y1, c], 特別注意如果batch_id和a,b,c难以匹配, 建议另外重新生成batch_id。
-               在DynNormal模式下，输入rois的坐标风格是一种自定义的7长度[a, b, x0, y0, x1, y1, c]风格，以便应用客户独特的模型。
+  请注意，在DynFuse模式下，输入rois的坐标支持2类风格,1)遵循mmdetection的风格，即5长度[batch_id, x0, y0, x1, y1]。
+  2)自定义的7长度[a, b, x0, y0, x1, y1, c], 特別注意如果batch_id和a,b,c难以匹配, 建议另外重新生成batch_id。
+  在DynNormal模式下，输入rois的坐标风格是一种自定义的7长度[a, b, x0, y0, x1, y1, c]风格，以便应用客户独特的模型。
 * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 返回值
@@ -5270,7 +5274,7 @@ select
 
 返回值
 """"""""""""""""""""""""""""""""""""""""""""""
-返回一个Tensor，数据类型与张量 `tbrn`的数据类型相同。
+返回一个Tensor，数据类型与张量 ``tbrn`` 的数据类型相同。
 
 处理器支持
 """"""""""""""""""""""""""""""""""""""""""""""
@@ -5335,7 +5339,7 @@ bmodel_inference_combine
           dump_cmd_info: bool = True,
           skip_check: bool = True,  # disable data_check to increase processing speed
           run_by_op: bool = False, # enable to run_by_op, may cause timeout error when some OPs contain too many atomic cmds
-          desire_op: list = [], # set ["A","B","C"] to only dump tensor A/B/C, dump all tensor as defalt
+          desire_op: list = [], # set ["A","B","C"] to only dump tensor A/B/C, dump all tensor as default
           is_soc: bool = False,  # SoC mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
           using_memory_opt: bool = False, # required when is_soc=True
           enable_soc_log: bool = False, # required when is_soc=True
@@ -5356,7 +5360,7 @@ bmodel_inference_combine
 * final_mlir_fn: String类型，表示bmodel对应的final.mlir的绝对路径。
 * input_data_fn: String类型或dict类型，表示输入数据的格式，支持 字典格式、.dat格式、.npz格式。
 * tensor_loc_file: String类型，表示bmodel对应的tensor_location.json文件的绝对路径。
-* reference_data_fn: String,类型，表示 `module.state = "TPU_LOWERED"`的.mlir文件或对应的.npz推理结果的绝对路径。bmodel推理时会将原本一个算子的shape拆散，该参数用于恢复原本的shape。
+* reference_data_fn: String,类型，表示 ``module.state = "TPU_LOWERED"`` 的.mlir文件或对应的.npz推理结果的绝对路径。bmodel推理时会将原本一个算子的shape拆散，该参数用于恢复原本的shape。
 * dump_file: Bool类型，表示逐层Tensor数据是否以.npz文件形似保存，或直接返回字典。
 * save_path: String类型，表示 `dump_file=True` 时的主机(host)端保存逐层推理的.npz文件的绝对路径。
 * out_fixed: Bool类型，表示逐层Tensor数据输出是否保持为定点格式。

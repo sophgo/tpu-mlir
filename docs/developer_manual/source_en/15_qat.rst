@@ -23,14 +23,14 @@ Feature 3: Based on the open-sourced mqbench training framework by SenseTime, tp
 Installation Method
 ---------------------------------------------------
 
-tpu-mq is recommanded to be used in docker container, the docker image can be pulled by:
+tpu-mq is recommended to be used in docker container, the docker image can be pulled by:
 
 
 .. code-block:: shell
 
-    docker pull tpuc_dev:v3.4.6-cuda
+    docker pull sophgo/tpuc_dev:v3.4.6-cuda
 
-The docker image includes pytorch 2.1.0 and cuda 12.6, and intergrated the environment for tpu-mlir.
+The docker image includes pytorch 2.1.0 and cuda 12.6, and integrated the environment for tpu-mlir.
 
 Install with setup package
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -78,10 +78,10 @@ Add the following python module import interface to the training file:
     #Use the pre-trained ResNet18 model from the torchvision model zoo.
     model = models.__dict__['resnet18'](pretrained=True)
 
-    #1.Trace the model, using a dictionary to specify the processor type as BM1690 and the quantization mode as weight_activation. In this quantization mode, both weights and activations are quantized. Specify the quantization strategy for CNN type.
+    #1.Trace the model, using a dictionary to specify the processor type as BM1684X and the quantization mode as weight_activation. In this quantization mode, both weights and activations are quantized. Specify the quantization strategy for CNN type.
     extra_prepare_dict = {
     'quant_dict': {
-                    'chip': 'BM1690',
+                    'chip': 'BM1684X',
                     'quantmode': 'weight_activation',
                     'strategy': 'CNN',
                     },
@@ -89,9 +89,9 @@ Add the following python module import interface to the training file:
     model_quantized = prepare_by_platform(model, prepare_custom_config_dict=extra_prepare_dict)
 
 
-When the above interface selects the BM1690 processor, the default quantization configuration is as shown in the following figure:
+When the above interface selects the BM1684X processor, the default quantization configuration is as shown in the following figure:
 
-.. figure:: ../assets/bm1690_default_para.png
+.. figure:: ../assets/bm1684x_default_para.png
    :align: center
 
 The meanings of the quantization configuration items in the above figure, from top to bottom, are as follows:
@@ -152,7 +152,7 @@ Step 4: Initiate the training
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The transformation deployment to sophg-tpu hardware was completed using the model_transform.py and model_deploy.py scripts of tpu-mlir；
 
-By introducing tpu-mlir in tpu-mq, user can use tpu-mlir inference interface to simulate the running of model on ASIC. By using this interface, model is generated and while trainning. User can replace traditional evaluation module with tpu-mlir inference, input and output to this interface are in numpy format, example code is as following:
+By introducing tpu-mlir in tpu-mq, user can use tpu-mlir inference interface to simulate the running of model on ASIC. By using this interface, model is generated and while training. User can replace traditional evaluation module with tpu-mlir inference, input and output to this interface are in numpy format, example code is as following:
 
 .. code-block:: python
 
@@ -184,7 +184,7 @@ Run application/imagenet_example/main.py to qat train resent18 as follows:
         --evaluate \
         --train_data=/home/data/imagenet \
         --val_data=/home/data/imagenet \
-        --chip=BM1690 \
+        --chip=BM1684X \
         --quantmode=weight_activation \
         --deploy_batch_size=10 \
         --pre_eval_and_export \
@@ -232,7 +232,7 @@ c、In the case of asymmetric quantization, min and max above are calculated acc
 
 Tpu-mlir QAT test environment
 --------------------------------
-QAT model is targeted to ASIC, accuracy of the model can be verified with end to end verification program, usually it is deployed on processor. Within development environment, accuracy can be evaluated by tpu-mlir inference interface for convinence, sample code as following:
+QAT model is targeted to ASIC, accuracy of the model can be verified with end to end verification program, usually it is deployed on processor. Within development environment, accuracy can be evaluated by tpu-mlir inference interface for convenience, sample code as following:
 
 
 Adding a cfg File

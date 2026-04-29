@@ -166,7 +166,7 @@ uint64_t tpu::MatMulOp::getL2BufferSize() {
       spec.shift_val = -rshift_v->at(0);
       auto output_type = module::getUniformQuantizedType(getOutput());
       spec.offset_val = output_type.getZeroPoint();
-      spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
+      spec.round_mode = (RoundingMode)getRoundMode();
     }
   }
   auto input_spec = BM168x::get_input_spec(getOperation());

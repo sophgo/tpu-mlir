@@ -146,8 +146,7 @@ void py_cuda::cudaMatMulOp(tpu::MatMulOp op) {
       cudnnSetTensor4dDescriptor(bias_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT,
                                 1, 1, 1, p.N);
       float alpha = 1.0f, beta = 1.0f;
-      if (module::getStorageType(op.getInput()).isF32() || module::getStorageType(op.getInput()).isFloat8E4M3FN() ||
-          (module::getStorageType(op.getInput()).isBF16() && module::isCV18xx())) {
+      if (module::getStorageType(op.getBias()).isF32()) {
         auto bias = getCudaData(op.getBias());
         CHECK_CUDNN(cudnnAddTensor(cudnn_, &alpha, bias_desc, bias, &beta,
                                   outf32_desc, out_f32.get()));

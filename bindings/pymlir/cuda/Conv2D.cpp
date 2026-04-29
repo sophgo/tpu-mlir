@@ -16,42 +16,47 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
   bool zp_is_zero = !module::isUniformQuantized(op.getInput()) ||
     module::getUniformQuantizedType(op.getInput()).getZeroPoint() == 0;
   auto out_stype = module::getStorageType(op.getOutput());
+  bool need_insert = p.ins_h != 0 || p.ins_w != 0;
   bool need_pad = p.pht != p.phb || p.pwl != p.pwr || !zp_is_zero;
-  cuda_ptr in_f32;
+  bool input_is_f32 = module::getStorageType(op.getInput()).isF32();
+  bool use_preprocessed_input = !input_is_f32 || need_insert || need_pad;
+  cuda_ptr in_f32, in_insert, in_pad;
+  void *conv_input = nullptr;
   int ih = p.ih, iw = p.iw;
   int pad_h = p.phb, pad_w = p.pwr;
-  if (!need_pad) {
-    if (!module::getStorageType(op.getInput()).isF32()) {
-      in_f32 = newCudaData(op.getInput(), cuda::DT_F32);
-    }
+  if (!input_is_f32) {
+    in_f32 = newCudaData(op.getInput(), cuda::DT_F32);
+    conv_input = in_f32.get();
   } else {
-    ih = p.ih + p.pht + p.phb;
-    iw = p.iw + p.pwl + p.pwr;
+    conv_input = getCudaData(op.getInput());
+  }
+
+  if (need_insert) {
+    int ins_ih = p.ih + (p.ih - 1) * p.ins_h;
+    int ins_iw = p.iw + (p.iw - 1) * p.ins_w;
+    int ins_num = p.n * p.ic * ins_ih * ins_iw;
+    in_insert = cuda_malloc(ins_num * sizeof(float));
+    cuda::insertZero4D(conv_input, in_insert.get(), p.n, p.ic, p.ih, p.iw,
+                       p.ins_h, p.ins_w, sizeof(float));
+    conv_input = in_insert.get();
+    ih = ins_ih;
+    iw = ins_iw;
+  }
+
+  if (need_pad) {
+    int pad_ih = ih + p.pht + p.phb;
+    int pad_iw = iw + p.pwl + p.pwr;
+    int pad_num = p.n * p.ic * pad_ih * pad_iw;
+    in_pad = cuda_malloc(pad_num * sizeof(float));
+    cuda::pad4D(conv_input, in_pad.get(), p.n, p.ic, ih, iw, p.pht, p.phb,
+                p.pwl, p.pwr, sizeof(float), (float)p.pad_value);
+    conv_input = in_pad.get();
+    ih = pad_ih;
+    iw = pad_iw;
     pad_h = 0;
     pad_w = 0;
-    int num = p.n * p.ic * ih * iw;
-    if (module::isUniformQuantized(op.getOutput())) {  // assume int8 for uniformquantized
-      auto pad_in = cuda_malloc(num);
-      auto input = getCudaData(op.getInput());
-      cuda::pad4D(input, pad_in.get(), p.n, p.ic, p.ih, p.iw, p.pht, p.phb, p.pwl,
-                  p.pwr, 1, p.pad_value);
-      in_f32 = cuda_malloc(num * sizeof(float));
-      cuda::convertType(pad_in.get(), in_f32.get(), num,
-                        getCudaType(op.getInput()), cuda::DT_F32);
-    } else {
-      in_f32 = cuda_malloc(num * sizeof(float));
-      if (module::getStorageType(op.getInput()).isF32()) {
-        auto input = getCudaData(op.getInput());
-        cuda::pad4D(input, in_f32.get(), p.n, p.ic, p.ih, p.iw, p.pht, p.phb, p.pwl,
-                    p.pwr, sizeof(float), p.pad_value);
-      } else {
-        auto input = newCudaData(op.getInput(), cuda::DT_F32);
-        cuda::pad4D(input.get(), in_f32.get(), p.n, p.ic, p.ih, p.iw, p.pht, p.phb, p.pwl,
-                    p.pwr, sizeof(float), p.pad_value);
-        input.reset();
-      }
-    }
   }
+
   // --------------------------------------------------------------------------
   // 1. inference int8 => float
   cudnnTensorDescriptor_t input_desc;
@@ -88,27 +93,19 @@ void py_cuda::cudaConv2DOp(tpu::Conv2DOp op) {
   float alpha = 1.0f, beta = 0.0f;
   if (module::getStorageType(op.getFilter()).isF32()) {
     auto kernel_f32 = getCudaData(op.getFilter());
-    if (need_pad) {
-      CHECK_CUDNN(cudnnConvolutionForward(cudnn_, &alpha, input_desc, in_f32.get(),
+    CHECK_CUDNN(cudnnConvolutionForward(cudnn_, &alpha, input_desc,
+                                        use_preprocessed_input ? conv_input : getCudaData(op.getInput()),
                                         kernel_desc, kernel_f32, conv_desc,
                                         algo, conv_buffer.get(), worksize, &beta,
                                         outf32_desc, out_f32.get()));
-      in_f32.reset();
-    } else{
-      auto in_ = getCudaData(op.getInput());
-      CHECK_CUDNN(cudnnConvolutionForward(cudnn_, &alpha, input_desc, in_,
-                                        kernel_desc, kernel_f32, conv_desc,
-                                        algo, conv_buffer.get(), worksize, &beta,
-                                        outf32_desc, out_f32.get()));
-    }
   } else {
     cuda_ptr kernel_f32 = newCudaData(op.getFilter(), cuda::DT_F32);
-    CHECK_CUDNN(cudnnConvolutionForward(cudnn_, &alpha, input_desc, in_f32.get(),
+    CHECK_CUDNN(cudnnConvolutionForward(cudnn_, &alpha, input_desc,
+                                        use_preprocessed_input ? conv_input : getCudaData(op.getInput()),
                                         kernel_desc, kernel_f32.get(), conv_desc,
                                         algo, conv_buffer.get(), worksize, &beta,
                                         outf32_desc, out_f32.get()));
     kernel_f32.reset();
-    in_f32.reset();
   }
   conv_buffer.reset();
   cudnnDestroyTensorDescriptor(input_desc);

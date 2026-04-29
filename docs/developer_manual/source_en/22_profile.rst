@@ -7,7 +7,7 @@ Analyse TPU Performance with TPU Profile
 As the following figure shows, a whole TPU application depends on the cooperation of software and hardware:
 
 **Software**
-Host provides driver software packs and correspoding interfaces. Driver abstracts the mechanism of basic communication and resource management, defines function interfaces. The driver software packs implements various concrete functions for TPU inference, such as BMLib and TPU-RUNTIME.
+Host provides driver software packs and corresponding interfaces. Driver abstracts the mechanism of basic communication and resource management, defines function interfaces. The driver software packs implements various concrete functions for TPU inference, such as BMLib and TPU-RUNTIME.
 
 - **BMLib** (``libbmlib.so``) wraps the driver interfaces for compatibility and portability of applications, improving performance and simplicity of programming.
 - **TPU-RUNTIME** (``libbmrt.so``) implements loading, management, execution, and so on.

@@ -14,8 +14,12 @@ The overall architecture of TPU-MLIR is shown in the figure (:ref:`framework`).
    TPU-MLIR overall architecture
 
 
-The current directly supported frameworks are pytorch, onnx, tflite and caffe. Models from other frameworks need to be converted to onnx models. The method of converting models from other frameworks to onnx can be found on the onnx official website:
+The current directly supported frameworks are PyTorch, ONNX, TFLite and Caffe. Models from other frameworks need to be converted to onnx models. The method of converting models from other frameworks to onnx can be found on the onnx official website:
 https://github.com/onnx/tutorials.
 
 
-To convert a model, firstly you need to execute it in the specified docker. With the required environment, conversion work can be done in two steps, converting the original model to mlir file by ``model_transform`` and converting the mlir file to bmodel/cvimodel by ``model_deploy``. To obtain an INT8 model, you need to call ``run_calibration`` to generate a quantization table and pass it to ``model_deploy``. This article mainly introduces the process of this model conversion.
+To convert a model, firstly you need to execute it in the specified docker. With the required environment, conversion work can be done in two steps, converting the original model to mlir file by ``model_transform`` and converting the mlir file to bmodel/cvimodel by ``model_deploy``. To obtain an INT8 model, you need to call ``run_calibration`` to generate a calibration table and pass it to ``model_deploy``.
+
+If the INT8 model does not meet the accuracy requirements, ``search_qtable`` can be used to generate a quantization table that decides which layers run in floating point, and the resulting table is passed to ``model_deploy`` to produce a mixed-precision model.
+
+This article mainly introduces the process of this model conversion.

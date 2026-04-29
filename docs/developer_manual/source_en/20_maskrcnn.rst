@@ -78,7 +78,7 @@ Used to convert MaskRCNN into MLIR files.
 
 - **Skip Inference**: please be aware that no input/reference data ``.npz`` files are needed at this step, but a ``config.yaml`` is required in advance.
 - **Skip Preprocess**: please note that in this step, no preprocessing is applied by default.
-- **New Enable Flag**: please remeber ``enable_maskrcnn``.
+- **New Enable Flag**: please remember ``enable_maskrcnn``.
 
 .. code-block:: bash
 
@@ -105,13 +105,13 @@ Input Formats Reorganizing Tools
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 A tool is offered at `tpu-mlir/python/tools/tool_maskrcnn.py` to assist you in generating data satisfied with the above requirements.
 
-- **Skip Preprocess**: input image shoud be after preprocess, as preprocess procedure for MaskRCNN is usually complex and relies on specific functions from original framework.
+- **Skip Preprocess**: input image should be after preprocess, as preprocess procedure for MaskRCNN is usually complex and relies on specific functions from original framework.
 
-Besides ``path_yaml``, 3 more parameters need to be specifc:
+Besides ``path_yaml``, 3 more parameters need to be specific:
 
  - **path_input_image**: image after preprocessing, saved as npz.
  - **basic_max_shape_inverse**: the height and width after preprocessing.
- - **basic_scalar_factor**:     precisely the above ``float(S1 / S0)``,  ``basic_max_shape_inverse`` divide orginal shape reordered in ``height, width``.
+ - **basic_scalar_factor**:     precisely the above ``float(S1 / S0)``,  ``basic_max_shape_inverse`` divide original shape reordered in ``height, width``.
 
 The result data will be stored at same path of ``path_input_image``, but suffixed by ``SuperiorMaskRCNNInputPreprocessed``.
 
@@ -132,7 +132,7 @@ Please explore ``tool_maskrcnn.py`` for more guidance.
 - **Inference Skip**: quant compare and simulation compare are skipped here.
 
 - **Mandatory Parameters**: ``--quantize`` mode is forced to be ``F32`` and ``--processor`` is forced to be ``BM1684X``.
-- **New Enable Flag**: please remeber ``enable_maskrcnn``.
+- **New Enable Flag**: please remember ``enable_maskrcnn``.
 
 .. code-block:: bash
 

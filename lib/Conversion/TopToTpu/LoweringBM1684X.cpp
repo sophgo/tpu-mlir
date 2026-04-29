@@ -123,6 +123,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       CastLowering,
       CeilLowering,
       ChunkGatedDeltaRuleLowering,
+      RecurrentGatedDeltaRuleLowering,
+      ConcatSliceLowering,
       ClipLowering,
       ConcatLowering,
       ConstantFillLowering,

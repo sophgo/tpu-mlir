@@ -128,16 +128,13 @@ class Qwen2_5OConverter(Qwen2_5VLConverter):
 
         vit_mlir = MLIRImporter(input_shapes, [out_shape],
                                 "vit",
-                                Platform.LLM,
+                                self.platform,
                                 input_types,
                                 weight_file=f'../{vit_npz}')
         ip = vit_mlir.insert_point
 
-        def T(shape: list):
-            return vit_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, vit_mlir)
+        T = vit_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, vit_mlir)
 
         in0_op = vit_mlir.create_input_op(L('input_states'), 0)
         in1_op = vit_mlir.create_input_op(L('position_ids'), 1)
@@ -267,16 +264,13 @@ class Qwen2_5OConverter(Qwen2_5VLConverter):
 
         audio_mlir = MLIRImporter([in_shape], [out_shape],
                                   name,
-                                  Platform.LLM,
+                                  self.platform,
                                   input_types,
                                   weight_file=f"../{audio_npz}")
         ip = audio_mlir.insert_point
 
-        def T(shape: list):
-            return audio_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, audio_mlir)
+        T = audio_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, audio_mlir)
 
         in0_op = audio_mlir.create_input_op(L('input_states'), 0)
         weight_op = audio_mlir.create_weight_op(conv1 + ".weight", [d_model, num_mel_bins, 3])

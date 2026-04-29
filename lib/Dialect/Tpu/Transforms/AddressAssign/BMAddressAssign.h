@@ -39,11 +39,12 @@ protected:
   std::vector<uint32_t>
   getConcatOpLive(Operation *op, std::map<ValueInfo, TensorLive> &liveRange);
   void assignL2SRAM(ModuleOp &module);
-  void assignIOByAddrMode(ModuleOp &module,
-                          std::map<ValueInfo, TensorLive> &liveRange,
-                          std::vector<ValueInfo> &inplace_ops,
-                          std::vector<ValueInfo> &common_ops,
-                          int64_t &start_addr);
+  void
+  assignIOByAddrMode(ModuleOp &module,
+                     std::map<ValueInfo, TensorLive> &liveRange,
+                     std::vector<ValueInfo> &inplace_ops,
+                     std::vector<ValueInfo> &common_ops, int64_t &start_addr,
+                     const std::vector<std::pair<int, int>> &same_addr_idx);
   void assignAfter(ModuleOp &module, std::vector<ValueInfo> &inplace_ops);
 
 protected:

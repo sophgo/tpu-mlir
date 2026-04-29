@@ -422,11 +422,8 @@ class GLM4VConverter(LlmConverter):
         norm2 = f"model.visual.blocks.{idx}.norm2"
         ip = vit_mlir.insert_point
 
-        def T(shape: list):
-            return vit_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, vit_mlir)
+        T = vit_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, vit_mlir)
 
         # modeling_glm4v.py:Glm4vVisionAttention
         def vision_attention(in_op):
@@ -661,7 +658,7 @@ class GLM4VConverter(LlmConverter):
                 # split qkv
                 self.set_qkv_weight(f"{layers}.{i}", weights_dict)
             # save weights
-            self.weights.extend(weights_dict.keys())
+            self.weight_keys.extend(weights_dict.keys())
             np.savez(vit_npz, **weights_dict)
 
         # create mlir file
@@ -678,16 +675,13 @@ class GLM4VConverter(LlmConverter):
         # vit_mlir = MLIRImporter(input_shapes, [[2944, 1536]],
         vit_mlir = MLIRImporter(input_shapes, [out_shape],
                                 name,
-                                Platform.LLM,
+                                self.platform,
                                 input_types,
                                 weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
 
-        def T(shape: list):
-            return vit_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, vit_mlir)
+        T = vit_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, vit_mlir)
 
         def vision_merger(in_op):
             mlp_fc0 = "model.visual.merger.proj"
@@ -949,7 +943,7 @@ class GLM4VConverter(LlmConverter):
             self.set_gate_up_weight(TOP_PATH, weight_dict)
 
             # save weights
-            self.weights.extend(list(weight_dict.keys()))
+            self.weight_keys.extend(list(weight_dict.keys()))
             np.savez(weight_file, **weight_dict)
 
         def gen_mlp(mlir_gen, input_shape, in_op):
@@ -994,14 +988,11 @@ class GLM4VConverter(LlmConverter):
             block_mlir = MLIRImporter([input_shape, id_shape, mask_shape],
                                       [input_shape, kv_shape, kv_shape],
                                       name,
-                                      Platform.LLM, ["F32", "INT32", "F32"],
+                                      self.platform, ["F32", "INT32", "F32"],
                                       weight_file=f"../{weight_file}")
 
-            def T(shape: list):
-                return block_mlir.get_tensor_type(shape)
-
-            def L(name: str):
-                return self.get_loc(name, block_mlir)
+            T = block_mlir.get_tensor_type
+            L = lambda name: self.get_loc(name, block_mlir)
 
             ip = block_mlir.insert_point
 
@@ -1076,14 +1067,11 @@ class GLM4VConverter(LlmConverter):
                 [input_shape, id_shape, mask_shape, history_shape, history_shape],
                 [input_shape, kv_shape, kv_shape],
                 name,
-                Platform.LLM, ["F32", "INT32", "F32", "F32", "F32"],
+                self.platform, ["F32", "INT32", "F32", "F32", "F32"],
                 weight_file=f"../{weight_file}")
 
-            def T(shape: list):
-                return block_mlir.get_tensor_type(shape)
-
-            def L(name: str):
-                return self.get_loc(name, block_mlir)
+            T = block_mlir.get_tensor_type
+            L = lambda name: self.get_loc(name, block_mlir)
 
             ip = block_mlir.insert_point
 
@@ -1170,14 +1158,11 @@ class GLM4VConverter(LlmConverter):
                 [input_shape, id_shape, mask_shape, history_shape, history_shape],
                 [input_shape, kv_shape, kv_shape],
                 name,
-                Platform.LLM, ["F32", "INT32", "F32", "F32", "F32"],
+                self.platform, ["F32", "INT32", "F32", "F32", "F32"],
                 weight_file=f"../{weight_file}")
 
-            def T(shape: list):
-                return block_mlir.get_tensor_type(shape)
-
-            def L(name: str):
-                return self.get_loc(name, block_mlir)
+            T = block_mlir.get_tensor_type
+            L = lambda name: self.get_loc(name, block_mlir)
 
             ip = block_mlir.insert_point
 

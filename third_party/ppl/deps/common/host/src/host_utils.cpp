@@ -24,6 +24,8 @@ int get_chip() {
       chip = PplChip::tpul_8_1;
     } else if (chip_code == "tpu_6_0_e") {
       chip = PplChip::tpu_6_0_e;
+    } else if (chip_code == "tpub_9_3") {
+      chip = PplChip::tpub_9_3;
     } else {
       assert(0 && "CHIP is not supported");
     }

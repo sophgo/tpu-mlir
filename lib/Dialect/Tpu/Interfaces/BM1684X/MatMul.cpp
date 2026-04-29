@@ -64,8 +64,9 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
         auto output_type = module::getUniformQuantizedType(getOutput());
         spec.offset_val = output_type.getZeroPoint();
         spec.fuse_rq = getFuseRq();
-        if (spec.fuse_rq)
-          spec.round_mode = (RoundingMode)getRoundMode();
+        // Match dyn_codegen_global_bm1684x and ModuleInterpreter: requant
+        // rounding must follow MLIR round_mode for both fuse_rq true and false.
+        spec.round_mode = (RoundingMode)getRoundMode();
       }
     } else if (odtype.isFloat8E4M3FN()) {
       assert(getQuantMode() == RequantMode::OnlyScale);
@@ -112,10 +113,8 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
       }
       auto output_type = module::getUniformQuantizedType(getOutput());
       spec.offset_val = output_type.getZeroPoint();
-      spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
       spec.fuse_rq = getFuseRq();
-      if (spec.fuse_rq)
-        spec.round_mode = (RoundingMode)getRoundMode();
+      spec.round_mode = (RoundingMode)getRoundMode();
     }
   }
 
@@ -308,8 +307,7 @@ void tpu::MatMulOp::codegen_local_bm1684x_kernel(
       auto output_type = module::getUniformQuantizedType(getOutput());
       common.offset_val = output_type.getZeroPoint();
       common.fuse_rq = getFuseRq();
-      if (common.fuse_rq)
-        common.round_mode = (RoundingMode)getRoundMode();
+      common.round_mode = (RoundingMode)getRoundMode();
     }
   } else if (odtype.isFloat8E4M3FN()) {
     assert(getQuantMode() == RequantMode::OnlyScale);
@@ -409,10 +407,8 @@ int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
       }
       auto output_type = module::getUniformQuantizedType(getOutput());
       spec.offset_val = output_type.getZeroPoint();
-      spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
       spec.fuse_rq = getFuseRq();
-      if (spec.fuse_rq)
-        spec.round_mode = (RoundingMode)getRoundMode();
+      spec.round_mode = (RoundingMode)getRoundMode();
     }
   }
   return BM168x::dynamic_spec_to_buffer(buffer, spec);

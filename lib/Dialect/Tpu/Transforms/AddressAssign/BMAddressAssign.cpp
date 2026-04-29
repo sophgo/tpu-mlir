@@ -545,7 +545,8 @@ static void inplace_addr_update(std::vector<ValueInfo> &inplace_ops,
 void BMAddressAssign::assignIOByAddrMode(
     ModuleOp &m, std::map<ValueInfo, TensorLive> &liveRange,
     std::vector<ValueInfo> &inplace_ops, std::vector<ValueInfo> &common_ops,
-    int64_t &start_addr) {
+    int64_t &start_addr,
+    const std::vector<std::pair<int, int>> &same_addr_idx) {
   if (module::isAddrMode(module::AddrMode::IO_TAG)) {
     std::vector<Value> inputs, outputs, ios;
     module::getInputsOutputs(m, inputs, outputs);
@@ -647,10 +648,32 @@ void BMAddressAssign::assignIOByAddrMode(
     if (BM168x::SUPPORT_MEM_TAG) {
       io_start = BM168x::IO_START_ADDR;
     }
-    std::vector<Value> ios;
-    module::getInputsOutputs(m, ios, ios);
+    std::vector<Value> ins;
+    std::vector<Value> outs;
+    module::getInputsOutputs(m, ins, outs);
     auto addr = io_start;
-    for (auto &v : ios) {
+    for (auto &v : ins) {
+      auto v_info =
+          ValueInfo(v.getDefiningOp(), v.cast<OpResult>().getResultNumber());
+      auto bytes = liveRange[v_info].tensor_size;
+      if (bytes == 0) {
+        continue;
+      }
+      module::setAddress(v, addr);
+      addr += bytes;
+    }
+    std::vector<Value> skip;
+    for (auto &pair : same_addr_idx) {
+      auto &in = ins[pair.first];
+      auto &out = outs[pair.second];
+      auto addr_ = module::getAddress(in);
+      module::setAddress(out, addr_);
+      skip.push_back(out);
+    }
+    for (auto &v : outs) {
+      if (std::find(skip.begin(), skip.end(), v) != skip.end()) {
+        continue;
+      }
       auto v_info =
           ValueInfo(v.getDefiningOp(), v.cast<OpResult>().getResultNumber());
       auto bytes = liveRange[v_info].tensor_size;
@@ -661,7 +684,8 @@ void BMAddressAssign::assignIOByAddrMode(
       addr += bytes;
     }
     assignAfter(m, inplace_ops);
-    for (auto &v : ios) {
+    ins.insert(ins.end(), outs.begin(), outs.end());
+    for (auto &v : ins) {
       auto v_info =
           ValueInfo(v.getDefiningOp(), v.cast<OpResult>().getResultNumber());
       erase_vinfo(common_ops, v_info);
@@ -686,6 +710,13 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr,
   int64_t alignment = BM168x::ALIGNMENT;
   int64_t start_addr = BM168x::COEFF_START_ADDR;
   Builder builder(m.getContext());
+  // same_addr: "0:0,1:2,4:4" means in[0] and out[0] share the same address,
+  // in[1] and out[2] share the same address, in[4] and out[4] share the same
+  // address.
+  std::vector<std::pair<int, int>> same_addr_idx;
+  if (!same_addr.empty()) {
+    same_addr_idx = string2pair(same_addr);
+  }
   // ========================= assign weight first ============================
   auto addr = start_addr;
   bool array_static[2] = {true, false};
@@ -811,7 +842,8 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr,
   }
 
   // 0. assign io-tag/io-alone addrs before common_ops.
-  assignIOByAddrMode(m, liveRange, inplace_ops, common_ops, start_addr);
+  assignIOByAddrMode(m, liveRange, inplace_ops, common_ops, start_addr,
+                     same_addr_idx);
   addr = start_addr;
 
   // 1.assign common_ops
@@ -872,9 +904,8 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr,
   }
 
   // set the same address pairs
-  if (!same_addr.empty()) {
-    std::vector<std::pair<int, int>> same_idx = string2pair(same_addr);
-    for (auto &pair : same_idx) {
+  if (!same_addr_idx.empty()) {
+    for (auto &pair : same_addr_idx) {
       std::vector<Value> ins, outs;
       module::getInputsOutputs(m, ins, outs);
       module::setAddress(outs[pair.second],

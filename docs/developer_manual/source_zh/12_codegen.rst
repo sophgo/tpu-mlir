@@ -30,7 +30,7 @@ CodeGen的大致工作流程可分为3个部分：指令生成、指令存储和
 
 下面对CodeGen过程中所需的数据结构进行介绍:
 
-指令依据硬件的engine不同而有所差别，比如1684有GDMA和TIU，而新架构的硬件bm1690会存在sdma、cdma等engine。这里拿最通用的两种engine即BDC(后更名为TIU)和GDMA为例：
+指令依据硬件的engine不同而有所差别，比如1684有GDMA和TIU，而新架构的硬件可能还存在sdma、cdma等engine。这里拿最通用的两种engine即BDC(后更名为TIU)和GDMA为例：
 
 .. code-block:: shell
 
@@ -84,11 +84,11 @@ TPU-MLIR中BM168X及其相关类定义在include/tpu_mlir/Backend文件夹下，
 
 以同步函数tpu_sync_all为例，由于之后要加上多核支持的，所以需要在相关后端cmodel库中定义好，
 
-  1.注意必须和后端的函数名和参数保持一致typedef void (*tpu_sync_all)();
+  1.注意必须和后端的函数名和参数保持一致 ``typedef void (*tpu_sync_all)();``
 
-  2.在类内部加入该函数成员tpu_sync_all dl_tpu_sync_all;
+  2.在类内部加入该函数成员 ``tpu_sync_all dl_tpu_sync_all;``
 
-  3.在该类load_functions函数的实现中加入宏，CAST_FUNCTION(tpu_sync_all);该宏可以将dl_tpu_sync_all指向动态库中的函数。
+  3.在该类load_functions函数的实现中加入宏， ``CAST_FUNCTION(tpu_sync_all);`` 该宏可以将dl_tpu_sync_all指向动态库中的函数。
 
 获得到该类实例后即可使用动态库中的函数。
 

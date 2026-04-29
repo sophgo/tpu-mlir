@@ -1139,7 +1139,7 @@ def Tpu_ChunkGatedDeltaRuleOp : Tpu_Op<"ChunkGatedDeltaRule"> {
     value(act.): value tensor with shape (B, num_heads, S, v_head_dim).;
     g(act.): gating signal tensor with shape (B, num_heads, S), controls the exponential decay rate per position.;
     beta(act.): scaling factor tensor with shape (B, num_heads, S), modulates key and value contributions.;
-    recurrent_state(act.): initial recurrent state tensor with shape (B, num_heads, k_head_dim, v_head_dim), carries information across chunks.;
+    recurrent_state(act.): initial recurrent state tensor with shape (B, num_v_heads, k_head_dim, v_head_dim), carries information across chunks.;
     eye(act.): identity matrix tensor with shape (chunk_size, chunk_size), used for constructing the intra-chunk attention transform.;
 
     4.attributes
@@ -1152,13 +1152,107 @@ def Tpu_ChunkGatedDeltaRuleOp : Tpu_Op<"ChunkGatedDeltaRule"> {
     AnyTensor:$g,
     AnyTensor:$beta,
     AnyTensor:$recurrent_state,
+    AnyTensor:$triu_mask,
+    AnyTensor:$strict_triu_mask,
+    AnyTensor:$tril_mask,
     AnyTensor:$eye,
+    I64Attr:$num_k_heads,
+    I64Attr:$num_v_heads,
+    I64Attr:$d,
     I64Attr:$chunk_size,
+    BoolAttr:$use_qk_l2norm,
     F64Attr:$scale
   );
 
-  let results = (outs AnyTensor:$attn_out,
-                      AnyTensor:$new_recurrent_state);
+  let results = (outs AnyTensor:$attn_out);
+}
+
+def Tpu_RecurrentGatedDeltaRuleOp : Tpu_Op<"RecurrentGatedDeltaRule"> {
+  let summary = "Recurrent Gated Delta Rule operator";
+
+  let description = [{
+    1.Op Introduction
+    The RecurrentGatedDeltaRule operator implements a single-step recurrent gated delta rule
+    attention mechanism, designed for efficient autoregressive inference with linear attention
+    and recurrent state updates.
+
+    2.Math formula
+    ```math
+        scale = 1 / sqrt(k_head_dim)
+        query = query * scale
+        g_exp = exp(g)
+        state = state * g_exp
+        kv_mem = state^T @ key
+        delta = (value - kv_mem) * beta
+        state = state + key (outer) delta
+        output = state^T @ query
+    ```
+
+    3.activation and weight
+    query(act.): query tensor with shape (B, 1, num_k_heads, k_head_dim).;
+    key(act.): key tensor with shape (B, 1, num_k_heads, k_head_dim).;
+    value(act.): value tensor with shape (B, 1, num_v_heads, v_head_dim).;
+    g(act.): gating signal tensor with shape (B, 1, num_v_heads), controls the exponential decay rate.;
+    beta(act.): scaling factor tensor with shape (B, 1, num_v_heads), modulates value contributions.;
+    recurrent_state(act.): recurrent state tensor with shape (B, num_v_heads, k_head_dim, v_head_dim).;
+
+    4.attributes
+    num_k_heads: number of key/query heads.;
+    num_v_heads: number of value heads (must be a multiple of num_k_heads for GQA).;
+    d: head dimension.;
+    use_qk_l2norm: whether to apply L2 normalization to query and key.;
+    scale: scaling factor applied to query.;
+  }];
+
+  let arguments = (ins
+    AnyTensor:$query,
+    AnyTensor:$key,
+    AnyTensor:$value,
+    AnyTensor:$g,
+    AnyTensor:$beta,
+    AnyTensor:$recurrent_state,
+    I64Attr:$num_k_heads,
+    I64Attr:$num_v_heads,
+    I64Attr:$d,
+    BoolAttr:$use_qk_l2norm,
+    F64Attr:$scale
+  );
+
+  let results = (outs AnyTensor:$attn_out);
+}
+
+def Tpu_ConcatSliceOp : Tpu_Op<"ConcatSlice"> {
+  let summary = "ConcatSlice operator";
+
+  let description = [{
+    1.Op Introduction
+    The ConcatSlice operator concatenates two tensors along a specified axis,
+    then slices off the front portion so the output shape matches the first input.
+    This is equivalent to: output = concat(in0, in1, axis)[..., axis_size_1:, ...]
+
+    2.Math formula
+    ```math
+        concat_result = concatenate(in0, in1, axis=axis)
+        output = concat_result[axis_size_1 : axis_size_0 + axis_size_1]
+    ```
+    where axis_size_0 and axis_size_1 are the sizes of in0 and in1 along the axis.
+
+    3.activation and weight
+    in0(act.): first input tensor with shape (n0, c0, h0, w0).;
+    in1(act.): second input tensor with shape (n1, c1, h1, w1),
+               all dims must match in0 except at the concat axis.;
+
+    4.attributes
+    axis: the axis along which to concatenate and then slice.;
+  }];
+
+  let arguments = (ins
+    AnyTensor:$in0,
+    AnyTensor:$in1,
+    I64Attr:$axis
+  );
+
+  let results = (outs AnyTensor:$output);
 }
 
 def Tpu_ClipOp : Tpu_Op<"Clip",
@@ -3638,7 +3732,8 @@ def Tpu_LoadOp : Tpu_Op<"Load",
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     DefaultValuedAttr<BoolAttr, "true">:$support_compress,
     DefaultValuedAttr<BoolAttr, "false">:$is_idx_weight,
-    OptionalAttr<Tpu_CompressAttr>:$compress_info
+    OptionalAttr<Tpu_CompressAttr>:$compress_info,
+    OptionalAttr<AffineMapAttr>:$indexing_map_s2l
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -3920,7 +4015,9 @@ def Tpu_LutOp : Tpu_Op<"Lut", [
     AnyRankedTensor:$table,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     OptionalAttr<BoolAttr>:$multicore,
-    OptionalAttr<BoolAttr>:$do_core_parallel
+    OptionalAttr<BoolAttr>:$do_core_parallel,
+    OptionalAttr<AffineMapAttr>:$indexing_map_s2l,
+    OptionalAttr<AffineMapAttr>:$indexing_map_l2s
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -4951,7 +5048,7 @@ def Tpu_MinOp : Tpu_Op<"Min", [
 }
 
 def Tpu_MlpOp : Tpu_Op<"Mlp",
-    []> {
+    [DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "w8a16 / w4a16 / a16 mlp operator";
 
   let description = [{
@@ -4972,13 +5069,17 @@ def Tpu_MlpOp : Tpu_Op<"Mlp",
     AnyTensorOrNone:$scale_down,
     AnyTensorOrNone:$zp_down,
     AnyTensorOrNone:$bias_down,
+    AnyTensorOrNone:$expert_id,
     AnyTensorOrNone:$buffer,
-    DefaultValuedAttr<BoolAttr, "false">:$w_transpose_gate,
-    DefaultValuedAttr<BoolAttr, "false">:$w_transpose_up,
+    DefaultValuedAttr<BoolAttr, "true">:$w_transpose_gate,
+    DefaultValuedAttr<BoolAttr, "true">:$w_transpose_up,
     DefaultValuedAttr<BoolAttr, "false">:$w_transpose_down,
+    DefaultValuedAttr<BoolAttr, "false">:$is_expert,
     DefaultValuedAttr<BoolAttr, "false">:$quantized,
     DefaultValuedAttr<I64Attr, "128">:$q_group_size,
-    DefaultValuedAttr<I64Attr, "8">:$weight_bits
+    DefaultValuedAttr<I64Attr, "8">:$weight_bits,
+    DefaultValuedAttr<I64Attr, "1">:$num_expert,
+    DefaultValuedAttr<I64Attr, "1">:$num_expert_per_tok
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -5379,7 +5480,9 @@ def Tpu_PadOp : Tpu_Op<"Pad", [
 
     DefaultValuedAttr<BoolAttr, "false">:$with_insert_zero,
     OptionalAttr<I64ArrayAttr>:$insert_zeros,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<AffineMapAttr>:$indexing_map_s2l,
+    OptionalAttr<AffineMapAttr>:$indexing_map_l2s
   );
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
@@ -5416,7 +5519,9 @@ def Tpu_PermuteOp : Tpu_Op<"Permute", [
     AnyTensorOrNone:$buffer,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     OptionalAttr<BoolAttr>:$multicore,
-    OptionalAttr<BoolAttr>:$do_core_parallel
+    OptionalAttr<BoolAttr>:$do_core_parallel,
+    OptionalAttr<AffineMapAttr>:$indexing_map_s2l,
+    OptionalAttr<AffineMapAttr>:$indexing_map_l2s
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -6055,7 +6160,9 @@ def Tpu_ReshapeOp : Tpu_Op<"Reshape", [
     AnyRankedTensor:$input,
     DefaultValuedAttr<I64ArrayAttr, "{}">:$shape,
     Optional<AnyTensorOrNone>:$buffer,
-    DefaultValuedAttr<I64Attr, "-1">:$flatten_start_dim
+    DefaultValuedAttr<I64Attr, "-1">:$flatten_start_dim,
+    OptionalAttr<AffineMapAttr>:$indexing_map_s2l,
+    OptionalAttr<AffineMapAttr>:$indexing_map_l2s
   );
   let results = (outs AnyRankedTensor:$output);
 }
@@ -7073,7 +7180,9 @@ def Tpu_SliceOp : Tpu_Op<"Slice", [
     I64ArrayAttr:$ends,
     DefaultValuedAttr<I64ArrayAttr, "{1}">:$axes,
     DefaultValuedAttr<I64ArrayAttr, "{}">:$hasparamConvert_axes,
-    OptionalAttr<BoolAttr>:$multicore
+    OptionalAttr<BoolAttr>:$multicore,
+    OptionalAttr<AffineMapAttr>:$indexing_map_s2l,
+    OptionalAttr<AffineMapAttr>:$indexing_map_l2s
   );
   let results = (outs AnyRankedTensor:$output);
   let hasCanonicalizer = 1;
@@ -7321,7 +7430,10 @@ def Tpu_StoreOp : Tpu_Op<"Store",
     AnyTensorOrNone:$buffer,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     DefaultValuedAttr<BoolAttr, "true">:$support_compress,
-    OptionalAttr<Tpu_CompressAttr>:$compress_info
+    OptionalAttr<Tpu_CompressAttr>:$compress_info,
+    OptionalAttr<AffineMapAttr>:$indexing_map_l2s,
+    OptionalAttr<I64ArrayAttr>:$paddings,
+    OptionalAttr<F64Attr>:$pad_const_val
   );
   let results = (outs AnyRankedTensor:$output);
 }

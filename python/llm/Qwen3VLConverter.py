@@ -291,16 +291,13 @@ class Qwen3VLConverter(LlmConverter):
             input_shapes,
             [out_shape] * out_num,
             "vit",  # all vit use the same name
-            Platform.LLM,
+            self.platform,
             input_types,
             weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
 
-        def T(shape: list):
-            return vit_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, vit_mlir)
+        T = vit_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, vit_mlir)
 
         def vision_block(id: int, in_op, cos_op, sin_op, mask_op):
             norm1 = f"{self.vit_path}.blocks.{id}.norm1"
@@ -539,7 +536,7 @@ class Qwen3VLConverter(LlmConverter):
     def gen_add_mlir(self):
         name = "add"
         input_shape = [self.max_input_length * self.hidden_size]
-        add_mlir = MLIRImporter([input_shape] * 2, [input_shape], name, Platform.LLM,
+        add_mlir = MLIRImporter([input_shape] * 2, [input_shape], name, self.platform,
                                 ['F32', 'F32'])
         ip = add_mlir.insert_point
         in0_op = add_mlir.create_input_op(self.get_loc('input0', add_mlir), 0)

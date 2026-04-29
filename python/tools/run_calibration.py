@@ -131,19 +131,26 @@ if __name__ == '__main__':
 
     # mix precision
     if args.search.lower() != 'false':
-        args._logger = logger('Search_Qtable', log_level=log_level)
-        searcherQ = SearchQtable(args, selector, tune_ds, quant_table)
-        if args.search == 'search_qtable' and args.mix_mode == 'wi4ai4_wi8ai8':
-            searcherQ.run_4_8()
-        elif args.search == 'search_qtable' and args.mix_mode == 'wi4ai8_wi8ai8':
-            searcherQ.run_w4a8()
-        elif args.search == 'fast_search':
-            searcherQ.run_fast()
+        if args.search == 'search_threshold':
+            args._logger = logger('Search_Threshold', log_level=log_level)
+            searcherT = SearchThreshold(args, selector, tune_ds, quant_table)
+            searcherT.run_search_calitable()
         elif args.search == 'mix_search':
+            args._logger = logger('Mix_Search', log_level=log_level)
+            searcherQ = SearchQtable(args, selector, tune_ds, quant_table)
             searcherQ.mix_prec.qtable = quant_table
             searcherQ.mix_prec.run()
-        elif args.search == 'search_qtable':
-            searcherQ.run()
+        else:
+            args._logger = logger('Search_Qtable', log_level=log_level)
+            searcherQ = SearchQtable(args, selector, tune_ds, quant_table)
+            if args.search == 'search_qtable' and args.mix_mode == 'wi4ai4_wi8ai8':
+                searcherQ.run_4_8()
+            elif args.search == 'search_qtable' and args.mix_mode == 'wi4ai8_wi8ai8':
+                searcherQ.run_w4a8()
+            elif args.search == 'fast_search':
+                searcherQ.run_fast()
+            elif args.search == 'search_qtable':
+                searcherQ.run()
     else:
         # smoothquant
         if args.sq:
@@ -165,13 +172,8 @@ if __name__ == '__main__':
             calibrator = ActivationCalibrator(args, selector, tune_ds)
             calibrator.run()
         # calibration
-        if args.search == 'search_threshold':
-            args._logger = logger('Search_Threshold', log_level=log_level)
-            searcherT = SearchThreshold(args, selector, tune_ds, quant_table)
-            searcherT.run_search_calitable()
-        elif args.search == 'False':
-            calibrator = ActivationCalibrator(args, selector, tune_ds)
-            calibrator.run()
+        calibrator = ActivationCalibrator(args, selector, tune_ds)
+        calibrator.run()
         # bias correction
         if args.bc:
             input_num = args.input_num

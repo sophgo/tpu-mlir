@@ -4,7 +4,7 @@ Appendix.03: BM168x Guidance
 BM168x series processor currently supports ONNX, pytorch, Caffe and TFLite models.
 This chapter takes the BM1684x processor as an example to introduce merging bmodel files of the BM168x series processors.
 
-.. _merge weight:
+.. _merge weight bm168x:
 
 Merge bmodel Files
 ---------------------------

@@ -10,6 +10,8 @@
 import importlib
 import numpy as np
 import argparse
+import os
+from filelock import FileLock
 import pymlir
 
 pymlir.set_mem_mode("value_mem")
@@ -20,7 +22,7 @@ import onnxsim.onnx_simplifier as onnxsim
 from utils.preprocess import get_preprocess_parser, preprocess
 from utils.mlir_parser import *
 from utils.misc import *
-from tools.model_runner import get_chip_from_model, round_away_from_zero, get_kernel_mode_from_model
+from tools.model_runner import get_chip_from_model, round_away_from_zero, get_kernel_mode_from_model, link_bmlib_so
 
 
 class common_inference():
@@ -145,8 +147,10 @@ class bmodel_inference(common_inference):
                 lib_so = 'libcmodel_sgtpuv8.so'
             elif chip == "BM1684X2":
                 lib_so = 'libcmodel_bm1684x2.so'
+            # with FileLock("/tmp/cmodel_so.lock"):
             cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel.so'.format(lib_so)
             os.system(cmd)
+            link_bmlib_so(chip)
         elif self.args.model_file.endswith(".cvimodel"):
             pyruntime = pyruntime + "cvi"
             self.is_cv18xx = True

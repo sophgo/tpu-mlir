@@ -83,7 +83,7 @@ Convert the mlir file to the bmodel of f16, the operation method is as follows:
        --model yolov5s_pt_1684x_f16.bmodel
 
 
-After comiplation, a file named ``yolov5s_pt_1684x_f16.bmodel`` will be generated.
+After compilation, a file named ``yolov5s_pt_1684x_f16.bmodel`` will be generated.
 
 
 MLIR to INT8 bmodel

@@ -76,6 +76,11 @@ LogicalResult tpu::ReshapeOp::LocalGenSupport() {
   auto ishape = module::getShape(getInput());
   auto oshape = module::getShape(getOutput());
 
+  if (!((ishape.size() > 4 && oshape.size() > 4) ||
+        (ishape.size() <= 4 && oshape.size() <= 4))) {
+    return failure();
+  }
+
   if (ishape.size() < 2 || oshape.size() < 2 || ishape[0] != oshape[0] ||
       ishape[1] != oshape[1]) {
     return failure();

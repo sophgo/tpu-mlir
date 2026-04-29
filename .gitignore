@@ -27,3 +27,18 @@ bmodel_fbs.py
 cross_toolchains/
 dist/
 !/python/tools/soc_infer/debugger/bmodel_fbs.py
+
+# Python
+*.egg-info/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Editors / IDEs
+.idea/
+*.swp
+*.swo
+*~

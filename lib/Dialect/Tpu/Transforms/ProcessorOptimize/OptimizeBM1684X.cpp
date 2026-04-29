@@ -4387,8 +4387,120 @@ struct CanCutGridSamplerFusePattern
     }
     auto before_op = op.getInput().getDefiningOp();
     auto next_op = *op.getOutput().user_begin();
+
     if (!isa<tpu::PermuteOp>(before_op) || !isa<tpu::PermuteOp>(next_op)) {
-      return failure();
+      auto before_cast = dyn_cast<tpu::CastOp>(before_op);
+      auto next_cast = dyn_cast<tpu::CastOp>(next_op);
+      if (!before_cast || !next_cast || !next_cast->hasOneUse()) {
+        return failure();
+      }
+      auto before_permute =
+          dyn_cast<tpu::PermuteOp>(before_cast.getInput().getDefiningOp());
+      auto next_permute =
+          dyn_cast<tpu::PermuteOp>(*next_cast.getOutput().user_begin());
+      auto grid_cast = dyn_cast<tpu::CastOp>(op.getGrid().getDefiningOp());
+      if (!before_permute || !next_permute || !grid_cast) {
+        return failure();
+      }
+      auto concat_tail =
+          dyn_cast<tpu::ConcatOp>(grid_cast.getInput().getDefiningOp());
+      if (!concat_tail || concat_tail.getInputs().size() != 2) {
+        return failure();
+      }
+
+      auto getSliceSource = [](Value branch) -> tpu::CastOp {
+        auto branch_op = branch.getDefiningOp();
+        for (int depth = 0; depth < 8 && branch_op; ++depth) {
+          if (auto slice = dyn_cast<tpu::SliceOp>(branch_op)) {
+            return dyn_cast<tpu::CastOp>(slice.getInput().getDefiningOp());
+          }
+          if (auto add_const = dyn_cast<tpu::AddConstOp>(branch_op)) {
+            branch_op = add_const.getInput().getDefiningOp();
+            continue;
+          }
+          if (auto mul_shift = dyn_cast<tpu::MulShiftOp>(branch_op)) {
+            branch_op = mul_shift.getInput().getDefiningOp();
+            continue;
+          }
+          break;
+        }
+        return nullptr;
+      };
+
+      auto slice_source_a = getSliceSource(concat_tail.getInputs()[0]);
+      auto slice_source_b = getSliceSource(concat_tail.getInputs()[1]);
+      if (!slice_source_a || slice_source_a != slice_source_b) {
+        return failure();
+      }
+      auto concat_head =
+          dyn_cast<tpu::ConcatOp>(slice_source_a.getInput().getDefiningOp());
+      if (!concat_head) {
+        return failure();
+      }
+      tpu::PermuteOp permute = nullptr;
+      for (auto input : concat_head.getInputs()) {
+        auto input_op = input.getDefiningOp();
+        if (!input_op) {
+          continue;
+        }
+        if (auto cast_op = dyn_cast<tpu::CastOp>(input_op)) {
+          input_op = cast_op.getInput().getDefiningOp();
+        }
+        if (auto v = dyn_cast<tpu::PermuteOp>(input_op)) {
+          permute = v;
+          break;
+        }
+      }
+      if (!permute) {
+        return failure();
+      }
+
+      auto makeCastName = [&](StringRef suffix) {
+        return module::getName(op.getOperation(), 0).str() + suffix.str();
+      };
+
+      rewriter.setInsertionPoint(op);
+      auto input_cast_type = module::getTypeLike(
+          op.getInput(), module::getShape(before_permute.getInput()));
+      auto new_input_cast = rewriter.create<tpu::CastOp>(
+          NameLoc::get(
+              rewriter.getStringAttr(makeCastName("_need_permute_input_cast"))),
+          input_cast_type, ValueRange{before_permute.getInput()});
+      new_input_cast->setAttrs(before_cast->getAttrs());
+
+      auto grid_cast_type = module::getTypeLike(
+          op.getGrid(), module::getShape(permute.getInput()));
+      auto new_grid_cast = rewriter.create<tpu::CastOp>(
+          NameLoc::get(
+              rewriter.getStringAttr(makeCastName("_need_permute_grid_cast"))),
+          grid_cast_type, ValueRange{permute.getInput()});
+      new_grid_cast->setAttrs(grid_cast->getAttrs());
+
+      op->setOperand(0, new_input_cast.getOutput());
+      op->setOperand(1, new_grid_cast.getOutput());
+      op->getResult(0).setType(module::getTypeLike(
+          op.getOutput(), module::getShape(next_permute.getOutput())));
+      op->setAttr("need_permute", rewriter.getBoolAttr(true));
+
+      rewriter.setInsertionPointAfter(op);
+      auto new_output_cast = rewriter.create<tpu::CastOp>(
+          NameLoc::get(rewriter.getStringAttr(
+              makeCastName("_need_permute_output_cast"))),
+          next_permute.getOutput().getType(), ValueRange{op.getOutput()});
+      new_output_cast->setAttrs(next_cast->getAttrs());
+
+      if (before_cast->use_empty()) {
+        rewriter.eraseOp(before_cast);
+      }
+      if (before_permute->use_empty()) {
+        rewriter.eraseOp(before_permute);
+      }
+      rewriter.replaceOp(next_permute,
+                         ArrayRef<Value>{new_output_cast.getOutput()});
+      if (next_cast->use_empty()) {
+        rewriter.eraseOp(next_cast);
+      }
+      return success();
     }
     auto grid = op.getGrid();
     auto concat_tail = dyn_cast<tpu::ConcatOp>(grid.getDefiningOp());
@@ -6389,6 +6501,182 @@ public:
   }
 };
 
+class A16MatMulToMatMul : public OpRewriterPatternEx<tpu::A16MatMulOp> {
+public:
+  A16MatMulToMatMul(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<tpu::A16MatMulOp>(context, "A16MatMulToMatMul",
+                                              benefit) {}
+
+  LogicalResult matchAndRewriteImpl(tpu::A16MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
+    auto weight_op = op.getWeight().getDefiningOp<top::WeightOp>();
+    if (!weight_op) {
+      return failure();
+    }
+    auto scale_op = op.getScale().getDefiningOp<top::WeightOp>();
+    if (!scale_op) {
+      return failure();
+    }
+    auto scale_shape = module::getShape(scale_op.getResult());
+    int N = scale_shape[0];
+    if (N % backend::Arch::NPU_NUM == 0) {
+      return failure();
+    }
+
+    auto input_value = op.getInput();
+    auto ele_type = module::getElementType(input_value);
+    if (!ele_type.isF16() && !ele_type.isBF16()) {
+      return failure();
+    }
+
+    auto bitwidth = op.getWeightBits();
+    auto w_transpose = op.getWTranspose();
+    auto sign = op.getSign();
+    auto q_group_size = op.getQGroupSize();
+
+    // Read scale as float
+    auto scale_data = scale_op.read_as_float();
+
+    // Read zp as float
+    std::shared_ptr<std::vector<float>> zp_data;
+    auto zp_op = op.getZp().getDefiningOp<top::WeightOp>();
+    if (zp_op) {
+      auto zpDtype = module::getStorageType(zp_op.getResult());
+      if (zpDtype.isInteger(8)) {
+        auto zp_u8 = zp_op.read<uint8_t>();
+        zp_data = std::make_shared<std::vector<float>>(zp_u8->size());
+        for (size_t i = 0; i < zp_u8->size(); i++) {
+          zp_data->at(i) = static_cast<float>(zp_u8->at(i));
+        }
+      } else {
+        zp_data = zp_op.read_as_float();
+      }
+    }
+
+    // Read quantized weight
+    auto weight_shape = weight_op.getType().cast<RankedTensorType>().getShape();
+    int64_t row = weight_shape[0];
+    int64_t stored_col = weight_shape[1];
+    int64_t col = (bitwidth == 4) ? stored_col * 2 : stored_col;
+
+    auto weight_u8 = weight_op.read<uint8_t>();
+
+    // Dequantize weight to float32
+    int64_t total = row * col;
+    auto dequant_weight = std::make_shared<std::vector<float>>(total, 0.0f);
+
+    if (q_group_size > 0) {
+      int actual_group_size = (q_group_size == -1) ? col : q_group_size;
+      for (int64_t i = 0; i < total; i++) {
+        int quant_idx = i / actual_group_size;
+        float s = scale_data->at(quant_idx);
+        float z = zp_data ? zp_data->at(quant_idx) : 0.0f;
+        float qval;
+        if (bitwidth == 8) {
+          qval = static_cast<float>(weight_u8->at(i));
+        } else {
+          int packed_idx = i / 2;
+          if (i % 2 == 0) {
+            qval = static_cast<float>(weight_u8->at(packed_idx) & 0x0F);
+          } else {
+            qval = static_cast<float>((weight_u8->at(packed_idx) >> 4) & 0x0F);
+          }
+        }
+        dequant_weight->at(i) = (qval - z) * s;
+      }
+    } else {
+      // Per-channel: scale/zp indexed by row
+      for (int64_t r = 0; r < row; r++) {
+        float s = scale_data->at(r);
+        float z = zp_data ? zp_data->at(r) : 0.0f;
+        for (int64_t c = 0; c < col; c++) {
+          int64_t i = r * col + c;
+          float qval;
+          if (bitwidth == 8) {
+            if (sign) {
+              qval = static_cast<float>(
+                  reinterpret_cast<const int8_t *>(weight_u8->data())[i]);
+            } else {
+              qval = static_cast<float>(weight_u8->at(i));
+            }
+          } else {
+            int packed_idx = r * stored_col + c / 2;
+            if (c % 2 == 0) {
+              qval = static_cast<float>(weight_u8->at(packed_idx) & 0x0F);
+            } else {
+              qval =
+                  static_cast<float>((weight_u8->at(packed_idx) >> 4) & 0x0F);
+            }
+          }
+          dequant_weight->at(i) = (qval - z) * s;
+        }
+      }
+    }
+
+    // If weight was transposed during quantization, transpose back: [N,K] ->
+    // [K,N]
+    std::shared_ptr<std::vector<float>> final_weight;
+    int64_t out_row, out_col;
+    if (w_transpose) {
+      out_row = col; // N
+      out_col = row; // K
+      final_weight = std::make_shared<std::vector<float>>(total);
+      for (int64_t i = 0; i < row; i++) {
+        for (int64_t j = 0; j < col; j++) {
+          final_weight->at(j * row + i) = dequant_weight->at(i * col + j);
+        }
+      }
+    } else {
+      out_row = row;
+      out_col = col;
+      final_weight = dequant_weight;
+    }
+
+    // Create F32 weight then convert to F16/BF16
+    rewriter.setInsertionPoint(op);
+    std::vector<int64_t> new_weight_shape = {out_row, out_col};
+    auto f32_type =
+        RankedTensorType::get(new_weight_shape, rewriter.getF32Type());
+    auto f32_weight_op =
+        top::WeightOp::create(op, "dequant", *final_weight, f32_type)
+            .getDefiningOp<top::WeightOp>();
+    auto new_weight_value = ele_type.isF16() ? f32_weight_op.clone_f16(op)
+                                             : f32_weight_op.clone_bf16(op);
+
+    // Handle bias
+    auto bias_value = op.getBias();
+
+    // Build operands: input, right, bias, multi, buffer
+    std::vector<Value> operands;
+    operands.push_back(input_value);
+    operands.push_back(new_weight_value);
+    operands.push_back(bias_value);
+    operands.push_back(module::getNoneOp(op)); // multi
+    operands.push_back(module::getNoneOp(op)); // buffer
+
+    // Build attributes
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        rewriter.getNamedAttr("right_transpose", rewriter.getBoolAttr(false)));
+    attrs.push_back(
+        rewriter.getNamedAttr("left_transpose", rewriter.getBoolAttr(false)));
+    attrs.push_back(
+        rewriter.getNamedAttr("output_transpose", rewriter.getBoolAttr(false)));
+    attrs.push_back(
+        rewriter.getNamedAttr("hdim_is_batch", rewriter.getBoolAttr(false)));
+    attrs.push_back(
+        rewriter.getNamedAttr("keep_dims", rewriter.getBoolAttr(true)));
+    attrs.push_back(
+        rewriter.getNamedAttr("do_relu", rewriter.getBoolAttr(false)));
+    attrs.push_back(
+        rewriter.getNamedAttr("relu_limit", rewriter.getF64FloatAttr(-1.0)));
+
+    rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, op.getOutput().getType(),
+                                               operands, attrs);
+    return success();
+  }
+};
+
 namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns,
@@ -6444,7 +6732,8 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns,
                 WhereBnbwdFusePattern,
                 UpsampleAddWeightPattern,
                 // ConvMergePattern
-                DeconvPadPattern
+                DeconvPadPattern,
+                A16MatMulToMatMul
                 >(ctx, 8);
   // clang-format on
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);

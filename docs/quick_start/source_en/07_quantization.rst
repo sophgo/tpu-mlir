@@ -338,13 +338,18 @@ Prepare working directory
 Preparation and Usage Instructions for Single-Input Model Calibration Dataset (Taking mobilenet-v2 as an Example) :
 
 1. Establish a directory structure
-  Create a ``mobilenet-v2`` directory, and put both model files and image files into the ``mobilenet-v2`` directory. You can get mobilenet_v2.pt from tpu-mlir-resource.tar (provided in SDK package).
+
+   Create a ``mobilenet-v2`` directory, and put both model files and image files into the ``mobilenet-v2`` directory. You can get mobilenet_v2.pt from tpu-mlir-resource.tar (provided in SDK package).
+
 2. Prepare the calibration dataset
-  --dataset uses the ILSVRC2012 dataset, which contains 1000 types of images, with 1000 images in each type. Here, only 100 images from these are used for calibration
+
+   --dataset uses the ILSVRC2012 dataset, which contains 1000 types of images, with 1000 images in each type. Here, only 100 images from these are used for calibration
+
 3. Dataset format
-  Users can create a dataset directory by themselves and directly place image files (such as JPEG, PNG, etc.) into this directory.
-  run_calibration.py will automatically read the image and, based on the model input parameters such as shape, mean, and scale, automatically complete the preprocessing and format conversion into a numpy array as the model input.
-  However, multi-input models must use structured data (such as npz), because only these formats can clearly distinguish the name, shape, and dtype of each input.
+
+   Users can create a dataset directory by themselves and directly place image files (such as JPEG, PNG, etc.) into this directory.
+   run_calibration.py will automatically read the image and, based on the model input parameters such as shape, mean, and scale, automatically complete the preprocessing and format conversion into a numpy array as the model input.
+   However, multi-input models must use structured data (such as npz), because only these formats can clearly distinguish the name, shape, and dtype of each input.
 
 The operation is as follows:
 
@@ -361,12 +366,17 @@ Single-Input Model:
 Preparation and Usage Instructions for multi-input Model Calibration Dataset (taking bert_base_squad_uncased-2.11.0 as an example) :
 
 1. Establish a directory structure
-  Create the directory 'bert_base_squad_uncased-2.11.0' and put both the model file and the image file into the directory 'bert_base_squad_uncased-2.11.0'.
+
+   Create the directory 'bert_base_squad_uncased-2.11.0' and put both the model file and the image file into the directory 'bert_base_squad_uncased-2.11.0'.
+
 2. Prepare the calibration dataset
-  The --dataset uses the SQuAD dataset, which contains multiple samples, and each sample contains multiple input data.
+
+   The --dataset uses the SQuAD dataset, which contains multiple samples, and each sample contains multiple input data.
+
 3. Dataset format
-  Users can create a dataset directory by themselves. Under the directory, npz files must be placed. Each npz file represents a sample and contains all the input keys (the name, shape, and dtype must be consistent with the model input).
-  Pictures cannot be placed directly.
+
+   Users can create a dataset directory by themselves. Under the directory, npz files must be placed. Each npz file represents a sample and contains all the input keys (the name, shape, and dtype must be consistent with the model input).
+   Pictures cannot be placed directly.
 
 multi-input Model:
 
@@ -497,10 +507,12 @@ The classification information is displayed on the output image. The right label
 
    Execution Performance of classify_mobilenet_v2 in INT8
 
+.. _mix precision:
+
 To Mix Precision Model
 -----------------------
 
-After int8 conversion, do these commands as beflow.
+After int8 conversion, do these commands as below.
 
 Step 1: Execute the ``search_qtable`` command
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -526,7 +538,7 @@ The parameters related to ``search_qtable`` in ``run_calibration`` are explained
      - The sample list (cannot be used together with "dataset")
    * - processor
      - Y
-     - The platform that the model will use. Support bm1690, bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x
+     - The platform that the model will use. Support bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x
    * - fp_type
      - N
      - Specifies the type of float used for mixing precision. Support auto,F16,F32,BF16. Default is auto, indicating that it is automatically selected by program
@@ -565,7 +577,7 @@ The parameters related to ``search_qtable`` in ``run_calibration`` are explained
      - Is it a transformer model? In ``search_qtable``, if it is a transformer model, a specific acceleration strategy can be assigned. The default is False
    * - quantize_method_list
      - N
-     - the calibration method used for searching in ``search_qtable``, default is MSE, with selectable range being mse, kl, max, percentile9999, combine them with seperator ','
+     - the calibration method used for searching in ``search_qtable``, default is MSE, with selectable range being mse, kl, max, percentile9999, combine them with separator ','
    * - quantize_table
      - Yes
      - qtable output path
@@ -640,7 +652,7 @@ In addition，this program generates a quantization table ``mobilenet_v2_qtable`
 In the table, the first column represents the corresponding layer, and the second column represents the type. Supported types are F32/F16/BF16/INT8. ``search_qtable`` will determine
 the number of mixed precision layers in the qtable based on the user-defined ``expected_cos`` parameter value. For example, if the ``expected_cos`` parameter value is equal to 0.99,
 the number of mixed precision layers in the qtable corresponds to the minimum number of mixed precision layers required to achieve that level of model output comparison.
-Of course, the number of mixed precision layers in the table will be limitted based on the number of model operators. If the minimum number of mixed precision layers exceeds the limitation,
+Of course, the number of mixed precision layers in the table will be limited based on the number of model operators. If the minimum number of mixed precision layers exceeds the limitation,
 only the limited quantity of mixed precision layers will be taken. Additionally, a log file ``Search_Qtable`` will be generated with the following content:
 
 .. code-block:: shell
@@ -803,7 +815,7 @@ Parameter Description
      - mlir file
    * - processor
      - Y
-     - The platform that the model will use. Support bm1690, bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x.
+     - The platform that the model will use. Support bm1688, bm1684x, bm1684, cv186x, cv183x, cv182x, cv181x, cv180x.
    * - fpfwd_inputs
      - N
      - Specify layers (including this layer) to skip quantization before them. Multiple inputs are separated by commas.

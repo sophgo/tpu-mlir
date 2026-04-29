@@ -622,6 +622,7 @@ void BM168x::load_functions() {
   CAST_FUNCTION(set_total_id_ptr);
   CAST_FUNCTION(tpu_global_mem_get_start_addr);
   CAST_FUNCTION(tpu_l2_sram_get_start_addr);
+  CAST_FUNCTION(fill_constant_gen_global_cmd_stride);
   CAST_CPU_FUNCTION(bmcpu_init);
   CAST_CPU_FUNCTION(bmcpu_uninit);
   CAST_CPU_FUNCTION(bmcpu_process);

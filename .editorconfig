@@ -1,0 +1,30 @@
+# EditorConfig — https://editorconfig.org
+# Aligned with .clang-format (LLVM, 2-space) and .style.yapf (PEP8, 4-space, 100 cols).
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+
+[*.{c,cc,cpp,h,hpp,inc,td}]
+indent_size = 2
+
+[*.py]
+indent_size = 4
+max_line_length = 100
+
+[*.{yml,yaml,json,toml}]
+indent_size = 2
+
+[*.{sh,bash}]
+indent_size = 2
+
+[Makefile]
+indent_style = tab
+
+[*.md]
+trim_trailing_whitespace = false

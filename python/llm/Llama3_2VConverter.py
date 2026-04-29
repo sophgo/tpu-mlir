@@ -114,7 +114,7 @@ class Llama3_2VConverter(LlmConverter):
             out_shape = [1, seq_length, self.hidden_size]
             embedding_mlir = MLIRImporter([[1, seq_length]], [out_shape],
                                           name,
-                                          Platform.LLM,
+                                          self.platform,
                                           input_types=["INT32"],
                                           weight_file=f"../{embedding_npz}")
             input_op = embedding_mlir.create_input_op(self.get_loc("input_ids", embedding_mlir), 0)
@@ -154,7 +154,7 @@ class Llama3_2VConverter(LlmConverter):
             lmhead_mlir = MLIRImporter([[1, self.hidden_size]],
                                        out_shape,
                                        name,
-                                       Platform.LLM,
+                                       self.platform,
                                        weight_file=f"../{lmhead_npz}")
             input_op = lmhead_mlir.create_input_op(self.get_loc("hidden_states", lmhead_mlir), 0)
             if not self.do_lmhead_merge:
@@ -287,11 +287,8 @@ class Llama3_2VConverter(LlmConverter):
             mlp_fc2 = f"vision_model.global_transformer.layers.{id}.mlp.fc2"
         ip = vit_mlir.insert_point
 
-        def T(shape: list):
-            return vit_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, vit_mlir)
+        T = vit_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, vit_mlir)
 
         def vision_attention(in_op):
             norm1_op = self.layer_norm(vit_mlir, in_op, norm1, eps=self.vnorm_eps)
@@ -491,16 +488,13 @@ class Llama3_2VConverter(LlmConverter):
 
         vit_mlir = MLIRImporter(input_shapes, [out_shape],
                                 name,
-                                Platform.LLM,
+                                self.platform,
                                 input_types,
                                 weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
 
-        def T(shape: list):
-            return vit_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, vit_mlir)
+        T = vit_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, vit_mlir)
 
         in0_op = vit_mlir.create_input_op(L('pixel_values'), 0)
         in1_op = vit_mlir.create_input_op(L('aspect_ratio_ids'), 1)
@@ -1025,14 +1019,11 @@ class Llama3_2VConverter(LlmConverter):
             block_mlir = MLIRImporter([input_shape, id_shape, mask_shape],
                                       [input_shape, kv_shape, kv_shape],
                                       name,
-                                      Platform.LLM, ["F32", "INT32", "F32"],
+                                      self.platform, ["F32", "INT32", "F32"],
                                       weight_file=f"../{weight_file}")
 
-            def T(shape: list):
-                return block_mlir.get_tensor_type(shape)
-
-            def L(name: str):
-                return self.get_loc(name, block_mlir)
+            T = block_mlir.get_tensor_type
+            L = lambda name: self.get_loc(name, block_mlir)
 
             ip = block_mlir.insert_point
 
@@ -1110,14 +1101,11 @@ class Llama3_2VConverter(LlmConverter):
             block_mlir = MLIRImporter([input_shape, id_shape, row_mask, mask_shape],
                                       [input_shape, past_kv_shape, past_kv_shape],
                                       name,
-                                      Platform.LLM, ["F32", "F32", "F32", "F32"],
+                                      self.platform, ["F32", "F32", "F32", "F32"],
                                       weight_file=f"../{weight_file}")
 
-            def T(shape: list):
-                return block_mlir.get_tensor_type(shape)
-
-            def L(name: str):
-                return self.get_loc(name, block_mlir)
+            T = block_mlir.get_tensor_type
+            L = lambda name: self.get_loc(name, block_mlir)
 
             ip = block_mlir.insert_point
 
@@ -1351,14 +1339,11 @@ class Llama3_2VConverter(LlmConverter):
             block_mlir = MLIRImporter([input_shape, mask_shape, history_shape, history_shape],
                                       [input_shape],
                                       name,
-                                      Platform.LLM, ["F32", "F32", "F32", "F32"],
+                                      self.platform, ["F32", "F32", "F32", "F32"],
                                       weight_file=f"../{weight_file}")
 
-            def T(shape: list):
-                return block_mlir.get_tensor_type(shape)
-
-            def L(name: str):
-                return self.get_loc(name, block_mlir)
+            T = block_mlir.get_tensor_type
+            L = lambda name: self.get_loc(name, block_mlir)
 
             ip = block_mlir.insert_point
 
@@ -1498,14 +1483,11 @@ class Llama3_2VConverter(LlmConverter):
                 [input_shape, id_shape, mask_shape, history_shape, history_shape],
                 [input_shape, kv_shape, kv_shape],
                 name,
-                Platform.LLM, ["F32", "INT32", "F32", "F32", "F32"],
+                self.platform, ["F32", "INT32", "F32", "F32", "F32"],
                 weight_file=f"../{weight_file}")
 
-            def T(shape: list):
-                return block_mlir.get_tensor_type(shape)
-
-            def L(name: str):
-                return self.get_loc(name, block_mlir)
+            T = block_mlir.get_tensor_type
+            L = lambda name: self.get_loc(name, block_mlir)
 
             ip = block_mlir.insert_point
 

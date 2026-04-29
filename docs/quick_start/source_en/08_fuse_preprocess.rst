@@ -27,7 +27,7 @@ At present, the two main series of processors supported by TPU-MLIR are BM168x (
 
 The image cropping will first adjust the image to the size specified by the "--resize_dims" argument of the ``model_transform`` tool, and then crop it to the size of the model input. The normalization supports directly converting unpreprocessed image data.
 
-To integrate preprocessing into the model, you need to speficy the "--fuse_preprocess" argument when using the ``model_deploy`` tool, and the ``test_input`` should be an image of the original format (i.e., jpg, jpeg and png format). There will be a preprocessed npz file of input named ``${model_name}_in_ori.npz`` generated. In addition, there is a "--customization_format" argument to specify the original image format input to the model. The supported image formats are described as follows (BM1684 not included):
+To integrate preprocessing into the model, you need to specify the "--fuse_preprocess" argument when using the ``model_deploy`` tool, and the ``test_input`` should be an image of the original format (i.e., jpg, jpeg and png format). There will be a preprocessed npz file of input named ``${model_name}_in_ori.npz`` generated. In addition, there is a "--customization_format" argument to specify the original image format input to the model. The supported image formats are described as follows (BM1684 not included):
 
 .. list-table:: Types of customization_format and Description
    :widths: 27 43 12 10

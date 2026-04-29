@@ -332,7 +332,7 @@ __device__ void d_copyElement(void *src, int sidx, void *dst, int didx,
   }
 }
 
-__device__ void d_setValue(void *dst, int didx, int tbytes, int value) {
+__device__ void d_setValue(void *dst, int didx, int tbytes, float value) {
   switch (tbytes) {
   case 1:
     static_cast<int8_t *>(dst)[didx] = static_cast<int8_t>(value);
@@ -341,7 +341,7 @@ __device__ void d_setValue(void *dst, int didx, int tbytes, int value) {
     static_cast<int16_t *>(dst)[didx] = static_cast<int16_t>(value);
     break;
   case 4:
-    static_cast<int32_t *>(dst)[didx] = static_cast<int32_t>(value);
+    static_cast<float *>(dst)[didx] = static_cast<float>(value);
     break;
   default:
     break;

@@ -90,6 +90,11 @@ struct ConstbinaryMergeToTopScale : public OpRewriterPatternEx<ScaleOp> {
     if (!isa<MulConstOp, AddConstOp>(formerOp)) {
       return failure();
     }
+    if (auto reluAttr = formerOp->getAttrOfType<BoolAttr>("do_relu")) {
+      if (reluAttr.getValue() == true) {
+        return failure();
+      }
+    }
     auto storage_type = module::getStorageType(op.getOutput());
     if (!storage_type.isF32() && !storage_type.isF16()) {
       return failure();

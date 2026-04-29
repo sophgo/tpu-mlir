@@ -9,9 +9,6 @@
 
 #include "../pycuda.h"
 #include "cuda_helper.h"
-#include <fstream>
-#include <string>
-#include <cstring>
 
 cuda::rounding_mode_t rmode_convert(tpu::RoundMode mode) {
   switch (mode) {
@@ -38,6 +35,31 @@ cuda::rounding_mode_t rmode_convert(tpu::RoundMode mode) {
   }
   llvm_unreachable("Not Implemented");
   return cuda::RD_HALF_AWAY_FROM_ZERO;
+}
+
+cuda::rounding_mode_t rmode_convert(std::string mode) {
+  if (mode == "HalfAwayFromZero") {
+    return cuda::RD_HALF_AWAY_FROM_ZERO;
+  } else if (mode == "HalfUp") {
+    return cuda::RD_HALF_UP;
+  } else if (mode == "HalfDown") {
+    return cuda::RD_HALF_DOWN;
+  } else if (mode == "HalfToEven") {
+    return cuda::RD_HALF_TO_EVEN;
+  } else if (mode == "HalfToOdd") {
+    return cuda::RD_HALF_TO_ODD;
+  } else if (mode == "HalfTowardsZero") {
+    return cuda::RD_HALF_TOWARDS_ZERO;
+  } else if (mode == "TowardsZero") {
+    return cuda::RD_TOWARDS_ZERO;
+  } else if (mode == "Up") {
+    return cuda::RD_UP;
+  } else if (mode == "Down") {
+    return cuda::RD_DOWN;
+  } else {
+    llvm_unreachable("Not Implemented");
+    return cuda::RD_UNKNOWN;
+  }
 }
 
 void py_cuda::cudaCastOp(tpu::CastOp op) {
@@ -115,5 +137,22 @@ void py_cuda::cudaCastOp(tpu::CastOp op) {
     cuda::rounding_mode_t rmode = is_cv18xx ? cuda::RD_TOWARDS_ZERO : cuda::RD_HALF_TO_EVEN;
     cuda::convertType(input, output, num_elem, getCudaType(op.getInput()),
                       getCudaType(op.getOutput()), rmode);
+  }
+}
+
+void py_cuda::cudaCastOp(top::CastOp op) {
+  auto to = op.getTo();
+  void *input = getCudaData(op.getInput());
+  void *output = getCudaData(op.getOutput());
+  auto num_elem = module::getNumElements(op.getOutput());
+  if (to == "INT32") {
+    auto round_mode = rmode_convert(op.getRoundMode().str());
+    cuda::convertType(input, output, num_elem, cuda::DT_F32, cuda::DT_INT32, round_mode);
+    cuda::convertType(output, output, num_elem, cuda::DT_INT32, cuda::DT_F32);
+  } else if (to == "F32") {
+    CHECK_CUDA(cudaMemcpy(output, input, num_elem * sizeof(float),
+                          cudaMemcpyDeviceToDevice));
+  } else {
+    UNREACHABLE_OP("Not Implemented", op);
   }
 }

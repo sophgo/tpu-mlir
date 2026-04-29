@@ -94,15 +94,12 @@ class Gemma3Converter(LlmConverter):
         hidden_shape = [1, num_patches, embed_dim]
         vit_mlir = MLIRImporter([in_shape], [out_shape],
                                 name,
-                                Platform.LLM, ["F32"],
+                                self.platform, ["F32"],
                                 weight_file=f"../{vit_npz}")
         ip = vit_mlir.insert_point
 
-        def T(shape: list):
-            return vit_mlir.get_tensor_type(shape)
-
-        def L(name: str):
-            return self.get_loc(name, vit_mlir)
+        T = vit_mlir.get_tensor_type
+        L = lambda name: self.get_loc(name, vit_mlir)
 
         in_op = vit_mlir.create_input_op(L('pixel_values'), 0)
         new_op = top.ReshapeOp(T(

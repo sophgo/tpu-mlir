@@ -220,6 +220,7 @@ typedef enum fw_layer_type {
   FW_BMNET_ROPE = 172,
   FW_BMNET_CORE_SPLIT = 173,
   FW_BMNET_CORE_JOIN = 174,
+  FW_BMNET_MLP = 175,
   // global_dynamic step -2: declare FW_BMNET_XXXX
   FW_LAYER_UNKNOWN,
   // ppl declare
@@ -230,6 +231,8 @@ typedef enum fw_layer_type {
   PPL_FW_INTERP_NEAREST = 10004,
   PPL_FW_INSERT_TENSOR = 10005,
   PPL_FW_CHUNK_GATED_DELTA_RULE = 10006,
+  PPL_FW_RECURRENT_GATED_DELTA_RULE = 10007,
+  PPL_FW_CONCAT_SLICE = 10008,
   PPL_FW_LAYER_TYPE_UNKNOWN,
 } FW_LAYER_TYPE_T;
 

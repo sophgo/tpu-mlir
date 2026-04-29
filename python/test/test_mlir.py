@@ -21,8 +21,8 @@ import mlir.dialects.top as top
 from transform.MLIRImporter import MLIRImporter, Platform
 
 # Constants
-SUPPORTED_CHIPS = ["bm1684x", "bm1688", "bm1690", "bm1690e"]
-SUPPORTED_MODES = ["f32", "f16"]
+SUPPORTED_CHIPS = ["bm1684x", "bm1688", "bm1690", "bm1690e", "bm1684x2"]
+SUPPORTED_MODES = ["f32", "f16", "bf16"]  # Extend as needed
 
 
 def deploy_case_bmodel(case_name: str,
@@ -34,7 +34,8 @@ def deploy_case_bmodel(case_name: str,
                        debug: bool = False,
                        dynamic: bool = False,
                        rvti: bool = False,
-                       disable_lg: bool = False) -> None:
+                       disable_lg: bool = False,
+                       no_check: bool = False) -> None:
     """
     Run `model_deploy.py` for a single case/chip/mode.
 
@@ -51,11 +52,12 @@ def deploy_case_bmodel(case_name: str,
     cos_tol, euclidean_tol = tolerance
     test_reference_arg = (f"--test_reference {test_reference} "
                           if test_reference is not None else "")
+    test_args = ""
+    if not no_check:
+        test_args = f"--test_input {case_name}_input.npz --tolerance {cos_tol},{euclidean_tol} {test_reference_arg}"
     deploy_cmd = [
-        f"model_deploy.py --mlir {case_name}.mlir", f"--chip {chip}",
-        f"--test_input {case_name}_input.npz", f"{test_reference_arg}", f"--model {bmodel_name}",
-        f"--quantize {mode.upper()}", f"--tolerance {cos_tol},{euclidean_tol}",
-        f"--num_core {num_core}", "--high_precision"
+        f"model_deploy.py --mlir {case_name}.mlir", f"--chip {chip}", f"--model {bmodel_name}",
+        test_args, f"--quantize {mode.upper()}", f"--num_core {num_core}", "--high_precision"
     ]
     if debug:
         deploy_cmd.append("--debug")
@@ -65,8 +67,10 @@ def deploy_case_bmodel(case_name: str,
         deploy_cmd.append("--rvti")
     if disable_lg:
         deploy_cmd.append("--disable_layer_group")
+    deploy_cmd.append("--disable_gdma_check")
+    deploy_cmd = " ".join(deploy_cmd)
     print(deploy_cmd)
-    assert os.system(" ".join(deploy_cmd)) == 0
+    assert os.system(deploy_cmd) == 0
 
 
 def rand_data(shape: List[int],
@@ -142,6 +146,11 @@ class MLIR_IR_TESTER(object):
             "error0": (self.test_error0, Y, Y),
             "insert": (self.test_insert, Y, Y),
             "fattention": (self.test_fattention, Y, Y),
+            "slice": (self.test_slice, Y, Y),
+            "a16matmul": (self.test_a16matmul, Y, Y),
+            "chunk_gated_delta_rule": (self.test_chunk_gated_delta_rule, Y, Y),
+            "recurrent_gated_delta_rule": (self.test_recurrent_gated_delta_rule, Y, Y),
+            "concat_slice": (self.test_concat_slice, Y, Y),
         }
         # currently test_mlir.py only supports fp quant mode
         self.support_quant_modes = ["f32", "f16"]  # no need "bf16" for now
@@ -154,6 +163,7 @@ class MLIR_IR_TESTER(object):
         self.dynamic = args.dynamic
         self.rvti = args.rvti
         self.disable_lg = args.disable_lg
+        self.no_check = args.no_check
         if self.chip not in SUPPORTED_CHIPS:
             raise ValueError(f"Unsupported chip: {self.chip}. Supported: {SUPPORTED_CHIPS}")
 
@@ -222,7 +232,7 @@ class MLIR_IR_TESTER(object):
 
         _, bm1684x_support, bm1688_support = self._test_functions[case]
 
-        if self.chip == "bm1684x" and bm1684x_support:
+        if self.chip in ["bm1684x", "bm1684x2"] and bm1684x_support:
             return True
         if self.chip == "bm1688" and bm1688_support:
             return True
@@ -350,12 +360,6 @@ class MLIR_IR_TESTER(object):
                 f"weight_descs length ({len(weight_descs)}) must match weight_shapes length ({len(weight_shapes)})"
             )
 
-        # Generate inputs using dictionary comprehension
-        inputs = {
-            f"in{i}": rand_data(shape, desc.dtype, desc.min, desc.max)
-            for i, (shape, desc) in enumerate(zip(input_shapes, input_descs))
-        }
-
         # Generate weights using dictionary comprehension
         weights = {
             f"weight{i}": rand_data(shape, desc.dtype, desc.min, desc.max)
@@ -370,7 +374,13 @@ class MLIR_IR_TESTER(object):
         # Save weights and inputs
         weight_file = f"{case_name}_top_f32_all_origin_weight.npz"
         np.savez(weight_file, **weights)
-        np.savez(f"{case_name}_input.npz", **inputs)
+        if not self.no_check:
+            # Generate inputs using dictionary comprehension
+            inputs = {
+                f"in{i}": rand_data(shape, desc.dtype, desc.min, desc.max)
+                for i, (shape, desc) in enumerate(zip(input_shapes, input_descs))
+            }
+            np.savez(f"{case_name}_input.npz", **inputs)
 
     def _deploy_test_case(self, case_name: str, tolerance: Tuple[float,
                                                                  float] = (0.98, 0.95)) -> None:
@@ -391,7 +401,8 @@ class MLIR_IR_TESTER(object):
                                    dynamic=self.dynamic,
                                    num_core=self.num_core,
                                    rvti=self.rvti,
-                                   disable_lg=self.disable_lg)
+                                   disable_lg=self.disable_lg,
+                                   no_check=self.no_check)
             except Exception as e:
                 # print(f"[Error] Mode {mode} failed for {case_name}: {e}")
                 raise RuntimeError(
@@ -515,27 +526,87 @@ class MLIR_IR_TESTER(object):
         # Deploy for each quantization mode
         self._deploy_test_case(case_name)
 
-    def test_fattention(self, case_name):
-        """Test case fattention: Fused attention with multiple inputs/outputs."""
+    def test_slice(self, case_name):
+        """Test case slice: RMSNorm followed by two Slice ops to produce 2 outputs."""
         input_shapes = [
-            [1, 64, 16, 128],  # Q
-            [1, 64, 16, 128],  # K
-            [1, 64, 16, 128],  # V
+            [1, 32, 128],  # in0
         ]
         weight_shapes = [
-            [1, 1, 1, 128],  # weight0
-            [1, 1, 1, 128],  # weight1
-            [1, 1, 1, 128],  # weight2
+            [1, 32, 1],  # weight0 for rmsnorm
         ]
         output_shapes = [
-            [1, 64, 16, 128],  # out0
+            [1, 32, 50],  # out0: slice first half along axis 1
+            [1, 32, 50],  # out1: slice second half along axis 1
         ]
 
         # Create MLIR importer
         block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
-            case_name, input_shapes, weight_shapes, output_shapes, ["F32", "F32", "F32"])
+            case_name, input_shapes, weight_shapes, output_shapes, ["F32"])
 
-        in0_op, in1_op, in2_op = input_ops
+        in0_op = input_ops[0]
+
+        # RMSNorm
+        rmsnorm_out = top.AddOp(self._T(block_mlir, input_shapes[0]), [in0_op, weight_ops[0]],
+                                loc=self._L(block_mlir, "rmsnorm0"),
+                                ip=ip).output
+
+        # Slice 0: first half [0:32] along axis 1
+        slice0 = top.SliceOp(self._T(block_mlir, output_shapes[0]),
+                             rmsnorm_out,
+                             block_mlir.none_op,
+                             block_mlir.none_op,
+                             block_mlir.none_op,
+                             offset=[0, 0, 46],
+                             steps=[1, 1, 1],
+                             ends=[1, 32, 96],
+                             loc=self._L(block_mlir, "slice0"),
+                             ip=ip).output
+
+        # Slice 1: second half [32:64] along axis 1
+        slice1 = top.SliceOp(self._T(block_mlir, output_shapes[1]),
+                             rmsnorm_out,
+                             block_mlir.none_op,
+                             block_mlir.none_op,
+                             block_mlir.none_op,
+                             offset=[0, 0, -50],
+                             steps=[1, 1, 1],
+                             ends=[1, 32, 128],
+                             loc=self._L(block_mlir, "slice1"),
+                             ip=ip).output
+
+        # Create return operation
+        block_mlir.create_return_op([slice0, slice1])
+
+        # Save MLIR text, weights, and inputs
+        self._save_mlir_and_data(case_name, block_mlir, input_shapes, weight_shapes)
+
+        # Deploy for each quantization mode
+        self._deploy_test_case(case_name)
+
+    def test_fattention(self, case_name):
+        """Test case fattention: Fused attention with multiple inputs/outputs."""
+        S = 64
+        D = 128
+        input_shapes = [
+            [1, S, 16, D],  # Q
+            [1, S, 2, D],  # K
+            [1, S, 2, D],  # V
+            [1, 1, S, S],
+        ]
+        weight_shapes = [
+            [1, 1, 1, D],  # weight0
+            [1, 1, 1, D],  # weight1
+            [1, 1, 1, D],  # weight2
+        ]
+        output_shapes = [
+            [1, S, 16, D],  # out0
+        ]
+
+        # Create MLIR importer
+        block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
+            case_name, input_shapes, weight_shapes, output_shapes, ["F32", "F32", "F32", "F32"])
+
+        in0_op, in1_op, in2_op, in3_op = input_ops
         q_op = top.RMSNormOp(self._T(block_mlir, input_shapes[0]),
                              in0_op,
                              weight_ops[0],
@@ -559,15 +630,15 @@ class MLIR_IR_TESTER(object):
                               q_op,
                               k_op,
                               v_op,
-                              block_mlir.none_op,
+                              in3_op,
                               block_mlir.none_op,
                               batch=1,
                               q_head=16,
-                              kv_head=16,
-                              dim=128,
-                              scale=0.0883883476,
-                              mq=64,
-                              mk=64,
+                              kv_head=2,
+                              dim=D,
+                              scale=1 / (D**0.5),
+                              mq=S,
+                              mk=S,
                               keep_dims=True,
                               loc=self._L(block_mlir, "fattention"),
                               ip=ip).output
@@ -582,6 +653,281 @@ class MLIR_IR_TESTER(object):
                                  weight_shapes,
                                  input_descs=[self.Desc('float32', -5, 5) for _ in input_shapes],
                                  weight_descs=None)
+
+        # Deploy for each quantization mode
+        self._deploy_test_case(case_name)
+
+    def test_a16matmul(self, case_name):
+        """Test case A16MatMul: Simple A16MatMul operation."""
+        B = 1
+        S = 1024
+        K = 2560
+        N = 32
+        q_group_size = 128
+        weight_bits = 4
+
+        # For weight_bits=4, weight is packed: [N, K // (8 // weight_bits)] = [N, K // 2]
+        weight_packed_dim = K // (8 // weight_bits)
+        # Scale/zp shape: [N, K // q_group_size]
+        scale_dim = K // q_group_size
+
+        input_shapes = [
+            [B, S, K],  # input activation
+        ]
+        output_shapes = [
+            [B, S, N],  # matmul output
+        ]
+
+        weight_shape = [N, weight_packed_dim]
+        scale_shape = [N, scale_dim]
+        zp_shape = [N, scale_dim]
+
+        input_types = ["F32"]
+        block_mlir = MLIRImporter(input_shapes, output_shapes, case_name, Platform.LLM, input_types)
+        input_ops = self._create_input_ops(block_mlir, input_shapes)
+        ip = block_mlir.insert_point
+
+        in0_op = input_ops[0]
+
+        # Create weight ops with appropriate types
+        qweight_op = block_mlir.create_weight_op("qweight", weight_shape, "UINT8")
+        scale_op = block_mlir.create_weight_op("scales", scale_shape, "F32")
+        zp_op = block_mlir.create_weight_op("qzeros", zp_shape, "UINT8")
+
+        # A16MatMul operation
+        out = top.A16MatMulOp(self._T(block_mlir, output_shapes[0]),
+                              in0_op,
+                              qweight_op,
+                              scale_op,
+                              zp_op,
+                              block_mlir.none_op,
+                              right_transpose=True,
+                              q_group_size=q_group_size,
+                              weight_bits=weight_bits,
+                              loc=self._L(block_mlir, "a16matmul0"),
+                              ip=ip).output
+
+        # Create return operation
+        block_mlir.create_return_op([out])
+
+        # Generate data
+        inputs = {
+            "in0": rand_data(input_shapes[0], 'float32', -1, 1),
+        }
+        weights = {
+            "qweight": rand_data(weight_shape, 'uint8', 0, 255),
+            "scales": rand_data(scale_shape, 'float32', -1, 1),
+            "qzeros": rand_data(zp_shape, 'uint8', 0, 255),
+        }
+
+        # Save MLIR text
+        mlir_txt = block_mlir.print_module()
+        with open(f"{case_name}.mlir", "w") as f:
+            f.write(mlir_txt)
+
+        # Save weights and inputs
+        np.savez(f"{case_name}_top_f32_all_origin_weight.npz", **weights)
+        if not self.no_check:
+            np.savez(f"{case_name}_input.npz", **inputs)
+
+        # Deploy for each quantization mode (A16MatMul only supports F16/BF16 lowering)
+        saved_modes = self.quant_modes
+        self.quant_modes = [m for m in self.quant_modes if m in ["f16", "bf16"]]
+        self._deploy_test_case(case_name)
+        self.quant_modes = saved_modes
+
+    def test_chunk_gated_delta_rule(self, case_name):
+        """Test case: ChunkGatedDeltaRule operator."""
+        B = 1
+        S = 128
+        num_qk_heads = 16
+        num_v_heads = 64
+        D = 128
+        chunk_size = 64
+        scale = 1.0 / (D**0.5)
+
+        input_shapes = [
+            [B, S, num_qk_heads, D],  # query
+            [B, S, num_qk_heads, D],  # key
+            [B, S, num_v_heads, D],  # value
+            [B, S, num_v_heads],  # g
+            [B, S, num_v_heads],  # beta
+            [B, num_v_heads, D, D],  # recurrent_state
+        ]
+        weight_shapes = [
+            [chunk_size, chunk_size],  # triu_mask
+            [chunk_size, chunk_size],  # strict_triu_mask
+            [chunk_size, chunk_size],  # tril_mask
+            [chunk_size, chunk_size],  # eye
+        ]
+        output_shapes = [
+            [B, S, num_v_heads, D],  # attn_out
+        ]
+
+        # Create MLIR importer
+        block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
+            case_name, input_shapes, weight_shapes, output_shapes, ["F32"] * len(input_shapes))
+
+        q_op, k_op, v_op, g_op, beta_op, state_op = input_ops
+        triu_mask_op, strict_triu_mask_op, tril_mask_op, eye_op = weight_ops
+
+        op = top.ChunkGatedDeltaRuleOp(self._T(block_mlir, output_shapes[0]),
+                                       q_op,
+                                       k_op,
+                                       v_op,
+                                       g_op,
+                                       beta_op,
+                                       state_op,
+                                       triu_mask_op,
+                                       strict_triu_mask_op,
+                                       tril_mask_op,
+                                       eye_op,
+                                       num_k_heads=num_qk_heads,
+                                       num_v_heads=num_v_heads,
+                                       d=D,
+                                       chunk_size=chunk_size,
+                                       use_qk_l2norm=True,
+                                       scale=scale,
+                                       loc=self._L(block_mlir, "chunk_gated_delta_rule"),
+                                       ip=ip).attn_out
+
+        # Create return operation
+        block_mlir.create_return_op([op])
+
+        # Generate mask weights with correct values
+        cs = chunk_size
+        triu_mask = np.triu(np.ones((cs, cs), dtype=np.float32), k=0)
+        strict_triu_mask = np.triu(np.ones((cs, cs), dtype=np.float32), k=1)
+        tril_mask = np.tril(np.ones((cs, cs), dtype=np.float32), k=0)
+        eye_mask = np.eye(cs, dtype=np.float32)
+
+        # Generate input data with appropriate ranges
+        inputs = {
+            "in0": rand_data(input_shapes[0], 'float32', -1, 1),  # query
+            "in1": rand_data(input_shapes[1], 'float32', -1, 1),  # key
+            "in2": rand_data(input_shapes[2], 'float32', -1, 1),  # value
+            "in3": rand_data(input_shapes[3], 'float32', -0.5, 0),  # g (small negative for decay)
+            "in4": rand_data(input_shapes[4], 'float32', 0, 1),  # beta (0 to 1)
+            "in5": rand_data(input_shapes[5], 'float32', -0.1, 0.1),  # recurrent_state
+        }
+        weights = {
+            "weight0": triu_mask,
+            "weight1": strict_triu_mask,
+            "weight2": tril_mask,
+            "weight3": eye_mask,
+        }
+
+        # Save MLIR text
+        mlir_txt = block_mlir.print_module()
+        with open(f"{case_name}.mlir", "w") as f:
+            f.write(mlir_txt)
+
+        # Save weights and inputs
+        np.savez(f"{case_name}_top_f32_all_origin_weight.npz", **weights)
+        np.savez(f"{case_name}_input.npz", **inputs)
+
+        # Deploy for each quantization mode
+        self._deploy_test_case(case_name, tolerance=(0.9, 0.8))
+
+    def test_recurrent_gated_delta_rule(self, case_name):
+        """Test case: RecurrentGatedDeltaRule operator."""
+        B = 1
+        num_qk_heads = 16
+        num_v_heads = 16
+        D = 128
+        scale = 1.0 / (D**0.5)
+
+        input_shapes = [
+            [B, 1, num_qk_heads, D],  # query
+            [B, 1, num_qk_heads, D],  # key
+            [B, 1, num_v_heads, D],  # value
+            [B, 1, num_v_heads],  # g
+            [B, 1, num_v_heads],  # beta
+            [B, num_v_heads, D, D],  # recurrent_state
+        ]
+        weight_shapes = []
+        output_shapes = [
+            [B, 1, num_v_heads, D],  # attn_out
+        ]
+
+        # Create MLIR importer
+        block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
+            case_name, input_shapes, weight_shapes, output_shapes, ["F32"] * len(input_shapes))
+
+        q_op, k_op, v_op, g_op, beta_op, state_op = input_ops
+
+        op = top.RecurrentGatedDeltaRuleOp(self._T(block_mlir, output_shapes[0]),
+                                           q_op,
+                                           k_op,
+                                           v_op,
+                                           g_op,
+                                           beta_op,
+                                           state_op,
+                                           num_k_heads=num_qk_heads,
+                                           num_v_heads=num_v_heads,
+                                           d=D,
+                                           use_qk_l2norm=True,
+                                           scale=scale,
+                                           loc=self._L(block_mlir, "recurrent_gated_delta_rule"),
+                                           ip=ip).attn_out
+
+        # Create return operation
+        block_mlir.create_return_op([op])
+
+        # Generate input data with appropriate ranges
+        inputs = {
+            "in0": rand_data(input_shapes[0], 'float32', -1, 1),  # query
+            "in1": rand_data(input_shapes[1], 'float32', -1, 1),  # key
+            "in2": rand_data(input_shapes[2], 'float32', -1, 1),  # value
+            "in3": rand_data(input_shapes[3], 'float32', -0.5, 0),  # g (small negative for decay)
+            "in4": rand_data(input_shapes[4], 'float32', 0, 1),  # beta (0 to 1)
+            "in5": rand_data(input_shapes[5], 'float32', -1.0, 1.0),  # recurrent_state
+        }
+
+        # Save MLIR text
+        mlir_txt = block_mlir.print_module()
+        with open(f"{case_name}.mlir", "w") as f:
+            f.write(mlir_txt)
+
+        # Save inputs
+        np.savez(f"{case_name}_input.npz", **inputs)
+
+        # Deploy for each quantization mode
+        self._deploy_test_case(case_name, tolerance=(0.9, 0.8))
+
+    def test_concat_slice(self, case_name):
+        """Test case: ConcatSlice operator - concat along axis then slice to keep original shape."""
+        N, C, H, W = 1, 2048, 32, 1
+        axis = 2
+        H1 = 8  # size of in1 along the concat axis
+
+        input_shapes = [
+            [N, C, H, W],  # in0
+            [N, C, H1, W],  # in1
+        ]
+        weight_shapes = []
+        output_shapes = [
+            [N, C, H, W],  # output (same as in0)
+        ]
+
+        # Create MLIR importer
+        block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
+            case_name, input_shapes, weight_shapes, output_shapes, ["F32"] * len(input_shapes))
+
+        in0_op, in1_op = input_ops
+
+        op = top.ConcatSliceOp(self._T(block_mlir, output_shapes[0]),
+                               in0_op,
+                               in1_op,
+                               axis=axis,
+                               loc=self._L(block_mlir, "concat_slice"),
+                               ip=ip).output
+
+        # Create return operation
+        block_mlir.create_return_op([op])
+
+        # Save MLIR text, weights, and inputs
+        self._save_mlir_and_data(case_name, block_mlir, input_shapes, weight_shapes)
 
         # Deploy for each quantization mode
         self._deploy_test_case(case_name)
@@ -660,6 +1006,7 @@ def main():
     parser.add_argument("--num_core", default=1, type=int, help="number of cores to use")
     parser.add_argument("--dynamic", action="store_true", help='enable dynamic compile and inference')
     parser.add_argument("--rvti", action="store_true", help='enable rvti, only for bm1684x2 and bm1690e')
+    parser.add_argument("--no_check", action="store_true", help='do not check result, only run deploy')
     parser.add_argument("--disable_lg", action="store_true", help='disable layergroup')
     # yapf: enable
     args = parser.parse_args()

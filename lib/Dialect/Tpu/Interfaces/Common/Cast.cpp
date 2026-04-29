@@ -141,13 +141,13 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
     //       }
     //     }
   } else if (fInput &&
-             (out_type.isInteger(32) || out_type.isUnsignedInteger(32))) {
+             (out_type.isSignedInteger(32) || out_type.isUnsignedInteger(32))) {
     // FP32|BF16|F16|... => INT32|UINT32
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t i = 0; i < num_elem; i++) {
       p.outputs[0][i] = to_int<float>(p.inputs[0][i], round_mode);
     }
-  } else if (fInput && out_type.isInteger(16)) {
+  } else if (fInput && out_type.isSignedInteger(16)) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t i = 0; i < num_elem; i++) {
       p.outputs[0][i] = to_int16<float>(p.inputs[0][i], round_mode);
@@ -157,7 +157,7 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
     for (int64_t i = 0; i < num_elem; i++) {
       p.outputs[0][i] = to_uint16<float>(p.inputs[0][i], round_mode);
     }
-  } else if (fInput && out_type.isInteger(8)) {
+  } else if (fInput && out_type.isSignedInteger(8)) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t i = 0; i < num_elem; i++) {
       p.outputs[0][i] = to_int8<float>(p.inputs[0][i], round_mode);

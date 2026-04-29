@@ -1,3 +1,5 @@
+.. _appendix02_tpulang:
+
 Appendix 02: Basic Elements of TpuLang
 =============================================
 
@@ -122,7 +124,7 @@ The Scalar constructor has two parameters:
 
 * value: Variable type, i.e., int/float type, with no default value, and must be specified.
 * dtype: The data type of the Scalar. If the default value None is used, it is equivalent to "float32."
- Otherwise, it can take values such as "float32," "float16," "int32," "uint32," "int16," "uint16," "int8," and "uint8."
+  Otherwise, it can take values such as "float32," "float16," "int32," "uint32," "int16," "uint16," "int8," and "uint8."
 
 
 Example of usage:
@@ -159,6 +161,7 @@ The interface for the initialization function is as follows, where you choose th
 * The device parameter is of type string and can take values from the range "BM1684X"\|"BM1688"\|"CV183X".
 
 .. _compile:
+
 compile
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -190,7 +193,7 @@ The interface definition
 Description of the function
 :::::::::::::::::::::::::::::::::::::::::::::::::
 
-The function for comipling TpuLang model to bmodel, which used for quantize network.
+The function for compiling TpuLang model to bmodel, which used for quantize network.
 
 Explanation of parameters
 :::::::::::::::::::::::::::::::::::::::::::::::::
@@ -217,7 +220,8 @@ Explanation of parameters
 * gdma_check: A boolean. Whether to enable gdma check.
 * layer_group_config: string type, which indicates the layer group configuration file path. The default value is "".
 
-.. _compile:
+.. _compile_f32:
+
 compile_f32
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -3524,8 +3528,8 @@ This operation belongs to **local operations**.
 
 Explanation of parameters
 """""""""""""""""""""""""""""""""
-* input: Tensor type, reprsenting input Tensor.
-* order: List[int] or Tuple[int] type, reprsenting permutation order. The length of `order` should be the same as the dimensions of input tensor.
+* input: Tensor type, representing input Tensor.
+* order: List[int] or Tuple[int] type, representing permutation order. The length of `order` should be the same as the dimensions of input tensor.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
 Return value
@@ -3949,7 +3953,7 @@ Definition
 
 Description
 """""""""""""""""""""""""""""""""
-Sort input tensor along axis then return the sorted tensor and correspending indices.
+Sort input tensor along axis then return the sorted tensor and corresponding indices.
 
 Parameters
 """""""""""""""""""""""""""""""""
@@ -3983,7 +3987,7 @@ Definition
 
 Description
 """""""""""""""""""""""""""""""""
-Sort input tensor along axis then return the correspending indices of sorted tensor.
+Sort input tensor along axis then return the corresponding indices of sorted tensor.
 
 Parameters
 """""""""""""""""""""""""""""""""
@@ -4018,7 +4022,7 @@ Definition
 
 Description
 """""""""""""""""""""""""""""""""
-Sort input tensor by key along axis then return the sorted tensor and correspending keys.
+Sort input tensor by key along axis then return the sorted tensor and corresponding keys.
 
 Parameters
 """""""""""""""""""""""""""""""""
@@ -4981,7 +4985,7 @@ Definition
 
 Description
 """""""""""""""""""""""""""""""""
-Perfrom :math:`L_p` normalization over specified dimension of input tensor.
+Perform :math:`L_p` normalization over specified dimension of input tensor.
 For a tensor input of sizes :math:`(n_0, ..., n_{dim}, ..., n_k)`,
 each :math:`n_{dim}`-element vector :math:`v` along dimension :attr:`axes`  is transformed as:
 
@@ -4995,7 +4999,7 @@ This operation belongs to **local operations**.
 Parameters
 """""""""""""""""""""""""""""""""
 * input: Tensor type, representing the input Tensor.The dimension of input is not limited. Support data type included: float32, float16.
-* p: float type, representing the exponent vaue in the norm operation. Default to 2.0 .
+* p: float type, representing the exponent value in the norm operation. Default to 2.0 .
 * axes: Union[list[int], int] type, representing the dimension need to normalized. Default to 1. If axes is list, all the values in the list must be continuous. Caution: axes = [0, -1] is not continuous.
 * eps: float type, the epsilon value to use to avoid division by zero. Default to 1e-12.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
@@ -5076,7 +5080,7 @@ Parameters
 * coord_mode: string type, representing the method used in inverse map of coordinates. Optional values are "align_corners", "pytorch_half_pixel", "half_pixel" or "asymmetric". Default is "pytorch_half_pixel".
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
-Note that, parameter `coord_mode` defined here is the same as the parameter `coordinate_transformation_mode` defined in onnx operator `Resize`. Supposed that resize scale along h/w-axis is `scale`, input coordinate is `x_in`, input size is `l_in`, output coordinate is `x_out`, output size is `l_out`, then the defintion of inverse map of coordinates is as follows:
+Note that, parameter `coord_mode` defined here is the same as the parameter `coordinate_transformation_mode` defined in onnx operator `Resize`. Supposed that resize scale along h/w-axis is `scale`, input coordinate is `x_in`, input size is `l_in`, output coordinate is `x_out`, output size is `l_out`, then the definition of inverse map of coordinates is as follows:
 * `"half_pixel"`:
 
     ::
@@ -5139,13 +5143,13 @@ Transfer input tensor from yuv to rgb. Require tensor shape=[n,h*3/2,w], n repre
 
 Explanation of parameters
 """""""""""""""""""""""""""""""""
-* inputs: Tensor type, representing the input yuv tensor。Its dims must be 3, 1st dim represents `batch`, 2nd dim represents `pixels height`, 3rd dim represents `pixels width`.
-* src_format: Int type, representing the input format. `FORMAT_MAPPING_YUV420P_YU12`=0, `FORMAT_MAPPING_YUV420P_YV12`=1, `FORMAT_MAPPING_NV12`=2, `FORMAT_MAPPING_NV21`=3.
-* dst_format: Int type, representing the output format. `FORMAT_MAPPING_RGB`=4, `FORMAT_MAPPING_BGR`=5.
-* ImageOutFormatAttr: string type, representing the output dtype, currently only support `UINT8`.
-* formula_mode: string type, representing the formula to transfer from yuv to rgb, currently support `_601_limited`, `_601_full`.
-* round_mode: string type, currently support `HalfAwayFromZero`, `HalfToEven`.
-* out_name: string type, representing the name of output tensor, default= `None`.
+* inputs: Tensor type, representing the input yuv tensor。Its dims must be 3, 1st dim represents ``batch``, 2nd dim represents ``pixels height``, 3rd dim represents ``pixels width``.
+* src_format: Int type, representing the input format. ``FORMAT_MAPPING_YUV420P_YU12=0``, ``FORMAT_MAPPING_YUV420P_YV12=1``, ``FORMAT_MAPPING_NV12=2``, ``FORMAT_MAPPING_NV21=3``.
+* dst_format: Int type, representing the output format. ``FORMAT_MAPPING_RGB=4``, ``FORMAT_MAPPING_BGR=5``.
+* ImageOutFormatAttr: string type, representing the output dtype, currently only support ``UINT8``.
+* formula_mode: string type, representing the formula to transfer from yuv to rgb, currently support ``_601_limited``, ``_601_full``.
+* round_mode: string type, currently support ``HalfAwayFromZero``, ``HalfToEven``.
+* out_name: string type, representing the name of output tensor, default= ``None``.
 
 Return value
 """""""""""""""""""""""""""""""""
@@ -5190,12 +5194,12 @@ Parameters
 * PW: Int type, representing the width of the output.
 * sampling_ratio: Int type, representing the sample ratio for each level of the feature maps.
 * list_spatial_scale: List[int] or int, representing the spatial scale corresponding to each feature map level.
-        Please note that spatial scale follows mmdetection style, where one int value is initially given, and but its float reciprocal is adapted for roialign.
+  Please note that spatial scale follows mmdetection style, where one int value is initially given, and but its float reciprocal is adapted for roialign.
 * mode: string type, representing the implementation forms, now supporting two modes: DynNormal, or DynFuse.
-        Please note that in DynFuse mode, coordinates of rois can satisfy either mmdetection style, which is 5-length of [batch_id, x0, y0 x1, y1],
-                                          or customized style, which is 7-length of [a, b, x0, y0, x1, y1, c], please customize the position of batch_id.
-                         in DynNormal mode, a customized [a, b, x0, y0 x1, y1, c] coordinates style is adapted in case any customers desire to apply their models.
-* out_name: string type, representing the name of output tensor, default= `None`.
+  Please note that in DynFuse mode, coordinates of rois can satisfy either mmdetection style, which is 5-length of [batch_id, x0, y0 x1, y1],
+  or customized style, which is 7-length of [a, b, x0, y0, x1, y1, c], please customize the position of batch_id.
+  In DynNormal mode, a customized [a, b, x0, y0 x1, y1, c] coordinates style is adapted in case any customers desire to apply their models.
+* out_name: string type, representing the name of output tensor, default= ``None``.
 
 Returns
 """""""""""""""""""""""""""""""""
@@ -5420,7 +5424,7 @@ Definition
             dump_cmd_info: bool = True,
             skip_check: bool = True,  # disable data_check to increase processing speed
             run_by_op: bool = False, # enable to run_by_op, may cause timeout error when some OPs contain too many atomic cmds
-            desire_op: list = [], # set ["A","B","C"] to only dump tensor A/B/C, dump all tensor as defalt
+            desire_op: list = [], # set ["A","B","C"] to only dump tensor A/B/C, dump all tensor as default
             is_soc: bool = False,  # SoC mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
             using_memory_opt: bool = False, # required when is_soc=True
             enable_soc_log: bool = False, # required when is_soc=True
@@ -5446,9 +5450,9 @@ Parameters
 * save_path: String type, representing the abs path of saving results on host.
 * out_fixed: Bool type, representing whether to get results in fixed number.
 * dump_cmd_info: Bool type, enable to save atomic cmd info at `save_path`.
-* skip_check: Bool tyoe, set to True to disable data check to decrease time cost for CMODEL/PCIe mode.
+* skip_check: Bool type, set to True to disable data check to decrease time cost for CMODEL/PCIe mode.
 * run_by_op: Bool type, enable to run_by_op, decrease time cost but may cause timeout error when some OPs contain too many atomic cmds.
-* desire_op: List type, specify this option to dump specific tensors, dump all tensor as defalut.
+* desire_op: List type, specify this option to dump specific tensors, dump all tensor as default.
 * is_soc: Bool type, representing whether to use in SoC mode.
 * using_memory_opt: Bool type, enable to use memory opt, decrease memory usage at the expense of increasing time cost. Suggest to enable when running large model.
 * enable_soc_log: Bool type, enable to print and save log at `save_path`.
@@ -5460,8 +5464,8 @@ Parameters
 
 Attention:
 
-* When the funciton is called in cmodel/pcie mode, functions `use_cmodel/use_chip` from `/tpu-mlir/envsetup.sh` is required.
-* When the funciton is called in SoC mode, use `use_chip` and `reference_data_fn` must be .npz.
+* When the function is called in cmodel/pcie mode, functions `use_cmodel/use_chip` from `/tpu-mlir/envsetup.sh` is required.
+* When the function is called in SoC mode, use `use_chip` and `reference_data_fn` must be .npz.
 
 Returns
 """""""""""""""""""""""""""""""""
@@ -5573,7 +5577,7 @@ The interface definition
 
 Description of the function
 """""""""""""""""""""""""""""""""
-Preproces input Tensor data.
+Preprocess input Tensor data.
 This operation is considered a **global operation**.
 
 Explanation of parameters
@@ -6013,7 +6017,8 @@ merger_matmul
 :::::::::::::::::
 
 The interface definition
-"""""""""""
+""""""""""""""""""""""""
+
     .. code-block:: python
 
       def merger_matmul(

@@ -687,6 +687,7 @@ def tpu_ada_options(
     iomem_set: str = "",
     same_addr: str = "",
     disable_topo_sort: bool = False,
+    enable_affine: bool = False,
 ):
     topo_sort_param = ""
     if not disable_topo_sort:
@@ -717,6 +718,7 @@ def tpu_ada_options(
     op_divide_param = ""
     if op_divide:
         op_divide_param = "--op-divide"
+    affine_param = "--affine-opt" if enable_affine else ""
     opt_post_processor_param = "--opt-post-processor" if opt_post_processor else ""
     weight_deduplicate_param = "--weight-deduplicate" if weight_deduplicate else ""
     options = [
@@ -727,6 +729,7 @@ def tpu_ada_options(
         "--op-reorder",
         topo_sort_param,
         lg_param,
+        affine_param,
         trunc_param,
         parallel_param,
         opt_post_processor_param,
@@ -989,6 +992,7 @@ def mlir_to_model(
     disable_topo_sort: bool = False,
     enable_lghash: bool = False,
     lghash_dir: str = "",
+    enable_affine: bool = False,
     rvti: bool = False,
 ):
     if command_mem is None:
@@ -1027,7 +1031,8 @@ def mlir_to_model(
                               lghash_dir=lghash_dir,
                               iomem_set=iomem_set,
                               same_addr=same_addr,
-                              disable_topo_sort=disable_topo_sort)
+                              disable_topo_sort=disable_topo_sort,
+                              enable_affine=enable_affine)
     cmd.extend(options)
 
     cmd.extend(["-o", final_mlir])

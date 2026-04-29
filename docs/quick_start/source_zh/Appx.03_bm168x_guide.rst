@@ -4,7 +4,7 @@
 BM168x支持ONNX系列、pytorch模型、Caffe模型和TFLite模型。本章节以BM1684x为例,介绍BM168x系列bmodel文件的合并方法。
 
 
-.. _merge weight:
+.. _merge weight bm168x:
 
 合并bmodel模型文件
 --------------------------

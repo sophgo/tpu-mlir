@@ -79,6 +79,9 @@ void Arch::init(uint64_t freq) {
     case module::Chip::BM1684X:
       chip_str = PPL_BM1684X;
       break;
+    case module::Chip::BM1684X2:
+      chip_str = PPL_BM1684X2;
+      break;
     case module::Chip::BM1688:
     case module::Chip::CV186X:
       chip_str = PPL_BM1688;

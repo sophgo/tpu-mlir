@@ -981,7 +981,12 @@ class OnnxConverter(BaseConverter):
     def convert_conv_op(self, onnx_node):
         assert (onnx_node.op_type == "Conv")
         op = self.getOp(onnx_node.inputs[0])  # input can be weight
-        kernel_shape = onnx_node.attrs['kernel_shape']
+        try:
+            kernel_shape = onnx_node.attrs['kernel_shape']
+        except KeyError:
+            # try to get kernel shape from weight
+            filter_weight = self.getWeight(onnx_node.inputs[1])
+            kernel_shape = filter_weight.shape[2:]
         dim = len(kernel_shape)
         dilations = onnx_node.attrs.get("dilations", dim * [1])
         group = onnx_node.attrs.get("group", 1)
@@ -2042,7 +2047,7 @@ class OnnxConverter(BaseConverter):
     def convert_clip_op(self, onnx_node):
         assert (onnx_node.op_type == "Clip")
         input = self.getOperand(onnx_node.inputs[0])
-        if len(onnx_node.inputs) == 3:
+        if len(onnx_node.inputs) > 1:
             try:
                 min = self.getWeight(onnx_node.inputs[1])
             except:

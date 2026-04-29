@@ -704,7 +704,7 @@ TPU sdk准备:
 **其他samples运行命令参照EVB运行命令**
 
 在开发板上进行模型测试及验证工作
-----------------------------
+--------------------------------
 在板子上可以通过cvitek_tpu_sdk/bin/下的model_runner程序进行模型验证；运行model_runner前需要将cvitek_tpu_sdk放到板子上，然后：
 
 .. code-block:: shell

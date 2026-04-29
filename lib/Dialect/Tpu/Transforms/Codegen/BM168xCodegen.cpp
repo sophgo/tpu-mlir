@@ -10,6 +10,7 @@
 #include "BM168xCodegen.hpp"
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
+#include "tpu_mlir/Backend/BM168x/BM1684X2.h"
 #include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include "tpu_mlir/Backend/BM168x/BM1690.h"
 #include "tpu_mlir/Backend/BM168x/BM1690E.h"
@@ -91,6 +92,8 @@ std::string BMCodegen::getKernelModuleName(bool is_rvti) {
     return backend::SGTPUV8::LIB_KERNEL_NAME.str();
   } else if (module::isBM1690()) {
     return backend::BM1690::LIB_KERNEL_NAME.str();
+  } else if (module::isBM1684X2()) {
+    return backend::BM1684X2::LIB_KERNEL_NAME.str();
   }
   return ""; // no kernel module
 }

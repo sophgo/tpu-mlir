@@ -8,6 +8,24 @@
    * - 版本
      - 发布日期
      - 说明
+   * - v1.28.0
+     - 2026.04.14
+     - llm_convert 新增 Qwen3.5、Qwen3-ASR、PaddleOCR-VL 与 lfm2-vl 支持;
+       LLM 支持多卡流水线(PP)与 batch-size 部署;
+       新增 WeightDeduplicate Pass，合并完全相同的权重;
+       支持 yolov26 后处理融合，新增 llm_model 内存分析工具
+   * - v1.27.0
+     - 2026.02.04
+     - 支持 FP8 CUDA 推理;
+       动态量化新增 per-token/per-channel 与混合 group-size 模式;
+       LoRA 与动态 shape 支持多核;
+       新增模块哈希 dump/load 实现编译缓存复用; TPULang 新增 RotPosEmb 与 cumsum 接口
+   * - v1.26.0
+     - 2025.12.25
+     - 新增 CUDA 推理框架;
+       BM1684X 支持动态分组量化;
+       bmodel 文件按 4K 对齐(model_tool 可刷新已有 bmodel);
+       Qwen3-VL 多 ViT 与 LightStereo 支持; LLM 支持 compressed-tensors 模式
    * - v1.25.0
      - 2025.11.28
      - Qwen3-VL支持
@@ -70,7 +88,6 @@
    * - v1.12.0
      - 2024.11.06
      - tpuv7-runtime cmodel接入;
-       BM1690多核LayerGroup优化;
        支持PPL编写后端算子
    * - v1.11.0
      - 2024.09.27
@@ -84,17 +101,14 @@
        优化tpu-perf日志打印
    * - v1.9.0
      - 2024.07.16
-     - BM1690新增40个模型回归测试;
-       量化算法新增octav,aciq_guas和aciq_laplace
+     - 量化算法新增octav,aciq_guas和aciq_laplace
    * - v1.8.0
      - 2024.05.30
-     - BM1690支持多核MatMul算子;
-       TPULang支持输入输出顺序指定;
+     - TPULang支持输入输出顺序指定;
        tpuperf移除patchelf依赖
    * - v1.7.0
      - 2024.05.15
      - CV186X双核修改为单核;
-       BM1690测试流程与BM1684X一致;
        支持gemma/llama/qwen等模型
    * - v1.6.0
      - 2024.02.23

@@ -245,12 +245,49 @@ static void updateModuleTypes(ModuleOp s) {
     for (uint32_t i = 0; i < returnOp->getNumOperands(); ++i) {
       auto v = returnOp->getOperand(i);
       returns.push_back(v.getType());
+      auto addr = module::getAddress(v);
+      // 1. sync op result
       if (isa_and_nonnull<tpu::GroupOp>(v.getDefiningOp())) {
         auto groupOp = dyn_cast<tpu::GroupOp>(v.getDefiningOp());
         auto rv = cast<mlir::OpResult>(v);
         auto yieldOp =
             dyn_cast<tpu::YieldOp>(groupOp.getBody().back().getTerminator());
         yieldOp.getOperand(rv.getResultNumber()).setType(v.getType());
+      } else if (isa_and_nonnull<tpu::CoreParallelOp>(v.getDefiningOp())) {
+        auto parallelOp = dyn_cast<tpu::CoreParallelOp>(v.getDefiningOp());
+        auto rv = cast<mlir::OpResult>(v);
+        auto yieldOp =
+            dyn_cast<tpu::YieldOp>(parallelOp.getBody().back().getTerminator());
+        yieldOp.getOperand(rv.getResultNumber()).setType(v.getType());
+        auto joinOp = yieldOp->getOperand(0).getDefiningOp();
+        auto in0 = module::getAddress(joinOp->getOperand(0));
+        if (in0 != addr) {
+          auto offset = addr - in0;
+          for (auto opd : joinOp->getOperands()) {
+            auto old_addr = module::getAddress(opd);
+            module::setAddress(opd, old_addr + offset);
+          }
+        }
+      }
+      // 2. sync op users
+      for (auto user : v.getUsers()) {
+        if (isa<tpu::CoreParallelOp>(user)) {
+          auto parallelOp = dyn_cast<tpu::CoreParallelOp>(user);
+          auto &block = parallelOp.getBody().back();
+          // get splitOp in parallelOp
+          block.walk<WalkOrder::PreOrder>([&](tpu::CoreSplitOp splitOp) {
+            auto r0 = splitOp.getResult(0);
+            auto r0_addr = module::getAddress(r0);
+            auto in_addr = module::getAddress(splitOp.getInput());
+            if (r0_addr != 0 && in_addr != 0 && r0_addr != in_addr) {
+              auto offset = in_addr - r0_addr;
+              for (auto result : splitOp.getResults()) {
+                auto old_addr = module::getAddress(result);
+                module::setAddress(result, old_addr + offset);
+              }
+            }
+          });
+        }
       }
     }
     auto fnType = builder.getFunctionType(func.getArgumentTypes(),

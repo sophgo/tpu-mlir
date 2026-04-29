@@ -9,7 +9,7 @@ if [[ -z "$INSTALL_PATH" ]]; then
   exit 1
 fi
 
-if [[ -z "$ENVSETUP_LAST_UPDATED " || "$ENVSETUP_LAST_UPDATED" != "2025-05-22" ]];
+if [[ -z "$ENVSETUP_LAST_UPDATED" || "$ENVSETUP_LAST_UPDATED" != "2025-05-22" ]];
 then
   echo -e "${RED}ERROR${NC}: envsetup.sh has updated. Please source envsetup.sh again."
   exit 1
@@ -72,10 +72,10 @@ cmake -G Ninja \
   -DCMAKE_INSTALL_PREFIX="${INSTALL_PATH}" \
   "${PROJECT_ROOT}"
 
-cpu_num=$(cat /proc/stat | grep cpu[0-9] -c)
-cmake --build $BUILD_PATH --target install -j${cpu_num}
+cpu_num=$(nproc)
+cmake --build "$BUILD_PATH" --target install -j${cpu_num}
 
-cmake --build $BUILD_PATH --target passes_json_files builder_python install_passes_files
+cmake --build "$BUILD_PATH" --target passes_json_files builder_python install_passes_files
 
 # build ppl code
 bash lib/PplBackend/build.sh "$1"

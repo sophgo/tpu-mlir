@@ -75,7 +75,7 @@ private:
 public:
   // specific global info
   static constexpr llvm::StringRef LIB_KERNEL_NAME =
-      "libbmtpulv60_kernel_module.so";
+      "libbm1684x2_kernel_module.so";
 
 protected:
   BM1684X2() {
@@ -98,6 +98,7 @@ protected:
     IO_ADDR[3] = GMEM_START_ADDR | TAG_IO3;
     SUPPORT_MEM_TAG = true;
     LIB_BACKEND_NAME = "libbackend_bm1684x2.so";
+    LIB_PPL_DYN_HOST_NAME = "libppl_dyn_host_bm1684x2.so";
     // GDMA format
     GDMA_VALUE_FORMAT_INT8 = 0;
     GDMA_VALUE_FORMAT_FLOAT16 = 1;

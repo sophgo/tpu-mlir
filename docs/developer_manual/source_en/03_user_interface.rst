@@ -262,7 +262,7 @@ Used to convert various neural network models into MLIR files (with ``.mlir`` su
      - Name list of inputs which influencing other tensors\' shape during inference, like:input1,input2. If set, test_input is required and '--dynamic' is required during model_deploy.
    * - dynamic
      - N
-     - Only valid for onnx model. If set, will automatically set inputs with dyanmic axis as dynamic_shape_input_names and set 1-d inputs as shape_influencing_input_names and '--dynamic' is required during model_deploy.
+     - Only valid for onnx model. If set, will automatically set inputs with dynamic axis as dynamic_shape_input_names and set 1-d inputs as shape_influencing_input_names and '--dynamic' is required during model_deploy.
    * - resize_dims
      - N
      - The original image size 'h,w', default is same as net input dims
@@ -399,7 +399,7 @@ Supported parameters:
      - Specify the mixed-precision types for the search_qtable. Currently supported options are 8_16 and 4_8
    * - cluster
      - N
-     - pecify that a clustering algorithm is used to detect sensitive layers during the search_qtable process
+     - specify that a clustering algorithm is used to detect sensitive layers during the search_qtable process
    * - quantize_table
      - N
      - The mixed-precision quantization table output by search_qtable
@@ -455,7 +455,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - Mlir file
    * - processor
      - Y
-     - The platform that the model will use. Support BM1684, BM1684X, BM1688, BM1690, CV186X, CV183X, CV182X, CV181X, CV180X
+     - The platform that the model will use. Support BM1684, BM1684X, BM1688, CV186X, CV183X, CV182X, CV181X, CV180X
    * - quantize
      - Y
      - Quantization type (e.g., F32/F16/BF16/INT8), the quantization types supported by different processors are shown in the table below.
@@ -542,7 +542,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - Merge weights into one weight binary with previous generated cvimodel
    * - model_version
      - N
-     - If need old version cvimodel, set the verion, such as 1.2
+     - If need old version cvimodel, set the version, such as 1.2
    * - q_group_size
      - N
      - Group size for per-group quant, only used in W4A16/W8A16 quant mode
@@ -579,6 +579,9 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - disable_gdma_check
      - N
      - Whether to disable gdma address check
+   * - enable_affine
+     - N
+     - Enable the affine-opt pass to optimize global permute/reshape/slice/pad operations. Disabled by default and only enabled when explicitly specified.
    * - do_winograd
      - N
      - if do WinoGrad convolution, only for BM1684
@@ -624,8 +627,6 @@ The following table shows the correspondence between different processors and th
      - F32, F16, BF16, INT8, W4F16, W8F16, W4BF16, W8BF16
    * - BM1688
      - F32, F16, BF16, INT8, INT4, W4INT8, W4F16, W8F16, W4BF16, W8BF16
-   * - BM1690
-     - F32, F16, BF16, INT8, F8E4M3, F8E5M2, W4F16, W8F16, W4BF16, W8BF16
    * - CV186X
      - F32, F16, BF16, INT8, INT4
    * - CV183X, CV182X, CV181X, CV180X
@@ -754,7 +755,7 @@ Supported parameters:
      - Export all the results, including intermediate ones, when specified
    * - out_fixed
      - N
-     - Remain integer output when the dtype of output is int8, instead of transforming to float32 automaticall
+     - Remain integer output when the dtype of output is int8, instead of transforming to float32 automatically
 
 
 npz_tool.py
@@ -820,7 +821,7 @@ Supported functions:
    * - host
      - Host ip, default:0.0.0.0
    * - manual_run
-     - if net will be automaticall inferenced when UI is opened, default is false for auto inference
+     - if net will be automatically inferenced when UI is opened, default is false for auto inference
 
 Notice: ``--debug`` flag should be opened during model_deploy.py to save intermediate files for visual.py. More details refer to (:ref:`visual-usage`)
 

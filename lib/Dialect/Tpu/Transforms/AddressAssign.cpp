@@ -162,7 +162,8 @@ public:
         module::applyPatternOnce<ConcatMergePattern>(s);
         module::applyPatternOnce<ConcatFusePattern>(s);
         module::applyPatternOnce<ConcatSlicePattern>(s);
-        if (module::isPlatform(module::Platform::LLM)) {
+        if (module::isPlatform(module::Platform::LLM) ||
+            module::isPlatform(module::Platform::LLM_QUANTIZED)) {
           // make sure all weight ops are reordered by name
           // this is required by the address assign strategy of LLM models,
           // which assigns addresses to weights in order of their names.

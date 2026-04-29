@@ -404,6 +404,20 @@ LogicalResult tpu::SliceOp::LocalGenSupport() {
       // }
       return failure();
     }
+    if (module::isPlatform(module::Platform::LLM) ||
+        module::isPlatform(module::Platform::LLM_QUANTIZED)) {
+      // walkaround for slice shape like (1, 1, 1024) or (1, 1024, 1) or (1024,
+      // 1, 1)
+      int no_one = 0;
+      for (int i = 0; i < num_dims; ++i) {
+        if (shape[i] != 1) {
+          no_one++;
+        }
+      }
+      if (no_one < 2) {
+        return failure();
+      }
+    }
   } else if (module::isBM1684Family()) {
     auto p = parseParam();
     auto input_dim = module::getShape(getInput()).size();

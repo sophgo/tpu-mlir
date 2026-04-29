@@ -39,6 +39,7 @@ std::unique_ptr<OperationPass<ModuleOp>> createTruncLayerPass();
 std::unique_ptr<OperationPass<ModuleOp>> createCutFinalMlirPass();
 std::unique_ptr<OperationPass<ModuleOp>> createOptPostProcessorPass();
 std::unique_ptr<OperationPass<ModuleOp>> createTimeFixedSubnetPass();
+std::unique_ptr<OperationPass<ModuleOp>> createAffineOptPass();
 std::unique_ptr<OperationPass<ModuleOp>>
 createAfterLayerGroupWeightReorderPass();
 std::unique_ptr<OperationPass<ModuleOp>> createWeightDeduplicatePass();

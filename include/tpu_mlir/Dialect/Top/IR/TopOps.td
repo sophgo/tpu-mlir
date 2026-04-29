@@ -1003,13 +1003,107 @@ def Top_ChunkGatedDeltaRuleOp : Top_Op<"ChunkGatedDeltaRule"> {
     AnyTensor:$g,
     AnyTensor:$beta,
     AnyTensor:$recurrent_state,
+    AnyTensor:$triu_mask,
+    AnyTensor:$strict_triu_mask,
+    AnyTensor:$tril_mask,
     AnyTensor:$eye,
+    I64Attr:$num_k_heads,
+    I64Attr:$num_v_heads,
+    I64Attr:$d,
     I64Attr:$chunk_size,
+    BoolAttr:$use_qk_l2norm,
     F64Attr:$scale
   );
 
-  let results = (outs AnyTensor:$attn_out,
-                      AnyTensor:$new_recurrent_state);
+  let results = (outs AnyTensor:$attn_out);
+}
+
+def Top_RecurrentGatedDeltaRuleOp : Top_Op<"RecurrentGatedDeltaRule"> {
+  let summary = "Recurrent Gated Delta Rule operator";
+
+  let description = [{
+    1.Op Introduction
+    The RecurrentGatedDeltaRule operator implements a single-step recurrent gated delta rule
+    attention mechanism, designed for efficient autoregressive inference with linear attention
+    and recurrent state updates.
+
+    2.Math formula
+    ```math
+        scale = 1 / sqrt(k_head_dim)
+        query = query * scale
+        g_exp = exp(g)
+        state = state * g_exp
+        kv_mem = state^T @ key
+        delta = (value - kv_mem) * beta
+        state = state + key (outer) delta
+        output = state^T @ query
+    ```
+
+    3.activation and weight
+    query(act.): query tensor with shape (B, 1, num_k_heads, k_head_dim).;
+    key(act.): key tensor with shape (B, 1, num_k_heads, k_head_dim).;
+    value(act.): value tensor with shape (B, 1, num_v_heads, v_head_dim).;
+    g(act.): gating signal tensor with shape (B, 1, num_v_heads), controls the exponential decay rate.;
+    beta(act.): scaling factor tensor with shape (B, 1, num_v_heads), modulates value contributions.;
+    recurrent_state(act.): recurrent state tensor with shape (B, num_v_heads, k_head_dim, v_head_dim).;
+
+    4.attributes
+    num_k_heads: number of key/query heads.;
+    num_v_heads: number of value heads (must be a multiple of num_k_heads for GQA).;
+    d: head dimension.;
+    use_qk_l2norm: whether to apply L2 normalization to query and key.;
+    scale: scaling factor applied to query.;
+  }];
+
+  let arguments = (ins
+    AnyTensor:$query,
+    AnyTensor:$key,
+    AnyTensor:$value,
+    AnyTensor:$g,
+    AnyTensor:$beta,
+    AnyTensor:$recurrent_state,
+    I64Attr:$num_k_heads,
+    I64Attr:$num_v_heads,
+    I64Attr:$d,
+    BoolAttr:$use_qk_l2norm,
+    F64Attr:$scale
+  );
+
+  let results = (outs AnyTensor:$attn_out);
+}
+
+def Top_ConcatSliceOp : Top_Op<"ConcatSlice"> {
+  let summary = "ConcatSlice operator";
+
+  let description = [{
+    1.Op Introduction
+    The ConcatSlice operator concatenates two tensors along a specified axis,
+    then slices off the front portion so the output shape matches the first input.
+    This is equivalent to: output = concat(in0, in1, axis)[..., axis_size_1:, ...]
+
+    2.Math formula
+    ```math
+        concat_result = concatenate(in0, in1, axis=axis)
+        output = concat_result[axis_size_1 : axis_size_0 + axis_size_1]
+    ```
+    where axis_size_0 and axis_size_1 are the sizes of in0 and in1 along the axis.
+
+    3.activation and weight
+    in0(act.): first input tensor with shape (n0, c0, h0, w0).;
+    in1(act.): second input tensor with shape (n1, c1, h1, w1),
+               all dims must match in0 except at the concat axis.;
+
+    4.attributes
+    axis: the axis along which to concatenate and then slice.;
+  }];
+
+  let arguments = (ins
+    AnyTensor:$in0,
+    AnyTensor:$in1,
+    I64Attr:$axis
+  );
+
+  let results = (outs AnyTensor:$output);
 }
 
 def Top_ClipOp : Top_Op<"Clip"> {
@@ -4034,12 +4128,16 @@ def Top_MlpOp : Top_Op<"Mlp"> {
     AnyTensorOrNone:$bias_gate,
     AnyTensorOrNone:$bias_up,
     AnyTensorOrNone:$bias_down,
-    DefaultValuedAttr<BoolAttr, "false">:$right_transpose_gate,
-    DefaultValuedAttr<BoolAttr, "false">:$right_transpose_up,
+    AnyTensorOrNone:$expert_id,
+    DefaultValuedAttr<BoolAttr, "true">:$right_transpose_gate,
+    DefaultValuedAttr<BoolAttr, "true">:$right_transpose_up,
     DefaultValuedAttr<BoolAttr, "false">:$right_transpose_down,
+    DefaultValuedAttr<BoolAttr, "false">:$is_expert,
     DefaultValuedAttr<BoolAttr, "false">:$quantized,
     DefaultValuedAttr<I64Attr, "128">:$q_group_size,
     DefaultValuedAttr<I64Attr, "8">:$weight_bits,
+    DefaultValuedAttr<I64Attr, "1">:$num_expert,
+    DefaultValuedAttr<I64Attr, "1">:$num_expert_per_tok,
     AnyTensorOrNone:$scale_gate,
     AnyTensorOrNone:$scale_up,
     AnyTensorOrNone:$scale_down,

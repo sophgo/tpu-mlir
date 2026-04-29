@@ -40,6 +40,7 @@ enum PplChip {
   tpul_8_1 = 5,
   tpu_6_0_e = 6,
   tpub_9_0_rv = 7,
+  tpub_9_3 = 8,
 };
 
 enum PplErrorCode_t {

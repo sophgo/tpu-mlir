@@ -34,6 +34,7 @@ class ModelConfig:
 # only for llm, not for vlm
 class LlmType:
     QWEN2 = "qwen2"
+    QWEN2_MOE = "qwen2_moe"
     LLAMA = "llama"
     MLLAMA = "mllama"
     QWEN3 = "qwen3"
@@ -42,6 +43,7 @@ class LlmType:
     GEMMA3 = "gemma3_text"
     MINICPM4 = "minicpm"
     GLM4V = "glm4v_text"
+    LFM2 = "lfm2_text"
 
 
 class ActType:
@@ -92,6 +94,15 @@ class LlmList:
     MLP_UP = "MLP_UP"
     MLP_DOWN = "MLP_DOWN"
     MLP_GATE_UP = "MLP_GATE_UP"
+    # MoE
+    SHARED_GATE = "SHARED_GATE"
+    SHARED_EXPERT_GATE = "SHARED_EXPERT_GATE"
+    SHARED_EXPERT_UP = "SHARED_EXPERT_UP"
+    SHARED_EXPERT_DOWN = "SHARED_EXPERT_DOWN"
+    GATE = "GATE"
+    EXPERTS_GATE = "EXPERTS_GATE"
+    EXPERTS_UP = "EXPERTS_UP"
+    EXPERTS_DOWN = "EXPERTS_DOWN"
     # ===============================
     NORM = "NORM"
     LMHEAD = "LMHEAD"
@@ -122,6 +133,14 @@ COMMON_INFO = ModelInfo(
         LlmList.MLP_GATE: "mlp.gate_proj",
         LlmList.MLP_UP: "mlp.up_proj",
         LlmList.MLP_DOWN: "mlp.down_proj",
+        LlmList.SHARED_GATE: "mlp.shared_expert_gate",  #qwen2_moe
+        LlmList.SHARED_EXPERT_GATE: "mlp.shared_expert.gate_proj",
+        LlmList.SHARED_EXPERT_UP: "mlp.shared_expert.up_proj",
+        LlmList.SHARED_EXPERT_DOWN: "mlp.shared_expert.down_proj",
+        LlmList.GATE: "mlp.gate",
+        LlmList.EXPERTS_GATE: "mlp.experts.expert_id.gate_proj",
+        LlmList.EXPERTS_UP: "mlp.experts.expert_id.up_proj",
+        LlmList.EXPERTS_DOWN: "mlp.experts.expert_id.down_proj",
         # ================================
         LlmList.NORM: "model.norm",
         LlmList.LMHEAD: "lm_head",
@@ -243,7 +262,7 @@ GEMMA3_INFO = ModelInfo(
         LlmList.LMHEAD: "language_model.model.lm_head",
     })
 
-# qwen2.5o
+# qwen2.5o/qwen3_asr
 QWEN2_5O_INFO = ModelInfo(
     ModelConfig(),
     weights={
@@ -335,5 +354,29 @@ QWEN3VL_INFO = ModelInfo(
         LlmList.MLP_DOWN: "mlp.down_proj",
         # ================================
         LlmList.NORM: "model.language_model.norm",
+        LlmList.LMHEAD: "lm_head",
+    })
+
+LFM2_INFO = ModelInfo(
+    ModelConfig(),
+    weights={
+        LlmList.LAYERS: "model.language_model.layers",
+        LlmList.EMBEDING: "model.language_model.embed_tokens",
+        # ========= in layers =============
+        LlmList.INPUT_LN: "operator_norm",
+        # --------- self_attn ---------
+        LlmList.Q_PROJ: "self_attn.q_proj",
+        LlmList.Q_NORM: "self_attn.q_layernorm",
+        LlmList.K_PROJ: "self_attn.k_proj",
+        LlmList.K_NORM: "self_attn.k_layernorm",
+        LlmList.V_PROJ: "self_attn.v_proj",
+        LlmList.O_PROJ: "self_attn.out_proj",
+        # --------- mlp ---------------
+        LlmList.POST_ATTN_LN: "ffn_norm",
+        LlmList.MLP_GATE: "feed_forward.w1",
+        LlmList.MLP_UP: "feed_forward.w3",
+        LlmList.MLP_DOWN: "feed_forward.w2",
+        # ================================
+        LlmList.NORM: "model.language_model.embedding_norm",
         LlmList.LMHEAD: "lm_head",
     })

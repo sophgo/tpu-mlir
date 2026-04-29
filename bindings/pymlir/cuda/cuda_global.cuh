@@ -485,6 +485,75 @@ __global__ void g_subConst4DI8(T0 *input, int const_v, T1 *output, bool out_sign
   }
 }
 
+template <typename T0, typename T1>
+__global__ void g_addConstI8(T0 *input, int const_v, T1 *output,
+  int multi, int shift, int input_zp, int output_zp, int size, bool do_relu) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    int a_data = (int)input[idx] - input_zp;
+    a_data = a_data * multi + const_v;
+    if (shift > 0)
+      a_data = (a_data + (1 << (shift - 1))) >> shift; // half up
+    if (do_relu)
+      a_data = max(0, a_data);
+    if (std::is_same<T1, int8_t>::value) {
+      a_data = max(-128, a_data);
+      a_data = min(127, a_data);
+      output[idx] = (int8_t)a_data;
+    } else {
+      a_data = max(0, a_data);
+      a_data = min(255, a_data);
+      output[idx] = (uint8_t)a_data;
+    }
+  }
+}
+
+template <typename T0, typename T1>
+__global__ void g_maxConstI8(T0 *input, int const_v, T1 *output, int multi,
+  int shift, int input_zp, int output_zp, int size, bool do_relu) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    int a_data = (int)input[idx] - input_zp;
+    a_data = max(a_data * multi, const_v);
+    if (shift > 0)
+      a_data = (a_data + (1 << (shift - 1))) >> shift; // half up
+    if (do_relu)
+      a_data = max(0, a_data);
+    if (std::is_same<T1, int8_t>::value) {
+      a_data = max(-128, a_data);
+      a_data = min(127, a_data);
+      output[idx] = max((int8_t)a_data, (int8_t)const_v);
+    } else {
+      a_data = max(0, a_data);
+      a_data = min(255, a_data);
+      output[idx] = max((uint8_t)a_data, (uint8_t)const_v);
+    }
+  }
+}
+
+template <typename T0, typename T1>
+__global__ void g_minConstI8(T0 *input, int const_v, T1 *output, int multi,
+  int shift, int input_zp, int output_zp, int size, bool do_relu) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    int a_data = (int)input[idx] - input_zp;
+    a_data = min(a_data * multi, const_v);
+    if (shift > 0)
+      a_data = (a_data + (1 << (shift - 1))) >> shift; // half up
+    if (do_relu)
+      a_data = max(0, a_data);
+    if (std::is_same<T1, int8_t>::value) {
+      a_data = max(-128, a_data);
+      a_data = min(127, a_data);
+      output[idx] = min((int8_t)a_data, (int8_t)const_v);
+    } else {
+      a_data = max(0, a_data);
+      a_data = min(255, a_data);
+      output[idx] = min((uint8_t)a_data, (uint8_t)const_v);
+    }
+  }
+}
+
 template <typename T0, typename T1, typename T2>
 __global__ void g_mul4DF32(T0 *a, T1 *b, T2 *out, bool relu, int n0, int c0,
                             int h0, int w0, int n1, int c1, int h1, int w1,
@@ -511,6 +580,27 @@ __global__ void g_mul4DF32(T0 *a, T1 *b, T2 *out, bool relu, int n0, int c0,
     if (relu)
       a_data = max(0.0, a_data);
     out[dst_idx] = a_data;
+  }
+}
+
+template <typename T0, typename T1, typename T2>
+__global__ void g_divMDF32(T0 *input0, T1 *input1, T2 *output,
+                           int64_t *shape0, int64_t *shape1, int64_t *shape2,
+                           int64_t *strides0, int64_t *strides1, int64_t *strides2,
+                           int dims, int num_elements) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < num_elements) {
+    int idx0 = 0, idx1 = 0;
+    int tmp = idx;
+    for (int i = dims - 1; i >= 0; --i) {
+      int coord = tmp % shape2[i];
+      tmp /= shape2[i];
+      idx0 += (coord % shape0[i]) * strides0[i];
+      idx1 += (coord % shape1[i]) * strides1[i];
+    }
+    float a_data = input0[idx0];
+    float b_data = input1[idx1];
+    output[idx] = a_data / b_data;
   }
 }
 
@@ -549,7 +639,7 @@ template <typename T> __global__ void g_neg(T *input, T *output, int size) {
 
 __global__ void g_pad4D(void *input, void *output, int n, int c, int h, int w,
                         int pad_h_t, int pad_h_b, int pad_w_l, int pad_w_r,
-                        int tbytes, int pad_value) {
+                        int tbytes, float pad_value) {
   int oh = h + pad_h_t + pad_h_b;
   int ow = w + pad_w_l + pad_w_r;
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -567,6 +657,70 @@ __global__ void g_pad4D(void *input, void *output, int n, int c, int h, int w,
       d_copyElement(input, in_idx, output, out_idx, tbytes);
     } else {
       d_setValue(output, out_idx, tbytes, pad_value);
+    }
+  }
+}
+
+__global__ void g_pad4D(void *input, void *output, int n, int c, int h, int w,
+                        int pad_h_t, int pad_h_b, int pad_w_l, int pad_w_r,
+                        int tbytes, bool is_edge) {
+  int oh = h + pad_h_t + pad_h_b;
+  int ow = w + pad_w_l + pad_w_r;
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < (n * c * oh * ow)) {
+    int idx_n = idx / (c * oh * ow);
+    int idx_c = idx % (c * oh * ow) / (oh * ow);
+    int idx_h = idx % (oh * ow) / ow;
+    int idx_w = idx % ow;
+    int out_idx = ((idx_n * c + idx_c) * oh + idx_h) * ow + idx_w;
+    if (idx_h >= pad_h_t && idx_h < (pad_h_t + h) && idx_w >= pad_w_l &&
+        idx_w < (pad_w_l + w)) {
+      int idx_in_h = idx_h - pad_h_t;
+      int idx_in_w = idx_w - pad_w_l;
+      int in_idx = ((idx_n * c + idx_c) * h + idx_in_h) * w + idx_in_w;
+      d_copyElement(input, in_idx, output, out_idx, tbytes);
+    } else {
+      if (is_edge) {
+        int idx_in_h = min(max(idx_h - pad_h_t, 0), h - 1);
+        int idx_in_w = min(max(idx_w - pad_w_l, 0), w - 1);
+        int in_idx = ((idx_n * c + idx_c) * h + idx_in_h) * w + idx_in_w;
+        d_copyElement(input, in_idx, output, out_idx, tbytes);
+      } else { // reflect padding
+        int idx_in_h = idx_h - pad_h_t;
+        int idx_in_w = idx_w - pad_w_l;
+        if (idx_in_h < 0)
+          idx_in_h = -idx_in_h;
+        else if (idx_in_h >= h)
+          idx_in_h = 2 * h - idx_in_h - 2;
+        if (idx_in_w < 0)
+          idx_in_w = -idx_in_w;
+        else if (idx_in_w >= w)
+          idx_in_w = 2 * w - idx_in_w - 2;
+        int in_idx = ((idx_n * c + idx_c) * h + idx_in_h) * w + idx_in_w;
+        d_copyElement(input, in_idx, output, out_idx, tbytes);
+      }
+    }
+  }
+}
+
+__global__ void g_insertZero4D(void *input, void *output, int n, int c, int h, int w,
+                             int ins_h, int ins_w, int tbytes) {
+  int oh = h + (h - 1) * ins_h;
+  int ow = w + (w - 1) * ins_w;
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < (n * c * oh * ow)) {
+    int idx_n = idx / (c * oh * ow);
+    int idx_c = idx % (c * oh * ow) / (oh * ow);
+    int idx_h = idx % (oh * ow) / ow;
+    int idx_w = idx % ow;
+    int out_idx = ((idx_n * c + idx_c) * oh + idx_h) * ow + idx_w;
+    if (idx_h % (ins_h + 1) == 0 && idx_w % (ins_w + 1) == 0) {
+      int idx_in_h = idx_h / (ins_h + 1);
+      int idx_in_w = idx_w / (ins_w + 1);
+      int in_idx = ((idx_n * c + idx_c) * h + idx_in_h) * w + idx_in_w;
+      d_copyElement(input, in_idx, output, out_idx, tbytes);
+    } else {
+      d_setValue(output, out_idx, tbytes, 0);
     }
   }
 }
@@ -921,6 +1075,23 @@ __global__ void g_HSIGMOID(float* input, float *output, int num, double alpha, d
   if(i<num){
     double input_i = input[i];
     output[i] = max(0.0, min(1.0, alpha * input_i + beta));
+  }
+}
+
+__global__ void g_RELU(float* input, float *output, int num, double min_val, double max_val) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if(i < num){
+    float input_i = max(input[i], (float)min_val);
+    if (max_val > 0)
+      input_i = min(input_i, (float)max_val);
+    output[i] = input_i;
+  }
+}
+
+__global__ void g_CLIP(float* input, float *output, int num, double min_val, double max_val) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if(i < num){
+    output[i] = min(max(input[i], (float)min_val), (float)max_val);
   }
 }
 
@@ -1308,6 +1479,22 @@ __global__ void g_intToF32(T *input, float *output, int size) {
 }
 
 template <typename T>
+__global__ void g_intToBF16(T *input, uint16_t *output, int size) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    output[idx] = d_BF16Raw(static_cast<float>(input[idx]));
+  }
+}
+
+template <typename T>
+__global__ void g_intToF16(T *input, uint16_t *output, int size) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    output[idx] = d_F16Raw(static_cast<float>(input[idx]));
+  }
+}
+
+template <typename T>
 __global__ void g_f32ToInt(float *input, T *output, int size,
                            rounding_mode_t rmode) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1343,6 +1530,38 @@ __global__ void g_f16ToF32(uint16_t *input, float *output, int size) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < size) {
     output[idx] = d_RawF16(input[idx]);
+  }
+}
+
+__global__ void g_f16(float *input, float *output, int size) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    output[idx] = d_RawF16(d_F16Raw(input[idx]));
+  }
+}
+
+__global__ void g_bf16(float *input, float *output, int size) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    output[idx] = d_RawBF16(d_BF16Raw(input[idx]));
+  }
+}
+
+template <typename T>
+__global__ void g_bf16ToInt(uint16_t *input, T *output, int size, rounding_mode_t rmode) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    float f32_value = d_RawBF16(input[idx]);
+    output[idx] = d_f32ToInt<T>(f32_value, rmode);
+  }
+}
+
+template <typename T>
+__global__ void g_f16ToInt(uint16_t *input, T *output, int size, rounding_mode_t rmode) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < size) {
+    float f32_value = d_RawF16(input[idx]);
+    output[idx] = d_f32ToInt<T>(f32_value, rmode);
   }
 }
 
@@ -1731,6 +1950,26 @@ __global__ void g_gather(T0 *indices, T1 *embedding, T1 *output,
     if (index < embedding_dim && index >= 0) {
       for (int i = 0; i < inner_dim; i++) {
         output[idx * inner_dim + i] = embedding[index * inner_dim + i];
+      }
+    }
+  }
+}
+
+template <typename T0, typename T1>
+__global__ void g_gatherElements(T0 *indices, T1 *input, T1 *output,
+                                 int index_axis_dim, int input_axis_dim,
+                                 int outer_dim, int inner_dim) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < outer_dim * inner_dim) {
+    int outer_idx = idx / inner_dim;
+    int inner_idx = idx % inner_dim;
+    for (int i = 0; i < index_axis_dim; i++) {
+      int index = static_cast<int>(indices[outer_idx * index_axis_dim * inner_dim +
+                                           i * inner_dim + inner_idx]);
+      index = max(0, min(index, input_axis_dim - 1)); // f16(4095) will be converted to 4096
+      if (index < input_axis_dim && index >= 0) {
+        output[outer_idx * index_axis_dim * inner_dim + i * inner_dim + inner_idx] =
+            input[outer_idx * input_axis_dim * inner_dim + index * inner_dim + inner_idx];
       }
     }
   }
@@ -2619,6 +2858,349 @@ __global__ void g_RightBitShift(T *input, T *output, int shift) {
   }
 }
 
+__global__ void g_GridSample4DIndex(float *input, float *output, int nthreads, int h, int w,
+                                    bool align_corners, grid_sample_padding_mode_t padding_mode) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < nthreads) {
+    float x, y;
+    if (align_corners) {
+      x = (input[idx * 2] + 1.0f) * 0.5f * (w - 1);
+      y = (input[idx * 2 + 1] + 1.0f) * 0.5f * (h - 1);
+    } else {
+      x = ((input[idx * 2] + 1.0f) * w - 1) * 0.5f;
+      y = ((input[idx * 2 + 1] + 1.0f) * h - 1) * 0.5f;
+    }
+    if (padding_mode == BORDER) {
+      x = max(0.0f, min(x, w - 1.0f));
+      y = max(0.0f, min(y, h - 1.0f));
+    } else if (padding_mode == REFLECTION) {
+      int twice_w_low = align_corners ? 0 : -1;
+      int twice_w_high = align_corners ? 2 * (w - 1) : 2 * w - 1;
+      int twice_h_low = align_corners ? 0 : -1;
+      int twice_h_high = align_corners ? 2 * (h - 1) : 2 * h - 1;
+      if (twice_w_low == twice_w_high) {
+        x = 0.0f;
+      } else {
+        float _min = twice_w_low / 2.0f;
+        float _span = (twice_w_high - twice_w_low) / 2.0f;
+        x = fabsf(x - _min);
+        float _extra = fmod(x, _span);
+        int flips = static_cast<int>(floorf(x / _span));
+        if (flips % 2 == 1) {
+          x = _span - _extra + _min;
+        } else {
+          x = _extra + _min;
+        }
+      }
+      if (twice_h_low == twice_h_high) {
+        y = 0.0f;
+      } else {
+        float _min = twice_h_low / 2.0f;
+        float _span = (twice_h_high - twice_h_low) / 2.0f;
+        y = fabsf(y - _min);
+        float _extra = fmod(y, _span);
+        int flips = static_cast<int>(floorf(y / _span));
+        if (flips % 2 == 1) {
+          y = _span - _extra + _min;
+        } else {
+          y = _extra + _min;
+        }
+      }
+      x = max(0.0f, min(x, w - 1.0f));
+      y = max(0.0f, min(y, h - 1.0f));
+    }
+    output[idx * 2] = x;
+    output[idx * 2 + 1] = y;
+  }
+}
 
+__global__ void g_GridSample4DCompute(float *input, float *grid, float *output,
+                                      int n, int c, int h, int w, int out_h, int out_w,
+                                      grid_sample_interpolation_mode_t interpolation_mode) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < n * out_h * out_w) {
+    int n_idx = idx / (out_h * out_w);
+    int remaining = idx % (out_h * out_w);
+    int h_idx = remaining / out_w;
+    int w_idx = remaining % out_w;
+
+    float x = grid[idx * 2];
+    float y = grid[idx * 2 + 1];
+
+    if (interpolation_mode == NEAREST) {
+      int x_nearest = roundf(x);
+      int y_nearest = roundf(y);
+      for (int c_idx = 0; c_idx < c; c_idx++) {
+        output[((n_idx * c + c_idx) * out_h + h_idx) * out_w + w_idx] =
+            input[((n_idx * c + c_idx) * h + y_nearest) * w + x_nearest];
+      }
+    } else if (interpolation_mode == BILINEAR) {
+      int x0 = floorf(x);
+      int y0 = floorf(y);
+      float x_lerp = x - x0;
+      float y_lerp = y - y0;
+      float x0y0_weight = (1 - x_lerp) * (1 - y_lerp);
+      float x1y0_weight = x_lerp * (1 - y_lerp);
+      float x0y1_weight = (1 - x_lerp) * y_lerp;
+      float x1y1_weight = x_lerp * y_lerp;
+      bool is_x0_valid = (x0 >= 0 && x0 < w);
+      bool is_x1_valid = (x0 + 1 >= 0 && x0 + 1 < w);
+      bool is_y0_valid = (y0 >= 0 && y0 < h);
+      bool is_y1_valid = (y0 + 1 >= 0 && y0 + 1 < h);
+      for (int c_idx = 0; c_idx < c; c_idx++) {
+
+        float res = 0;
+        if (is_x0_valid && is_y0_valid)
+          res += x0y0_weight * input[((n_idx * c + c_idx) * h + y0) * w + x0];
+        if (is_x1_valid && is_y0_valid)
+          res += x1y0_weight * input[((n_idx * c + c_idx) * h + y0) * w + (x0 + 1)];
+        if (is_x0_valid && is_y1_valid)
+          res += x0y1_weight * input[((n_idx * c + c_idx) * h + (y0 + 1)) * w + x0];
+        if (is_x1_valid && is_y1_valid)
+        res += x1y1_weight * input[((n_idx * c + c_idx) * h + (y0 + 1)) * w + (x0 + 1)];
+        output[((n_idx * c + c_idx) * out_h + h_idx) * out_w + w_idx] = res;
+      }
+    }
+  }
 }
+
+__global__ void g_argMax(float *input, float *output_idx, float *output_val,
+                         int outer_dim, int axis_dim, int inner_dim, bool is_cv18xx) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < outer_dim * inner_dim) {
+    int outer_idx = idx / inner_dim;
+    int inner_idx = idx % inner_dim;
+    if (is_cv18xx) {
+      int tile_size = 256;
+      int tile_num = (axis_dim + tile_size - 1) / tile_size;
+      for (int t = 0; t < tile_num; t++) {
+        float max_value = input[outer_idx * axis_dim * inner_dim + t * tile_size * inner_dim + inner_idx];
+        for (int i = 1; i < tile_size && t * tile_size + i < axis_dim; i++) {
+          float value = input[outer_idx * axis_dim * inner_dim + (t * tile_size + i) * inner_dim + inner_idx];
+          if (value >= max_value) {
+            max_value = value;
+          }
+        }
+        output_idx[outer_idx * tile_num * inner_dim + t * inner_dim + inner_idx] = max_value;
+      }
+    } else {
+      float max_index = 0;
+      float max_value = input[outer_idx * axis_dim * inner_dim + 0 * inner_dim + inner_idx];
+      for (int i = 1; i < axis_dim; i++) {
+        float value = input[outer_idx * axis_dim * inner_dim + i * inner_dim + inner_idx];
+        if (value >= max_value) {
+          max_value = value;
+          max_index = i;
+        }
+      }
+      output_idx[idx] = max_index;
+      if (output_val != nullptr) {
+        output_val[idx] = max_value;
+      }
+    }
+  }
 }
+
+__global__ void g_argMin(float *input, float *output_idx, float *output_val,
+                         int outer_dim, int axis_dim, int inner_dim, bool is_cv18xx) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < outer_dim * inner_dim) {
+    int outer_idx = idx / inner_dim;
+    int inner_idx = idx % inner_dim;
+
+    if (is_cv18xx) {
+      int tile_size = 256;
+      int tile_num = (axis_dim + tile_size - 1) / tile_size;
+      for (int t = 0; t < tile_num; t++) {
+        float min_value = input[outer_idx * axis_dim * inner_dim + t * tile_size * inner_dim + inner_idx];
+        for (int i = 1; i < tile_size && t * tile_size + i < axis_dim; i++) {
+          float value = input[outer_idx * axis_dim * inner_dim + (t * tile_size + i) * inner_dim + inner_idx];
+          if (value <= min_value) {
+            min_value = value;
+          }
+        }
+        output_idx[outer_idx * tile_num * inner_dim + t * inner_dim + inner_idx] = min_value;
+      }
+    } else {
+      float min_index = 0;
+      float min_value = input[outer_idx * axis_dim * inner_dim + 0 * inner_dim + inner_idx];
+      for (int i = 1; i < axis_dim; i++) {
+        float value = input[outer_idx * axis_dim * inner_dim + i * inner_dim + inner_idx];
+        if (value <= min_value) {
+          min_value = value;
+          min_index = i;
+        }
+      }
+      output_idx[idx] = min_index;
+      if (output_val != nullptr) {
+        output_val[idx] = min_value;
+      }
+    }
+  }
+}
+
+template <typename T>
+__global__ void g_argMax(T *input, T *arg_values, float *output, int outer_dim,
+                         int axis_dim, int inner_dim, float scale) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < outer_dim * inner_dim) {
+    int outer_idx = idx / inner_dim;
+    int inner_idx = idx % inner_dim;
+    int tile_size = 256;
+    int tile_num = (axis_dim + tile_size - 1) / tile_size;
+    float target_value = arg_values[idx];
+    float target_tile = 0;
+    for (int t = 1; t < tile_num; t++) {
+      float value = arg_values[outer_idx * tile_num * inner_dim + t * inner_dim + inner_idx];
+      if (value >= target_value) {
+        target_value = value;
+        target_tile = t;
+      }
+    }
+    int offset = target_tile * tile_size;
+    for (int i = 0; i < tile_size && offset + i < axis_dim; i++) {
+      float value = input[outer_idx * axis_dim * inner_dim + (offset + i) * inner_dim + inner_idx];
+      if (value == target_value) {
+        output[idx] = offset + i;
+        break;
+      }
+    }
+  }
+}
+
+__global__ void g_interpGrid(int *grid_int, float *grid_float, int dim, int out_dim,
+                             float scale, bool align_corners, bool half_pixel,
+                             interp_platform_t platform) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < out_dim) {
+    int gi;
+    float gf;
+    switch (platform) {
+      case TENSORFLOW_NEAREST: {
+        gf = half_pixel ? (idx + 0.5f) * scale : idx * scale;
+        gf = min(max(gf, 0.0f), dim - 1.0f);
+        gi = align_corners ? roundf(gf) : floorf(gf);
+        break;
+      }
+      case PYTORCH_SUPPORT: {
+        gf = align_corners ? idx * scale : (idx + 0.5f) * scale - 0.5f;
+        gf = min(max(gf, 0.0f), dim - 1.0f);
+        gi = floorf(gf);
+        break;
+      }
+      case PYTORCH_NEAREST: {
+        gf = idx * scale;
+        gf = min(max(gf, 0.0f), dim - 1.0f);
+        gi = floorf(gf);
+        break;
+      }
+      case ONNX_NEAREST: {
+        gf = half_pixel ? (idx + 0.5f) * scale - 0.5f : idx * scale;
+        gf = min(max(gf, 0.0f), dim - 1.0f);
+        gi = (half_pixel || !align_corners) ? floorf(gf) : roundf(gf);
+        break;
+      }
+      case CAFFE_SUPPORT:
+      case CAFFE_NEAREST: {
+        gf = idx * scale;
+        gf = min(max(gf, 0.0f), dim - 1.0f);
+        gi = floorf(gf);
+        break;
+      }
+    }
+    grid_int[idx] = gi;
+    if (grid_float != nullptr) {
+      grid_float[idx] = gf;
+    }
+  }
+}
+
+__global__ void g_interpCompute(float *input, int *grid_y_int, float *grid_y_float,
+                                int *grid_x_int, float *grid_x_float, float *output,
+                                int n, int c, int h, int w, int out_h, int out_w) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < n * out_h * out_w) {
+    int n_idx = idx / (out_h * out_w);
+    int remaining = idx % (out_h * out_w);
+    int h_idx = remaining / out_w;
+    int w_idx = remaining % out_w;
+
+    int y0 = grid_y_int[h_idx];
+    int x0 = grid_x_int[w_idx];
+    if (grid_y_float != nullptr && grid_x_float != nullptr) { // bilinear
+      float y_lerp = grid_y_float[h_idx] - y0;
+      float x_lerp = grid_x_float[w_idx] - x0;
+
+      for (int c_idx = 0; c_idx < c; c_idx++) {
+        float v00 = input[((n_idx * c + c_idx) * h + y0) * w + x0];
+        float v01 = input[((n_idx * c + c_idx) * h + y0) * w + min(x0 + 1, w - 1)];
+        float v10 = input[((n_idx * c + c_idx) * h + min(y0 + 1, h - 1)) * w + x0];
+        float v11 = input[((n_idx * c + c_idx) * h + min(y0 + 1, h - 1)) * w + min(x0 + 1, w - 1)];
+        float tmp0 = v00 + (v10 - v00) * y_lerp;
+        float tmp1 = v01 + (v11 - v01) * y_lerp;
+        float res = tmp0 + (tmp1 - tmp0) * x_lerp;
+        output[((n_idx * c + c_idx) * out_h + h_idx) * out_w + w_idx] = res;
+      }
+    } else { // nearest
+      for (int c_idx = 0; c_idx < c; c_idx++) {
+        output[((n_idx * c + c_idx) * out_h + h_idx) * out_w + w_idx] =
+            input[((n_idx * c + c_idx) * h + y0) * w + x0];
+      }
+    }
+  }
+}
+
+__global__ void g_GQA_mm(float *A, float *B, float *C, int batch, int mq, int mk,
+                         int q_head, int k_head, int dim, bool is_qk) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (is_qk) {
+    // A is Query: [batch, mq, q_head, dim]
+    // B is Key: [batch, mk, k_head, dim]
+    // C is QK^T: [batch, q_head, mq, mk]
+    // q_head and k_head may be different
+    int head_ratio = q_head / k_head;
+    if (idx < batch * q_head * mq) {
+      int batch_idx = idx / (q_head * mq);
+      int remaining = idx % (q_head * mq);
+      int q_head_idx = remaining / mq;
+      int mq_idx = remaining % mq;
+      int k_head_idx = q_head_idx / head_ratio;
+
+      for (int mk_idx = 0; mk_idx < mk; mk_idx++) {
+        float sum = 0;
+        for (int d = 0; d < dim; d++) {
+          float q_val = A[((batch_idx * mq + mq_idx) * q_head + q_head_idx) * dim + d];
+          float k_val = B[((batch_idx * mk + mk_idx) * k_head + k_head_idx) * dim + d];
+          sum += q_val * k_val;
+        }
+        C[((batch_idx * q_head + q_head_idx) * mq + mq_idx) * mk + mk_idx] = sum;
+      }
+    }
+  } else {
+    // A is Attention: [batch, q_head, mq, mk]
+    // B is Value: [batch, mk, k_head, dim]
+    // C is Output: [batch, mq, q_head * dim]
+    // q_head and k_head may be different
+    int head_ratio = q_head / k_head;
+    if (idx < batch * mq * q_head) {
+      int batch_idx = idx / (mq * q_head);
+      int remaining = idx % (mq * q_head);
+      int mq_idx = remaining / q_head;
+      int q_head_idx = remaining % q_head;
+      int k_head_idx = q_head_idx / head_ratio;
+
+      for (int d = 0; d < dim; d++) {
+        float sum = 0;
+        for (int mk_idx = 0; mk_idx < mk; mk_idx++) {
+          float attn_val = A[((batch_idx * q_head + q_head_idx) * mq + mq_idx) * mk + mk_idx];
+          float v_val = B[((batch_idx * mk + mk_idx) * k_head + k_head_idx) * dim + d];
+          sum += attn_val * v_val;
+        }
+        C[((batch_idx * mq + mq_idx) * q_head + q_head_idx) * dim + d] = sum;
+      }
+    }
+  }
+}
+
+} // namespace cuda
+} // namespace tpu_mlir

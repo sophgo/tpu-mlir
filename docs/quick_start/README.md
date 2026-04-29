@@ -4,7 +4,7 @@ This is the document of TPU-MLIR.
 
 ## Prerequisites
 
-python3.8 is prefered
+python3.8 is preferred
 
 ```shell
 sudo apt install texlive-xetex texlive-latex-recommended
@@ -15,7 +15,7 @@ pip3.8 install sphinx sphinx-autobuild sphinx_rtd_theme rst2pdf
 
 * [Fandol](https://ctan.org/pkg/fandol) - Four basic fonts for Chinese typesetting
 
-Download the fandol package from the aboved website(wget http://mirrors.ctan.org/fonts/fandol.zip) and unzip it.
+Download the fandol package from the above website(wget http://mirrors.ctan.org/fonts/fandol.zip) and unzip it.
 
 Copy the fold named fandol to /usr/share/fonts or ${HOME}/.fonts.
 

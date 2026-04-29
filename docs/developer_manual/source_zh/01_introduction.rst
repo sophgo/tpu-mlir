@@ -16,7 +16,7 @@ TPU-MLIR的整体架构如下:
    TPU-MLIR整体架构
 
 
-目前直接支持的框架有ONNX、Caffe和TFLite。其他框架的模型需要转换成onnx模型。如何将其他深
+目前直接支持的框架有PyTorch、ONNX、TFLite和Caffe。其他框架的模型需要转换成onnx模型。如何将其他深
 度学习架构的网络模型转换成onnx, 可以参考onnx官网: https://github.com/onnx/tutorials。
 
 
@@ -24,6 +24,8 @@ TPU-MLIR的整体架构如下:
 转换成mlir文件, 二是通过 ``model_deploy.py`` 将mlir文件转换成bmodel。
 
 如果要转INT8模型, 则需要调用 ``run_calibration.py`` 生成校准表, 然后传给 ``model_deploy.py``。
+如果INT8模型不满足精度需要, 可以通过 ``run_calibration.py --search search_qtable`` 生成量化表,
+用于决定哪些层采用浮点计算, 然后将量化表传给 ``model_deploy.py`` 生成混精度模型。
 
 
 本文详细描述实现细节, 用于指导开发。

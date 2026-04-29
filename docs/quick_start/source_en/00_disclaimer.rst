@@ -8,6 +8,32 @@
    * - Version
      - Release date
      - Explanation
+   * - v1.28.0
+     - 2026.04.14
+     - Support Qwen3.5, Qwen3-ASR, PaddleOCR-VL and lfm2-vl in llm_convert;
+       LLM multi-device pipeline (PP) and batch-size support;
+       New WeightDeduplicate pass to merge identical weights;
+       yolov26 post-processing fusion and new llm_model memory analysis tool
+   * - v1.27.0
+     - 2026.02.04
+     - FP8 CUDA inference;
+       Mixing per-token/per-channel and group-size dynamic quantization;
+       LoRA and dynamic shape support multi-core;
+       Module hash dump/load for cache reuse; TPULang adds RotPosEmb and cumsum interfaces
+   * - v1.26.0
+     - 2025.12.25
+     - CUDA inference framework;
+       Dynamic group quantization for BM1684X;
+       4K-aligned bmodel format (``model_tool`` can refresh existing bmodels);
+       Qwen3-VL multi-ViT and LightStereo support; LLM compressed-tensors mode
+   * - v1.25.0
+     - 2025.11.28
+     - Qwen3-VL support
+       BM1690E support
+   * - v1.24.0
+     - 2025.10.30
+     - MINICPMV4 support
+       Supports peak system and device memory estimation for bmodel
    * - v1.23.0
      - 2025.09.30
      - GLM4.1V support
@@ -62,7 +88,6 @@
    * - v1.12.0
      - 2024.11.06
      - tpuv7-runtime cmodel integration;
-       BM1690 multi-core LayerGroup optimization;
        Support for PPL backend operator development
    * - v1.11.0
      - 2024.09.27
@@ -76,17 +101,14 @@
        Optimized tpu-perf log output
    * - v1.9.0
      - 2024.07.16
-     - BM1690 added 40 model regression tests;
-       New quantization algorithms: octav, aciq_guas and aciq_laplace
+     - New quantization algorithms: octav, aciq_guas and aciq_laplace
    * - v1.8.0
      - 2024.05.30
-     - BM1690 supports multi-core MatMul operator;
-       TPULang supports input/output order specification;
+     - TPULang supports input/output order specification;
        tpuperf removes patchelf dependency
    * - v1.7.0
      - 2024.05.15
      - CV186X dual-core changed to single-core;
-       BM1690 testing process aligned with BM1684X;
        Support for gemma/llama/qwen models
    * - v1.6.0
      - 2024.02.23
