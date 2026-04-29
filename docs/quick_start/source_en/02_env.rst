@@ -32,13 +32,14 @@ If you are using docker for the first time, you can execute the following comman
 
 .. _docker container_setup:
 
-If you download the image file, make sure the image file is in the current directory, and then create a container in the current directory as follows:
+You can get the docker image file from the SDK package. If you download the image file, make sure the image file is in the current directory, and then create a container in the current directory as follows:
 
 
 .. code-block:: shell
 
   # use --privileged to get root permission, if you don't need root permission, please remove this parameter
-  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4
+  $ docker load -i tpuc_dev_v3.4.tar.gz
+  $ docker run --privileged --name myname -v $PWD:/workspace -it tpuc_dev:v3.4
 
 where ``myname`` is the name of the container, which can be customized; ``$PWD`` is the current directory, synchronized with the container's ``/workspace`` directory.
 

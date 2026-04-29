@@ -171,18 +171,18 @@ If you need precision test on BasicVSR, please download and unzip the Vid4 datas
 Prepare the toolchain compilation environment
 ~~~~~~~~~~~~~~~~~~
 
-It is recommended to use the toolchain software in a docker environment, see :ref:`Base environment configuration <docker configuration>` to install Docker. and execute the following commands in your working directory (the directory which ``model-zoo`` is located) to create a Docker container:
+It is recommended to use the toolchain software in a docker environment, see :ref:`Base environment configuration <docker configuration>` to install Docker. The docker image file can be obtained from the SDK package.Execute the following commands in your working directory (the directory which ``model-zoo`` is located) to create a Docker container:
 
 .. code-block:: shell
 
-   $ docker pull sophgo/tpuc_dev:v3.4
-   $ docker run --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4
+   $ docker load -i tpuc_dev_v3.4.tar.gz
+   $ docker run --name myname -v $PWD:/workspace -it tpuc_dev:v3.4
 
 If you want to keep the container after it exits, simply remove the ``--rm`` parameter:
 
 .. code-block:: shell
 
-   $ docker run --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4 --rm
+   $ docker run --name myname -v $PWD:/workspace -it tpuc_dev:v3.4 --rm
 
 After running the command, it will be in a Docker container. You can the latest ``tpu-mlir`` wheel installation package from the SDK package, such as ``tpu_mlir-*-py3-none-any.whl``. Install tpu_mlir in the Docker container:
 
