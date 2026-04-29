@@ -2475,17 +2475,40 @@ class LlmConverter(BaseConverter):
                 group_bmodels.extend(block_models[lid])
             groups.append(group_bmodels)
         if add_group:
-            groups[1].extend(add_group)  # Add residual connections to the first block group
+            if num_block_groups > 0:
+                groups[1].extend(add_group)  # Add residual connections to the first block group
+            else:
+                groups[0].extend(add_group)
         # Last group: remaining (lm_head, greedy_head, sample_head, etc.)
         groups.append(remaining_group)
 
-        # Combine each group separately
+        # Generate per-group bmodel names that cpp_demo_pp can auto-detect.
+        # cpp_demo_pp distinguishes components by substring match on the
+        # filename: "embed_vit" -> embedding+vit, "block" -> transformer
+        # blocks, "lmhead" -> LM head (and friends). The block files are then
+        # loaded in lexicographic order, so we zero-pad the index.
+        # Layout:
+        #   groups[0]                 -> {base}_embed_vit{ext}
+        #   groups[1..num_block_grps] -> {base}_block_{i}{ext}
+        #   groups[-1]                -> {base}_lmhead{ext}
         out_base, out_ext = os.path.splitext(self.out_bmodel)
-        for i, group in enumerate(groups):
+        pad = max(2, len(str(max(num_block_groups - 1, 0))))
+        group_names = []
+        group_names.append(f"{out_base}_embed_vit{out_ext}")
+        for n in range(num_block_groups):
+            group_names.append(f"{out_base}_block_{n:0{pad}d}{out_ext}")
+        group_names.append(f"{out_base}_lmhead{out_ext}")
+
+        assert len(group_names) == len(groups), (
+            f"PP group count mismatch: {len(group_names)} names vs "
+            f"{len(groups)} groups")
+
+        # Combine each group separately
+        for i, (group, group_out) in enumerate(zip(groups, group_names)):
             if not group:
-                print(f"PP group {i} is empty, skipping.")
+                print(f"PP group {i} ({os.path.basename(group_out)}) is empty, "
+                      f"skipping.")
                 continue
-            group_out = f"{out_base}_dev{i}{out_ext}"
             combine_args = ['model_tool', '--combine', ' '.join(group), '-o', group_out]
             self.run_command(['bash', '-c', ' '.join(combine_args)])
             group_size = os.path.getsize(group_out)

@@ -9,7 +9,6 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/sophgo/tpu-mlir/blob/master/LICENSE"><img src="https://img.shields.io/github/license/sophgo/tpu-mlir?color=blue" alt="License"></a>
   <a href="https://pypi.org/project/tpu_mlir/"><img src="https://img.shields.io/pypi/v/tpu_mlir.svg" alt="PyPI"></a>
   <a href="https://pypi.org/project/tpu_mlir/"><img src="https://img.shields.io/pypi/pyversions/tpu_mlir.svg" alt="Python"></a>
   <a href="https://github.com/sophgo/tpu-mlir/stargazers"><img src="https://img.shields.io/github/stars/sophgo/tpu-mlir?style=social" alt="Stars"></a>
