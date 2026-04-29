@@ -15,25 +15,42 @@ namespace bm1684x {
 static void LoweringLayerNorm(PatternRewriter &rewriter, top::LayerNormOp op,
                               Type type) {
   rewriter.setInsertionPointAfter(op);
-  std::vector<Value> opds;
-  opds.reserve(3);
-  const int nInputs = op->getNumOperands();
-  for (auto i = 0; i < nInputs; ++i) {
-    auto opd = op->getOperand(i);
-    if (module::isWeight(opd)) {
-      auto weightOp = opd.getDefiningOp<top::WeightOp>();
-      if (type.isBF16()) {
-        opds.push_back(weightOp.clone_bf16(op));
-      } else if (type.isF16()) {
-        opds.push_back(weightOp.clone_f16(op));
-      } else {
-        opds.push_back(opd);
-      }
-    } else {
-      opds.push_back(opd);
+  auto clone_weight_by_type = [&](Value opd) -> Value {
+    if (!module::isWeight(opd)) {
+      return opd;
     }
+    auto weightOp = opd.getDefiningOp<top::WeightOp>();
+    if (type.isBF16()) {
+      return weightOp.clone_bf16(op);
+    } else if (type.isF16()) {
+      return weightOp.clone_f16(op);
+    }
+    return opd;
+  };
+  auto input = op->getOperand(0);
+  auto weight = clone_weight_by_type(op->getOperand(1));
+  auto bias = clone_weight_by_type(op->getOperand(2));
+  auto input_shape = module::getShape(op.getInput());
+  int64_t inner_num = 1;
+  for (int i = op.getAxis(); i < input_shape.size(); ++i) {
+    inner_num *= input_shape[i];
   }
+  const bool have_weight = !op.getWeight().getType().isa<NoneType>();
+  const bool have_bias = !op.getBias().getType().isa<NoneType>();
+  const bool bias_only = have_bias && !have_weight;
+  const bool weight_mismatch =
+      have_weight && module::getNumElements(op.getWeight()) != inner_num;
+  const bool bias_mismatch =
+      have_bias && module::getNumElements(op.getBias()) != inner_num;
+  // For BM1684X F16, bias-only LayerNorm can be unstable in kernel affine path.
+  // Always rewrite it to LayerNorm(no affine) + Add(bias).
+  const bool need_split_affine = weight_mismatch || bias_mismatch || bias_only;
+  std::vector<Value> opds;
+  opds.reserve(5);
   auto none = module::getNoneOp(op);
+  opds.push_back(input);
+  opds.push_back(need_split_affine ? none : weight);
+  opds.push_back(need_split_affine ? none : bias);
   opds.push_back(none);
   opds.push_back(none);
 
@@ -52,7 +69,27 @@ static void LoweringLayerNorm(PatternRewriter &rewriter, top::LayerNormOp op,
   } else {
     new_types.push_back(out.getType());
   }
-  rewriter.replaceOpWithNewOp<tpu::LayerNormOp>(op, new_types, opds, attrs);
+  auto ln_op =
+      rewriter.create<tpu::LayerNormOp>(op.getLoc(), new_types, opds, attrs);
+  Value output = ln_op.getOutput();
+  std::vector<NamedAttribute> binary_attrs;
+  auto name = module::getName(op.getOutput()).str();
+  if (need_split_affine && have_weight) {
+    auto mul_loc = NameLoc::get(rewriter.getStringAttr(name + "_affine_mul"));
+    output = rewriter
+                 .create<tpu::MulOp>(mul_loc, new_types[0],
+                                     ValueRange{output, weight}, binary_attrs)
+                 .getOutput();
+  }
+  if (need_split_affine && have_bias) {
+    auto add_loc = NameLoc::get(rewriter.getStringAttr(name + "_affine_add"));
+    output = rewriter
+                 .create<tpu::AddOp>(add_loc, new_types[0],
+                                     ValueRange{output, bias}, binary_attrs)
+                 .getOutput();
+  }
+  op.replaceAllUsesWith(output);
+  rewriter.eraseOp(op);
   return;
 }
 

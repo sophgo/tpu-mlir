@@ -1270,6 +1270,13 @@ protected:
         if (axis != 2 || axis == -1) {
           return failure();
         }
+        // BM1684X f16/bf16 has accuracy regressions on some attention-like
+        // paths after rewriting Softmax axis from 2D to 4D form.
+        // Keep original graph in this case to avoid changing Softmax behavior.
+        auto stype = module::getStorageType(next_op.getOutput());
+        if (module::isBM1684X() && (stype.isF16() || stype.isBF16())) {
+          return failure();
+        }
       }
 
       // remove ReshapeOp
@@ -2733,6 +2740,165 @@ private:
     return;
   }
 };
+
+class RewriteLayerNormAxisOnly : public OpRewriterPatternEx<top::LayerNormOp> {
+public:
+  RewriteLayerNormAxisOnly(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::LayerNormOp>(
+            context, "RewriteLayerNormAxisOnly", benefit) {}
+
+protected:
+  LogicalResult
+  matchAndRewriteImpl(top::LayerNormOp op,
+                      mlir::PatternRewriter &rewriter) const override {
+    auto input_shape = module::getShape(op.getInput());
+    if (input_shape.size() != 4 || op.getAxis() != 1) {
+      return failure();
+    }
+
+    const bool have_weight = !op.getWeight().getType().isa<NoneType>();
+    const bool have_bias = !op.getBias().getType().isa<NoneType>();
+
+    int64_t inner_num = 1;
+    for (int i = op.getAxis(); i < input_shape.size(); ++i) {
+      inner_num *= input_shape[i];
+    }
+    const bool weight_mismatch =
+        have_weight && module::getNumElements(op.getWeight()) != inner_num;
+    const bool bias_mismatch =
+        have_bias && module::getNumElements(op.getBias()) != inner_num;
+    const bool need_split_affine = weight_mismatch || bias_mismatch;
+    if (!need_split_affine) {
+      return failure();
+    }
+
+    // Restrict to channel-broadcast affine only: [1, C, 1, 1].
+    // This keeps normal LayerNorm forms (e.g. normalized_shape=[H, W])
+    // unchanged.
+    auto is_channel_affine_4d = [&](Value v) -> bool {
+      if (v.getType().isa<NoneType>()) {
+        return false;
+      }
+      auto s = module::getShape(v);
+      return s.size() == 4 && s[0] == 1 && s[1] == input_shape[1] &&
+             s[2] == 1 && s[3] == 1;
+    };
+    const bool channel_weight =
+        have_weight && is_channel_affine_4d(op.getWeight());
+    const bool channel_bias = have_bias && is_channel_affine_4d(op.getBias());
+    if (!(channel_weight || channel_bias)) {
+      return failure();
+    }
+
+    // Further guard by normalized_shape when present:
+    // must be [C, H, W] for axis=1 full-tail normalization pattern.
+    auto norm_shape = module::getI64Array(op.getNormalizedShape());
+    if (norm_shape && !norm_shape->empty()) {
+      if (norm_shape->size() != 3 || norm_shape->at(0) != input_shape[1] ||
+          norm_shape->at(1) != input_shape[2] ||
+          norm_shape->at(2) != input_shape[3]) {
+        return failure();
+      }
+    }
+
+    if (!((have_weight &&
+           module::getNumElements(op.getWeight()) == input_shape[1]) ||
+          (have_bias &&
+           module::getNumElements(op.getBias()) == input_shape[1]))) {
+      return failure();
+    }
+
+    auto out_type = op.getOutput().getType().cast<RankedTensorType>();
+    std::vector<int64_t> reduce_shape(input_shape.begin(), input_shape.end());
+    reduce_shape[1] = 1;
+    auto reduce_type =
+        RankedTensorType::get(reduce_shape, out_type.getElementType());
+    auto name = module::getName(op.getOutput()).str();
+
+    std::vector<NamedAttribute> reduce_attrs;
+    reduce_attrs.emplace_back(
+        rewriter.getNamedAttr("mode", rewriter.getStringAttr("ReduceMean")));
+    reduce_attrs.emplace_back(
+        rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr({1})));
+    reduce_attrs.emplace_back(
+        rewriter.getNamedAttr("keepdims", rewriter.getBoolAttr(true)));
+
+    auto mean_loc =
+        NameLoc::get(rewriter.getStringAttr(name + "_axis_only_mean"));
+    auto mean_op = rewriter.create<top::ReduceOp>(
+        mean_loc, reduce_type, ValueRange{op.getInput()}, reduce_attrs);
+
+    std::vector<NamedAttribute> binary_attrs;
+    auto xc_loc =
+        NameLoc::get(rewriter.getStringAttr(name + "_axis_only_center"));
+    auto xc_op = rewriter.create<top::SubOp>(
+        xc_loc, out_type, ValueRange{op.getInput(), mean_op.getOutput()},
+        binary_attrs);
+
+    auto sq_loc =
+        NameLoc::get(rewriter.getStringAttr(name + "_axis_only_square"));
+    auto sq_op = rewriter.create<top::MulOp>(
+        sq_loc, out_type, ValueRange{xc_op.getOutput(), xc_op.getOutput()},
+        binary_attrs);
+
+    auto var_loc =
+        NameLoc::get(rewriter.getStringAttr(name + "_axis_only_var"));
+    auto var_op = rewriter.create<top::ReduceOp>(
+        var_loc, reduce_type, ValueRange{sq_op.getOutput()}, reduce_attrs);
+
+    std::vector<NamedAttribute> addc_attrs;
+    addc_attrs.emplace_back(rewriter.getNamedAttr(
+        "const_val", rewriter.getF64FloatAttr(op.getEps().convertToDouble())));
+    auto vareps_loc =
+        NameLoc::get(rewriter.getStringAttr(name + "_axis_only_var_eps"));
+    auto vareps_op = rewriter.create<top::AddConstOp>(
+        vareps_loc, reduce_type, ValueRange{var_op.getOutput()}, addc_attrs);
+
+    auto sqrt_loc =
+        NameLoc::get(rewriter.getStringAttr(name + "_axis_only_sqrt"));
+    auto sqrt_op = rewriter.create<top::SqrtOp>(
+        sqrt_loc, reduce_type, ValueRange{vareps_op.getOutput()},
+        std::vector<NamedAttribute>{});
+
+    std::vector<NamedAttribute> reci_attrs;
+    reci_attrs.emplace_back(
+        rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(1.0)));
+    auto inv_loc =
+        NameLoc::get(rewriter.getStringAttr(name + "_axis_only_invstd"));
+    auto inv_op = rewriter.create<top::ReciprocalOp>(
+        inv_loc, reduce_type, ValueRange{sqrt_op.getOutput()}, reci_attrs);
+
+    const bool has_affine = have_weight || have_bias;
+    auto norm_name = has_affine ? (name + "_axis_only_norm") : name;
+    auto norm_loc = NameLoc::get(rewriter.getStringAttr(norm_name));
+    auto norm_op = rewriter.create<top::MulOp>(
+        norm_loc, out_type, ValueRange{xc_op.getOutput(), inv_op.getOutput()},
+        binary_attrs);
+
+    Value output = norm_op.getOutput();
+    if (have_weight) {
+      auto mul_name = have_bias ? (name + "_affine_mul") : name;
+      auto mul_loc = NameLoc::get(rewriter.getStringAttr(mul_name));
+      output = rewriter
+                   .create<top::MulOp>(mul_loc, out_type,
+                                       ValueRange{output, op.getWeight()},
+                                       binary_attrs)
+                   .getOutput();
+    }
+    if (have_bias) {
+      auto add_loc = NameLoc::get(rewriter.getStringAttr(name));
+      output = rewriter
+                   .create<top::AddOp>(add_loc, out_type,
+                                       ValueRange{output, op.getBias()},
+                                       binary_attrs)
+                   .getOutput();
+    }
+
+    rewriter.replaceAllUsesWith(op.getOutput(), output);
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
 } // namespace bm1684x
 
 namespace top {
@@ -2747,8 +2913,8 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns,
             SplitMatMulPattern, ConvertScaleOp, ConcatToSwapDimInner,
             //  ConcatWithReduceSum2SliceWithAdd,
             ConcatReduceSum2AddReshape, ConvertToRSqrt, ConvertToSquare,
-            ConvertToQGELU, InterpNearst2Matmul, ForwardRequantInt>(
-          patterns->getContext(), 8);
+            ConvertToQGELU, InterpNearst2Matmul, ForwardRequantInt,
+            RewriteLayerNormAxisOnly>(patterns->getContext(), 8);
 }
 } // namespace top
 } // namespace tpu_mlir
