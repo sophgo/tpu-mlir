@@ -232,7 +232,16 @@ sub_blocks = {
         'top.MulConst', 'top.Softmax', 'top.MatMul', 'top.Permute', 'top.Reshape', 'top.LayerNorm',
         'top.MatMul', 'top.Add', 'top.LayerNorm', 'top.MatMul', 'top.GELU', 'top.LayerNorm',
         'top.MatMul', 'top.Add'
-    ]
+    ],
+    "rtdetrv2_block": [
+        "top.MatMul", "top.Reshape", "top.MatMul", "top.Reshape", "top.MatMul", "top.Reshape",
+        "top.Softmax", "top.Unsqueeze", "top.Slice", "top.Mul", "top.MulConst", "top.Slice",
+        "top.Add", "top.Permute", "top.Reshape", "top.Slice", "top.Slice", "top.Slice",
+        "top.MulConst", "top.AddConst", "top.Permute", "top.Reshape", "top.Slice", "top.Slice",
+        "top.Slice", "top.Reshape", "top.GridSampler", "top.Reshape", "top.GridSampler",
+        "top.Reshape", "top.GridSampler", "top.Permute", "top.Reshape", "top.Concat", "top.Mul",
+        "top.Reduce", "top.Reshape", "top.Permute", "top.MatMul", "top.Add", "top.LayerNorm"
+    ],  # rtdetrv2 cross-attn block
 }
 openclip_blocks = {
     'openclip_vision_block': [
@@ -425,7 +434,7 @@ class MatchPattern:
                         else:
                             continue
                     if pos_concat is None or conf_concat is None:
-                        return split_fuse_fp_layer_list, [], 0, self._logs
+                        return split_fuse_fp_layer_list, [], [], 0, self._logs
                     next_mul = get_next_op_by_op_name(self.parser, conf_concat)
                     next_concat = get_next_op_by_op_name(self.parser, next_mul[0])
                     pre_concat = self.parser.get_pre_op_by_op_name(next_concat[0])
@@ -482,7 +491,12 @@ class MatchPattern:
                         for op in new_ops:
                             if op not in fp_layer_list:
                                 split_fuse_fp_layer_list.append(op)
-                return split_fuse_fp_layer_list, split_fuse_fp_layer_list_extend, flag, self._logs
+                return split_fuse_fp_layer_list, [], split_fuse_fp_layer_list_extend, flag, self._logs
+
+            if model_block_name == 'rtdetrv2_block':
+                rtdetrv2_fp16_layers, rtdetrv2_fp32_layers = self.generate_rtdetrv2_fp_layers(
+                    all_tensors, type_tensors)
+                return rtdetrv2_fp16_layers, rtdetrv2_fp32_layers, [], flag, self._logs
 
             for i in range(num_tensors):
                 op_type = self.parser.get_op_type_by_op_name(all_tensors[i])
@@ -629,4 +643,172 @@ class MatchPattern:
                         if (len(next_op) == 1 and next_op_type in ['top.Add', 'top.Slice', 'top.Gather']) or \
                            all(pre_op_type == 'top.Add' for pre_op_type in pre_op_types):
                             append_unduplicated(fp_layer_list, all_tensors[i])
-        return fp_layer_list, [], flag, self._logs
+        return fp_layer_list, [], [], flag, self._logs
+
+    def generate_rtdetrv2_fp_layers(self, tensor_names, tensor_types):
+        fp16_layer_list = []
+        fp32_layer_list = []
+        num_topk = tensor_types.count('top.TopK')
+        if num_topk != 2:
+            self._log(f"Expected 2 topk ops in rtdetrv2 block, but found {num_topk}.")
+            return fp16_layer_list, fp32_layer_list
+        topk_indices = [i for i, t in enumerate(tensor_types) if t == 'top.TopK']
+        # add 1st topk to fp16 list
+        #                      add -\
+        # topk -> unsqueeze -> tile -> gatherelements -> sigmoid
+        #                  \-> tile -> gatherelements -> ...
+        # add add, unsqueeze, tile, sigmoid to fp16 list
+        first_topk_name = split_fuseop(tensor_names[topk_indices[0]])[1]
+        tensor_names[topk_indices[0]] = first_topk_name  # update to unfused topk name
+        next_op_names = self.parser.get_next_op_by_op_name(first_topk_name)
+        next_op_types = [self.parser.get_op_type_by_op_name(name) for name in next_op_names]
+        match_1st_topk = False
+        if 'top.Unsqueeze' in next_op_types:
+            unsqueeze_index = next_op_types.index('top.Unsqueeze')
+            unsqueeze_op_name = next_op_names[unsqueeze_index]
+            unsqueeze_next_op_names = self.parser.get_next_op_by_op_name(unsqueeze_op_name)
+            unsqueeze_next_op_types = [
+                self.parser.get_op_type_by_op_name(name) for name in unsqueeze_next_op_names
+            ]
+            if len(unsqueeze_next_op_types) == 2 and unsqueeze_next_op_types.count('top.Tile') == 2:
+                for tile_op_name in unsqueeze_next_op_names:
+                    tile_next_op_names = self.parser.get_next_op_by_op_name(tile_op_name)
+                    tile_next_op_types = [
+                        self.parser.get_op_type_by_op_name(name) for name in tile_next_op_names
+                    ]
+                    if len(tile_next_op_types
+                           ) == 1 and tile_next_op_types[0] == 'top.GatherElements':
+                        gather_op_name = tile_next_op_names[0]
+                        gather_next_op_names = self.parser.get_next_op_by_op_name(gather_op_name)
+                        gather_next_op_types = [
+                            self.parser.get_op_type_by_op_name(name)
+                            for name in gather_next_op_names
+                        ]
+                        gather_pre_op_names = self.parser.get_pre_op_by_op_name(gather_op_name)
+                        gather_pre_op_types = [
+                            self.parser.get_op_type_by_op_name(name) for name in gather_pre_op_names
+                        ]
+                        if len(gather_next_op_types) == 1 and gather_next_op_types[
+                                0] == 'top.Sigmoid' and 'top.Add' in gather_pre_op_types:
+                            add_op_name = gather_pre_op_names[gather_pre_op_types.index('top.Add')]
+                            sigmoid_op_name = gather_next_op_names[0]
+                            fp16_layer_list.extend([
+                                first_topk_name,
+                                unsqueeze_op_name,
+                                unsqueeze_next_op_names[0],
+                                unsqueeze_next_op_names[1],
+                                add_op_name,
+                                sigmoid_op_name,
+                            ])
+                            match_1st_topk = True
+        if not match_1st_topk:
+            self._log(
+                "Failed to match the pattern after the 1st topk op in rtdetrv2 block. The pattern should be topk -> unsqueeze -> tile -> gatherelements -> sigmoid."
+            )
+
+        # add 2nd topk to fp32 list
+        #                           /-> unsqueeze
+        # topk -> mulconst -> floor -> mulconst -> sub
+        #      \--------------------------------/
+        second_topk_name = split_fuseop(tensor_names[topk_indices[1]])[1]
+        tensor_names[topk_indices[1]] = second_topk_name  # update to unfused topk name
+        next_op_names = self.parser.get_next_op_by_op_name(second_topk_name)
+        next_op_types = [self.parser.get_op_type_by_op_name(name) for name in next_op_names]
+        match_2nd_topk = False
+        if 'top.Sub' in next_op_types and 'top.MulConst' in next_op_types:
+            mulConst_index = next_op_types.index('top.MulConst')
+            mulConst_op_name = next_op_names[mulConst_index]
+            sub_op_name = next_op_names[1 - mulConst_index]
+            mulConst_next_op_names = self.parser.get_next_op_by_op_name(mulConst_op_name)
+            mulConst_next_op_types = [
+                self.parser.get_op_type_by_op_name(name) for name in mulConst_next_op_names
+            ]
+            if len(mulConst_next_op_types) == 1 and mulConst_next_op_types[0] == 'top.Floor':
+                floor_op_name = mulConst_next_op_names[0]
+                floor_next_op_names = self.parser.get_next_op_by_op_name(floor_op_name)
+                floor_next_op_types = [
+                    self.parser.get_op_type_by_op_name(name) for name in floor_next_op_names
+                ]
+                if len(floor_next_op_types) == 2 and 'top.MulConst' in floor_next_op_types:
+                    mulConst2_op_name = floor_next_op_names[floor_next_op_types.index(
+                        'top.MulConst')]
+                    mulConst2_next_op_names = self.parser.get_next_op_by_op_name(mulConst2_op_name)
+                    if len(mulConst2_next_op_names) == 1 and sub_op_name in mulConst2_next_op_names:
+                        fp32_layer_list.extend([
+                            second_topk_name, mulConst_op_name, floor_op_name, mulConst2_op_name,
+                            sub_op_name
+                        ])
+                        match_2nd_topk = True
+        if not match_2nd_topk:
+            self._log(
+                "Failed to match the pattern after the 2nd topk op in rtdetrv2 block. The pattern should be topk -> mulconst -> floor -> mulconst -> sub."
+            )
+        # add self-attn, cross-attn to fp16 list
+        self_attn_pattern = [
+            'top.Add', 'top.Permute', 'top.Permute', 'top.MatMul', 'top.MatMul', 'top.MatMul',
+            'top.Reshape', 'top.Permute', 'top.Reshape', 'top.Reshape', 'top.Permute',
+            'top.MulConst', 'top.Permute', 'top.MatMul', 'top.Softmax', 'top.MatMul', 'top.Permute',
+            'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Add'
+        ]
+        cross_attn_pattern = [
+            'top.Add', 'top.MatMul', 'top.Reshape', 'top.MatMul', 'top.Reshape', 'top.MatMul',
+            'top.Reshape', 'top.Softmax', 'top.Unsqueeze', 'top.Slice', 'top.Mul', 'top.MulConst',
+            'top.Slice', 'top.Add', 'top.Permute', 'top.Reshape', 'top.Slice', 'top.Slice',
+            'top.Slice', 'top.MulConst', 'top.AddConst', 'top.Permute', 'top.Reshape', 'top.Slice',
+            'top.Slice', 'top.Slice', 'top.Reshape', 'top.GridSampler', 'top.Reshape',
+            'top.GridSampler', 'top.Reshape', 'top.GridSampler', 'top.Permute', 'top.Reshape',
+            'top.Concat', 'top.Mul', 'top.Reduce', 'top.Reshape', 'top.Permute', 'top.MatMul',
+            'top.Add'
+        ]
+        self_attn_pattern.sort()
+        cross_attn_pattern.sort()
+        for i in range(topk_indices[0], len(tensor_names)):
+            op_window = tensor_types[i:i + len(self_attn_pattern)]
+            if sorted(op_window) == self_attn_pattern:
+                for j in range(i, i + len(self_attn_pattern)):
+                    fp16_layer_list.append(tensor_names[j])
+            op_window = tensor_types[i:i + len(cross_attn_pattern)]
+            if sorted(op_window) == cross_attn_pattern:
+                for j in range(i, i + len(cross_attn_pattern)):
+                    fp16_layer_list.append(tensor_names[j])
+
+        # add add after mlp to fp16 list
+        # layernorm -> matmul -> matmul -> add
+        #           \-------------------/
+        mlp_add_pattern = ['top.LayerNorm', 'top.MatMul', 'top.MatMul', 'top.Add']
+        for i in range(len(tensor_names) - 3):
+            op_window = tensor_types[i:i + 4]
+            if op_window == mlp_add_pattern:
+                fp16_layer_list.append(tensor_names[i + 3])
+
+        # add relu, clip, subconst, clip, div, log, add, sigmoid sequences to fp16 list
+        seq_pattern = [
+            'top.Relu', 'top.Clip', 'top.SubConst', 'top.Clip', 'top.Div', 'top.Log', 'top.Add',
+            'top.Sigmoid'
+        ]
+        seq_pattern.sort()
+        seq_count = 0
+        for i in range(len(tensor_names) - 7):
+            op_window = tensor_types[i:i + 8]
+            if sorted(op_window) == seq_pattern:
+                seq_count += 1
+                for j in range(i, i + 8):
+                    fp16_layer_list.append(tensor_names[j])
+        self._log(
+            f"Found {seq_count} sequences of Relu, Clip, SubConst, Clip, Div, Log, Add, Sigmoid in rtdetrv2 block."
+        )
+
+        # add postprocess layers to fp16 list
+        for i in range(len(tensor_names) - 7):
+            op_window = tensor_types[i:i + 8]
+            if op_window.count('top.Slice') == 4 and op_window.count('top.Squeeze') == 4:
+                for j in range(i, len(tensor_types)):
+                    if tensor_names[j] not in fp32_layer_list:
+                        fp16_layer_list.append(tensor_names[j])
+                break
+        else:
+            self._log(
+                "Failed to match the postprocess pattern in rtdetrv2 block. The pattern should contain 4 top.Slice ops and 4 top.Squeeze ops."
+            )
+        fp16_layer_list.sort(key=lambda x: tensor_names.index(x))
+        return fp16_layer_list, fp32_layer_list

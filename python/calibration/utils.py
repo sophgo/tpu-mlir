@@ -401,7 +401,12 @@ class QuantizeTable:
         return f"QuantizeTableWriter(chip='{self.chip}', total_layers={self.get_total_layers()}, mix_modes={counts})"
 
 
-def gen_shape_pattern_qtable(shape_fp_layers, transformer_fp_layers, flag, args, logs=None):
+def gen_shape_pattern_qtable(shape_fp_layers,
+                             transformer_fp_layers,
+                             fp32_layers,
+                             flag,
+                             args,
+                             logs=None):
     chip = args.chip
     cali_table_name = args.calibration_table
     if args.fp_type == 'auto':
@@ -440,6 +445,8 @@ def gen_shape_pattern_qtable(shape_fp_layers, transformer_fp_layers, flag, args,
                            part_mode=args.part_quantize,
                            custom_operator=args.custom_operator,
                            extra_info=logs)
+    if fp32_layers:
+        qtable.append_custom(fp32_layers, ['F32'] * len(fp32_layers))
     qtable.dump(quantize_table)
     return qtable
 
