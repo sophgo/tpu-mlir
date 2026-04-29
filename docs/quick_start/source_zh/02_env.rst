@@ -32,12 +32,13 @@
 
 .. _docker container_setup:
 
-若下载镜像文件，则需要确保镜像文件在当前目录，并在当前目录创建容器如下:
+镜像文件可从SDK包中获取。若下载镜像文件，则需要确保镜像文件在当前目录，并在当前目录创建容器如下:
 
 .. code-block:: shell
 
   # 使用 --privileged 参数以获取root权限，如果不需要root权限，请删除该参数
-  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.4
+  $ docker load -i tpuc_dev_v3.4.tar.gz
+  $ docker run --privileged --name myname -v $PWD:/workspace -it tpuc_dev:v3.4
 
 其中， ``myname`` 为容器名称，可以自定义； ``$PWD`` 为当前目录，与容器的 ``/workspace`` 目录同步。
 
