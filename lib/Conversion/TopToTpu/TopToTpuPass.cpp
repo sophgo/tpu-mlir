@@ -1709,6 +1709,16 @@ void ConvertTopToTpu::runOnOperation() {
               }
               break;
             }
+          } else if (isa<top::SoftmaxOp>(user)) {
+            mlir::Attribute tmp = mlir::BoolAttr::get(op->getContext(), true);
+            if (module::getMode() == module::Mode::INT8 ||
+                module::getMode() == module::Mode::UINT8 ||
+                module::getMode() == module::Mode::W4INT8) {
+              op->setAttr("output_int16", tmp);
+            } else if (module::getMode() == module::Mode::F8E4M3) {
+              op->setAttr("output_f16", tmp);
+            }
+            break;
           }
         }
       }

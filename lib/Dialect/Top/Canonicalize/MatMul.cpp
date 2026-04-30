@@ -939,6 +939,172 @@ struct MatMulReverse : public OpRewriterPatternEx<MatMulOp> {
   }
 };
 
+// MatMul + Mul(weight) => MatMul with combined weight
+// Example:
+//   %99 = MatMul(%input, %weight, %bias)  -> output [B, N, M]
+//   %100 = Weight tensor<1x1xMxf32>
+//   %101 = Mul(%99, %100) -> output [B, N, M]
+// Combine %100 into %weight: new_weight[i,j] = weight[i,j] * mul_weight[..., j]
+struct MatMulMulMerge : public OpRewriterPatternEx<MatMulOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+
+  MatMulMulMerge(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<MatMulOp>(context, "MatMulMulMerge") {}
+
+  LogicalResult matchAndRewriteImpl(MatMulOp op,
+                                    PatternRewriter &rewriter) const override {
+    auto right = op.getRight();
+    if (module::isWeight(right) == false) {
+      return failure();
+    }
+    if (op->hasOneUse() == false) {
+      return failure();
+    }
+
+    auto user = *op->user_begin();
+    auto mul_op = dyn_cast<MulOp>(user);
+    if (!mul_op) {
+      return failure();
+    }
+    if (mul_op.getInputs().size() != 2) {
+      return failure();
+    }
+
+    // Find the weight operand in Mul
+    Value mul_weight = nullptr;
+    Value mul_input = nullptr;
+    for (auto v : mul_op.getInputs()) {
+      if (module::isWeight(v)) {
+        if (mul_weight) {
+          return failure(); // already have a weight
+        }
+        mul_weight = v;
+      } else {
+        mul_input = v;
+      }
+    }
+    if (!mul_weight || !mul_input) {
+      return failure();
+    }
+
+    // Check that mul_input is the output of the MatMul
+    if (mul_input != op.getOutput()) {
+      return failure();
+    }
+
+    // Check right_transpose and handle weight transformation
+    bool right_transpose = op.getRightTranspose();
+
+    auto weight_shape = module::getShape(right);
+    auto mul_weight_shape = module::getShape(mul_weight);
+
+    // Check dimension compatibility
+    if (weight_shape.size() != 2) {
+      return failure();
+    }
+
+    // Weight is [k, n], mul_weight is [1, 1, n]
+    int64_t n = weight_shape[1];
+    int64_t mul_weight_last_dim = mul_weight_shape.back();
+
+    if (n != mul_weight_last_dim) {
+      return failure();
+    }
+
+    // Verify mul_weight broadcasts only on last dimension
+    // Only allow shape [1, 1, M] where M matches matmul output last dim
+    if (mul_weight_shape.size() != 3) {
+      return failure();
+    }
+    if (mul_weight_shape[0] != 1 || mul_weight_shape[1] != 1) {
+      return failure();
+    }
+
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32() && !storage_type.isF16()) {
+      return failure();
+    }
+
+    // Read weights
+    auto weight_op = dyn_cast<WeightOp>(right.getDefiningOp());
+    auto mul_weight_op = dyn_cast<WeightOp>(mul_weight.getDefiningOp());
+    if (!weight_op || !mul_weight_op) {
+      return failure();
+    }
+
+    auto weight_data = weight_op.read_as_float();
+    auto mul_weight_data = mul_weight_op.read_as_float();
+
+    // weight_shape = [K, N] where K=weight_shape[0], N=weight_shape[1]
+    int64_t K = weight_shape[0];
+    int64_t N = weight_shape[1];
+
+    std::vector<float> combined_weight_data(K * N);
+
+    // mul_weight has shape [1, 1, N], take last N values
+    int64_t mul_weight_offset = mul_weight_data->size() - N;
+
+    if (right_transpose) {
+      // Weight is transposed, logically [N, K]
+      // Mul multiplies each row of transposed weight (each column of original)
+      // Original weight: col j becomes row j after transpose
+      // So we multiply column j of original weight by mul_weight[j]
+      for (int64_t col = 0; col < N; col++) {
+        float mul_val = mul_weight_data->at(mul_weight_offset + col);
+        for (int64_t row = 0; row < K; row++) {
+          // Original weight column-major: col * K + row
+          combined_weight_data[col * K + row] =
+              weight_data->at(col * K + row) * mul_val;
+        }
+      }
+    } else {
+      // No transpose: multiply each row of weight by corresponding mul_value
+      for (int64_t row = 0; row < N; row++) {
+        float mul_val = mul_weight_data->at(mul_weight_offset + row);
+        for (int64_t col = 0; col < K; col++) {
+          // Row-major: index = row * K + col (after transpose, weight becomes
+          // [N, K])
+          combined_weight_data[col * N + row] =
+              weight_data->at(col * N + row) * mul_val;
+        }
+      }
+    }
+
+    // Create new combined weight, use Mul op name for easy comparison
+    auto new_weight =
+        WeightOp::create_float(op, module::getName(mul_op.getResult()).str(),
+                               combined_weight_data, {K, N}, storage_type);
+
+    // Also update bias if present
+    Value bias = op.getBias();
+    if (!module::isNone(bias)) {
+      auto bias_op = dyn_cast<WeightOp>(bias.getDefiningOp());
+      if (bias_op) {
+        auto bias_data = bias_op.read_as_float();
+        std::vector<float> combined_bias_data(N);
+        for (int64_t i = 0; i < N; i++) {
+          float mul_val = mul_weight_data->at(mul_weight_offset + i);
+          combined_bias_data[i] = bias_data->at(i) * mul_val;
+        }
+        auto new_bias =
+            WeightOp::create_float(op, module::getName(bias).str() + "_merged",
+                                   combined_bias_data, {N}, storage_type);
+        op.setOperand(2, new_bias);
+        rewriter.eraseOp(bias_op);
+      }
+    }
+
+    // Update MatMul and erase Mul
+    op.setOperand(1, new_weight);
+    op->setLoc(mul_op.getLoc());
+    mul_op.replaceAllUsesWith(op.getOperation());
+    rewriter.eraseOp(mul_op);
+    rewriter.eraseOp(weight_op);
+
+    return success();
+  }
+};
+
 void MatMulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
   // clang-format off
@@ -948,7 +1114,8 @@ void MatMulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                 MatmulWithPermuteAndSplit,
                 MatMulWithSlice,
                 PermuteMatMulPermute,
-                MatMulReverse
+                MatMulReverse,
+                MatMulMulMerge
                 >(context);
   // clang-format on
 }
