@@ -183,8 +183,10 @@ def metrics_plot(tensor_info):
         name = name.upper()
         if name == "SQNR":
             import math
+            tensor_info[name][np.isinf(tensor_info[name])] = 100.0
+            tensor_info[name][np.isnan(tensor_info[name])] = 100.0
             max_value = np.max(tensor_info[name].values,
-                               where=(tensor_info[name] != math.inf),
+                               where=~np.isinf(tensor_info[name].values),
                                initial=1.0)
             new_value = np.clip(tensor_info[name] / max_value, 0, 1)
             name = name + "/" + "{:.1f}".format(max_value)
