@@ -139,11 +139,7 @@ class Llama3_2VConverter(LlmConverter):
                                         loc=self.get_loc(name + ".scale", embedding_mlir),
                                         ip=embedding_mlir.insert_point).output
             embedding_mlir.create_return_op([new_op])
-            mlir_txt = embedding_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            with open(f"{name}/{name}.mlir", "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(embedding_mlir, name)
 
         # gen lm_head mlir
         def gen_lm_head():
@@ -196,11 +192,7 @@ class Llama3_2VConverter(LlmConverter):
             else:
                 lmhead_mlir.create_return_op([lmhead_op])
 
-            mlir_txt = lmhead_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            with open(f"{name}/{name}.mlir", "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(lmhead_mlir, name)
 
         if not self.embedding_disk:
             gen_embedding_by_length("embedding", self.max_input_length)
@@ -884,12 +876,7 @@ class Llama3_2VConverter(LlmConverter):
                                      ip=ip).output
 
         vit_mlir.create_return_op([mulmod_rs_op])
-        mlir_txt = vit_mlir.print_module()
-
-        if not os.path.exists(name):
-            os.makedirs(name)
-        with open(f"{name}/{name}.mlir", "w") as f:
-            f.write(mlir_txt)
+        self.save_mlir_module(vit_mlir, name)
         save_weights()
 
         return mulmod_rs_op
@@ -1077,11 +1064,7 @@ class Llama3_2VConverter(LlmConverter):
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
-            mlir_txt = block_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            with open(f"{name}/{name}.mlir", "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(block_mlir, name)
 
         # create cross_block mlir
         def gen_cross_block():
@@ -1317,11 +1300,7 @@ class Llama3_2VConverter(LlmConverter):
                                ip=ip).output
 
             block_mlir.create_return_op([new_op] + return_ops)
-            mlir_txt = block_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            with open(f"{name}/{name}.mlir", "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(block_mlir, name)
 
         def gen_cross_block_cache():
             name = f"block_cache_{idx}"
@@ -1462,11 +1441,7 @@ class Llama3_2VConverter(LlmConverter):
                                ip=ip).output
 
             block_mlir.create_return_op([new_op])
-            mlir_txt = block_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            with open(f"{name}/{name}.mlir", "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(block_mlir, name)
 
         def gen_block_cache():
             name = f"block_cache_{idx}"
@@ -1558,11 +1533,7 @@ class Llama3_2VConverter(LlmConverter):
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
-            mlir_txt = block_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            with open(f"{name}/{name}.mlir", "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(block_mlir, name)
 
         if idx in self.llm_config.cross_attention_layers:
             gen_cross_block()

@@ -438,11 +438,7 @@ class Chatglm3Converter(LlmConverter):
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
-            mlir_txt = block_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            with open(f"{name}/{name}.mlir", "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(block_mlir, name)
 
         def gen_block_cache():
             name = f"block_cache_{idx}"
@@ -564,11 +560,7 @@ class Chatglm3Converter(LlmConverter):
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
-            mlir_txt = block_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            with open(f"{name}/{name}.mlir", "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(block_mlir, name)
 
         gen_block()
         gen_block_cache()

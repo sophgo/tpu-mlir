@@ -402,9 +402,5 @@ class InternVL3Converter(LlmConverter):
                                     loc=L(merger + ".reshape3"),
                                     ip=ip).output
         vit_mlir.create_return_op([reshape_op3])
-        mlir_txt = vit_mlir.print_module()
-        if not os.path.exists(name):
-            os.makedirs(name)
-        with open(f"{name}/{name}.mlir", "w") as f:
-            f.write(mlir_txt)
+        self.save_mlir_module(vit_mlir, name)
         save_weights()

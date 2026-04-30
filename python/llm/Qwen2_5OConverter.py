@@ -205,12 +205,8 @@ class Qwen2_5OConverter(Qwen2_5VLConverter):
                               loc=L(merger_mlp2 + ".reverse"),
                               ip=ip).output
         vit_mlir.create_return_op([new_op])
-        mlir_txt = vit_mlir.print_module()
         name = "vit"
-        if not os.path.exists(name):
-            os.makedirs(name)
-        with open(f"{name}/{name}.mlir", "w") as f:
-            f.write(mlir_txt)
+        self.save_mlir_module(vit_mlir, name)
         save_weights()
 
     def gen_audio_tower(self):
@@ -397,35 +393,17 @@ class Qwen2_5OConverter(Qwen2_5VLConverter):
         new_op = self.linear(audio_mlir, proj, new_op, [d_model, self.hidden_size],
                              [1, n_window // 2, self.hidden_size])
         audio_mlir.create_return_op([new_op])
-        mlir_txt = audio_mlir.print_module()
-        if not os.path.exists(name):
-            os.makedirs(name)
-        with open(f"{name}/{name}.mlir", "w") as f:
-            f.write(mlir_txt)
+        self.save_mlir_module(audio_mlir, name)
         save_weights()
 
     def compile_audio_tower(self):
         name = "audio"
-        model_path = f"{name}/{name}.bmodel"
-        self.all_bmodels.append(model_path)
-        if os.path.exists(model_path):
-            print(f"{model_path} already exists. Skipping compilation.")
+        if self.register_bmodel(name):
             return
-        deploy_args = [
-            f'pushd {name} && ',
-            'model_deploy.py',
-            f'--mlir {name}.mlir',
-            f'--chip {self.chip}',
-            f'--num_core {self.num_core}',
-            f'--num_device {self.num_device}',
-            f'--model {name}.bmodel',
-            '--addr_mode basic',
-        ]
-        deploy_args.append(f'--quantize {self.half_precision_quantize}')
-        deploy_args.append('--quant_output')
-        if self.high_precision:
-            deploy_args.append('--high_precision')
-        if self.debug:
-            deploy_args.append('--debug')
-        deploy_args.append('&& popd')
-        self.add_task(deploy_args, f"{name}.log")
+        self.submit_deploy_task(
+            name,
+            [
+                f'--quantize {self.half_precision_quantize}',
+                '--quant_output',
+            ],
+        )

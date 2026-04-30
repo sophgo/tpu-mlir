@@ -273,6 +273,8 @@ class Qwen3_5Converter(LlmConverter):
             # save weights
             np.savez(vit_npz, **weights_dict)
 
+        save_weights()
+
         # create mlir file
         in_shape = [patches, self.patch_dim]
         position_shape = [patches, 2]
@@ -511,12 +513,7 @@ class Qwen3_5Converter(LlmConverter):
         ret_ops.append(new_op)
 
         vit_mlir.create_return_op(ret_ops)
-        mlir_txt = vit_mlir.print_module()
-        if not os.path.exists(name):
-            os.mkdir(name)
-        with open(f"{name}/{name}.mlir", "w") as f:
-            f.write(mlir_txt)
-        save_weights()
+        self.save_mlir_module(vit_mlir, name)
 
     def gen_block_full_attn_mlir(self, idx: int):
         tqdm.write(f"generate block_{idx} full attention mlir ...")
@@ -745,12 +742,7 @@ class Qwen3_5Converter(LlmConverter):
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
-            mlir_txt = block_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            target = os.path.join(name, f"{name}.mlir")
-            with open(target, "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(block_mlir, name)
 
         def gen_block():
             name = f"block_{idx}"
@@ -922,11 +914,7 @@ class Qwen3_5Converter(LlmConverter):
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
-            mlir_txt = block_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            with open(f"{name}/{name}.mlir", "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(block_mlir, name)
 
         def gen_block_with_kv():
             # Generate block with kv cache related operations
@@ -1068,11 +1056,7 @@ class Qwen3_5Converter(LlmConverter):
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
-            mlir_txt = block_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            with open(f"{name}/{name}.mlir", "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(block_mlir, name)
 
         if self.use_block_with_kv:
             gen_block_with_kv()
@@ -1394,12 +1378,7 @@ class Qwen3_5Converter(LlmConverter):
             o_op = top.AddOp(T(input_shape), [in0_op, o_op], loc=L(out_proj + ".add"), ip=ip).output
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
-            mlir_txt = block_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            target = os.path.join(name, f"{name}.mlir")
-            with open(target, "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(block_mlir, name)
 
         def gen_block():
             name = f"block_{idx}"
@@ -1565,11 +1544,7 @@ class Qwen3_5Converter(LlmConverter):
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
-            mlir_txt = block_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            with open(f"{name}/{name}.mlir", "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(block_mlir, name)
 
         gen_block()
         gen_block_cache()
@@ -1589,26 +1564,17 @@ class Qwen3_5Converter(LlmConverter):
         if self.llm_config.layer_types[layer_id] == "full_attention":
             return super().compile_block_cache(layer_id)
         name = f"block_cache_{layer_id}"
-        model_path = f"{name}/{name}.bmodel"
-        self.all_bmodels.append(model_path)
-        if os.path.exists(model_path):
-            print(f"{model_path} already exists. Skipping compilation.")
+        if self.register_bmodel(name):
             return
-
-        deploy_args = [
-            f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir',
-            f'--quantize {self.quantize}', f'--q_group_size {self.q_group_size}', '--quant_input',
-            '--quant_output', f'--chip {self.chip}', '--addr_mode io_alone',
-            f'--num_core {self.num_core}', f'--num_device {self.num_device}',
-            f'--model {name}.bmodel'
-        ]
-        if self.high_precision:
-            deploy_args.append('--high_precision')
-        if self.symmetric:
-            deploy_args.append('--q_symmetric')
-        if self.debug:
-            deploy_args.append('--debug')
-        deploy_args.append(f'--same_addr 0:0,1:1')
-        deploy_args.append('--disable_gdma_check')
-        deploy_args.append('&& popd')
-        self.add_task(deploy_args, f"{name}.log")
+        self.submit_deploy_task(
+            name,
+            [
+                f'--quantize {self.quantize}',
+                f'--q_group_size {self.q_group_size}',
+                '--quant_input',
+                '--quant_output',
+                '--same_addr 0:0,1:1',
+            ],
+            symmetric=True,
+            addr_mode='io_alone',
+        )

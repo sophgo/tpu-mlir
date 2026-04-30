@@ -401,11 +401,7 @@ class LFM2VLConverter(LlmConverter):
                                loc=L(mlp_ar + ".reshape3"),
                                ip=ip).output
         vit_mlir.create_return_op([new_op])
-        mlir_txt = vit_mlir.print_module()
-        if not os.path.exists(name):
-            os.makedirs(name)
-        with open(f"{name}/{name}.mlir", "w") as f:
-            f.write(mlir_txt)
+        self.save_mlir_module(vit_mlir, name)
 
     @override
     def gen_block_mlir(self, idx: int):
@@ -721,12 +717,7 @@ class LFM2VLConverter(LlmConverter):
             o_op = top.AddOp(T(input_shape), [in0_op, o_op], loc=L(o_proj + ".add"), ip=ip).output
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
-            mlir_txt = block_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            target = os.path.join(name, f"{name}.mlir")
-            with open(target, "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(block_mlir, name)
 
         def gen_block():
             name = f"block_{idx}"
@@ -940,11 +931,7 @@ class LFM2VLConverter(LlmConverter):
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
-            mlir_txt = block_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            with open(f"{name}/{name}.mlir", "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(block_mlir, name)
 
         gen_block()
         if self.share_prompt:

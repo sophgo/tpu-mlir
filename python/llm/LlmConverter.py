@@ -165,6 +165,104 @@ class LlmConverter(BaseConverter):
                                                       "model.safetensors.index.json"),
                         dirs_exist_ok=True)
 
+    @staticmethod
+    def save_mlir_module(mlir_module, name: str):
+        """Print an MLIRImporter module and write it to ``{name}/{name}.mlir``.
+
+        Creates the output directory if it does not already exist. This
+        encapsulates the boilerplate previously duplicated across every
+        ``gen_*_mlir`` helper in the LLM converters.
+        """
+        mlir_txt = mlir_module.print_module()
+        os.makedirs(name, exist_ok=True)
+        mlir_path = os.path.join(name, f"{name}.mlir")
+        with open(mlir_path, "w") as f:
+            f.write(mlir_txt)
+        # Run shape-infer as a sanity check on the generated mlir.
+        try:
+            subprocess.run(
+                ["tpuc-opt", "--shape-infer", f"{name}.mlir", "-o", f"{name}_test.mlir"],
+                cwd=name,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"shape-infer failed for {mlir_path}:\n"
+                               f"stdout: {e.stdout}\nstderr: {e.stderr}") from e
+
+    def register_bmodel(self, name: str, with_size: bool = True) -> bool:
+        """Register ``{name}/{name}.bmodel`` for the final ``model_tool --combine``
+        step and report whether compilation should be skipped.
+
+        ``with_size=True`` appends to ``all_bmodels`` (its size contributes to
+        the combined byte count); ``with_size=False`` appends to
+        ``all_bmodels_without_bytes`` (e.g. tied / shared weight bmodels).
+
+        Returns ``True`` when the bmodel already exists on disk so the caller
+        can ``return`` early; otherwise returns ``False``.
+        """
+        model_path = f"{name}/{name}.bmodel"
+        if with_size:
+            self.all_bmodels.append(model_path)
+        else:
+            self.all_bmodels_without_bytes.append(model_path)
+        if os.path.exists(model_path):
+            print(f"{model_path} already exists. Skipping compilation.")
+            return True
+        return False
+
+    def submit_deploy_task(self,
+                           name: str,
+                           extra_args=(),
+                           *,
+                           multi_device: bool = True,
+                           symmetric: bool = False,
+                           dynamic: bool = False,
+                           addr_mode: str = 'basic'):
+        """Build a ``pushd {name} && model_deploy.py ... && popd`` command and
+        queue it for parallel execution under ``{name}.log``.
+
+        The fixed prefix (``pushd``, ``model_deploy.py``, ``--mlir``,
+        ``--chip``, ``--model``) and the optional ``--num_core``/
+        ``--num_device`` flags are emitted automatically; ``extra_args``
+        carries call-specific options like ``--quantize``, ``--quant_input``,
+        ``--quant_output``, ``--q_group_size``, ``--disable_layer_group``,
+        ``--same_addr ...``, etc.
+
+        The boolean kwargs opt into the common conditional flags shared by
+        most ``compile_*`` helpers:
+
+        * ``symmetric``       -> append ``--q_symmetric``     if ``self.symmetric``
+        * ``dynamic``         -> append ``--dynamic``         if ``self.dynamic``
+        * ``addr_mode``       -> append ``--addr_mode {addr_mode}`` (``basic``
+          by default; pass ``'io_alone'`` for cache-style layouts)
+        """
+        deploy_args = [
+            f'pushd {name} && ',
+            'model_deploy.py',
+            f'--mlir {name}.mlir',
+            f'--chip {self.chip}',
+            f'--model {name}.bmodel',
+            f'--addr_mode {addr_mode}',
+        ]
+        if multi_device:
+            deploy_args += [
+                f'--num_core {self.num_core}',
+                f'--num_device {self.num_device}',
+            ]
+        deploy_args += list(extra_args)
+        deploy_args.append('--high_precision')
+        if symmetric and self.symmetric:
+            deploy_args.append('--q_symmetric')
+        if dynamic and self.dynamic:
+            deploy_args.append('--dynamic')
+        if self.debug:
+            deploy_args.append('--debug')
+        deploy_args.append('--disable_gdma_check')
+        deploy_args.append('&& popd')
+        self.add_task(deploy_args, f"{name}.log")
+
     def gen_all_mlir(self):
         if self.do_vit:
             self.all_gen_mlirs.append(self.gen_vit_mlir)
@@ -636,11 +734,7 @@ class LlmConverter(BaseConverter):
                                         loc=self.get_loc(name + ".scale", embedding_mlir),
                                         ip=embedding_mlir.insert_point).output
             embedding_mlir.create_return_op([new_op])
-            mlir_txt = embedding_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            with open(f"{name}/{name}.mlir", "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(embedding_mlir, name)
 
         def gen_embedding_lora_by_length(name: str, seq_length: int):
             hidden_shape = [1, seq_length, self.hidden_size]
@@ -682,11 +776,7 @@ class LlmConverter(BaseConverter):
                                loc=self.get_loc(f"{name}.lora_add", lora_mlir),
                                ip=lora_mlir.insert_point).output
             lora_mlir.create_return_op([new_op])
-            mlir_txt = lora_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            with open(f"{name}/{name}.mlir", "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(lora_mlir, name)
 
         # gen lm_head mlir
         def gen_lm_head():
@@ -736,11 +826,7 @@ class LlmConverter(BaseConverter):
             else:
                 lmhead_mlir.create_return_op([lmhead_op])
 
-            mlir_txt = lmhead_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            with open(f"{name}/{name}.mlir", "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(lmhead_mlir, name)
 
         def gen_lm_head_lora():
             name = "lm_head_lora"
@@ -787,11 +873,7 @@ class LlmConverter(BaseConverter):
                                loc=self.get_loc(f"{name}.lora_add", lmhead_mlir),
                                ip=lmhead_mlir.insert_point).output
             lmhead_mlir.create_return_op([new_op])
-            mlir_txt = lmhead_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            with open(f"{name}/{name}.mlir", "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(lmhead_mlir, name)
 
         if not self.embedding_disk:
             input_len = self.max_input_length
@@ -824,11 +906,7 @@ class LlmConverter(BaseConverter):
                              loc=self.get_loc(["token_value", "token_id"], greedy_head_mlir),
                              ip=greedy_head_mlir.insert_point)
         greedy_head_mlir.create_return_op([topk_op.indices])
-        mlir_txt = greedy_head_mlir.print_module()
-        if not os.path.exists(name):
-            os.makedirs(name)
-        with open(f"{name}/{name}.mlir", "w") as f:
-            f.write(mlir_txt)
+        self.save_mlir_module(greedy_head_mlir, name)
 
         # sample head
         constant0 = []
@@ -936,12 +1014,7 @@ class LlmConverter(BaseConverter):
         softmax1_op = top.SoftmaxOp(T([1, max_top_k]), where1_op, axis=1, loc=L("Softmax1"),
                                     ip=ip).output
         sample_head_mlir.create_return_op([softmax1_op, topk_op.indices])
-        mlir_txt = sample_head_mlir.print_module()
-
-        if not os.path.exists(name):
-            os.makedirs(name)
-        with open(f"{name}/{name}.mlir", "w") as f:
-            f.write(mlir_txt)
+        self.save_mlir_module(sample_head_mlir, name)
 
     def repeat_kv(self, mlir_gen, kv_op, len: int, prefix: str):
         unsqueeze = top.UnsqueezeOp(mlir_gen.get_tensor_type(
@@ -1870,12 +1943,7 @@ class LlmConverter(BaseConverter):
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
-            mlir_txt = block_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            target = os.path.join(name, f"{name}.mlir")
-            with open(target, "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(block_mlir, name)
 
         def gen_block():
             name = f"block_{idx}"
@@ -2018,11 +2086,7 @@ class LlmConverter(BaseConverter):
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
-            mlir_txt = block_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            with open(f"{name}/{name}.mlir", "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(block_mlir, name)
 
         def gen_block_with_kv():
             # Generate block with kv cache related operations
@@ -2145,11 +2209,7 @@ class LlmConverter(BaseConverter):
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
-            mlir_txt = block_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            with open(f"{name}/{name}.mlir", "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(block_mlir, name)
 
         if self.use_block_with_kv:
             gen_block_with_kv()
@@ -2196,216 +2256,101 @@ class LlmConverter(BaseConverter):
 
     def compile_lm_head(self):
         name = "lm_head"
-        model_path = f"{name}/{name}.bmodel"
-        if self.tie_word_embeddings:
-            # share the embedding weights
-            self.all_bmodels_without_bytes.append(model_path)
-        else:
-            self.all_bmodels.append(model_path)
-        if os.path.exists(model_path):
-            print(f"{name}.bmodel already exists. Skipping compilation.")
+        if self.register_bmodel(name, with_size=not self.tie_word_embeddings):
             return
-        deploy_args = [
-            f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir',
-            f'--quantize {self.half_precision_quantize}', '--quant_input', f'--chip {self.chip}',
-            f'--num_core {self.num_core}', f'--num_device {self.num_device}', '--addr_mode basic',
-            f'--model {name}.bmodel'
-        ]
-        if self.debug:
-            deploy_args.append('--debug')
-        deploy_args.append('&& popd')
-        self.add_task(deploy_args, f"{name}.log")
+        self.submit_deploy_task(name, [
+            f'--quantize {self.half_precision_quantize}',
+            '--quant_input',
+        ])
 
     def compile_greedy_head(self):
         name = "greedy_head"
-        model_path = f"{name}/{name}.bmodel"
-        self.all_bmodels.append(model_path)
-        if os.path.exists(model_path):
-            print(f"{name}.bmodel already exists. Skipping compilation.")
+        if self.register_bmodel(name):
             return
-        deploy_args = [
-            f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
-            '--addr_mode io_alone', f'--model {name}.bmodel'
-        ]
-        if self.debug:
-            deploy_args.append('--debug')
-        deploy_args.append('&& popd')
-        self.add_task(deploy_args, f"{name}.log")
+        self.submit_deploy_task(name, multi_device=False, addr_mode='io_alone')
 
     def compile_sample_head(self):
         name = "sample_head"
-        model_path = f"{name}/{name}.bmodel"
-        self.all_bmodels.append(model_path)
-        if os.path.exists(model_path):
-            print(f"{name}.bmodel already exists. Skipping compilation.")
+        if self.register_bmodel(name):
             return
-        deploy_args = [
-            f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
-            '--dynamic', '--addr_mode io_alone', f'--model {name}.bmodel'
-        ]
-        if self.debug:
-            deploy_args.append('--debug')
-        deploy_args.append('&& popd')
-        self.add_task(deploy_args, f"{name}.log")
+        self.submit_deploy_task(name, ['--dynamic'], multi_device=False, addr_mode='io_alone')
 
     def compile_block(self, layer_id):
         name = f"block_{layer_id}"
-        model_path = f"{name}/{name}.bmodel"
-        self.all_bmodels_without_bytes.append(model_path)
-        if os.path.exists(model_path):
-            print(f"{name}.bmodel already exists. Skipping compilation.")
+        if self.register_bmodel(name, with_size=False):
             return
-
-        deploy_args = [
-            f'pushd {name} && ',
-            'model_deploy.py',
-            f'--mlir {name}.mlir',
-            f'--quantize {self.quantize}',
-            f'--q_group_size {self.q_group_size}',
-            '--quant_input',
-            '--quant_output',
-            f'--chip {self.chip}',
-            f'--num_core {self.num_core}',
-            f'--num_device {self.num_device}',
-            f'--model {name}.bmodel',
-            '--addr_mode basic',
-        ]
-        if self.high_precision:
-            deploy_args.append('--high_precision')
-        if self.symmetric:
-            deploy_args.append('--q_symmetric')
-        if self.dynamic:
-            deploy_args.append('--dynamic')
-        if self.debug:
-            deploy_args.append('--debug')
-        deploy_args.append('--disable_gdma_check')
-        deploy_args.append('&& popd')
-        self.add_task(deploy_args, f"{name}.log")
+        self.submit_deploy_task(
+            name,
+            [
+                f'--quantize {self.quantize}',
+                f'--q_group_size {self.q_group_size}',
+                '--quant_input',
+                '--quant_output',
+            ],
+            symmetric=True,
+            dynamic=True,
+        )
 
     def compile_block_cache(self, layer_id):
         name = f"block_cache_{layer_id}"
-        model_path = f"{name}/{name}.bmodel"
-        self.all_bmodels.append(model_path)
-        if os.path.exists(model_path):
-            print(f"{model_path} already exists. Skipping compilation.")
+        if self.register_bmodel(name):
             return
-
-        deploy_args = [
-            f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir',
-            f'--quantize {self.quantize}', f'--q_group_size {self.q_group_size}', '--quant_input',
-            '--quant_output', f'--chip {self.chip}', '--addr_mode io_alone',
-            f'--num_core {self.num_core}', f'--num_device {self.num_device}',
-            f'--model {name}.bmodel'
-        ]
-        if self.high_precision:
-            deploy_args.append('--high_precision')
-        if self.symmetric:
-            deploy_args.append('--q_symmetric')
-        if self.debug:
-            deploy_args.append('--debug')
-        deploy_args.append('--disable_gdma_check')
-        deploy_args.append('&& popd')
-        self.add_task(deploy_args, f"{name}.log")
+        self.submit_deploy_task(
+            name,
+            [
+                f'--quantize {self.quantize}',
+                f'--q_group_size {self.q_group_size}',
+                '--quant_input',
+                '--quant_output',
+            ],
+            symmetric=True,
+            addr_mode='io_alone',
+        )
 
     def compile_block_prompt(self, layer_id):
         name = f"block_prompt_{layer_id}"
-        model_path = f"{name}/{name}.bmodel"
-        self.all_bmodels_without_bytes.append(model_path)
-        if os.path.exists(model_path):
-            print(f"{model_path} already exists. Skipping compilation.")
+        if self.register_bmodel(name, with_size=False):
             return
-
-        deploy_args = [
-            f'pushd {name} && ',
-            'model_deploy.py',
-            f'--mlir {name}.mlir',
-            f'--quantize {self.quantize}',
-            f'--q_group_size {self.q_group_size}',
-            '--quant_input',
-            '--quant_output',
-            f'--chip {self.chip}',
-            f'--num_core {self.num_core}',
-            f'--num_device {self.num_device}',
-            f'--model {name}.bmodel',
-            '--addr_mode basic',
-        ]
-        if self.high_precision:
-            deploy_args.append('--high_precision')
-        if self.symmetric:
-            deploy_args.append('--q_symmetric')
-        if self.dynamic:
-            deploy_args.append('--dynamic')
-        if self.debug:
-            deploy_args.append('--debug')
-        deploy_args.append('--disable_gdma_check')
-        deploy_args.append('&& popd')
-        self.add_task(deploy_args, f"{name}.log")
+        self.submit_deploy_task(
+            name,
+            [
+                f'--quantize {self.quantize}',
+                f'--q_group_size {self.q_group_size}',
+                '--quant_input',
+                '--quant_output',
+            ],
+            symmetric=True,
+            dynamic=True,
+        )
 
     def compile_vit(self):
         if not self.do_vit:
             return
         name = "vit"
-        model_path = f"{name}/{name}.bmodel"
-        self.all_bmodels.append(model_path)
-        if os.path.exists(model_path):
-            print(f"{model_path} already exists. Skipping compilation.")
+        if self.register_bmodel(name):
             return
-        deploy_args = [
-            f'pushd {name} && ',
-            'model_deploy.py',
-            f'--mlir {name}.mlir',
-            f'--chip {self.chip}',
-            f'--num_core {self.num_core}',
-            f'--num_device {self.num_device}',
-            f'--model {name}.bmodel',
-            '--addr_mode basic',
-        ]
         if self.half_precision_quantize == 'bf16' and self.vit_f16_out_bf16:
-            deploy_args.append('--quantize f16')
-            deploy_args.append('--quant_output_bf16')
+            extra_args = ['--quantize f16', '--quant_output_bf16']
         else:
-            deploy_args.append(f'--quantize {self.half_precision_quantize}')
-            deploy_args.append('--quant_output')
-        if self.high_precision:
-            deploy_args.append('--high_precision')
-        if self.debug:
-            deploy_args.append('--debug')
-        if self.dynamic:
-            deploy_args.append('--dynamic')
-        deploy_args.append('--disable_gdma_check')
-        deploy_args.append('&& popd')
-        self.add_task(deploy_args, f"{name}.log")
+            extra_args = [f'--quantize {self.half_precision_quantize}', '--quant_output']
+        self.submit_deploy_task(
+            name,
+            extra_args,
+            dynamic=True,
+        )
 
     def compile_common(self, name, with_size=False, io_alone=False):
-        model_path = f"{name}/{name}.bmodel"
-        if not with_size:
-            self.all_bmodels_without_bytes.append(model_path)
-        else:
-            self.all_bmodels.append(model_path)
-        if os.path.exists(model_path):
-            print(f"{model_path} already exists. Skipping compilation.")
+        if self.register_bmodel(name, with_size=with_size):
             return
-        deploy_args = [
-            f'pushd {name} && ',
-            'model_deploy.py',
-            f'--mlir {name}.mlir',
-            f'--quantize {self.half_precision_quantize}',
-            '--quant_input',
-            '--quant_output',
-            f'--chip {self.chip}',
-            f'--num_core {self.num_core}',
-            f'--num_device {self.num_device}',
-            f'--model {name}.bmodel',
-        ]
-        if self.debug:
-            deploy_args.append('--debug')
-        if io_alone:
-            deploy_args.append('--addr_mode io_alone')
-        else:
-            deploy_args.append('--addr_mode basic')
-        deploy_args.append('--disable_gdma_check')
-        deploy_args.append('&& popd')
-        self.add_task(deploy_args, f"{name}.log")
+        self.submit_deploy_task(
+            name,
+            [
+                f'--quantize {self.half_precision_quantize}',
+                '--quant_input',
+                '--quant_output',
+            ],
+            addr_mode='io_alone' if io_alone else 'basic',
+        )
 
     def combine(self):
         bmodel_list = []

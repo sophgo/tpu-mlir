@@ -834,11 +834,7 @@ class GLM4VConverter(LlmConverter):
         new_op = vision_merger(new_op)
 
         vit_mlir.create_return_op([new_op])
-        mlir_txt = vit_mlir.print_module()
-        if not os.path.exists(name):
-            os.makedirs(name)
-        with open(f"{name}/{name}.mlir", "w") as f:
-            f.write(mlir_txt)
+        self.save_mlir_module(vit_mlir, name)
 
     def set_gate_up_weight(self, top_path: str, weight_dict: dict):
         mlp_gate_up = top_path + self.model_info.weights[LlmList.MLP_GATE_UP]
@@ -1046,11 +1042,7 @@ class GLM4VConverter(LlmConverter):
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
-            mlir_txt = block_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            with open(f"{name}/{name}.mlir", "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(block_mlir, name)
 
         def gen_block_cache():
             name = f"block_cache_{idx}"
@@ -1135,11 +1127,7 @@ class GLM4VConverter(LlmConverter):
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
-            mlir_txt = block_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            with open(f"{name}/{name}.mlir", "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(block_mlir, name)
 
         def gen_block_with_kv():
             # Generate block with kv cache related operations
@@ -1227,11 +1215,7 @@ class GLM4VConverter(LlmConverter):
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
-            mlir_txt = block_mlir.print_module()
-            if not os.path.exists(name):
-                os.makedirs(name)
-            with open(f"{name}/{name}.mlir", "w") as f:
-                f.write(mlir_txt)
+            self.save_mlir_module(block_mlir, name)
 
         save_weights()
         if self.use_block_with_kv:

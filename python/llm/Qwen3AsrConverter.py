@@ -266,30 +266,17 @@ class Qwen3AsrConverter(LlmConverter):
         new_op = self.linear(audio_mlir, proj2, new_op, [d_model, self.hidden_size],
                              [1, out_window, self.hidden_size])
         audio_mlir.create_return_op([new_op])
-        mlir_txt = audio_mlir.print_module()
-        if not os.path.exists(name):
-            os.makedirs(name)
-        with open(f"{name}/{name}.mlir", "w") as f:
-            f.write(mlir_txt)
+        self.save_mlir_module(audio_mlir, name)
         save_weights()
 
     def compile_audio_tower(self):
         name = "audio"
-        model_path = f"{name}/{name}.bmodel"
-        self.all_bmodels.append(model_path)
-        if os.path.exists(model_path):
-            print(f"{model_path} already exists. Skipping compilation.")
+        if self.register_bmodel(name):
             return
-        deploy_args = [
-            f'pushd {name} && ', 'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
-            f'--num_core {self.num_core}', f'--num_device {self.num_device}', '--addr_mode basic',
-            f'--model {name}.bmodel'
-        ]
-        deploy_args.append(f'--quantize {self.half_precision_quantize}')
-        deploy_args.append('--quant_output')
-        if self.high_precision:
-            deploy_args.append('--high_precision')
-        if self.debug:
-            deploy_args.append('--debug')
-        deploy_args.append('&& popd')
-        self.add_task(deploy_args, f"{name}.log")
+        self.submit_deploy_task(
+            name,
+            [
+                f'--quantize {self.half_precision_quantize}',
+                '--quant_output',
+            ],
+        )

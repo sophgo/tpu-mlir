@@ -238,8 +238,4 @@ class Gemma3Converter(LlmConverter):
                               loc=L("mm_projector_matmul"),
                               ip=ip).output
         vit_mlir.create_return_op([new_op])
-        mlir_txt = vit_mlir.print_module()
-        if not os.path.exists(name):
-            os.makedirs(name)
-        with open(f"{name}/{name}.mlir", "w") as f:
-            f.write(mlir_txt)
+        self.save_mlir_module(vit_mlir, name)

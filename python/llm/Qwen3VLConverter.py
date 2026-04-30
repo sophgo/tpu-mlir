@@ -526,11 +526,7 @@ class Qwen3VLConverter(LlmConverter):
             ret_ops.append(deep_op)
 
         vit_mlir.create_return_op(ret_ops)
-        mlir_txt = vit_mlir.print_module()
-        if not os.path.exists(name):
-            os.mkdir(name)
-        with open(f"{name}/{name}.mlir", "w") as f:
-            f.write(mlir_txt)
+        self.save_mlir_module(vit_mlir, name)
         save_weights()
 
     def gen_add_mlir(self):
@@ -545,57 +541,32 @@ class Qwen3VLConverter(LlmConverter):
                            loc=self.get_loc(name, add_mlir),
                            ip=ip).output
         add_mlir.create_return_op([out_op])
-        mlir_txt = add_mlir.print_module()
-        if not os.path.exists(f"{name}"):
-            os.mkdir(f"{name}")
-        target = os.path.join(f"{name}", f"{name}.mlir")
-        with open(target, "w") as f:
-            f.write(mlir_txt)
+        self.save_mlir_module(add_mlir, name)
 
     def compile_add_mlir(self):
         name = "add"
-        model_path = f"{name}/{name}.bmodel"
-        self.all_bmodels.append(model_path)
-        if os.path.exists(model_path):
-            print(f"{model_path} already exists. Skipping compilation.")
+        if self.register_bmodel(name):
             return
-        deploy_args = [
-            f'pushd {name} &&', 'model_deploy.py', f'--mlir {name}.mlir', f'--chip {self.chip}',
-            f'--num_core {self.num_core}', f'--num_device {self.num_device}',
-            f'--addr_mode io_alone', f'--quant_input', f'--quant_output', f'--model {name}.bmodel'
-        ]
-        deploy_args.append(f'--quantize {self.half_precision_quantize}')
-        deploy_args.append('&& popd')
-        self.add_task(deploy_args, f"{name}.log")
+        self.submit_deploy_task(
+            name,
+            [
+                '--quant_input',
+                '--quant_output',
+                f'--quantize {self.half_precision_quantize}',
+            ],
+            addr_mode='io_alone',
+        )
 
     def compile_vit_mlir(self):
         name = f"vit"
-        model_path = f"{name}/{name}.bmodel"
-        self.all_bmodels.append(model_path)
-        if os.path.exists(model_path):
-            print(f"{name}.bmodel already exists. Skipping compilation.")
+        if self.register_bmodel(name):
             return
-        deploy_args = [
-            f'pushd vit &&',
-            'model_deploy.py',
-            f'--mlir {name}.mlir',
-            f'--chip {self.chip}',
-            f'--num_core {self.num_core}',
-            f'--num_device {self.num_device}',
-            f'--model {name}.bmodel',
-            '--addr_mode basic',
-        ]
         if self.half_precision_quantize == 'bf16' and self.vit_f16_out_bf16:
-            deploy_args.append('--quantize f16')
-            deploy_args.append('--quant_output_bf16')
+            extra_args = ['--quantize f16', '--quant_output_bf16']
         else:
-            deploy_args.append(f'--quantize {self.half_precision_quantize}')
-            deploy_args.append('--quant_output')
-        if self.high_precision:
-            deploy_args.append('--high_precision')
-        if self.debug:
-            deploy_args.append('--debug')
-        if self.dynamic:
-            deploy_args.append('--dynamic')
-        deploy_args.append('&& popd')
-        self.add_task(deploy_args, f"{name}.log")
+            extra_args = [f'--quantize {self.half_precision_quantize}', '--quant_output']
+        self.submit_deploy_task(
+            name,
+            extra_args,
+            dynamic=True,
+        )

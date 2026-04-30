@@ -433,40 +433,21 @@ class PaddleOCRVLConverter(LlmConverter):
                              out_shape=[1, grid_h * grid_w, self.out_hidden_size],
                              force_bias=True)
         vit_mlir.create_return_op([new_op])
-        mlir_txt = vit_mlir.print_module()
-        if not os.path.exists(name):
-            os.makedirs(name)
-        with open(f"{name}/{name}.mlir", "w") as f:
-            f.write(mlir_txt)
+        self.save_mlir_module(vit_mlir, name)
 
     @override
     def compile_vit(self):
         if not self.do_vit:
             return
         name = "vit"
-        model_path = f"{name}/{name}.bmodel"
-        self.all_bmodels.append(model_path)
-        if os.path.exists(model_path):
-            print(f"{model_path} already exists. Skipping compilation.")
+        if self.register_bmodel(name):
             return
-        deploy_args = [
-            f'pushd {name} && ',
-            'model_deploy.py',
-            f'--mlir {name}.mlir',
-            f'--chip {self.chip}',
-            f'--num_core {self.num_core}',
-            f'--num_device {self.num_device}',
-            f'--disable_layer_group',
-            f'--model {name}.bmodel',
-            '--addr_mode basic',
-        ]
-        deploy_args.append('--quantize F16')
-        deploy_args.append('--quant_output_bf16')
-        if self.high_precision:
-            deploy_args.append('--high_precision')
-        if self.debug:
-            deploy_args.append('--debug')
-        if self.dynamic:
-            deploy_args.append('--dynamic')
-        deploy_args.append('&& popd')
-        self.add_task(deploy_args, f"{name}.log")
+        self.submit_deploy_task(
+            name,
+            [
+                '--disable_layer_group',
+                '--quantize F16',
+                '--quant_output_bf16',
+            ],
+            dynamic=True,
+        )
