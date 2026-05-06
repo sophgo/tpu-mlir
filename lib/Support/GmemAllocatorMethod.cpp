@@ -17,8 +17,8 @@ namespace tpu_mlir {
 namespace tpu {
 
 GmemAllocatorMethod::GmemAllocatorMethod(std::map<ValueInfo, int64_t> &gaddrMap,
-                                         uint32_t aligment)
-    : gaddrMap_(gaddrMap), aligment_(aligment) {
+                                         uint32_t alignment)
+    : gaddrMap_(gaddrMap), alignment_(alignment) {
   GmemBlock block;
   block.start = 0;
   block.size = 0xFFFFFFFF;
@@ -162,8 +162,8 @@ int64_t GmemAllocatorMethod::updateGmemUsedStatistic(
 }
 
 GmemAllocFitFirst::GmemAllocFitFirst(std::map<ValueInfo, int64_t> &gaddrMap,
-                                     uint32_t aligment)
-    : GmemAllocatorMethod(gaddrMap, aligment) {
+                                     uint32_t alignment)
+    : GmemAllocatorMethod(gaddrMap, alignment) {
   name_ = "FitFirstAssign";
 }
 
@@ -235,8 +235,8 @@ GmemAllocFitFirst::assignGaddr(std::vector<ValueInfo> &ops,
 }
 
 GmemAllocOpSizeOrder::GmemAllocOpSizeOrder(
-    std::map<ValueInfo, int64_t> &gaddrMap, uint32_t aligment)
-    : GmemAllocatorMethod(gaddrMap, aligment) {
+    std::map<ValueInfo, int64_t> &gaddrMap, uint32_t alignment)
+    : GmemAllocatorMethod(gaddrMap, alignment) {
   name_ = "OpSizeOrderAssign";
 }
 
@@ -344,8 +344,8 @@ GmemAllocOpSizeOrder::assignGaddr(std::vector<ValueInfo> &ops,
 }
 
 static std::map<ValueInfo, int64_t> emptyMap;
-GmemAllocL2SRAM::GmemAllocL2SRAM(uint32_t aligment, int64_t l2_size)
-    : GmemAllocatorMethod(emptyMap, aligment) {
+GmemAllocL2SRAM::GmemAllocL2SRAM(uint32_t alignment, int64_t l2_size)
+    : GmemAllocatorMethod(emptyMap, alignment) {
   name_ = "L2SRamAssign";
   l2sram_size = l2_size;
 }

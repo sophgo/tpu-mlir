@@ -1075,7 +1075,7 @@ int64_t get_split_max_secs(BasicTimeStepPtr time_step) {
 }
 
 void update_tensor_infos(LgInfo &lg_info, TensorInfo &tensor_infos,
-                         const shape_secs_t &shape_secs, int speical_pattern) {
+                         const shape_secs_t &shape_secs, int special_pattern) {
   for (auto &iter : tensor_infos) {
     auto v = iter.first;
     iter.second.use_3ic_opt = use_3ic(v);
@@ -1084,7 +1084,7 @@ void update_tensor_infos(LgInfo &lg_info, TensorInfo &tensor_infos,
     iter.second.is_idx_weight = is_upsample_weight(v);
   }
 
-  if (speical_pattern > 0) {
+  if (special_pattern > 0) {
     return;
   }
 

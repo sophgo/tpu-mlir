@@ -658,11 +658,10 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
         .max_nslice_deprecated = 255, // 255 means invalid
         .input_tensor_num = (uint8_t)(sub_group.group_ins.size()),
         .output_tensor_num = (uint8_t)(sub_group.group_outs.size()),
-        .flags =
-            (uint8_t)((1 << 5) | (sub_group.type << 2) |
-                      ((1 << 1) |
-                       (hsecs >
-                        1))), // group_type, using max_nslice, h_is_split or not
+        .flags = (uint8_t)(
+            (1 << 5) | (sub_group.type << 2) |
+            ((1 << 1) |
+             (hsecs > 1))), // group_type, using max_nslice, h_is_split or not
         .swpipl_stage_num = (uint8_t)(swpipl_stage_num),
         .max_nslice = max_nslice};
     ir_group_timestep_base_info.push_back(timestep_base_info);
@@ -1174,7 +1173,7 @@ void *SubnetIr::write_global_layer_info_buffer(void *p_ir_buf,
   return p_ir_addr;
 }
 
-/* return writen ir length */
+/* return written ir length */
 int SubnetIr::write_ir_to_buffer(void *ir_buffer,
                                  vector<unsigned int> &input_tensor_ids,
                                  vector<unsigned int> &output_tensor_ids,

@@ -103,10 +103,10 @@ The key function in the backend is in `store_cmd.cpp`; for example, `cmodel/src/
 
   1. EngineStoreInterface (interface class), GDMAEngineStorer, BDEngineStorer and other specific classes that inherit from the EngineStoreInterface interface, EngineStorerDecorator (decoration class interface),
   VectorDumpEngineStorerDecorator and other specific decoration classes that inherit from EngineStorerDecorator
-  2. CmdStorerInterface (interface), ConcretCmdStorer inherited from the interface, StorerDecorator: decoration interface, VectorDumpStorerDecorator specific decoration class.
+  2. CmdStorerInterface (interface), ConcreteCmdStorer inherited from the interface, StorerDecorator: decoration interface, VectorDumpStorerDecorator specific decoration class.
 
 Relationship and Logic Among the Classes:
-  1. Using the singleton design pattern, there is only one 'ConcretCmdStorer' class in 'store_cmd', which will store all 'EngineStorer' classes. When different engines are called, different 'EengineStorers' will be called, as shown in the code below.
+  1. Using the singleton design pattern, there is only one 'ConcreteCmdStorer' class in 'store_cmd', which will store all 'EngineStorer' classes. When different engines are called, different 'EngineStorers' will be called, as shown in the code below.
 
     .. code-block:: cpp
 

@@ -150,7 +150,7 @@ down_overlap_depth(BasicTimeStepPtr &down_time_step,
             std::make_pair(iter->second.addr, iter->second.size));
       }
     } else {
-      // whether to consider the mem bufer or not
+      // whether to consider the mem buffer or not
       Value tensor = iter->first.value;
       auto &down_ts_tensors = down_time_step->getTensors(start_ts);
       bool consider = false;

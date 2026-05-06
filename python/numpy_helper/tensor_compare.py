@@ -303,8 +303,8 @@ class TensorCompareStats():
         print("%d failed" % (self.failed))
         print("  %d not equal, %d not similar" %
               (self.count[TensorCompare.NOT_EQUAL], self.count[TensorCompare.NOT_SIMILAR]))
-        print("min_similiarity = ({}, {}, {})".format(self.min_cosine_similarity,
-                                                      self.min_euclidean_similarity, self.min_sqnr))
+        print("min_similarity = ({}, {}, {})".format(self.min_cosine_similarity,
+                                                     self.min_euclidean_similarity, self.min_sqnr))
 
     def save_result(self, csv_file, operations, quant_types):
         has_similarity = lambda x: (x == TensorCompare.SIMILAR or x == TensorCompare.NOT_SIMILAR)

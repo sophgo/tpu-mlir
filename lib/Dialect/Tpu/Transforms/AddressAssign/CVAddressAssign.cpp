@@ -522,11 +522,11 @@ void CVAddressAssign::updateConcatOpTargetV(
 }
 
 uint32_t CVAddressAssign::getTensorGmemSize(Operation *op, int index,
-                                            int64_t aligment_) {
+                                            int64_t alignment_) {
   uint32_t size = module::getBytes(op->getResult(index));
-  // pad to aligment_
-  if (size % aligment_) {
-    size = size + aligment_ - (size % aligment_);
+  // pad to alignment_
+  if (size % alignment_) {
+    size = size + alignment_ - (size % alignment_);
   }
   return size;
 }

@@ -64,16 +64,16 @@ public:
 };
 
 struct Unroll : public Transform {
-  const AffineDimExpr dimention;
+  const AffineDimExpr dimension;
   StringLiteral name() override { return "Unroll"; };
   void dump() override {
     llvm::errs() << name() << "(";
-    dimention.print(llvm::errs());
+    dimension.print(llvm::errs());
     llvm::errs() << ")\n";
   };
   std::optional<ComputePattern> run(const ComputePattern &source) override;
-  Unroll(AffineDimExpr dimention)
-      : Transform(TS_Unroll), dimention(dimention) {}
+  Unroll(AffineDimExpr dimension)
+      : Transform(TS_Unroll), dimension(dimension) {}
   static bool classof(const Transform *T) { return T->getKind() == TS_Unroll; }
 };
 

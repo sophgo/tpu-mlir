@@ -247,7 +247,7 @@ Used to convert various neural network models into MLIR files (with ``.mlir`` su
      - option for onnx-sim, currently only support 'skip_fuse_bn' args
    * - debug
      - N
-     - If open debug, immediate model file will keep; or will remove after conversion done
+     - If open debug, intermediate model file will keep; or will remove after conversion done
    * - tolerance
      - N
      - Minimum Cosine and Euclidean similarity tolerance to model transform. 0.99,0.99 by default.
@@ -789,7 +789,7 @@ Supported functions:
 visual.py
 ~~~~~~~~~~~~~~~~
 
-visual.py is an visualized network/tensor compare application with interface in web browser, if accuracy of quantized network is not
+visual.py is a visualized network/tensor compare application with interface in web browser, if accuracy of quantized network is not
 as good as expected, this tool can be used to investigate the accuracy in every layer.
 
 Example:
@@ -1153,7 +1153,7 @@ mlir_cut.py supports truncating top.mlir, tpu.mlir, or final.mlir files. Support
 2. When truncating final.mlir, the following two usage modes are supported:
 
 ``io`` mode:
-    User should specify the input and output names, and run the following command in the directory where final.mlir is located to truncate final.mlir and generate the the bmodel file:
+    User should specify the input and output names, and run the following command in the directory where final.mlir is located to truncate final.mlir and generate the bmodel file:
 
     .. code-block:: shell
 

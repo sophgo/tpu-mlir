@@ -723,7 +723,7 @@ typedef struct {
 // We use the local memory to determine the tiled size in both global and local
 // memory.
 // Then we split the output in global memory and use it to derive:
-//   1. tiled ouput size, position in global memory for tmda load
+//   1. tiled output size, position in global memory for tmda load
 //   2. tiled output size, position in local memory for tdma load
 //   3. tiled input size, position in global memory for tdma load
 //   4. tiled input size, position in local memory for tdma load
@@ -731,7 +731,7 @@ typedef struct {
 //   6. tiled weight size, position in local memory for tdma load
 //   5. tiled output size, position in local for tpu computation
 //   6. tiled input size, position in local for tpu computation
-//   7. tiled ouput size, position in global memory for tmda store
+//   7. tiled output size, position in global memory for tmda store
 //   8. tiled output size, position in local memory for tdma store
 //
 //  It is really painful that shape/stride for tdma load, tpu compute, tdma

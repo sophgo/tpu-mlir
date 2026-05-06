@@ -629,7 +629,7 @@ typedef struct {
    * interpolation: \tbl_answer_mantissa as slope part
    * e.g:
    * interpolation we use activation function to achieve high accuracy
-   * scientific uses to calucate reciprocal or sqrt
+   * scientific uses to calculate reciprocal or sqrt
    * \is_scientific 1 means set scientific, otherwise is interpolation
    */
   uint8_t is_scientific;

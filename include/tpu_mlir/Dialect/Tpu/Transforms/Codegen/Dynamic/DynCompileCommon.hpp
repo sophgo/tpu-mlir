@@ -344,8 +344,8 @@ typedef struct fw_conv_layer_param {
   u8 if_relu;
   float relu_upper_limit;
   u8 use_winograd;
-  u32 c_idx;        // for local concat useage
-  u32 reference_id; // for local concat , reference_id is the true ouput tensor
+  u32 c_idx;        // for local concat usage
+  u32 reference_id; // for local concat , reference_id is the true output tensor
                     // of conv
   u8 rshiftbits;
   u8 opd0_sign;

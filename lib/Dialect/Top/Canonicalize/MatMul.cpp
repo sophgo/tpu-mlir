@@ -362,7 +362,7 @@ struct MatmulWithPermuteAndSplit : public OpRewriterPatternEx<MatMulOp> {
             squeeze_out_shape, module::getElementType(squeeze_out));
       }
       auto inv_order_size = squeeze_out_shape.size();
-      // caculate permute order
+      // calculate permute order
       std::vector<int64_t> inv_order(inv_order_size);
       std::iota(inv_order.begin(), inv_order.end(), 0);
       auto permute_in_shape = reshape_output_shape.vec();

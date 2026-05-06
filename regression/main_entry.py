@@ -47,7 +47,7 @@ class MAIN_ENTRY(object):
         print(f"### max_workers: {self.max_workers}")
         self.log_dir = os.path.join(REGRESSION_PATH, "regression_op_log")
         os.makedirs(self.log_dir, exist_ok=True)
-        self.task_file = os.path.join(self.log_dir, f"regression_{self.test_type}_tast.txt")
+        self.task_file = os.path.join(self.log_dir, f"regression_{self.test_type}_task.txt")
         self.task_log = os.path.join(self.log_dir, f"regression_{self.test_type}_task.log")
         self.commands = []
 

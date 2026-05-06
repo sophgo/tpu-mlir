@@ -269,7 +269,7 @@ def soc_fetch_log_and_npz(client, sftp, local_path, remote_path, remote_ref, ena
             progress,
         )
         print(
-            f"log file recieved at {os.path.join(local_path, 'log.txt')} and {os.path.join(local_path, 'nohup.out')}"
+            f"log file received at {os.path.join(local_path, 'log.txt')} and {os.path.join(local_path, 'nohup.out')}"
         )
 
     # retrieve results

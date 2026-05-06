@@ -568,7 +568,7 @@ if __name__ == "__main__":
     parser.add_argument("--chip", default="bm1684x", type=str.lower, help="chip platform name")
     parser.add_argument("--mode", default="all", type=str.lower,
                         choices=['all', 'basic', 'f32', 'f16', 'bf16', 'int8_sym', 'int8_asym', 'int4_sym', 'f8e4m3', 'f8e5m2'],
-                        help="quantize mode, 'all' runs all modes except int4 and f8, 'baisc' runs f16 and int8 sym only")
+                        help="quantize mode, 'all' runs all modes except int4 and f8, 'basic' runs f16 and int8 sym only")
     parser.add_argument("--dyn_mode", default='store_true', help="dynamic mode")
     parser.add_argument("--merge_weight", action="store_true",
                         help="merge weights into one weight binary with previous generated cvimodel")

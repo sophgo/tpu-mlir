@@ -79,7 +79,7 @@ protected:
 
   bool isOutput(Operation *op, int index);
 
-  uint32_t getTensorGmemSize(Operation *op, int index, int64_t aligment_);
+  uint32_t getTensorGmemSize(Operation *op, int index, int64_t alignment_);
 
   void updateConcatOpTargetV(std::vector<ValueInfo> &inplace_ops,
                              std::map<ValueInfo, OpElement> &op_infos);

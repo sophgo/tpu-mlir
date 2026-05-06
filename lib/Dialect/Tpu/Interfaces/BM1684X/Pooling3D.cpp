@@ -108,7 +108,7 @@ int64_t tpu::Pool3DOp::getBufferSize_bm1684x(
   int c_per_npu = ceiling_func(attr.c, BM168x::NPU_NUM);
 
   if (attr.kd > 1 || attr.sd > 1 || attr.pad_d > 0 || attr.pad_d_after > 0) {
-    /// pooling include depth-dimention
+    /// pooling include depth-dimension
     if (out_dtype.isInteger(8) && getPoolMode() == tpu::PoolMode::Avg) {
       int64_t dtype_bytes =
           attr.kd * attr.kh * attr.kw > 256 ? sizeof(int) : sizeof(short);

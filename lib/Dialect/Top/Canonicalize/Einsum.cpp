@@ -1163,7 +1163,7 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
       op.replaceAllUsesWith(reshapeOp.getOperation());
       rewriter.eraseOp(op);
     } else if (mode == "abcde,afbc->abdef") {
-      // TODO : top/tpu matmul inference set left_transpose false by defalut,
+      // TODO : top/tpu matmul inference set left_transpose false by default,
       // maybe can support true
       rewriter.setInsertionPointAfter(lhs.getDefiningOp());
       auto lreshape_loc =

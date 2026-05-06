@@ -142,8 +142,8 @@ void TgReluKernel::compute_relu(int32_t step_idx, int32_t flip) {
 
 /*
   LeakyRelu in asymmetric quantization
-  There are two cases in leaky relu, postive and negative
-  postive cases:
+  There are two cases in leaky relu, positive and negative
+  positive cases:
     Qy = Sx/Sy(Qx - Zx) + Qy
   negative cases:
     Qy = alpha * Sx/Sy * (Qx - Zx) + Qy

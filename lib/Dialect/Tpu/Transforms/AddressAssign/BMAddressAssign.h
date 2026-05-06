@@ -32,7 +32,7 @@ protected:
   void findInPlaceOpMaxUsePosition(Operation *op, uint32_t &maxPosition,
                                    std::map<Operation *, uint32_t> &ops_loc);
   int getOutIndex(Operation *op, Value &out);
-  uint32_t getTensorGmemSize(Operation *op, int index, int64_t aligment_);
+  uint32_t getTensorGmemSize(Operation *op, int index, int64_t alignment_);
   bool is_next_subnet_input(Operation *op, int index);
   void updateAddressByAddrMode(mlir::ModuleOp &m, int64_t start_addr,
                                int64_t addr_limit);

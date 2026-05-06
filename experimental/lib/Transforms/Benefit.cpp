@@ -58,7 +58,7 @@ void TransformBenefit::getCycle(Transforms &transforms,
   SmallVector<int64_t> new_shape =
       llvm::TypeSwitch<Transform *, SmallVector<int64_t>>(transform)
           .Case([&](Unroll *unroll) {
-            auto pos = unroll->dimention.getPosition();
+            auto pos = unroll->dimension.getPosition();
             cycle *= shape[pos];
             shape.erase(shape.begin() + pos);
             return shape;

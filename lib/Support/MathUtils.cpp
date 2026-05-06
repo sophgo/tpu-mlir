@@ -334,7 +334,7 @@ double getQscaleForFilter(float max_filter, float threshold_y,
   ///   HW multiples the accumulated result by QScale before saturate to Int8
   ///   QScale is then decomposed into a multipler and a rshift
   ///   => QScale = Multiplier / (1 << RShift)
-  ///   where Multiplier is an interger
+  ///   where Multiplier is an integer
   if (threshold_y <= 0) {
     llvm::errs() << "WARNING: findQScaleForFilter threshold_y = " << threshold_y
                  << "\n";
@@ -354,7 +354,7 @@ double getQscaleForBias(float max_bias, float threshold_y) {
   ///   HW multiples the accumulated result by QScale before saturate to Int8
   ///   QScale is then decomposed into a multipler and a rshift
   ///   => QScale = Multiplier / (1 << RShift)
-  ///   where Multiplier is an interger
+  ///   where Multiplier is an integer
   if (threshold_y <= 0) {
     llvm::errs() << "WARNING: findQScaleForBiasI32 threshold_y = "
                  << threshold_y << "\n";

@@ -519,7 +519,7 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
         model = onnx.load(onnx_file)
         no_list = ["Cast", "Constant", "Dropout", "Loop"]
 
-        # tested commited #c3cea486d https://github.com/microsoft/onnxruntime.git
+        # tested committed #c3cea486d https://github.com/microsoft/onnxruntime.git
         for x in model.graph.node:
             if x.op_type in no_list:
                 continue

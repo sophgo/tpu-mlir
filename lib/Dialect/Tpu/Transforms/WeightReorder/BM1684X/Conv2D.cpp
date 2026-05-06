@@ -651,7 +651,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
       }
     }
 
-    /////////////// this branch is speical for stride > 15
+    /////////////// this branch is special for stride > 15
     if (strideh_gt_15 || stridew_gt_15) {
       if (module::isCV184X() &&
           (attr.kh == attr.sh && attr.kw == attr.sw && attr.dh == 1 &&

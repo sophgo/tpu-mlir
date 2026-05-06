@@ -528,10 +528,10 @@ void GroupOps::buildMlir_for_opt3() {
       }
     }
   });
-  Operation *retrunOp = nullptr;
+  Operation *returnOp = nullptr;
   func_.walk([&](Operation *op) {
-    if (!retrunOp && isa<ReturnOp>(op)) {
-      retrunOp = op;
+    if (!returnOp && isa<ReturnOp>(op)) {
+      returnOp = op;
     }
     if (!none_op_ && isa<top::NoneOp>(op)) {
       LOG(INFO) << "find NoneOp";
@@ -1340,7 +1340,7 @@ void GroupOps::buildMlir_for_opt3() {
       }
     }
   }
-  retrunOp->moveBefore(&retrunOp->getBlock()->back());
+  returnOp->moveBefore(&returnOp->getBlock()->back());
 
   /*for (auto& node : nodes) {
     node.indeg = node.pre_nodes.size();

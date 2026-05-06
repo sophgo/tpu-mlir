@@ -24,9 +24,9 @@ std::optional<ComputePattern> Unroll::run(const ComputePattern &source) {
   SmallVector<AffineMap> outMaps;
   for (auto map : source.indexingMaps) {
     llvm::SmallBitVector bitMask(map.getNumDims());
-    bitMask.set(dimention.getPosition());
+    bitMask.set(dimension.getPosition());
     auto processed =
-        map.replace(dimention, c0, map.getNumDims(), map.getNumSymbols());
+        map.replace(dimension, c0, map.getNumDims(), map.getNumSymbols());
     processed = projectDims(processed, bitMask, true);
     SmallVector<int64_t, 8> constMask;
     for (auto [index, expr] : llvm::enumerate(processed.getResults())) {
@@ -38,7 +38,7 @@ std::optional<ComputePattern> Unroll::run(const ComputePattern &source) {
     outMaps.push_back(processed.dropResults(constMask));
   }
   SmallVector outIterator(source.iteratorTypes);
-  outIterator.erase(outIterator.begin() + dimention.getPosition());
+  outIterator.erase(outIterator.begin() + dimension.getPosition());
   return ComputePattern{outMaps, outIterator};
 }
 

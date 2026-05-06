@@ -16,7 +16,7 @@ The functionality of custom operators allows users to freely use the interfaces 
      global memory to local memory for execution and then transferred back to
      global memory. The advantage is that local memory can be used flexibly, but
      it has the disadvantage of generating a considerable number of GDMA
-     transfers, resulting in lower the Tensor Competing Processor utilization.
+     transfers, resulting in lower the Tensor Computing Processor utilization.
 
   b. The operator can optionally implement the local layer. The input and output data of the local layer are stored in local memory. It can be combined with other layers for LayerGroup optimization, avoiding the need to transfer data to and from global memory during the calculation of this layer. The advantage is that it saves GDMA transfers and achieves higher computational efficiency. However, it is more complex to implement. The local memory needs to be allocated in advance during model deployment, limiting its usage and making it impractical for certain operators.
 
@@ -80,7 +80,7 @@ Add TpuLang Custom Operator
 
   where input_shapes and input_dims is array of input shapes and dims respectively. inputs and output is pointer of data of inputs and outputs data outputs.
 
-  b. [Optional] Shape infer function. This plugin is used for shape inference in TOP dialect. If not implmemnt, the default is that there is one input and one output while output shape is equal to input shape. The form of plugin function is as follows:
+  b. [Optional] Shape infer function. This plugin is used for shape inference in TOP dialect. If not implement, the default is that there is one input and one output while output shape is equal to input shape. The form of plugin function is as follows:
 
   .. code-block:: c
 
@@ -282,7 +282,7 @@ Add TpuLang Custom Operator
 
   Refer to the TPULang Interface section for instructions on how to use TpuLang.
 
-  TpuLang provides the `TpuLang.custom` interface to build custom operators in the frontend of toolchain (please ensure that the `op_name` matches the name of the backend operator): Note that, `params` should be dictionary in python, whose key should be a string representing the name of parameter and value should be a integer or floating-point number, or a list of integer or floating-point number (the length of list should be no greater than 16). When building the neural network, the number and order of keys should keep the same for the same custom operator and for the same key, if its value is a list, the length should keep the same.
+  TpuLang provides the `TpuLang.custom` interface to build custom operators in the frontend of toolchain (please ensure that the `op_name` matches the name of the backend operator): Note that, `params` should be dictionary in python, whose key should be a string representing the name of parameter and value should be an integer or floating-point number, or a list of integer or floating-point number (the length of list should be no greater than 16). When building the neural network, the number and order of keys should keep the same for the same custom operator and for the same key, if its value is a list, the length should keep the same.
 
   .. code-block:: python
 
@@ -382,7 +382,7 @@ This section assumes that the tpu-mlir release package has been loaded.
 Example of TpuLang
 ~~~~~~~~~~~~~~~~~~~
 
-This subsection provides a sample of swapchanel operator implementation and application through TpuLang interface.
+This subsection provides a sample of swapchannel operator implementation and application through TpuLang interface.
 
 1. Parameter Parser
 

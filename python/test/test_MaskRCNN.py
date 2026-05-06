@@ -114,7 +114,7 @@ class MaskRCNN_IR_TESTER(MaskRCNN_Tester_Basic):
             "[MaskRCNN-Help-0] default config yaml at path:{}; but utest will just copy it to their files!",
             self.path_default_MaskRCNN_dataset)
         self.print_debug(
-            "[MaskRCNN-Help-1] mlir_transform external paramter will inject into the copy config yaml automatically"
+            "[MaskRCNN-Help-1] mlir_transform external parameter will inject into the copy config yaml automatically"
         )
         self.print_debug(
             "[MaskRCNN-Help-2] default dataset is at your nnmodels, right now is at  {}, you can revise it use path_custom_dataset, which is {}, maybe you have changed it!"

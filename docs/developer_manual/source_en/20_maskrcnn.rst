@@ -46,7 +46,7 @@ Prepare Your Yaml
 ~~~~~~~~~~~~~~~~~~
 A default yaml is prepared at ``regression/dataset/MaskRCNN/CONFIG_MaskRCNN.yaml``, whose struct is:
 
- - **Compile Parameters for model_transform**: structural infomations to reconstruct MaskRCNN.
+ - **Compile Parameters for model_transform**: structural information to reconstruct MaskRCNN.
 
    - **io_map**:   defined as {(destination_block_id, operand_id):(source_block_id, operand_id)}; here -1 represents the complete model's top inputs, -2 represents the complete model's top outputs, and 0, 1, 2... represents the id of MaskRCNN blocks.
        For example, {(0,0):(-1,0),(1,0):(0,0),(-2,0):(1,0)} means block[0]'s input[0] comes from input[0] of the complete model, block[1]'s input[0] comes from block[0]'s output[0], and output[0] of the complete model comes from block[1]'s output[0].
@@ -55,7 +55,7 @@ A default yaml is prepared at ``regression/dataset/MaskRCNN/CONFIG_MaskRCNN.yaml
    - **maskrcnn_ppl_op**: names of MaskRCNN operands implemented by PPL at the backend.
    - **numPPLOp_InWithoutWeight_MaskRCNN**: number of input operands for each PPLOp; remember not to count weight operands.
 
- - **Hyper-parameters for MaskRCNN**:  nececssary MaskRCNN parameters, decided by the original MaskRCNN framework.
+ - **Hyper-parameters for MaskRCNN**:  necessary MaskRCNN parameters, decided by the original MaskRCNN framework.
 
 Block Unit Test
 ~~~~~~~~~~~~~~~

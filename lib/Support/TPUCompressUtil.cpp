@@ -319,7 +319,7 @@ static inline uint8_t vlc_gr_enc_block_data(uint8_t *blk_in, StreamBuffer *bs,
   return ulen;
 }
 
-// -- vlc encode int8 entry funtion --
+// -- vlc encode int8 entry function --
 void compressInt8Data(const uint8_t *ibuf, int isz, uint8_t *obuf, int *osz,
                       CompressCommandInfo *cmd_info) {
   StreamBuffer bs_header, bs_kmap, bs_data;

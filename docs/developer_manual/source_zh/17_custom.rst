@@ -391,7 +391,7 @@ Caffe自定义算子添加
 TpuLang示例
 ~~~~~~~~~~~~
 
-本小节提供了一个swapchanel算子实现与通过TpuLang接口应用的样例。
+本小节提供了一个swapchannel算子实现与通过TpuLang接口应用的样例。
 
 1. 算子参数解析
 
@@ -876,7 +876,7 @@ TpuLang自定义AP算子添加
 TpuLang示例
 ~~~~~~~~~~~~
 
-本小节提供了一个swapchanel算子实现与通过TpuLang接口应用的样例。
+本小节提供了一个swapchannel算子实现与通过TpuLang接口应用的样例。
 
 1. 自定义算子派生类
 

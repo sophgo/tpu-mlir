@@ -576,8 +576,8 @@ struct Reshape4Depth2SpacePattern : public OpRewriterPatternEx<ReshapeOp> {
 
     // setup attributes for Depth2SpaceOp
     std::vector<NamedAttribute> attrs;
-    // First Reshape ouput, like 1*28*2*28*2*96. Permute to 1*28*28*2*2*96. Thus
-    // CRD
+    // First Reshape output, like 1*28*2*28*2*96. Permute to 1*28*28*2*2*96.
+    // Thus CRD
     attrs.push_back(
         rewriter.getNamedAttr("is_CRD", rewriter.getBoolAttr(false)));
     attrs.push_back(

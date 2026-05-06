@@ -100,7 +100,7 @@ table CpuConst {
 
 table CpuParam {
     op_type:int32 (id: 0);                    /* cpu layer op type  */
-    binary_param:Binary (id: 1);              /* cpu layer paramter */
+    binary_param:Binary (id: 1);              /* cpu layer parameter */
     cpu_const:[CpuConst] (id: 2);
     is_custom:int32 (id: 3);                  /* is cpu layer custom */
 }
@@ -191,7 +191,7 @@ table Net {
     parameter:[NetParameter] (id: 3);  // one net can one or more stages
     cascade:Cascade (id: 4);           // may run in multi devices or multi steps
     addr_mode:int32 (id: 5);           // 0: basic mode, io and neuron mem alloc together by runtime
-                                       // 1: io alone mode, io mem and neuron mem alloc seperated by runtime
+                                       // 1: io alone mode, io mem and neuron mem alloc separated by runtime
                                        // 2: io tag mode, select max 5 data size io to assign mem by address tag (others in neuron mem)
                                        // 3: io tag fuse mode, fuse inputs to a io tag and fuse outputs to another io tag
                                        // 4: io reloc mode, relocate cmd-io-addrs to user-io-addrs, using rel-entries.

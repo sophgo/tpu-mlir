@@ -119,7 +119,7 @@ static void bf16_lut_slope_kernel(uint32_t layer_id, gaddr_t ga_input,
   p5.layer_id = layer_id;
   CV18xx::tiu_sub(&p5);
 
-  // move index seperate as bf16 size
+  // move index separate as bf16 size
   // copy to bf16 size
   {
     cvk_tl_t working = *tl_ofmap_slope;

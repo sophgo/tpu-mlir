@@ -41,7 +41,7 @@ void get_op_cut_sec_num(
     std::vector<std::pair<Operation *, int>> &vec_op_cut_secs);
 void update_tensor_infos(LgInfo &lg_info, TensorInfo &tensor_infos,
                          const shape_secs_t &shape_secs,
-                         int speical_pattern = 0);
+                         int special_pattern = 0);
 bool update_data_split(BasicTimeStepPtr time_step, LgInfo &lg_info,
                        shape_secs_t &shape_secs, const LgOptions &options);
 int64_t get_split_max_secs(BasicTimeStepPtr time_step);

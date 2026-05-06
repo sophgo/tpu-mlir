@@ -60,7 +60,7 @@ struct TensorLive {
 class GmemAllocatorMethod {
 public:
   GmemAllocatorMethod(std::map<ValueInfo, int64_t> &gaddrMap,
-                      uint32_t aligment);
+                      uint32_t alignment);
   virtual ~GmemAllocatorMethod();
 
   virtual std::string getName();
@@ -83,19 +83,19 @@ public:
   updateGmemUsedStatistic(std::vector<ValueInfo> &ops,
                           std::map<ValueInfo, TensorLive> &liveRange);
 
-  // static uint32_t getTensorGmemSize(Value &tensor, uint32_t aligment_);
+  // static uint32_t getTensorGmemSize(Value &tensor, uint32_t alignment_);
   const std::map<ValueInfo, int64_t> &getAddrMap() const { return gaddrMap_; }
 
 protected:
   std::string name_;
-  uint32_t aligment_;
+  uint32_t alignment_;
   std::map<ValueInfo, int64_t> gaddrMap_;
   std::vector<std::list<GmemBlock>> album_;
 };
 
 class GmemAllocFitFirst : public GmemAllocatorMethod {
 public:
-  GmemAllocFitFirst(std::map<ValueInfo, int64_t> &gaddrMap, uint32_t aligment);
+  GmemAllocFitFirst(std::map<ValueInfo, int64_t> &gaddrMap, uint32_t alignment);
 
   int64_t assignGaddr(std::vector<ValueInfo> &ops,
                       std::map<ValueInfo, TensorLive> &liveRange,
@@ -124,7 +124,7 @@ public:
 
 public:
   GmemAllocOpSizeOrder(std::map<ValueInfo, int64_t> &gaddrMap,
-                       uint32_t aligment);
+                       uint32_t alignment);
 
   int64_t assignGaddr(std::vector<ValueInfo> &ops,
                       std::map<ValueInfo, TensorLive> &liveRange,
@@ -152,7 +152,7 @@ public:
   // typedef std::list<std::shared_ptr<OpAddr>> LineSet;
 
 public:
-  GmemAllocL2SRAM(uint32_t aligment, int64_t l2sram_size);
+  GmemAllocL2SRAM(uint32_t alignment, int64_t l2sram_size);
 
   int64_t assignGaddr(std::vector<ValueInfo> &ops,
                       std::map<ValueInfo, TensorLive> &liveRange,
@@ -166,13 +166,13 @@ class GmemAllocatorMethodFactory {
 public:
   static GmemAllocatorMethod *makeMethod(std::string method_name,
                                          std::map<ValueInfo, int64_t> &gaddrMap,
-                                         uint32_t aligment) {
+                                         uint32_t alignment) {
     if (method_name == "FitFirstAssign") {
       return static_cast<GmemAllocatorMethod *>(
-          new GmemAllocFitFirst(gaddrMap, aligment));
+          new GmemAllocFitFirst(gaddrMap, alignment));
     } else if (method_name == "OpSizeOrderAssign") {
       return static_cast<GmemAllocatorMethod *>(
-          new GmemAllocOpSizeOrder(gaddrMap, aligment));
+          new GmemAllocOpSizeOrder(gaddrMap, alignment));
     } else {
       assert(0);
       return nullptr;

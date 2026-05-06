@@ -357,7 +357,7 @@ void IntraCmdParallelAnalysis::dumpStates() {
                << "|" << getAccessStateStr(cmdLmStates_[i]->weights_[1])
                << ", input " << getAccessStateStr(cmdLmStates_[i]->inputs_[0])
                << "|" << getAccessStateStr(cmdLmStates_[i]->inputs_[1])
-               << ", ouput " << getAccessStateStr(cmdLmStates_[i]->outputs_[0])
+               << ", output " << getAccessStateStr(cmdLmStates_[i]->outputs_[0])
                << "|" << getAccessStateStr(cmdLmStates_[i]->outputs_[1]));
 
     if (cmdQueue[i]->isIntraCmdParalEnabled())
@@ -3739,7 +3739,7 @@ void cvi_backend_tg_fixed_conv_kernel(
     int activation_le_rshift, int right_shift_width, bool do_chl_quan,
     bool do_ic_alignment, std::vector<uint8_t> *filter,
     std::vector<uint8_t> *new_filter, int pad_value, gaddr_t ga_scale_lut) {
-  // this message is too long for llvm::format, so seperate it
+  // this message is too long for llvm::format, so separate it
   LLVM_DEBUG(llvm::errs() << llvm::format(
                  "cvi_backend_tg_fixed_conv_kernel:\n"
                  "    layer_id %d\n"

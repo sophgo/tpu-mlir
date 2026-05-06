@@ -15,7 +15,7 @@ parser.add_argument('--qat_config_path', type=str, default='./qat_config', help=
 parser.add_argument('--qat_model_path',
                     type=str,
                     default='/workspace/classify_models/,/workspace/yolov5/qat_models/',
-                    help='list of diff qat_model_path,use douhao to seperate')
+                    help='list of diff qat_model_path,use douhao to separate')
 parser.add_argument('--qat_eval', action='store_true')
 parser.add_argument('--fast_test', action='store_true')
 opt = parser.parse_args()

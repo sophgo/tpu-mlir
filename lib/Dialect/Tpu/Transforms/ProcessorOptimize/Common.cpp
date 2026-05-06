@@ -242,7 +242,7 @@ PermuteReorderPattern::matchAndRewriteImpl(tpu::PermuteOp op,
     return failure();
   }
 
-  // NOTE: if remove this constrain, new_bi_out_shape should be dynamicly
+  // NOTE: if remove this constraint, new_bi_out_shape should be dynamically
   // calculated
   std::vector<int64_t> ps = {0, 2, 1, 3};
 

@@ -122,7 +122,7 @@ In particular, for asymmetric quantization, Pad is filled with Zx.
 
 In the symmetric case, Pad is filled with 0 (both Zx and Zy are 0).
 
-In PerAxis (or PerChannal) quantization, each OC of Filter will be quantized, and the derivation formula will remain unchanged, but there will be OC Multiplier and rshift.
+In PerAxis (or PerChannel) quantization, each OC of Filter will be quantized, and the derivation formula will remain unchanged, but there will be OC Multiplier and rshift.
 
 
 InnerProduct

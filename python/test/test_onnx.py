@@ -4416,7 +4416,7 @@ class ONNX_IR_TESTER(object):
 
             def __init__(self):
                 super(Model, self).__init__()
-                # left:3 right:4 up:4 down:6 postion pad zero
+                # left:3 right:4 up:4 down:6 position pad zero
                 self.ZeroPad2d = nn.ZeroPad2d(padding=(3, 4, 5, 6))
 
             def forward(self, x):

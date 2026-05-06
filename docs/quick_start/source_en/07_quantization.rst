@@ -267,7 +267,7 @@ TPU-MLIR provides model mixed precision quantization methods, with its core step
 
 TPU-MLIR provides two paths for obtaining the qtable:
 For typical models, TPU-MLIR provides an experience-based ``pattern-match`` method.
-For special or atypical models, PU-MLIR provides mixed precision quantization methods ``search_qtable`` and ``fp_forward`` tools to generate the qtable.
+For special or atypical models, TPU-MLIR provides mixed precision quantization methods ``search_qtable`` and ``fp_forward`` tools to generate the qtable.
 The following four section will provide detailed introductions to these four mixed precision methods.
 
 pattern-match
@@ -389,7 +389,7 @@ multi-input Model:
    download squad_uncased_data.npz
    $ mkdir workspace && cd workspace
 
-Accuracy test of float anf int8 models
+Accuracy test of float and int8 models
 ---------------------------------------
 
 Step 1: To F32 mlir
@@ -419,7 +419,7 @@ multi-input Model:
         --test_result bert_base_squad_uncased-2.11.0_top_outputs.npz \
         --mlir bert_base_squad_uncased-2.11.0.mlir
 
-Step 2: Gen calibartion table
+Step 2: Gen calibration table
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Here, we use the ``mse`` method for calibration.
@@ -559,7 +559,7 @@ The parameters related to ``search_qtable`` in ``run_calibration`` are explained
      - The number of samples for tune threshold, default 5
    * - post_process
      - N
-     - The user defined prost process program path, default None
+     - The user defined post process program path, default None
    * - expected_cos
      - N
      - Specify the minimum cos value for the expected final output layer of the network. The default is 0.99
@@ -669,10 +669,10 @@ only the limited quantity of mixed precision layers will be taken. Additionally,
     INFO:root:transformer model: False, all search layer number: 116
     INFO:root:Global metrics layer is : None
     INFO:root:start to handle layer: input0.1, type: top.Conv
-    INFO:root:adjust layer input0.1 th, with method KL, and threshlod 9.442267236793155
+    INFO:root:adjust layer input0.1 th, with method KL, and threshold 9.442267236793155
     INFO:root:run int8 mode: mobilenet_v2.mlir
     INFO:root:outputs_cos_los = 0.0006842551513905892
-    INFO:root:adjust layer input0.1 th, with method MSE, and threshlod 9.7417731
+    INFO:root:adjust layer input0.1 th, with method MSE, and threshold 9.7417731
     INFO:root:run int8 mode: mobilenet_v2.mlir
     INFO:root:outputs_cos_los = 0.0007242344141149548
     INFO:root:layer input0.1, layer type is top.Conv, best_th = 9.442267236793155, best_method = KL, best_cos_loss = 0.0006842551513905892

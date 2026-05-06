@@ -100,9 +100,9 @@ TPU-MLIR中BM168X及其相关类定义在include/tpu_mlir/Backend文件夹下，
 
 store_cmd分别有EngineStorer系列类和CmdStorer系列类：
   1. EngineStoreInterface（接口类）、继承于EngineStoreInterface接口的GDMAEngineStorer、BDEngineStorer等具体类、EngineStorerDecorator（装饰类接口）、继承于EngineStorerDecorator的VectorDumpEngineStorerDecorator等具体装饰类。
-  2. CmdStorerInterface（接口）、继承于接口的ConcretCmdStorer、StorerDecorator、VectorDumpStorerDecorator具体装饰类。
+  2. CmdStorerInterface（接口）、继承于接口的ConcreteCmdStorer、StorerDecorator、VectorDumpStorerDecorator具体装饰类。
 关于类之间的关系与逻辑：
-  1. 使用单例设计模式，在store_cmd中只存在一个ConcretCmdStorer类，该类中会存所有EngineStorer的类，当调用不同的engine时，会调用不同EengineStorer，如下代码。
+  1. 使用单例设计模式，在store_cmd中只存在一个ConcreteCmdStorer类，该类中会存所有EngineStorer的类，当调用不同的engine时，会调用不同EngineStorer，如下代码。
 
     .. code-block:: cpp
 

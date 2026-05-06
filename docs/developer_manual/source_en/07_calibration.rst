@@ -83,7 +83,7 @@ Calibration data screening and preprocessing
 Screening Principles
 ~~~~~~~~~~~~~~~~~~~~
 
-Selecting about 100 to 200 images covering each typical scene style in the training set for calibration. Using a approach similar to training data cleaning to exclude some anomalous samples.
+Selecting about 100 to 200 images covering each typical scene style in the training set for calibration. Using an approach similar to training data cleaning to exclude some anomalous samples.
 
 
 Input format and preprocessing
@@ -220,11 +220,11 @@ During the calibration process, to further enhance the precision of the quantize
 sq Algorithm
 ~~~~~~~~~~~~~~~~~~~~~~
 The SmoothQuant algorithm implemented in TPU-MLIR is based on the paper "SmoothQuant: Accurate and Efficient Post-Training Quantisation for Large Language Models".
-This method improves the accuracy of the quantised model by smoothly assigning the tensor scales of the model and adjusting the range of inputs and weights of the model to a more suitable range for quantization, thus improving the accuracy of the quantised model.
-It solves the problem of accuracy degradation of large-scale pre-trained models (e.g., language models and visual models) during the quantisation process.
+This method improves the accuracy of the quantized model by smoothly assigning the tensor scales of the model and adjusting the range of inputs and weights of the model to a more suitable range for quantization, thus improving the accuracy of the quantized model.
+It solves the problem of accuracy degradation of large-scale pre-trained models (e.g., language models and visual models) during the quantization process.
 
-SmoothQuant redistributes the range of activations and weights by adjusting the tensor ratio of the model, which makes the quantisation process more stable.
-Specifically, SmoothQuant introduces a smoothing factor before quantisation, which partially transfers the range of the activation values to the weights, adjusts the model weights with a mathematically equivalent transformation, thus reducing the quantisation error of the activation values. The technical principle is illustrated in the figure (:ref:`sq`).
+SmoothQuant redistributes the range of activations and weights by adjusting the tensor ratio of the model, which makes the quantization process more stable.
+Specifically, SmoothQuant introduces a smoothing factor before quantization, which partially transfers the range of the activation values to the weights, adjusts the model weights with a mathematically equivalent transformation, thus reducing the quantization error of the activation values. The technical principle is illustrated in the figure (:ref:`sq`).
 
 .. _sq:
 .. figure:: ../assets/sq.png
@@ -235,10 +235,10 @@ Specifically, SmoothQuant introduces a smoothing factor before quantisation, whi
 smc Algorithm
 ~~~~~~~~~~~~~~~~~~~~~~
 The softmax correction algorithm implemented in TPU-MLIR is based on the paper "Softmax Bias Correction for Quantized Generative Models".
-The probability distribution output by Softmax exhibits a long-tailed distribution, with the majority of probability values approaching zero. During quantisation, these values are truncated to zero. When the model input resolution is very high or the input sequence is very long, a large number of probability values are quantised to zero, leading to a decline in model accuracy.
+The probability distribution output by Softmax exhibits a long-tailed distribution, with the majority of probability values approaching zero. During quantization, these values are truncated to zero. When the model input resolution is very high or the input sequence is very long, a large number of probability values are quantized to zero, leading to a decline in model accuracy.
 
-The Softmax correction algorithm scales the Softmax output to maximise the probability distribution within the [0,1] interval, thereby reducing quantisation errors for probabilities near zero.
-Following attention calculation, the results are then inverse-scaled back to address the accuracy degradation caused by Softmax quantisation.
+The Softmax correction algorithm scales the Softmax output to maximize the probability distribution within the [0,1] interval, thereby reducing quantization errors for probabilities near zero.
+Following attention calculation, the results are then inverse-scaled back to address the accuracy degradation caused by Softmax quantization.
 
 The scaling factor is obtained by statistically estimating the maximum output probability of Softmax using a small number of calibrated samples. The following is its pseudocode implementation:
 
@@ -306,7 +306,7 @@ mix_search and fast_search Option
 search_qtable often consumes long compute time when model is large, and it has best result and is firstly recommended, but it requires large memory and long time too, mix_search and fast_search are provided to have fast try.
 
 In mix_search, from beginning of model, if the op doesn't meet min_layer_cos, it will be set float and check if model meets expected_cos, if amount of layers tried reach max_float_layers or 1/4 of total layers, search will end.
-Because the float model and quantized model may have different layer names due to optimization introduced in lowerring, the search is coarse, and this algorithm is legacy and may be used on simple models.
+Because the float model and quantized model may have different layer names due to optimization introduced in lowering, the search is coarse, and this algorithm is legacy and may be used on simple models.
 
 fast_search is based on search_qtable, and classify layers be their type to narrow search set, the inference number is decreased too, to make it faster in search.
 
@@ -367,7 +367,7 @@ In the docker environment of tpu-mlir, execute ``source envsetup.sh`` in the tpu
    * - --excepts
      - Names of network layers that need to be excluded from validation. Separated by comma
    * - --debug
-     - if open debug, immediate model file will keep; or will remove after conversion done
+     - if open debug, intermediate model file will keep; or will remove after conversion done
    * - --mlir
      - The output mlir file name (including path)
 
@@ -588,7 +588,7 @@ search_qtable:
    * - -o
      - output threshold table
    * - --calibration_table
-     - same as -o option, output threshold table, also as input prepared threshold table in mix_serach
+     - same as -o option, output threshold table, also as input prepared threshold table in mix_search
    * - --debug_cmd
      - debug command to specify calibration mode; “percentile9999” initialize the threshold via percentile function, “max” specifies the maximum of absolute value to be the threshold, “use_torch_observer_for_cali” adopts Torch observer for calibration. "mse" adopts Octav for calibration.
    * - --debug_log
@@ -607,7 +607,7 @@ The result is shown in the following figure (:ref:`yolov5s_cali`).
 visual tool introduction
 ------------------------------
 
-visual.py is an visualized net/tensor compare tool with UI in web browser. When quantized net encounters great accuracy decrease, this tool
+visual.py is a visualized net/tensor compare tool with UI in web browser. When quantized net encounters great accuracy decrease, this tool
 can be used to investigate the accuracy loss layer by layer. This tool is started in docker as an server listening to TCP port 10000 (default),
 and by input localhost:10000 in url of browser in host computer, the tool UI will be displayed in it, the port must be mapped to host in advance
 when starting the docker, and the tool must be start in the same directory where the mlir files located, start command is as following:

@@ -533,20 +533,20 @@ public:
     return false;
   }
 
-  // seperate: whether seperate with other op
-  RunMode getOpMode(Operation *op, bool &seperate) {
-    seperate = false;
+  // separate: whether separate with other op
+  RunMode getOpMode(Operation *op, bool &separate) {
+    separate = false;
     if (isa<GenericCpuOp>(op)) {
-      seperate = true;
+      separate = true;
       return RunMode::CPU;
     } else if (isa<tpu::IfOp>(op)) {
-      seperate = true;
+      separate = true;
       return RunMode::SWITCH;
     } else if (isa<tpu::YieldOp>(op)) {
-      seperate = true;
+      separate = true;
       return RunMode::UNKNOW;
     } else if (isa<tpu::LoopOp>(op)) {
-      seperate = true;
+      separate = true;
       return RunMode::LOOP;
     } else if (dynamic || force_dynamic_run(op)) {
       if (module::isCV184X()) {
@@ -1456,7 +1456,7 @@ public:
         }
       } else if ((*it)->type == RunMode::LOOP) {
         // insert two merge subnets to exiting(exiting->prehead: backedge) and
-        // exit postion
+        // exit position
         for (auto iit = it + 1; iit < subnets.end(); iit++) {
           if (subnet_have_terminator((*iit)->ops)) {
             // 1. the exiting in the loop-body
@@ -1485,7 +1485,7 @@ public:
           } else if ((*it)->next_index[1] ==
                      std::distance(subnets.begin(), iit)) {
             int insert_pos = std::distance(subnets.begin(), iit);
-            // 1. exit postion of the loop
+            // 1. exit position of the loop
             auto merged_subnet = subnets.insert(
                 iit, new subnet_basic_info(insert_pos, {insert_pos + 1},
                                            RunMode::MERGE));

@@ -612,7 +612,7 @@ class CycleCalculator;
 class dot_graph;
 class l2mem_alloc;
 class ILPTimeStep;
-class speical_layer_group_base;
+class special_layer_group_base;
 struct ilp_LgInfo {
   LgOptions options_;
   solver_strategy_type_t _cur_strategy = STRATEGY_NORMAL;
@@ -628,7 +628,7 @@ struct ilp_LgInfo {
   // Check if global conv is used as a split point.
   int group_cycle = 0;
   bool conv_cut_optimized = false;
-  std::shared_ptr<speical_layer_group_base> p_special_grp = nullptr;
+  std::shared_ptr<special_layer_group_base> p_special_grp = nullptr;
   std::map<Value, int, value_compare> value_load_to_l2m;
   std::map<Value, int, value_compare> value_store_to_l2m;
 
@@ -680,20 +680,20 @@ struct dag_subnet {
   std::vector<dag_subnet> sub_ops;
 };
 
-class speical_layer_group_base {
+class special_layer_group_base {
 public:
-  speical_layer_group_base() {}
-  virtual ~speical_layer_group_base() {}
+  special_layer_group_base() {}
+  virtual ~special_layer_group_base() {}
 
   virtual bool
   pattern_match_and_parser(Operation *start_op,
                            std::vector<Operation *> &subnet_ops) = 0;
-  virtual std::shared_ptr<speical_layer_group_base> clone() = 0;
+  virtual std::shared_ptr<special_layer_group_base> clone() = 0;
   virtual std::string name() = 0;
   virtual std::string brief() { return ""; }
   virtual bool convert_to_other_type(
       std::vector<Operation *> &sub_ops,
-      std::shared_ptr<speical_layer_group_base> &p_special_grp) = 0;
+      std::shared_ptr<special_layer_group_base> &p_special_grp) = 0;
 
   bool search_two_mmOp(Operation *start_op, Operation *&next_mmOp,
                        std::vector<Operation *> &subnet_ops);

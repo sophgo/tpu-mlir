@@ -329,7 +329,7 @@ static bool resize_to_conv_deconv(PatternRewriter &rewriter, top::InterpOp &op,
   // keep Dividend / Divisor for later non-divisable
   std::vector<std::pair<int, int>> maxInsertWAtOnce;
   std::vector<std::pair<int, int>> maxInsertHAtOnce;
-  // seperate Dividend, Divisor as scale to deal with float case
+  // separate Dividend, Divisor as scale to deal with float case
   // scale[0] as h, scale[1] for w
   // pair is Dividend / Divisor
   SmallVector<std::pair<int, int>, 2> scale = {{0, 0}, {0, 0}};
@@ -388,7 +388,7 @@ static bool resize_to_conv_deconv(PatternRewriter &rewriter, top::InterpOp &op,
     std::tie(maxInsertWAtOnce, maxFloatDividend) =
         getDivisors(ow - 1, floatDividend);
     if (!maxInsertWAtOnce.size()) {
-      // TODO: seperate all divisor
+      // TODO: separate all divisor
       std::vector<std::pair<int, int>> owDivisors;
       std::tie(owDivisors, maxFloatDividend) =
           getDivisors(ow - 1, 0, isInsInConv);
@@ -421,7 +421,7 @@ static bool resize_to_conv_deconv(PatternRewriter &rewriter, top::InterpOp &op,
   int is1x1Input = ih == 1 && ih == iw;
   if (is1x1Input && (!maxInsertHAtOnce.size() || !maxInsertWAtOnce.size())) {
     // deeplabv3_mobilenetv2 case
-    // 1x1->46x80 case that 46 seperate 2x23 and the limitation of dilate
+    // 1x1->46x80 case that 46 separate 2x23 and the limitation of dilate
     // is 15, replace with upsample case(tiu copy)
     std::vector<NamedAttribute> attrs;
     std::vector<Value> operands;

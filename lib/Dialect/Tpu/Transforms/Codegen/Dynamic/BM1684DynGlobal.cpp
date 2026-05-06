@@ -26,7 +26,7 @@ void *call_global_layer_ir_write(FW_LAYER_TYPE_T fw_layer_type, void *p_ir_addr,
               << " when writing global layer buffer" << std::endl;             \
     llvm_unreachable("fw_layer_type error");                                   \
   }
-// Function name is different to layer paramter type
+// Function name is different to layer parameter type
 #define GLB_IRBUF_CASE_BY_PARAM(TYPE, name, param_t)                           \
   }                                                                            \
   else if (fw_layer_type == FW_BMNET_##TYPE) {                                 \

@@ -75,7 +75,7 @@ class BMProfileParserPerfAI(BMProfileParser):
         # 2. write file
         for idx, (bd, gdma, bd_cmd, gdma_cmd) in enumerate(
                 zip(self.bd_monitor, self.gdma_monitor, self.bd_cmd, self.gdma_cmd)):
-            # wirte gdma
+            # write gdma
             with open(dma_file.format(idx), 'w') as f:
                 f.write("__CHIP_ARCH_ARGS__\n")
                 f.write("".join(f"\t{key}: {value}\n"
@@ -87,7 +87,7 @@ class BMProfileParserPerfAI(BMProfileParser):
                     dma_info["Global Idx"] = gidx
                     f.write("__TDMA_REG_INFO__\n")
                     f.write("".join(f"\t{key}: {value}\n" for key, value in dma_info.items()))
-            # wirte tiu
+            # write tiu
             with open(tiu_file.format(idx), 'w') as f:
                 f.write("__CHIP_ARCH_ARGS__\n")
                 f.write("".join(f"\t{key}: {value}\n"

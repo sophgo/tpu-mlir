@@ -402,7 +402,7 @@ search_qtable
 
 
 
-步骤2: 生成calibartion table
+步骤2: 生成calibration table
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 这里我们采用 ``mse`` 方法进行校准。
@@ -646,10 +646,10 @@ INT8对称量化模型：
     INFO:root:transformer model: False, all search layer number: 116
     INFO:root:Global metrics layer is : None
     INFO:root:start to handle layer: input0.1, type: top.Conv
-    INFO:root:adjust layer input0.1 th, with method KL, and threshlod 9.442267236793155
+    INFO:root:adjust layer input0.1 th, with method KL, and threshold 9.442267236793155
     INFO:root:run int8 mode: mobilenet_v2.mlir
     INFO:root:outputs_cos_los = 0.0006842551513905892
-    INFO:root:adjust layer input0.1 th, with method MSE, and threshlod 9.7417731
+    INFO:root:adjust layer input0.1 th, with method MSE, and threshold 9.7417731
     INFO:root:run int8 mode: mobilenet_v2.mlir
     INFO:root:outputs_cos_los = 0.0007242344141149548
     INFO:root:layer input0.1, layer type is top.Conv, best_th = 9.442267236793155, best_method = KL, best_cos_loss = 0.0006842551513905892

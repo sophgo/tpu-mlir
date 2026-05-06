@@ -4034,7 +4034,7 @@ Parameters
 
 Returns
 """""""""""""""""""""""""""""""""
-Returns two Tensors: data type of the first is the same of that of input, and data type of the second is is the same of that of key.
+Returns two Tensors: data type of the first is the same of that of input, and data type of the second is the same of that of key.
 
 Processor Support
 """""""""""""""""""""""""""""""""
@@ -4827,7 +4827,7 @@ Explanation of parameters
 * mean: A Tensor type, representing the mean value of the input, shape is [c].
 * variance: A Tensor type, representing the variance value of the input, shape is [c].
 * gamma: A Tensor type or None, representing the scaling after batch normalization. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 1 Tensor.
-* beta: A Tensor type or None, representing he translation after batch normalization and scaling. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 0 Tensor.
+* beta: A Tensor type or None, representing the translation after batch normalization and scaling. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 0 Tensor.
 * epsilon: FLOAT type, The epsilon value to use to avoid division by zero.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 
@@ -4869,7 +4869,7 @@ Explanation of parameters
 
 * input: A Tensor type, representing the input Tensor.The dimension of input is not limited, if x is only 1 dimension, c is 1, otherwise c is equal to the shape[1] of x.
 * gamma: A Tensor type or None, representing the scaling after layer normalization. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 1 Tensor.
-* beta: A Tensor type or None, representing he translation after layer normalization and scaling. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 0 Tensor.
+* beta: A Tensor type or None, representing the translation after layer normalization and scaling. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 0 Tensor.
 * epsilon: FLOAT type, The epsilon value to use to avoid division by zero.
 * axis: int type, the first normalization dimension. If rank(X) is r, axis' allowed range is [-r, r). Negative value means counting dimensions from the back.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
@@ -4913,7 +4913,7 @@ Explanation of parameters
 
 * input: A Tensor type, representing the input Tensor.The dimension of input is not limited, if x is only 1 dimension, c is 1, otherwise c is equal to the shape[1] of x.
 * gamma: A Tensor type or None, representing the scaling after group normalization. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 1 Tensor.
-* beta: A Tensor type or None, representing he translation after group normalization and scaling. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 0 Tensor.
+* beta: A Tensor type or None, representing the translation after group normalization and scaling. If the value is not None, shape is required to be [c]. If None is used, shape[1] is equivalent to all 0 Tensor.
 * epsilon: FLOAT type, The epsilon value to use to avoid division by zero.
 * num_groups:int type, The number of groups of channels. It should be a divisor of the number of channels `C`.
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
@@ -5308,7 +5308,7 @@ ing value from the index tensor.
 Parameters
 """""""""""""""""""""""""""""""""
 * input: Tensor type, representing the input.
-* index: Tensor type, representing the the index tensor.
+* index: Tensor type, representing the index tensor.
 * axis: int, the dimension along which to perform the gather operation. Must be within [-rank(input), rank(input)-1].
 * out_name: A string or None, representing the name of the output Tensor. If set to None, the system will automatically generate a name internally.
 

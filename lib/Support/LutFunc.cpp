@@ -231,14 +231,14 @@ void bf16_gen_base_slope_table(float *base_table, float *slope_table,
 
 void bf16_lut_slope(float *input, float *output, int size, float *base_table,
                     float *slope_table, float range_start, float range_end) {
-  // interger index range
+  // integer index range
   // from 16(-8~8)->256(lut index size)
   float scale = BF16(256.0 / (range_end - range_start));
   float offset = BF16((range_end + range_start) / 2);
 
   for (int i = 0; i < size; ++i) {
     float rescale_bf16_input = bf16_mul(bf16_add(input[i], -offset), scale);
-    // get interger part
+    // get integer part
     int rescale_input_i8 = to_int8(rescale_bf16_input, ROUNDING_TOWARDS_ZERO);
     // get delta x (x - x0)
     float delta_x = BF16(rescale_bf16_input - rescale_input_i8);

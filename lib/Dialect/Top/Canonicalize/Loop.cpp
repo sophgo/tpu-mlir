@@ -190,7 +190,7 @@ private:
     Value newCounterValue = breakCondOp->getOperands()[0];
     Value ubValue;
     std::size_t compareConst = 1;
-    /* the rhs(upbound) can be transfered
+    /* the rhs(upbound) can be transferred
        by the loopOp operand */
     if (isa<top::CompareOp>(breakCondOp) &&
         !isDefinedByWeightOp(breakCondOp->getOperands()[1])) {
@@ -212,7 +212,7 @@ private:
     Value counterValue = addOp->getOperands()[0];
     Value stepValue;
     std::size_t addConst = 1;
-    /* steValue can be transfered to here by
+    /* steValue can be transferred to here by
        LoopOp's operand or aslo can be defined with WeightOp
        in current subgraph, it is defined by user */
     if (isa<top::AddOp>(newCounterValue.getDefiningOp()) &&

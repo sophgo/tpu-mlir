@@ -942,10 +942,10 @@ class TorchConverter(BaseConverter):
         self.addOperand(torch_node.name, new_op)
 
     def convert_expand_op(self, torch_node: TorchNode):
-        implict = False
+        implicit = False
         if torch_node.inputs[2] in self.const_val:
-            implict = self.const_val[torch_node.inputs[2]]
-        if implict:
+            implicit = self.const_val[torch_node.inputs[2]]
+        if implicit:
             logger.info('not handled')
         opI = self.getOp(torch_node.inputs[0])
         opS = self.getOp(torch_node.inputs[1])

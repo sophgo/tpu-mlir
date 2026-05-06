@@ -676,7 +676,7 @@ def bmodel_inference_combine(
         run_by_op:
     bool = False,  # enable to run_by_op, may cause timeout error when some OPs contain too many atomic cmds
         desire_op:
-    list = [],  # set ["A","B","C"] to only dump tensor A/B/C, dump all tensor as defalt
+    list = [],  # set ["A","B","C"] to only dump tensor A/B/C, dump all tensor as default
         is_soc: bool = False,  # soc mode ONLY support {reference_data_fn=xxx.npz, dump_file=True}
         using_memory_opt: bool = False,  # required when is_soc=True
         enable_soc_log: bool = False,  # required when is_soc=True
@@ -2772,7 +2772,7 @@ def qwen2_block_cache(hidden_states: Tensor,
     k_embed = Tensor(dtype=out_dtype, name=out_name + "_k_embed")
     TpuLang.insert_op("top.Add", inputs=[k_cos_mul, k_rotate_sin_mul], outputs=[k_embed])
 
-    # concate kv_cache
+    # concat kv_cache
     kv_concat_attr = {
         "axis": Attr(1, "int32"),
     }

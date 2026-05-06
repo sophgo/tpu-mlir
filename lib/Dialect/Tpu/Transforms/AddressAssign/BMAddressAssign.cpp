@@ -1409,7 +1409,7 @@ BMAddressAssign::getConcatOpLive(Operation *op,
 }
 
 uint32_t BMAddressAssign::getTensorGmemSize(Operation *op, int index,
-                                            int64_t aligment_) {
+                                            int64_t alignment_) {
   uint32_t size = Arch::get_gmem_bytes(op->getResult(index));
 
   // assign address for nnvlc
@@ -1442,9 +1442,9 @@ uint32_t BMAddressAssign::getTensorGmemSize(Operation *op, int index,
                                       align_up(max_racu_bytes, Arch::EU_BYTES));
   }
 
-  // pad to aligment_
-  if (size % aligment_) {
-    size = size + aligment_ - (size % aligment_);
+  // pad to alignment_
+  if (size % alignment_) {
+    size = size + alignment_ - (size % alignment_);
   }
   return size;
 }

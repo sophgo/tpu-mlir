@@ -122,7 +122,7 @@ Convolution
 
 对称量化时, Pad填入0, 上述推导中Zx和Zy皆为0
 
-在PerAxis(或称PerChannal)量化时, 会取Filter的每个OC做量化, 推导公式不变, 但是会有OC个Multiplier、rshift
+在PerAxis(或称PerChannel)量化时, 会取Filter的每个OC做量化, 推导公式不变, 但是会有OC个Multiplier、rshift
 
 
 InnerProduct

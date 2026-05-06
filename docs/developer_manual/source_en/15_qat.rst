@@ -1,4 +1,4 @@
-Quantzation aware training
+Quantization aware training
 ============================
 
 Basic Principles

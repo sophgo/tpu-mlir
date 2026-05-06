@@ -47,7 +47,7 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
     auto top_data = p.outputs[0];
 
     for (int i = 0; i < outer_dim; ++i) {
-      // find max value accross channel
+      // find max value across channel
       int c_offset = i * channel * inner_dim;
       memcpy(max_arr.data(), bottom_data + c_offset, inner_dim * sizeof(float));
       for (int j = 0; j < channel; ++j, c_offset += inner_dim) {

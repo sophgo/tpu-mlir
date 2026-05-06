@@ -222,8 +222,8 @@ class Runner:
     def cpu_processor(self):
         import pyruntime_bm
 
-        cpu_processer = pyruntime_bm.CpuLayer()
-        return cpu_processer
+        cpu_processor = pyruntime_bm.CpuLayer()
+        return cpu_processor
 
     def cpu_compute(self, command: CpuCmd, core_id=0):
         assert all([command.input_memref,

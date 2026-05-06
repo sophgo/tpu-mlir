@@ -109,7 +109,7 @@ void FindValidOpUntilMatMul(Operation *start_op,
   }
 }
 
-bool speical_layer_group_base::search_two_mmOp(
+bool special_layer_group_base::search_two_mmOp(
     Operation *start_op, Operation *&next_mmOp,
     std::vector<Operation *> &subnet_ops) {
   if (isa<tpu::MatMulOp>(start_op)) {
@@ -135,7 +135,7 @@ bool speical_layer_group_base::search_two_mmOp(
   return false;
 }
 
-void speical_layer_group_base::get_batch_size(shape_secs_t &shape_secs) {
+void special_layer_group_base::get_batch_size(shape_secs_t &shape_secs) {
   int64_t in_n, in_c, in_d, in_h, in_w;
   Operation *op = main_mm_op;
   llvm::errs() << "main_mm_op:" << op << '\n';
@@ -176,7 +176,7 @@ void speical_layer_group_base::get_batch_size(shape_secs_t &shape_secs) {
                << ", c:" << shape_secs.c << ", h:" << shape_secs.h << '\n';
 }
 
-bool speical_layer_group_base::update_shape_secs_for_ilp_group(
+bool special_layer_group_base::update_shape_secs_for_ilp_group(
     shape_secs_t &shape_secs, const shape_secs_t &max_shape_secs) {
   bool updated = false;
   if (shape_secs.n_slice_num == shape_secs.n) {
@@ -198,7 +198,7 @@ bool speical_layer_group_base::update_shape_secs_for_ilp_group(
   return updated;
 }
 
-void speical_layer_group_base::fill_slice_info(ilp_LgInfo &ilp_lg_info) {
+void special_layer_group_base::fill_slice_info(ilp_LgInfo &ilp_lg_info) {
   int64_t n, c, d, h, w;
   ilp_lg_info.tensor_infos.clear();
   ilp_lg_info.value_store_to_l2m.clear();
@@ -373,7 +373,7 @@ void speical_layer_group_base::fill_slice_info(ilp_LgInfo &ilp_lg_info) {
   }
 }
 
-bool speical_layer_group_base::inc_n_slice_num(int &n_slice_num,
+bool special_layer_group_base::inc_n_slice_num(int &n_slice_num,
                                                int max_n_slice_num) {
   if (map_n_slice_num_to_max_n.size() > 0) {
     if (n_slice_num < map_n_slice_num_to_max_n.rbegin()->first) {
@@ -395,7 +395,7 @@ bool speical_layer_group_base::inc_n_slice_num(int &n_slice_num,
   return false;
 }
 
-bool speical_layer_group_base::inc_slice_num(
+bool special_layer_group_base::inc_slice_num(
     Operation *op, int &n_slice_num, int &try_c_slice_num, int &try_h_slice_num,
     int max_n_slice_num, int max_c_slice_num, int max_h_slice_num,
     int old_target_secs, bool inc_c_slice) {
@@ -451,7 +451,7 @@ bool speical_layer_group_base::inc_slice_num(
   return true;
 }
 
-bool speical_layer_group_base::is_cut_h(Operation *op) {
+bool special_layer_group_base::is_cut_h(Operation *op) {
   if (name() == "single_matmul_group" || name() == "mlp_group" ||
       (name() == "attention_group" && isa<tpu::MatMulOp>(op) &&
        op == ops.back())) {
@@ -497,7 +497,7 @@ bool BfsCheckOutValue(Value value, std::vector<Operation *> &grp_ops) {
   return true;
 }
 
-bool speical_layer_group_base::check_group_valid() {
+bool special_layer_group_base::check_group_valid() {
   LgInfo lgInfo;
   lgInfo.group_ops.assign(ops.begin(), ops.end());
   lgInfo.update_group_io();
@@ -512,7 +512,7 @@ bool speical_layer_group_base::check_group_valid() {
   return valid;
 }
 
-int speical_layer_group_base::get_secs(Operation *op, int n_slice_num,
+int special_layer_group_base::get_secs(Operation *op, int n_slice_num,
                                        int c_slice_num, int h_slice_num) {
   int secs = 0;
   if (is_cut_h(op)) {
@@ -523,7 +523,7 @@ int speical_layer_group_base::get_secs(Operation *op, int n_slice_num,
   return secs;
 }
 
-int speical_layer_group_base::get_slice_max_n(int n, int slice_num) {
+int special_layer_group_base::get_slice_max_n(int n, int slice_num) {
   if (map_n_slice_num_to_max_n.size() > 0) {
     int pre_num = 0;
     for (auto itr : map_n_slice_num_to_max_n) {
@@ -537,7 +537,7 @@ int speical_layer_group_base::get_slice_max_n(int n, int slice_num) {
   return ceiling_func(n, slice_num);
 }
 
-int speical_layer_group_base::get_best_n_slice_num(int n,
+int special_layer_group_base::get_best_n_slice_num(int n,
                                                    int expect_slice_num) {
   if (map_n_slice_num_to_max_n.size() > 0) {
     int pre_num = 0;
@@ -557,7 +557,7 @@ int speical_layer_group_base::get_best_n_slice_num(int n,
   }
 }
 
-bool speical_layer_group_base::CalcMatMulGroupTpNum(ilp_LgInfo &lg_info,
+bool special_layer_group_base::CalcMatMulGroupTpNum(ilp_LgInfo &lg_info,
                                                     Operation *&failed_op,
                                                     int64_t core_num) {
   int64_t in_n, in_c, in_d, in_h, in_w, out_n, out_c, out_d, out_h, out_w;
@@ -952,9 +952,9 @@ static void CollectElementwiseOpAroundMatmul(
   }
 }
 
-class single_matmul_group : public speical_layer_group_base {
+class single_matmul_group : public special_layer_group_base {
 public:
-  virtual std::shared_ptr<speical_layer_group_base> clone() override {
+  virtual std::shared_ptr<special_layer_group_base> clone() override {
     return std::make_shared<single_matmul_group>();
   }
 
@@ -1094,7 +1094,7 @@ public:
   virtual std::string brief() override { return "mlp in transformer block"; }
   virtual bool convert_to_other_type(
       std::vector<Operation *> &sub_ops,
-      std::shared_ptr<speical_layer_group_base> &p_special_grp) override {
+      std::shared_ptr<special_layer_group_base> &p_special_grp) override {
     if (!grp_is_valid(sub_ops)) {
       return false;
     }
@@ -1109,9 +1109,9 @@ public:
   }
 };
 
-class mlp_group : public speical_layer_group_base {
+class mlp_group : public special_layer_group_base {
 public:
-  virtual std::shared_ptr<speical_layer_group_base> clone() override {
+  virtual std::shared_ptr<special_layer_group_base> clone() override {
     return std::make_shared<mlp_group>();
   }
 
@@ -1248,7 +1248,7 @@ public:
 
   virtual bool convert_to_other_type(
       std::vector<Operation *> &sub_ops,
-      std::shared_ptr<speical_layer_group_base> &p_special_grp) override {
+      std::shared_ptr<special_layer_group_base> &p_special_grp) override {
     if (!grp_is_valid(sub_ops)) {
       return false;
     }
@@ -1263,9 +1263,9 @@ public:
   }
 };
 
-class attention_group : public speical_layer_group_base {
+class attention_group : public special_layer_group_base {
 public:
-  virtual std::shared_ptr<speical_layer_group_base> clone() override {
+  virtual std::shared_ptr<special_layer_group_base> clone() override {
     return std::make_shared<attention_group>();
   }
 
@@ -1291,7 +1291,7 @@ public:
                                     int64_t core_num) override {
     auto mm_op = dyn_cast<tpu::MatMulOp>(main_mm_op);
     if (mm_op && !mm_op.getHdimIsBatch()) {
-      return speical_layer_group_base::CalcMatMulGroupTpNum(lg_info, failed_op,
+      return special_layer_group_base::CalcMatMulGroupTpNum(lg_info, failed_op,
                                                             core_num);
     }
     hdim_is_batch = true;
@@ -1541,7 +1541,7 @@ public:
 
   virtual bool convert_to_other_type(
       std::vector<Operation *> &sub_ops,
-      std::shared_ptr<speical_layer_group_base> &p_special_grp) override {
+      std::shared_ptr<special_layer_group_base> &p_special_grp) override {
     if (!grp_is_valid(sub_ops)) {
       return false;
     }
@@ -1577,7 +1577,7 @@ public:
 };
 
 void GroupOps::SearchGroup(std::vector<dag_subnet> &dag_subnets,
-                           std::shared_ptr<speical_layer_group_base> grp_ptr) {
+                           std::shared_ptr<special_layer_group_base> grp_ptr) {
   while (true) {
     bool all_checked = true;
     bool dag_subnets_update = false;

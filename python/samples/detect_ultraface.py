@@ -176,7 +176,7 @@ def iou_of(boxes0, boxes1, eps=1e-5):
 
 def hard_nms(box_scores, iou_threshold, top_k=-1, candidate_size=200):
     """
-    Perform hard non-maximum-supression to filter out boxes with iou greater
+    Perform hard non-maximum-suppression to filter out boxes with iou greater
     than threshold
     Args:
         box_scores (N, 5): boxes in corner-form and probabilities.

@@ -80,7 +80,7 @@ protected:
                         std::vector<int64_t> ncdhw_idx, group_type_t group_type,
                         bool can_merge);
   void SearchGroup(std::vector<dag_subnet> &dag_subnets,
-                   std::shared_ptr<speical_layer_group_base> grp_ptr);
+                   std::shared_ptr<special_layer_group_base> grp_ptr);
   void findSpecialGroup(llvm::SetVector<Operation *> &subnet_ops);
 
 protected:
