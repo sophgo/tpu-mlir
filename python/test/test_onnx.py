@@ -181,6 +181,7 @@ class ONNX_IR_TESTER(object):
             "Range":        (self.test_Range,         N, Y, Y, N, Y, Y, N),
             "Resize":       (self.test_Resize,        Y, Y, Y, Y, Y, Y, Y),
             "Resize2":      (self.test_Resize2,       N, Y, Y, Y, Y, Y, Y),
+            "ResizeCSplit": (self.test_ResizeCSplit, N, Y, Y, N, Y, Y, Y),
             "Reshape":      (self.test_Reshape,       Y, Y, Y, N, Y, Y, Y),
             "Reduce":       (self.test_Reduce,        Y, Y, Y, Y, Y, Y, Y),
             "Reduce2":      (self.test_Reduce2,       Y, Y, Y, Y, Y, Y, Y),
@@ -2202,6 +2203,29 @@ class ONNX_IR_TESTER(object):
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([roi_def, scales_def])
         self.onnx_and_test(graph_def)
+
+    def test_ResizeCSplit(self, case_name):
+        input_shape = [1, 1920, 64, 64]
+        output_shape = [1, 1920, 256, 256]
+        scales_shape = [4]
+        input_data = np.linspace(-1.0, 1.0, num=np.prod(input_shape),
+                                 dtype=np.float32).reshape(input_shape)
+
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            <float[0] roi, float%s scales>
+            {
+                output = Resize<mode="linear",nearest_mode="floor",coordinate_transformation_mode="align_corners">(input, roi, scales)
+            }
+            """ % (case_name, input_shape, output_shape, scales_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
+        roi = helper.make_tensor('roi', TensorProto.FLOAT, [0], np.array([], dtype=np.float32))
+        scales = helper.make_tensor('scales', TensorProto.FLOAT, scales_shape,
+                                    np.array([1, 1, 4, 4], dtype=np.float32))
+        graph_def.initializer.extend([roi, scales])
+        support_modes = ['bf16'] if self.chip.startswith('cv18') else ['f16']
+        self.onnx_and_test(graph_def, input_data={'input': input_data}, support_modes=support_modes)
 
     def test_Flatten(self, case_name):
         input_shape = [2, 3, 4, 5]
