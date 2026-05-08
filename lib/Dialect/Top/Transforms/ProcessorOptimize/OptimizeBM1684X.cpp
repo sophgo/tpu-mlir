@@ -1724,18 +1724,12 @@ protected:
           return failure();
         }
       }
+
       auto newRequantIntOp = rewriter.create<top::RequantIntOp>(
           NameLoc::get(rewriter.getStringAttr(
               module::getName(reshapeOp.getInput()).str() + "_requanted")),
           module::getTypeLike(requantIntOp.getOutput(), reshape_ishape),
           reshapeOp.getInput(), requantIntOp->getAttrs());
-
-      // requantInt has differnt logic for rq_axis = -1 and rq_axis != -1
-      auto raw_shift = module::getI64Array(requantIntOp.getRshift());
-      for (size_t idx = 0; idx < raw_shift->size(); ++idx) {
-        raw_shift->at(idx) = -raw_shift->at(idx);
-      }
-      newRequantIntOp->setAttr("rshift", rewriter.getI64ArrayAttr(*raw_shift));
 
       auto newReshapeOp = rewriter.create<top::ReshapeOp>(
           requantIntOp.getLoc(), requantIntOp.getOutput().getType(),

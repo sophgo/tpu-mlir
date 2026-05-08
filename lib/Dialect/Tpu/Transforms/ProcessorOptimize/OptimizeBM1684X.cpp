@@ -4597,7 +4597,13 @@ public:
         new_multi0[i] = quantData[i * 2]; // multi
       }
     }
-    new_rshift0[0] = quantData[1];
+
+    if (module::isBM1688()) {
+      int16_t packed_shift = static_cast<int16_t>(quantData[1] & 0xffff);
+      new_rshift0[0] = -static_cast<int64_t>(packed_shift);
+    } else {
+      new_rshift0[0] = -quantData[1];
+    }
 
     rewriter.setInsertionPoint(op);
     std::vector<int32_t> reshaped_multi0(channels);
