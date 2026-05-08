@@ -13,8 +13,6 @@ source ./envsetup.sh        # exports PROJECT_ROOT, BUILD_PATH, INSTALL_PATH, RE
 
 `envsetup.sh` puts `python/tools`, `python/utils`, `python/test`, `python/samples` on `PATH`, so scripts like `model_transform.py`, `model_deploy.py`, `model_runner.py`, `run_calibration.py`, `llm_convert.py`, `test_onnx.py` are run by name.
 
-CMODEL vs. real chip: by default `USING_CMODEL=True` and `LD_LIBRARY_PATH` points at the cmodel libs. Switch with the shell helpers `use_cmodel`, `use_chip`, `use_chip_cmodel` defined in `envsetup.sh`.
-
 ## Build
 
 ```bash
@@ -23,28 +21,13 @@ CMODEL vs. real chip: by default `USING_CMODEL=True` and `LD_LIBRARY_PATH` point
 ./build.sh RELEASE CUDA # enable -DTPUMLIR_USE_CUDA=ON
 ```
 
-The build uses Ninja + clang + lld, installs into `$INSTALL_PATH` (default `./install`), then builds `passes_json_files`, `builder_python`, `install_passes_files` targets and `lib/PplBackend/build.sh`. To iterate quickly without re-running CMake:
-
-```bash
-cmake --build $BUILD_PATH --target install -j$(nproc)
-cmake --build $BUILD_PATH --target check-tpumlir   # lit + unit tests
-```
-
-Set `ENABLE_COVERAGE=True` (or call `enable_coverage`) before `./build.sh` to build with coverage instrumentation.
+Normally use `DEBUG` is recommended for development.
 
 ## Tests
 
 There are three layers of tests; run the relevant one — there is no single "run all" command for routine work.
 
-1. **Lit / C++ unit tests** (fast, run after every compiler change):
-   ```bash
-   cmake --build $BUILD_PATH --target check-tpumlir
-   # or directly:
-   $BUILD_PATH/bin/llvm-lit -sv $BUILD_PATH/test
-   ```
-   Lit cases live under `test/` (Dialect, Transforms, Linalg, TDB, Unit). C++ gtests under `unittests/`.
-
-2. **Python op / model regression** via `regression/main_entry.py`:
+1. **Python op / model regression** via `regression/main_entry.py`:
    ```bash
    # full sets used by CI:
    regression/run.sh op       # torch op set + custom layer rebuild
@@ -54,7 +37,7 @@ There are three layers of tests; run the relevant one — there is no single "ru
    regression/main_entry.py --test_type basic --test_set onnx torch script model
    ```
 
-3. **Single op / model case** — run the underlying `test_*.py` directly (they are on `PATH`):
+2. **Single op / model case** — run the underlying `test_*.py` directly (they are on `PATH`):
    ```bash
    test_onnx.py   --case Conv2d   --chip bm1684x
    test_torch.py  --case LayerNorm --chip bm1688

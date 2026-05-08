@@ -1640,6 +1640,7 @@ typedef struct flash_attention_common_spec {
   int hasmask;
   bool high_precision;
   bool keep_dim;
+  int mask_size;
 } flash_attention_common_spec_t;
 
 typedef struct flash_attention_global_spec {

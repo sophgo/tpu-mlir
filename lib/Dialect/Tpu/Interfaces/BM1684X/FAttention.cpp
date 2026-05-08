@@ -21,8 +21,6 @@ void tpu::FAttentionOp::codegen_global_bm1684x() {
 
   flash_attention_global_spec_t param = {0};
   auto &common = param.common;
-  // get_param(op, common);
-  // common.num_core = module::getCoreNum();
   common.batch = getBatch();
   common.q_head = getQHead();
   common.kv_head = getKvHead();
@@ -33,15 +31,21 @@ void tpu::FAttentionOp::codegen_global_bm1684x() {
   common.hasmask = !module::isNone(getMask());
   common.high_precision = module::isHighPrecision();
   common.keep_dim = getKeepDims();
+  common.mask_size = getMaskSize();
 
   BM168x::call_ppl_global_func("api_fattention_global", &param, sizeof(param),
                                input_spec->data(), output_spec->data());
 }
 
 int64_t tpu::FAttentionOp::get_fw_type_bm1684x() {
-  if (module::isHighPrecision())
+  int mask_size = getMaskSize();
+  if (mask_size != 0) {
+    return PPL_FW_FATTENTION_PREFILL;
+  } else if (module::isHighPrecision()) {
     return PPL_FW_FLASH_ATTENTION_HEIGH_PRECISION;
-  return PPL_FW_FLASH_ATTENTION;
+  } else {
+    return PPL_FW_FLASH_ATTENTION;
+  }
 }
 
 // ======================================
@@ -58,6 +62,13 @@ int64_t tpu::FAttentionOp::dyn_codegen_global_bm1684x(void *buffer) {
   flash_attention_global_spec_t param = {0};
   auto &common = param.common;
   common.high_precision = module::isHighPrecision();
+  // These fields select the kernel path inside api_dyn_fattention_global and
+  // thus the size of the param struct it produces. They must agree between
+  // the size-query call (buffer==nullptr) and the actual write call
+  // (buffer!=nullptr), otherwise `expect_len != wrote` in the dynamic IR
+  // writer. Set them unconditionally.
+  common.hasmask = !module::isNone(getMask());
+  common.mask_size = getMaskSize();
   if (buffer) {
     // get_param(op, common);
     common.batch = getBatch();
@@ -67,7 +78,6 @@ int64_t tpu::FAttentionOp::dyn_codegen_global_bm1684x(void *buffer) {
     common.mk = getMk();
     common.dim = getDim();
     common.scale = getScale().convertToDouble();
-    common.hasmask = !module::isNone(getMask());
     common.keep_dim = getKeepDims();
   }
   return BM168x::call_ppl_dyn_func("api_dyn_fattention_global", &param,

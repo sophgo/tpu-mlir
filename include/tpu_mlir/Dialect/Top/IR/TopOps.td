@@ -2266,7 +2266,7 @@ def Top_FAttentionOp : Top_Op<"FAttention"> {
   let description = [{
     Performs a two dimensional matrix multiplication. This allows both inputs to
     be activations, rather than reserving weights as an attribute in the
-    FULLY_CONNECTED operator.
+    FULLY_CONNECTED operator. If mask_size is 0, means it's full mask; or it's a small mask with size [mask_size, mask_size]
   }];
 
   let arguments = (ins
@@ -2282,7 +2282,8 @@ def Top_FAttentionOp : Top_Op<"FAttention"> {
     I64Attr:$dim,
     I64Attr:$mq,
     I64Attr:$mk,
-    DefaultValuedAttr<BoolAttr, "true">:$keep_dims
+    DefaultValuedAttr<BoolAttr, "true">:$keep_dims,
+    DefaultValuedAttr<SI32Attr, "0">:$mask_size
   );
 
   let results = (outs AnyTensor:$output);

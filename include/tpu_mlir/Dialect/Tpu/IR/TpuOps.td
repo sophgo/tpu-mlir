@@ -404,6 +404,7 @@ def Tpu_BufferType : I32EnumAttr<"BufferType",
 }
 
 def Tpu_BufferTypeAttr : EnumAttr<Tpu_Dialect, Tpu_BufferType, "buffer_type">;
+def FAttentionAttr : AnyStrAttrOf<["Normal", "MaskInner", "MaskNone"]>;
 
 //===----------------------------------------------------------------------===//
 // Tpu Types.
@@ -2780,6 +2781,7 @@ def Tpu_FAttentionOp : Tpu_Op<"FAttention", [
     I64Attr:$mq,
     I64Attr:$mk,
     DefaultValuedAttr<BoolAttr, "true">:$keep_dims,
+    DefaultValuedAttr<SI32Attr, "0">:$mask_size,
     OptionalAttr<BoolAttr>:$multicore
   );
 

@@ -57,8 +57,6 @@ export EXTRA_CONFIG="-DDEBUG=OFF -DUSING_FW_DEBUG=OFF" && rebuild_test sgdnn
 cp build/firmware_core/libcmodel_firmware.a  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_bm1690e.a
 unset EXTRA_CONFIG && rebuild_firmware
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690e_kernel_module.a
-# only build ppl once when all processor backend update
-/workspace/tpu-mlir/lib/PplBackend/build.sh
 
 #cv184x sha256: 7e9348bef687b763adaa9cb32ed17ad86f571d0f
 cd TPU1686
@@ -99,6 +97,9 @@ cp build_runtime/firmware_core/libcmodel_firmware.a  /workspace/tpu-mlir/third_p
 rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x2_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x2_kernel_module.a
+
+# only build ppl once when all processor backend update
+/workspace/tpu-mlir/lib/PplBackend/build.sh
 
 ```
 

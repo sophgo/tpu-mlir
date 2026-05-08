@@ -35,6 +35,7 @@ def deploy_case_bmodel(case_name: str,
                        dynamic: bool = False,
                        rvti: bool = False,
                        disable_lg: bool = False,
+                       disable_hp: bool = False,
                        no_check: bool = False) -> None:
     """
     Run `model_deploy.py` for a single case/chip/mode.
@@ -57,7 +58,7 @@ def deploy_case_bmodel(case_name: str,
         test_args = f"--test_input {case_name}_input.npz --tolerance {cos_tol},{euclidean_tol} {test_reference_arg}"
     deploy_cmd = [
         f"model_deploy.py --mlir {case_name}.mlir", f"--chip {chip}", f"--model {bmodel_name}",
-        test_args, f"--quantize {mode.upper()}", f"--num_core {num_core}", "--high_precision"
+        test_args, f"--quantize {mode.upper()}", f"--num_core {num_core}"
     ]
     if debug:
         deploy_cmd.append("--debug")
@@ -67,6 +68,8 @@ def deploy_case_bmodel(case_name: str,
         deploy_cmd.append("--rvti")
     if disable_lg:
         deploy_cmd.append("--disable_layer_group")
+    if not disable_hp:
+        deploy_cmd.append("--high_precision")
     deploy_cmd.append("--disable_gdma_check")
     deploy_cmd = " ".join(deploy_cmd)
     print(deploy_cmd)
@@ -146,6 +149,7 @@ class MLIR_IR_TESTER(object):
             "error0": (self.test_error0, Y, Y),
             "insert": (self.test_insert, Y, Y),
             "fattention": (self.test_fattention, Y, Y),
+            "fattention_prefill": (self.test_fattention_prefill, Y, Y),
             "slice": (self.test_slice, Y, Y),
             "a16matmul": (self.test_a16matmul, Y, Y),
             "chunk_gated_delta_rule": (self.test_chunk_gated_delta_rule, Y, Y),
@@ -163,6 +167,7 @@ class MLIR_IR_TESTER(object):
         self.dynamic = args.dynamic
         self.rvti = args.rvti
         self.disable_lg = args.disable_lg
+        self.disable_hp = args.disable_hp
         self.no_check = args.no_check
         if self.chip not in SUPPORTED_CHIPS:
             raise ValueError(f"Unsupported chip: {self.chip}. Supported: {SUPPORTED_CHIPS}")
@@ -402,6 +407,7 @@ class MLIR_IR_TESTER(object):
                                    num_core=self.num_core,
                                    rvti=self.rvti,
                                    disable_lg=self.disable_lg,
+                                   disable_hp=self.disable_hp,
                                    no_check=self.no_check)
             except Exception as e:
                 # print(f"[Error] Mode {mode} failed for {case_name}: {e}")
@@ -585,12 +591,14 @@ class MLIR_IR_TESTER(object):
 
     def test_fattention(self, case_name):
         """Test case fattention: Fused attention with multiple inputs/outputs."""
-        S = 64
+        S = 1024
         D = 128
+        Q_HEAD = 16
+        KV_HEAD = 8
         input_shapes = [
-            [1, S, 16, D],  # Q
-            [1, S, 2, D],  # K
-            [1, S, 2, D],  # V
+            [1, S, Q_HEAD, D],  # Q
+            [1, S, KV_HEAD, D],  # K
+            [1, S, KV_HEAD, D],  # V
             [1, 1, S, S],
         ]
         weight_shapes = [
@@ -599,7 +607,7 @@ class MLIR_IR_TESTER(object):
             [1, 1, 1, D],  # weight2
         ]
         output_shapes = [
-            [1, S, 16, D],  # out0
+            [1, S, Q_HEAD, D],  # out0
         ]
 
         # Create MLIR importer
@@ -633,8 +641,8 @@ class MLIR_IR_TESTER(object):
                               in3_op,
                               block_mlir.none_op,
                               batch=1,
-                              q_head=16,
-                              kv_head=2,
+                              q_head=Q_HEAD,
+                              kv_head=KV_HEAD,
                               dim=D,
                               scale=1 / (D**0.5),
                               mq=S,
@@ -653,6 +661,99 @@ class MLIR_IR_TESTER(object):
                                  weight_shapes,
                                  input_descs=[self.Desc('float32', -5, 5) for _ in input_shapes],
                                  weight_descs=None)
+
+        # Deploy for each quantization mode
+        self._deploy_test_case(case_name)
+
+    def test_fattention_prefill(self, case_name):
+        """Test case fattention prefill: Fused attention with multiple inputs/outputs."""
+        QS = 1024
+        KS = 1024
+        D = 128
+        MASK_SIZE = 256
+        Q_HEAD = 16
+        KV_HEAD = 8
+        input_shapes = [
+            [1, QS, Q_HEAD, D],  # Q
+            [1, KS, KV_HEAD, D],  # K
+            [1, KS, KV_HEAD, D],  # V
+            [MASK_SIZE, MASK_SIZE],
+        ]
+        weight_shapes = [
+            [1, 1, 1, D],  # weight0
+            [1, 1, 1, D],  # weight1
+            [1, 1, 1, D],  # weight2
+        ]
+        output_shapes = [
+            [1, QS, Q_HEAD, D],  # out0
+        ]
+
+        # Create MLIR importer
+        block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
+            case_name, input_shapes, weight_shapes, output_shapes, ["F32", "F32", "F32", "F32"])
+
+        in0_op, in1_op, in2_op, in3_op = input_ops
+        q_op = top.RMSNormOp(self._T(block_mlir, input_shapes[0]),
+                             in0_op,
+                             weight_ops[0],
+                             eps=1e-6,
+                             loc=self._L(block_mlir, "rmsnorm0"),
+                             ip=ip).output
+        k_op = top.RMSNormOp(self._T(block_mlir, input_shapes[0]),
+                             in1_op,
+                             weight_ops[1],
+                             eps=1e-6,
+                             loc=self._L(block_mlir, "rmsnorm1"),
+                             ip=ip).output
+        v_op = top.RMSNormOp(self._T(block_mlir, input_shapes[0]),
+                             in2_op,
+                             weight_ops[2],
+                             eps=1e-6,
+                             loc=self._L(block_mlir, "rmsnorm2"),
+                             ip=ip).output
+
+        op = top.FAttentionOp(self._T(block_mlir, output_shapes[0]),
+                              q_op,
+                              k_op,
+                              v_op,
+                              in3_op,
+                              block_mlir.none_op,
+                              batch=1,
+                              q_head=Q_HEAD,
+                              kv_head=KV_HEAD,
+                              dim=D,
+                              scale=1 / (D**0.5),
+                              mq=QS,
+                              mk=KS,
+                              keep_dims=True,
+                              mask_size=MASK_SIZE,
+                              loc=self._L(block_mlir, "fattention"),
+                              ip=ip).output
+
+        # Create return operation
+        block_mlir.create_return_op([op])
+
+        # Generate input data with appropriate ranges
+        tril_mask = np.triu(np.ones((MASK_SIZE, MASK_SIZE), dtype=np.float32), k=1)
+        inputs = {
+            "in0": rand_data(input_shapes[0], 'float32', -1, 1),  # query
+            "in1": rand_data(input_shapes[1], 'float32', -1, 1),  # key
+            "in2": rand_data(input_shapes[2], 'float32', -1, 1),  # value
+            "in3": tril_mask * (-10000.0),  # mask
+        }
+        weights = {
+            "weight0": rand_data(weight_shapes[0], 'float32', -1, 1),
+            "weight1": rand_data(weight_shapes[1], 'float32', -1, 1),
+            "weight2": rand_data(weight_shapes[2], 'float32', -1, 1),
+        }
+
+        np.savez(f"{case_name}_top_f32_all_origin_weight.npz", **weights)
+        if not self.no_check:
+            np.savez(f"{case_name}_input.npz", **inputs)
+
+        mlir_txt = block_mlir.print_module()
+        with open(f"{case_name}.mlir", "w") as f:
+            f.write(mlir_txt)
 
         # Deploy for each quantization mode
         self._deploy_test_case(case_name)
@@ -1008,6 +1109,7 @@ def main():
     parser.add_argument("--rvti", action="store_true", help='enable rvti, only for bm1684x2 and bm1690e')
     parser.add_argument("--no_check", action="store_true", help='do not check result, only run deploy')
     parser.add_argument("--disable_lg", action="store_true", help='disable layergroup')
+    parser.add_argument("--disable_hp", action="store_true", help='disable high precision')
     # yapf: enable
     args = parser.parse_args()
     tester = MLIR_IR_TESTER(args)

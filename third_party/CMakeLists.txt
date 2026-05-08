@@ -25,13 +25,9 @@ install(FILES nntoolchain/lib/libbackend_bm1684.so
               nntoolchain/lib/libcpuop.so.1.0.0
               nntoolchain/lib/libbm1684x_kernel_module.a
               nntoolchain/lib/libbmtpulv60_kernel_module.a
-              # nntoolchain/lib/libbm1690_kernel_module.so
               nntoolchain/lib/libbm1690_kernel_module.a
-              # nntoolchain/lib/libcv184x_kernel_module.so
               # nntoolchain/lib/libcv184x_kernel_module.a
-              nntoolchain/lib/libbm1684x2_kernel_module.so
               nntoolchain/lib/libbm1684x2_kernel_module.a
-              nntoolchain/lib/libbm1690e_kernel_module.so
               nntoolchain/lib/libbm1690e_kernel_module.a
               nntoolchain/lib/libsgtpuv8_kernel_module.so
               nntoolchain/lib/libsgtpuv8_kernel_module.a
@@ -39,7 +35,6 @@ install(FILES nntoolchain/lib/libbackend_bm1684.so
               nntoolchain/lib/libmodel_combine.so
               nntoolchain/lib/libtpuv7_rt.so
               nntoolchain/lib/libtpuv7_modelrt.so
-              # nntoolchain/lib/libtpuv7_emulator.so
               nntoolchain/lib/libcdm_daemon_emulator.so
               nntoolchain/lib/libtpuv7_scalar_emulator.so
               or-tools/lib/libortools.so
@@ -62,12 +57,14 @@ install(FILES nntoolchain/lib/libbackend_bm1684.so
               nntoolchain/ppl/libtpuv7.1rv_emulator.so
               # device libs
               nntoolchain/ppl/libbm1684x_kernel_module.so
+              nntoolchain/ppl/libbm1684x2_kernel_module.so
               nntoolchain/ppl/libbmtpulv60_kernel_module.so
               nntoolchain/ppl/libbm1690_kernel_module.so
               nntoolchain/ppl/libbm1690e_kernel_module.so
               nntoolchain/ppl/libbm1690erv_kernel_module.so
               # dyn host libs
               nntoolchain/ppl/libppl_dyn_host_bm1684x.so
+              nntoolchain/ppl/libppl_dyn_host_bm1684x2.so
               nntoolchain/ppl/libppl_dyn_host_bm1688.so
               nntoolchain/ppl/libppl_dyn_host_bm1690.so
               nntoolchain/ppl/libppl_dyn_host_bm1690e.so

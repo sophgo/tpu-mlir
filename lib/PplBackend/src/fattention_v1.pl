@@ -11,15 +11,21 @@
 #include "ppl_wrapper_func.h"
 using namespace ppl;
 
+// Unified flash-attention v1.
+// - Templated on element type T (fp16 / bf16). For bf16 the softmax/scale
+//   pre-stage runs in fp32 for accuracy.
+// - MHA and GQA share the same implementation; the only structural
+//   difference (KV-side local tile size) is derived at runtime from
+//   head_rep = q_head / kv_head.
 template <typename T>
-void flash_attention_v2(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v, T *ptr_mask,
+void flash_attention_v1(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v, T *ptr_mask,
                         int b, int qm, int kvm, int q_head, int kv_head,
                         float sqrt_d, int has_mask, const int core_num,
-                        const int d, const int keep_dim, const int block_m,
-                        const int block_k, const int block_qh,
-                        const int block_kh) {
+                        const int d, const int block_m, const int block_k,
+                        const int block_qh, const int block_kh) {
   const bool is_bf16 = std::is_same_v<T, bf16>;
   const float neg_inf = is_bf16 ? -1.5e10f : -15000.0f;
+
   const int head_rep = q_head / kv_head;
   int core_index = get_core_index();
   if (core_index >= core_num)
@@ -30,6 +36,7 @@ void flash_attention_v2(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v, T *ptr_mask,
 
   int q_head_start = core_index * q_head_per_core;
   int q_head_end = min(q_head_start + q_head_per_core, q_head);
+
 
   dim4 q_shape = {block_qh, block_m, 1, d};
   dim4 kv_shape = {block_kh, block_k, 1, d};
@@ -77,12 +84,19 @@ void flash_attention_v2(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v, T *ptr_mask,
         dma::load_transpose_nc(
             qi_tensor, q_sub_global.sub_view(qi_real_global_shape, qi_offset));
 
+        // fp16 fuses the sqrt_d scale into Q before the matmul.
+        // bf16 applies it after the matmul in fp32 (see below).
+        auto qi_tensor_scale = make_tensor<T>(q_shape, qi_real_local_shape);
+        if (!is_bf16) {
+          tiu::fmul(qi_tensor_scale, qi_tensor, sqrt_d);
+        }
+
         dim4 mi_real_shape = {real_q_h, real_m, 1, 1};
         dim4 li_real_shape = {real_q_h, real_m, 1, 1};
         dim4 acc_real_shape = {real_q_h, real_m, 1, d};
-        auto mi_sub_tensor = make_tensor<fp32>(mi_shape, mi_real_shape);
-        auto li_sub_tensor = make_tensor<fp32>(li_shape, li_real_shape);
-        auto acc_sub_tensor = make_tensor<fp32>(acc_shape, acc_real_shape);
+        auto mi_sub_tensor = make_tensor<T>(mi_shape, mi_real_shape);
+        auto li_sub_tensor = make_tensor<T>(li_shape, li_real_shape);
+        auto acc_sub_tensor = make_tensor<T>(acc_shape, acc_real_shape);
         tiu::fill(mi_sub_tensor, neg_inf);
         tiu::zero(li_sub_tensor);
         tiu::zero(acc_sub_tensor);
@@ -112,59 +126,95 @@ void flash_attention_v2(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v, T *ptr_mask,
           dim4 qk_batch_shape = {1, real_m, 1, real_k};
           dim4 qi_batch_shape = {1, real_m, 1, d};
           dim4 ki_batch_shape = {1, real_k, 1, d};
-          auto qk_sub_tensor = make_tensor<fp32>(qk_shape, qk_real_shape);
-          for (int i = 0; i < real_q_h; i++) {
-            dim4 batch_q_offset = {i, 0, 0, 0};
-            dim4 batch_k_offset = {i / head_rep, 0, 0, 0};
-            auto qk_tensor_batch =
-                qk_sub_tensor.sub_view(qk_batch_shape, batch_q_offset);
-            auto qi_tensor_batch =
-                qi_tensor.sub_view(qi_batch_shape, batch_q_offset);
-            auto ki_tensor_batch =
-                ki_tensor.sub_view(ki_batch_shape, batch_k_offset);
 
-            tiu::fmm2(qk_tensor_batch, qi_tensor_batch, ki_tensor_batch, false,
-                      true, false);
-          }
-          tiu::fmul(qk_sub_tensor, qk_sub_tensor, sqrt_d);
-          if (has_mask) {
-            // broadcast add (bc dim n)
-            auto mask_tensor_fp32 =
-                make_tensor<fp32>(mask_shape, mask_real_shape);
-            tiu::cast(mask_tensor_fp32, mask_tensor);
-            tiu::fadd(qk_sub_tensor, qk_sub_tensor, mask_tensor_fp32);
+          auto qk_sub_tensor = make_tensor<T>(qk_shape, qk_real_shape);
+
+          if (is_bf16) {
+            // bf16: matmul into fp32, scale + mask in fp32, cast back to bf16.
+            auto qk_sub_tensor_fp32 =
+                make_tensor<fp32>(qk_shape, qk_real_shape);
+            for (int i = 0; i < real_q_h; i++) {
+              dim4 batch_q_offset = {i, 0, 0, 0};
+              dim4 batch_k_offset = {i / head_rep, 0, 0, 0};
+              auto qk_tensor_batch =
+                  qk_sub_tensor_fp32.sub_view(qk_batch_shape, batch_q_offset);
+              auto qi_tensor_batch =
+                  qi_tensor.sub_view(qi_batch_shape, batch_q_offset);
+              auto ki_tensor_batch =
+                  ki_tensor.sub_view(ki_batch_shape, batch_k_offset);
+              tiu::fmm2(qk_tensor_batch, qi_tensor_batch, ki_tensor_batch,
+                        false, true, false);
+            }
+            auto qk_sub_tensor_fp32_scale =
+                make_tensor<fp32>(qk_shape, qk_real_shape);
+            tiu::fmul(qk_sub_tensor_fp32_scale, qk_sub_tensor_fp32, sqrt_d);
+            if (has_mask) {
+              auto mask_tensor_fp32 =
+                  make_tensor<fp32>(mask_shape, mask_real_shape);
+              tiu::cast(mask_tensor_fp32, mask_tensor);
+              tiu::fadd(qk_sub_tensor_fp32_scale, qk_sub_tensor_fp32_scale,
+                        mask_tensor_fp32);
+            }
+            tiu::cast(qk_sub_tensor, qk_sub_tensor_fp32_scale);
+          } else {
+            // fp16: matmul on already-scaled Q, broadcast-add mask directly.
+            for (int i = 0; i < real_q_h; i++) {
+              dim4 batch_q_offset = {i, 0, 0, 0};
+              dim4 batch_k_offset = {i / head_rep, 0, 0, 0};
+              auto qk_tensor_batch =
+                  qk_sub_tensor.sub_view(qk_batch_shape, batch_q_offset);
+              auto qi_tensor_batch =
+                  qi_tensor_scale.sub_view(qi_batch_shape, batch_q_offset);
+              auto ki_tensor_batch =
+                  ki_tensor.sub_view(ki_batch_shape, batch_k_offset);
+              tiu::fmm2(qk_tensor_batch, qi_tensor_batch, ki_tensor_batch,
+                        false, true, false);
+            }
+            if (has_mask) {
+              tiu::fadd(qk_sub_tensor, qk_sub_tensor, mask_tensor);
+            }
           }
 
-          auto max_out = make_tensor<fp32>(mi_shape, mi_real_shape);
-          auto mi_new_tensor = make_tensor<fp32>(mi_shape, mi_real_shape);
+          auto max_out = make_tensor<T>(mi_shape, mi_real_shape);
+          auto mi_new_tensor = make_tensor<T>(mi_shape, mi_real_shape);
           quick_pooling(max_out, qk_sub_tensor, &qk_shape, &qk_real_shape,
                         neg_inf, 0);
 
           tiu::fmax(mi_new_tensor, mi_sub_tensor, max_out);
 
-          auto alpha = make_tensor<fp32>(mi_shape, mi_real_shape);
-          auto sub_out = make_tensor<fp32>(mi_shape, mi_real_shape);
-          auto li_tmp_tensor = make_tensor<fp32>(li_shape, li_real_shape);
+          auto alpha = make_tensor<T>(mi_shape, mi_real_shape);
+          auto sub_out = make_tensor<T>(mi_shape, mi_real_shape);
+          auto li_tmp_tensor = make_tensor<T>(li_shape, li_real_shape);
           tiu::fsub(sub_out, mi_sub_tensor, mi_new_tensor);
           tiu::move(mi_sub_tensor, mi_new_tensor);
           exp_no_overflow(alpha, sub_out, &mi_shape, &mi_real_shape);
           // broadcast mul (w)
           tiu::fmul(acc_sub_tensor, acc_sub_tensor, alpha);
           tiu::fmul(li_tmp_tensor, li_sub_tensor, alpha);
-          auto sub_out1 = make_tensor<fp32>(qk_shape, qk_real_shape);
-          // broadcast sub (w)
-          tiu::fsub(sub_out1, qk_sub_tensor, mi_new_tensor);
 
-          auto p_T = make_tensor<fp32>(qk_shape, qk_real_shape);
-          auto sum = make_tensor<fp32>(li_shape, li_real_shape);
+          auto sub_out1 = make_tensor<T>(qk_shape, qk_real_shape);
+          // broadcast sub (w) — bf16 path goes through fp32 for accuracy.
+          if (is_bf16) {
+            auto sub_out1_fp32 = make_tensor<fp32>(qk_shape, qk_real_shape);
+            auto mi_new_tensor_fp32 =
+                make_tensor<fp32>(mi_shape, mi_real_shape);
+            auto qk_scale_fp32 = make_tensor<fp32>(qk_shape, qk_real_shape);
+            tiu::cast(mi_new_tensor_fp32, mi_new_tensor);
+            tiu::cast(qk_scale_fp32, qk_sub_tensor);
+            tiu::fsub(sub_out1_fp32, qk_scale_fp32, mi_new_tensor_fp32);
+            tiu::cast(sub_out1, sub_out1_fp32);
+          } else {
+            tiu::fsub(sub_out1, qk_sub_tensor, mi_new_tensor);
+          }
+
+          auto p_T = make_tensor<T>(qk_shape, qk_real_shape);
+          auto sum = make_tensor<T>(li_shape, li_real_shape);
           exp_no_overflow(p_T, sub_out1, &qk_shape, &qk_real_shape);
 
           quick_pooling(sum, p_T, &qk_shape, &qk_real_shape, 0, 1);
           tiu::fadd(li_sub_tensor, li_tmp_tensor, sum);
 
-          auto pv_tensor = make_tensor<fp32>(acc_shape, acc_real_shape);
-          auto p_T_a16 = make_tensor<T>(qk_shape, qk_real_shape);
-          tiu::cast(p_T_a16, p_T);
+          auto pv_tensor = make_tensor<T>(acc_shape, acc_real_shape);
           dim4 pv_batch_shape = {1, real_m, 1, d};
           dim4 p_batch_shape = {1, real_m, 1, real_k};
           dim4 vi_batch_shape = {1, real_k, 1, d};
@@ -173,45 +223,34 @@ void flash_attention_v2(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v, T *ptr_mask,
             dim4 batch_v_offset = {i / head_rep, 0, 0, 0};
             auto pv_tensor_batch =
                 pv_tensor.sub_view(pv_batch_shape, batch_p_offset);
-            auto p_tensor_batch =
-                p_T_a16.sub_view(p_batch_shape, batch_p_offset);
+            auto p_tensor_batch = p_T.sub_view(p_batch_shape, batch_p_offset);
             auto vi_tensor_batch =
                 vi_tensor.sub_view(vi_batch_shape, batch_v_offset);
-
             tiu::fmm2(pv_tensor_batch, p_tensor_batch, vi_tensor_batch);
           }
           tiu::fadd(acc_sub_tensor, acc_sub_tensor, pv_tensor);
         }
 
-        auto qkvo_tensor_a16 = make_tensor<T>(acc_shape, acc_real_shape);
-        tiu::fdiv(li_sub_tensor, 1.0f, li_sub_tensor, 3);
+        auto li_tensor_fp32 = make_tensor<fp32>(li_shape, li_real_shape);
+        auto div_li_tensor = make_tensor<fp32>(li_shape, li_real_shape);
+        auto div_li_tensor_T = make_tensor<T>(li_shape, li_real_shape);
+        auto qkvo_tensor = make_tensor<T>(acc_shape, acc_real_shape);
+        tiu::cast(li_tensor_fp32, li_sub_tensor);
+        tiu::fdiv(div_li_tensor, 1.0f, li_tensor_fp32, 3);
+        tiu::cast(div_li_tensor_T, div_li_tensor);
         // broadcast mul (w)
-        tiu::fmul(acc_sub_tensor, acc_sub_tensor, li_sub_tensor);
-        tiu::cast(qkvo_tensor_a16, acc_sub_tensor);
+        tiu::fmul(qkvo_tensor, acc_sub_tensor, div_li_tensor_T);
 
         dim4 qkv_offset = {_m, _h, 0, 0};
         dma::store_transpose_nc(
             out_sub_global.sub_view(qi_real_global_shape, qkv_offset),
-            qkvo_tensor_a16);
+            qkvo_tensor);
       }
     }
   }
 }
 
-__KERNEL__ void fattention_v2_bf16(bf16 *ptr_out, bf16 *ptr_q, bf16 *ptr_k,
-                                   bf16 *ptr_v, bf16 *ptr_mask, int b, int qm,
-                                   int kvm, int q_head, int kv_head,
-                                   float sqrt_d, int has_mask,
-                                   const int g_core_num, const int d,
-                                   const int keep_dim, const int block_m,
-                                   const int block_k, const int block_qh,
-                                   const int block_kh) {
-  flash_attention_v2<bf16>(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm,
-                           q_head, kv_head, sqrt_d, has_mask, g_core_num, d,
-                           keep_dim, block_m, block_k, block_qh, block_kh);
-}
-
-__KERNEL__ void fattention_v2_f16(fp16 *ptr_out, fp16 *ptr_q, fp16 *ptr_k,
+__KERNEL__ void fattention_v1_f16(fp16 *ptr_out, fp16 *ptr_q, fp16 *ptr_k,
                                   fp16 *ptr_v, fp16 *ptr_mask, int b, int qm,
                                   int kvm, int q_head, int kv_head,
                                   float sqrt_d, int has_mask,
@@ -219,7 +258,20 @@ __KERNEL__ void fattention_v2_f16(fp16 *ptr_out, fp16 *ptr_q, fp16 *ptr_k,
                                   const int keep_dim, const int block_m,
                                   const int block_k, const int block_qh,
                                   const int block_kh) {
-  flash_attention_v2<fp16>(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm,
+  flash_attention_v1<fp16>(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm,
                            q_head, kv_head, sqrt_d, has_mask, g_core_num, d,
-                           keep_dim, block_m, block_k, block_qh, block_kh);
+                           block_m, block_k, block_qh, block_kh);
+}
+
+__KERNEL__ void fattention_v1_bf16(bf16 *ptr_out, bf16 *ptr_q, bf16 *ptr_k,
+                                   bf16 *ptr_v, bf16 *ptr_mask, int b, int qm,
+                                   int kvm, int q_head, int kv_head,
+                                   float sqrt_d, int has_mask,
+                                   const int g_core_num, const int d,
+                                   const int keep_dim, const int block_m,
+                                   const int block_k, const int block_qh,
+                                   const int block_kh) {
+  flash_attention_v1<bf16>(ptr_out, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm,
+                           q_head, kv_head, sqrt_d, has_mask, g_core_num, d,
+                           block_m, block_k, block_qh, block_kh);
 }

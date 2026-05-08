@@ -79,3 +79,4 @@ flatbuffers==24.12.23
 setuptools==59.6.0
 tensorboard==2.13.0
 wheel==0.37.1
+gguf==0.19.0

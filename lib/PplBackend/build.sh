@@ -111,7 +111,7 @@ for chip in "${chips[@]}"; do
   pushd "$build_dir"
   for file in `ls ../src/*.pl`
   do
-    # echo "ppl-compile $file --chip $chip --mode 5 --O2 --o . --rv"
+    echo "ppl-compile $file --chip $chip --mode 5 --O2 --o ."
     ppl-compile $file --chip $chip --mode 5 --O2 --o .
   done
   cmake ../ ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=OFF -DCHIP=${chip} -DCMODEL=ON -DBUILD_DIR=${build_dir}
@@ -129,6 +129,7 @@ for chip in "${chips_rvti[@]}"; do
   pushd "$build_dir"
   for file in `ls ../src/*.pl`
   do
+    echo "ppl-compile $file --chip $chip --mode 5 --O2 --o . --rv"
     ppl-compile $file --chip $chip --mode 5 --O2 --o . --rv
   done
   cmake ../ ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=OFF -DCHIP=${name} -DCMODEL=ON -DBUILD_DIR=${build_dir}

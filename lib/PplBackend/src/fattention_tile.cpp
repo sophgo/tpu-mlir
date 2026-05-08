@@ -7,8 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "fattention_bf16.h"
-#include "fattention_fp16.h"
+#include "fattention_v1.h"
 #include "fattention_v2.h"
 #include "helper.h"
 #include "tpu_mlir/Backend/BM168x/Param.h"
@@ -69,27 +68,15 @@ static block_t v2_configs[2][2][2][2] = {
 using ATTENTION = std::function<int(
     unsigned long long v1, unsigned long long v2, unsigned long long v3,
     unsigned long long v4, unsigned long long v5, int32_t v6, int32_t v7,
-    int32_t v8, int32_t v9, int32_t v10, int32_t v11, float v12, int32_t v13,
+    int32_t v8, int32_t v9, int32_t v10, float v11, int32_t v12, int32_t v13,
     int32_t v14, int32_t v15, int32_t v16, int32_t v17, int32_t v18,
     int32_t v19)>;
 
-static ATTENTION get_attention_func(bool is_fp16, bool is_mha,
-                                    bool high_precision) {
-  if (is_mha && is_fp16) {
-    return high_precision ? flash_attention_mha_f16_high_precision
-                          : flash_attention_mha_f16;
-  }
-  if (is_mha && !is_fp16) {
-    return high_precision ? flash_attention_mha_bf16_high_precision
-                          : flash_attention_mha_bf16;
-  }
-  if (!is_mha && is_fp16) {
-    return high_precision ? flash_attention_gqa_f16_high_precision
-                          : flash_attention_gqa_f16;
-  }
-  if (!is_mha && !is_fp16) {
-    return high_precision ? flash_attention_gqa_bf16_high_precision
-                          : flash_attention_gqa_bf16;
+static ATTENTION get_attention_func(bool is_fp16, bool high_precision) {
+  if (is_fp16) {
+    return high_precision ? fattention_v2_f16 : fattention_v1_f16;
+  } else {
+    return high_precision ? fattention_v2_bf16 : fattention_v1_bf16;
   }
   // never go here
   return nullptr;
@@ -112,7 +99,6 @@ int fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
                       bool high_precision, int &block_m, int &block_k,
                       int &block_h) {
   int ret = 0;
-  int dmax = align_up(d, 32 /*eu num*/);
   int keep_dim = 0;
   std::string chip_str = getenv("CHIP");
   bool is_mha = q_head == kv_head;
@@ -120,7 +106,7 @@ int fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
   bool is_fp16 = dtype == DTYPE_FP16;
   bool is_v2 = high_precision;
   int *split = get_block_split(is_fp16, is_mha, is_decode, is_v2, chip_str);
-  ATTENTION func = get_attention_func(is_fp16, is_mha, is_v2);
+  ATTENTION func = get_attention_func(is_fp16, is_v2);
   block_m = split[0];
   block_k = split[1];
   block_h = split[2];
@@ -129,13 +115,18 @@ int fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
     int max_block_h = (q_head + safe_core_num - 1) / safe_core_num;
     block_h = std::min(block_h, max_block_h);
   }
+  if (block_h > q_head) {
+    block_h = q_head;
+  }
+  int head_rep = std::max(1, q_head / kv_head);
+  int block_kh = block_h / head_rep;
 
   while (block_m > 0 && block_k > 0) {
     printf("fattention block_m:%d, block_k:%d, block_h:%d\n", block_m, block_k,
            block_h);
-    ret = func(ptr_dst, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm, d, q_head,
-               kv_head, sqrt_d, has_mask, core_num, dmax, keep_dim, block_m,
-               block_k, block_h);
+    ret = func(ptr_dst, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm, q_head,
+               kv_head, sqrt_d, has_mask, core_num, d, keep_dim, block_m,
+               block_k, block_h, block_kh);
     CHECK_PPL_RET(ret);
     if (ret == PplL2AddrAssignErr || ret == PplLocalAddrAssignErr) {
       printf("block is not suitable, have another try !!!\n");

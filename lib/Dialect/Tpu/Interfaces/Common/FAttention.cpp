@@ -28,6 +28,11 @@ LogicalResult tpu::FAttentionOp::inference(InferenceParameter &p) {
   float scale = getScale().convertToDouble();
   int m_size = batch * q_head * M_q * M_k;
   bool has_mask = !module::isNone(getMask());
+  int mask_size = getMaskSize();
+  bool full_mask = (mask_size == 0);
+  // Causal: query at row m attends to keys k <= m + q_pos_offset, where
+  // q_pos_offset = M_k - M_q (prefix-cache + new prompt layout).
+  int q_pos_offset = M_k - M_q;
   auto qk_buffer = new float[m_size];
   auto a16_f = [&](float data) { return is_bf16 ? BF16(data) : F16(data); };
   // Q * K
@@ -42,8 +47,16 @@ LogicalResult tpu::FAttentionOp::inference(InferenceParameter &p) {
   for (int i = 0; i < m_size; i++) {
     qk_buffer[i] *= scale;
     if (has_mask) {
-      int mask_offset = i % (M_q * M_k);
-      qk_buffer[i] += p.inputs[3][mask_offset];
+      if (full_mask) {
+        int mask_offset = i % (M_q * M_k);
+        qk_buffer[i] += p.inputs[3][mask_offset];
+      } else {
+        int mk = i % M_k;
+        int mq = (i / M_k) % M_q;
+        if (mk > mq + q_pos_offset) {
+          qk_buffer[i] = -std::numeric_limits<float>::infinity();
+        }
+      }
     }
   }
   if (!is_bf16) {
@@ -98,11 +111,19 @@ LogicalResult tpu::FAttentionOp::inference(InferenceParameter &p) {
 
 mlir::Type tpu::FAttentionOp::type_verify(uint64_t opd_idx,
                                           TypeCastMode &mode) {
-  return type_verify_case_same(getOperation(), opd_idx, mode);
+  auto mask_size = getMaskSize();
+  if (opd_idx == 3 && mask_size > 0) {
+    // mask type should be fp32
+    auto dtype = module::getStorageType(getMask());
+    if (!dtype.isF32()) {
+      mode = TypeCastMode::DO_CAST;
+      return mlir::Float32Type::get(getContext());
+    } else {
+      return do_nothing(mode);
+    }
+  } else {
+    return type_verify_case_same(getOperation(), opd_idx, mode);
+  }
 }
-
-// void tpu::FAttentionOp::assign_fw_param(void *param) {
-
-// }
 
 bool tpu::FAttentionOp::support_multi_core() { return true; }

@@ -38,6 +38,11 @@ LogicalResult top::FAttentionOp::inference(InferenceParameter &p) {
   float scale = getScale().convertToDouble();
   int m_size = batch * q_head * M_q * M_k;
   bool has_mask = !module::isNone(getMask());
+  int mask_size = getMaskSize();
+  bool full_mask = (mask_size == 0);
+  // Causal: query at row m attends to keys k <= m + q_pos_offset, where
+  // q_pos_offset = M_k - M_q (prefix-cache + new prompt layout).
+  int q_pos_offset = M_k - M_q;
   auto qk_buffer = new float[m_size];
   // Q * K
   dnnl_mm_gqa(p.inputs[0], p.inputs[1], qk_buffer, batch, q_head, kv_head, M_q,
@@ -47,8 +52,16 @@ LogicalResult top::FAttentionOp::inference(InferenceParameter &p) {
   for (int i = 0; i < m_size; i++) {
     qk_buffer[i] *= scale;
     if (has_mask) {
-      int mask_offset = i % (M_q * M_k);
-      qk_buffer[i] += p.inputs[3][mask_offset];
+      if (full_mask) {
+        int mask_offset = i % (M_q * M_k);
+        qk_buffer[i] += p.inputs[3][mask_offset];
+      } else {
+        int mk = i % M_k;
+        int mq = (i / M_k) % M_q;
+        if (mk > mq + q_pos_offset) {
+          qk_buffer[i] = -std::numeric_limits<float>::infinity();
+        }
+      }
     }
   }
   // do softmax
