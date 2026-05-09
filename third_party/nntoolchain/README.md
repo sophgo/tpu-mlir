@@ -86,16 +86,14 @@ cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntool
 # cp build/backend_api/libbackend_sg2380.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_sg2380.so
 # cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_sg2380.so
 
-#BM1684X2 sha256:560960aeffbe8ba8f9b234ed3c614e8bb25daff0
+#BM1684X2 sha256:afc171b70511a5598e5e7aa80f2dc31a1a6fb779
 cd TPU1686
 source scripts/envsetup.sh bm1684x2
 debug: rebuild_backend_lib_cmodel
 release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
 cp build/backend_api/libbackend_bm1684x2.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_bm1684x2.so
-cp build_runtime/firmware_core/libcmodel_firmware.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_bm1684x2.so
 cp build_runtime/firmware_core/libcmodel_firmware.a  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_bm1684x2.a
 rebuild_firmware
-cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x2_kernel_module.so
 cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x2_kernel_module.a
 
 # only build ppl once when all processor backend update

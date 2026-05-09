@@ -17,7 +17,6 @@ install(FILES nntoolchain/lib/libbackend_bm1684.so
               nntoolchain/lib/libcmodel_cv184x.so
               nntoolchain/lib/libcmodel_sg2380.so
               nntoolchain/lib/libcmodel_sgtpuv8.so
-              nntoolchain/lib/libcmodel_bm1684x2.so
               nntoolchain/lib/libcmodel.so
               nntoolchain/lib/libbmrt.so
               nntoolchain/lib/libbmrt.so.1.0
@@ -52,6 +51,7 @@ install(FILES nntoolchain/lib/libbackend_bm1684.so
               # cmodel libs
               nntoolchain/ppl/libcmodel_bm1684x.so
               nntoolchain/ppl/libcmodel_bm1688.so
+              nntoolchain/ppl/libcmodel_bm1684x2.so
               nntoolchain/ppl/libtpuv7_emulator.so
               nntoolchain/ppl/libtpuv7.1_emulator.so
               nntoolchain/ppl/libtpuv7.1rv_emulator.so

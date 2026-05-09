@@ -11,6 +11,7 @@
 #include "tpu_mlir/Backend/Arch.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Backend/BM168x/SG2380.h"
+#include "tpu_mlir/Support/Float16.h"
 
 using namespace bm1684x;
 
@@ -64,13 +65,13 @@ LogicalResult weight_reorder_A16MatMul(tpu::A16MatMulOp op,
   }
 
   bool use_dq2 = false;
-  if (module::isCV184X() || module::isSGTPUV8()) {
-    use_dq2 = (module::getQuantGroupSize() >= 32) &&
-              (module::getQuantGroupSize() % 32 == 0) &&
-              (op.getWeightBits() == 4);
+  if (module::isCV184X() || module::isSGTPUV8() || module::isBM1684X2()) {
+    int gp_size = op.getQGroupSize();
+    use_dq2 = (gp_size >= 32) && (gp_size % 32 == 0) &&
+              (op.getWeightBits() == 4 || op.getWeightBits() == 8);
     if (use_dq2) {
       auto ele_type = module::getElementType(op.getInput());
-      assert(ele_type.isBF16());
+      assert(ele_type.isBF16() || ele_type.isF16());
     }
   }
   auto scale_stype = module::getStorageType(op.getScale());
@@ -231,7 +232,25 @@ LogicalResult weight_reorder_A16MatMul(tpu::A16MatMulOp op,
           quant-[N,K/g]----<reshape>--->[N/NPU, NPU,
       N/g]---<permute(1,0,2)>---->[NPU, N/NPU, K/g]
     */
-    auto ori_zp_data = zpOp.read<uint16_t>();
+    std::shared_ptr<std::vector<uint16_t>> ori_zp_data;
+    if (zpOp.getType().getElementType().isInteger(8)) {
+      auto ori_zp_uint8 = zpOp.read<uint8_t>();
+      ori_zp_data =
+          std::make_shared<std::vector<uint16_t>>(ori_zp_uint8->size());
+      if (scale_stype.isBF16()) {
+        for (size_t i = 0; i < ori_zp_uint8->size(); ++i) {
+          (*ori_zp_data)[i] = f32_to_bf16(float((*ori_zp_uint8)[i]));
+        }
+      } else if (scale_stype.isF16()) {
+        for (size_t i = 0; i < ori_zp_uint8->size(); ++i) {
+          (*ori_zp_data)[i] = f32_to_f16(float((*ori_zp_uint8)[i]));
+        }
+      } else {
+        llvm_unreachable("scale type must be f16 or bf16");
+      }
+    } else {
+      ori_zp_data = zpOp.read<uint16_t>();
+    }
 
     int64_t npu_num = backend::Arch::NPU_NUM;
     if (scale_shape[0] % npu_num) {
@@ -243,10 +262,13 @@ LogicalResult weight_reorder_A16MatMul(tpu::A16MatMulOp op,
     auto quant_data = std::make_shared<std::vector<uint16_t>>(
         scale_shape[0] * scale_shape[1] * 2, 0);
 
+    bool noTrans = module::isBM1684X2();
     for (auto i = 0; i < npu_num; i++) {
       for (auto j = 0; j < h; j++) {
-        auto offset_new = 2 * (i * h * w + j * w); //[NPU,h,w] = [NPU,N/NPU,K/g]
         auto offset_ori = i * w + npu_num * j * w; //[h,NPU,w] = [NPU,N/NPU,K/g]
+        auto offset_new =
+            noTrans ? 2 * offset_ori
+                    : 2 * (i * h * w + j * w); //[NPU,h,w] = [NPU,N/NPU,K/g]
         auto target_s_zp_combined = quant_data->data() + offset_new;
         auto ori_scale_data_ij = ori_scale_data->data() + offset_ori;
         auto ori_zp_data_ij = ori_zp_data->data() + offset_ori;
