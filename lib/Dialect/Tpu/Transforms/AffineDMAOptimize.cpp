@@ -445,8 +445,19 @@ static bool traceAndComposeAffineMapsForStore(
     Operation *userOp = *currentValue.getUsers().begin();
 
     // Stop condition 1: PadOp
+    // Only fuse constant-mode Pad. reflect/edge/symmetric modes require
+    // non-trivial value computation in the padding region that the Store
+    // codegen cannot express (it only fills with a constant via
+    // dl_fill_constant_gen_global_cmd_stride).  Skipping those modes
+    // keeps the Pad as a standalone op that handles its semantics correctly.
     if (isa<tpu::PadOp>(userOp)) {
       if (auto padOp = dyn_cast<tpu::PadOp>(userOp)) {
+        if (padOp.getMode() != tpu::PaddingMode::constant) {
+          maps.clear();
+          opsToRemove.clear();
+          hasPad = false;
+          break;
+        }
         hasPad = true;
         padConstVal = padOp.getVal().convertToDouble();
         auto paddings = padOp.getPaddings();
