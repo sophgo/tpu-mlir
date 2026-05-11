@@ -56,19 +56,68 @@ class Qwen3_5Converter(LlmConverter):
 
     @override
     def rotary_embedding(self):
-        from transformers.models.qwen3_5.modeling_qwen3_5 import Qwen3_5TextRotaryEmbedding
-        rotary_embed = Qwen3_5TextRotaryEmbedding(self.llm_config)
-        position_ids = torch.arange(self.seq_length, dtype=torch.long).reshape(
-            1, 1, self.seq_length).expand(3, 1, self.seq_length)
-        x = torch.zeros([1, self.seq_length, self.hidden_size], dtype=torch.float32)
-        cos, sin = rotary_embed(x, position_ids)
-        cos = cos[0].reshape(self.seq_length, 1, -1)
-        sin = sin[0].reshape(self.seq_length, 1, -1)
-        end_dim = cos.shape[-1] // 2
-        # half
-        cos = cos[:, :, :end_dim]
-        sin = sin[:, :, :end_dim]
-        return cos.numpy(), sin.numpy()  #[seq, 1, 64]
+        try:
+            from transformers.models.qwen3_5.modeling_qwen3_5 import Qwen3_5TextRotaryEmbedding
+            rotary_embed = Qwen3_5TextRotaryEmbedding(self.llm_config)
+            position_ids = torch.arange(self.seq_length, dtype=torch.long).reshape(
+                1, 1, self.seq_length).expand(3, 1, self.seq_length)
+            x = torch.zeros([1, self.seq_length, self.hidden_size], dtype=torch.float32)
+            cos, sin = rotary_embed(x, position_ids)
+            cos = cos[0].reshape(self.seq_length, 1, -1)
+            sin = sin[0].reshape(self.seq_length, 1, -1)
+            end_dim = cos.shape[-1] // 2
+            # half
+            cos = cos[:, :, :end_dim]
+            sin = sin[:, :, :end_dim]
+            return cos.numpy(), sin.numpy()  #[seq, 1, 64]
+        except (ImportError, ModuleNotFoundError):
+            import pdb
+            pdb.set_trace()
+            return self._compute_mrope_manually()
+
+    def _get_mrope_params(self):
+        rope_params = getattr(self.llm_config, 'rope_parameters', None)
+        if rope_params is None:
+            mrope_section = [11, 11, 10]
+            rope_theta = getattr(self.llm_config, 'rope_theta', 10000000.0)
+        elif isinstance(rope_params, dict):
+            mrope_section = rope_params.get('mrope_section', [11, 11, 10])
+            rope_theta = rope_params.get('rope_theta',
+                                         getattr(self.llm_config, 'rope_theta', 10000000.0))
+        else:
+            mrope_section = getattr(rope_params, 'mrope_section', [11, 11, 10])
+            rope_theta = getattr(rope_params, 'rope_theta',
+                                 getattr(self.llm_config, 'rope_theta', 10000000.0))
+        return list(mrope_section), rope_theta
+
+    def _compute_mrope_manually(self):
+        mrope_section, rope_theta = self._get_mrope_params()
+        self.mrope_section = mrope_section
+        total_dim = sum(mrope_section)
+
+        inv_freq = 1.0 / (rope_theta**(np.arange(0, total_dim, 2, dtype=np.float32) / total_dim))
+
+        pos = np.arange(self.seq_length, dtype=np.float32)
+        pos_3d = pos[None, :].repeat(3, axis=0)
+
+        freqs_3d = np.zeros((3, self.seq_length, total_dim), dtype=np.float32)
+        offset = 0
+        for dim_idx, section_len in enumerate(mrope_section):
+            if section_len == 0:
+                continue
+            inv_begin = offset // 2
+            inv_end = (offset + section_len + 1) // 2
+            section_inv_freq = inv_freq[inv_begin:inv_end]
+            section_freqs = np.outer(pos_3d[dim_idx], section_inv_freq)
+            section_freqs = np.repeat(section_freqs, 2, axis=1)[:, :section_len]
+            freqs_3d[dim_idx, :, offset:offset + section_len] = section_freqs
+            offset += section_len
+
+        freqs_t = self.apply_interleaved_mrope(freqs_3d)
+
+        cos = np.cos(freqs_t).astype(np.float32).reshape(self.seq_length, 1, -1)
+        sin = np.sin(freqs_t).astype(np.float32).reshape(self.seq_length, 1, -1)
+        return cos, sin
 
     def apply_interleaved_mrope(self, freqs):
         """Apply interleaved MRoPE to 3D rotary embeddings.
@@ -210,11 +259,17 @@ class Qwen3_5Converter(LlmConverter):
         return q_op, k_op
 
     def vision_rotary(self):
-        from transformers.models.qwen2_vl.modeling_qwen2_vl import VisionRotaryEmbedding
         head_dim = self.vconfig.hidden_size // self.vnum_heads
-        rotary_embed = VisionRotaryEmbedding(head_dim // 2)
-        freqs = rotary_embed(self.num_patches)
-        return freqs.cos().numpy(), freqs.sin().numpy()
+        dim = head_dim // 2
+        inv_freq = 1.0 / (10000.0**(np.arange(0, dim, 2, dtype=np.float32) / dim))
+        h = int(math.sqrt(self.num_patches))
+        pos = np.arange(h, dtype=np.float32)
+        freqs = np.outer(pos, inv_freq)
+        cos = np.zeros((self.num_patches, inv_freq.shape[0]), dtype=np.float32)
+        sin = np.zeros((self.num_patches, inv_freq.shape[0]), dtype=np.float32)
+        cos[:h] = np.cos(freqs)
+        sin[:h] = np.sin(freqs)
+        return cos, sin
 
     def gen_vit_mlir(self):
         tqdm.write(f"generate vit  mlir ...")
@@ -243,14 +298,40 @@ class Qwen3_5Converter(LlmConverter):
             self.set_common_weight(pos_embed, weights_dict)  # fast_pos_embed_interpolate
             # merger
             self.set_common_weight(merger_norm, weights_dict)
-            self.set_linear_weight(linear_fc1, weights_dict)
-            self.set_linear_weight(linear_fc2, weights_dict)
+            use_float_vit = isinstance(self.loader, GGUFModelHandle)
+            self.vit_gguf_float = use_float_vit
+            if use_float_vit:
+
+                def _load_vit_float_linear(path, weights_dict, with_bias=True):
+                    data = self.model.read(path + ".weight")
+                    data = np.ascontiguousarray(np.transpose(data, (1, 0)))
+                    weights_dict[path + ".weight"] = data
+                    if with_bias:
+                        bias = self.model.read(path + ".bias")
+                        weights_dict[path + ".bias"] = bias
+
+                _load_vit_float_linear(linear_fc1, weights_dict)
+                _load_vit_float_linear(linear_fc2, weights_dict)
+            else:
+                self.set_linear_weight(linear_fc1, weights_dict)
+                self.set_linear_weight(linear_fc2, weights_dict)
             for i in range(self.depth):
                 self.set_common_weight(f"{self.vit_path}.blocks.{i}.norm1", weights_dict)
                 self.set_common_weight(f"{self.vit_path}.blocks.{i}.norm2", weights_dict)
-                self.set_linear_weight(f"{self.vit_path}.blocks.{i}.attn.proj", weights_dict)
-                self.set_linear_weight(f"{self.vit_path}.blocks.{i}.mlp.linear_fc1", weights_dict)
-                self.set_linear_weight(f"{self.vit_path}.blocks.{i}.mlp.linear_fc2", weights_dict)
+                if use_float_vit:
+                    _load_vit_float_linear(f"{self.vit_path}.blocks.{i}.attn.proj",
+                                           weights_dict,
+                                           with_bias=True)
+                    _load_vit_float_linear(f"{self.vit_path}.blocks.{i}.mlp.linear_fc1",
+                                           weights_dict)
+                    _load_vit_float_linear(f"{self.vit_path}.blocks.{i}.mlp.linear_fc2",
+                                           weights_dict)
+                else:
+                    self.set_linear_weight(f"{self.vit_path}.blocks.{i}.attn.proj", weights_dict)
+                    self.set_linear_weight(f"{self.vit_path}.blocks.{i}.mlp.linear_fc1",
+                                           weights_dict)
+                    self.set_linear_weight(f"{self.vit_path}.blocks.{i}.mlp.linear_fc2",
+                                           weights_dict)
 
                 # split qkv
                 # self.set_linear_weight(f"visual.blocks.{i}.attn.qkv", weights_dict)
@@ -1127,7 +1208,6 @@ class Qwen3_5Converter(LlmConverter):
         out_proj = TOP_PATH + "linear_attn.out_proj"
         weight_file = f"block_{idx}_top_weights.npz"
         A_log_data = self.model.read(A_log)
-        A_log_data = -np.exp(A_log_data)
         chunk_size = 64
 
         weight_dict = {A_log + ".weight": A_log_data}

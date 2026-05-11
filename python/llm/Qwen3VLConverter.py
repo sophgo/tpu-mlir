@@ -7,6 +7,7 @@
 
 from .LlmConverter import *
 from typing_extensions import override
+from gguf import GGMLQuantizationType
 
 
 class Qwen3VLConverter(LlmConverter):
@@ -77,13 +78,12 @@ class Qwen3VLConverter(LlmConverter):
         Reorganizes frequency layout from chunked [TTT...HHH...WWW] to
         interleaved [THWTHWTHW...TT], preserving frequency continuity.
         args:
-            x: (3, bs, seq_len, head_dim // 2)
-            mrope_section: (3,)
+            freqs: (3, bs, seq_len, head_dim // 2)
         returns:
             x_t: (bs, seq_len, head_dim // 2)
         """
-        freqs_t = freqs[0]  # just overwrite the first dimension T
-        for dim, offset in enumerate((1, 2), start=1):  # H, W
+        freqs_t = freqs[0]
+        for dim, offset in enumerate((1, 2), start=1):
             length = self.mrope_section[dim] * 3
             idx = slice(offset, length, 3)
             freqs_t[..., idx] = freqs[dim, ..., idx]
@@ -249,30 +249,118 @@ class Qwen3VLConverter(LlmConverter):
                 self.set_linear_weight(f"{self.vit_path}.blocks.{i}.mlp.linear_fc2", weights_dict)
 
                 # split qkv
-                # self.set_linear_weight(f"visual.blocks.{i}.attn.qkv", weights_dict)
-                weight = self.model.read(f"{self.vit_path}.blocks.{i}.attn.qkv.weight").reshape(
-                    3 * self.embed_dim, self.embed_dim)
+                qkv_path = f"{self.vit_path}.blocks.{i}.attn.qkv"
+                qkv_weight_path = qkv_path + ".weight"
+                qkv_tensor_info = self.model.get_tensor_info(qkv_weight_path)
+                qkv_quant_type = qkv_tensor_info.get('quant_type') if qkv_tensor_info else None
+                is_q8_qkv = qkv_quant_type in (GGMLQuantizationType.Q8_0, GGMLQuantizationType.Q8_1)
+                is_q4_qkv = qkv_quant_type in (GGMLQuantizationType.Q4_0, GGMLQuantizationType.Q4_1)
+
+                if is_q8_qkv or is_q4_qkv:
+                    converted = self.loader.quant_converter.convert_to_llmconv_format(
+                        self.model, qkv_path, transpose=False)
+                    qkv_qweight = converted['qweight']
+                    qkv_scales = converted['scales']
+                    qkv_qzeros = converted['qzeros']
+                    ed = self.embed_dim
+                    gs = converted['group_size']
+                    bits = converted['bits']
+
+                    q_qweight = qkv_qweight[:ed, :]
+                    k_qweight = qkv_qweight[ed:2 * ed, :]
+                    v_qweight = qkv_qweight[2 * ed:, :]
+                    q_scales = qkv_scales[:ed, :]
+                    k_scales = qkv_scales[ed:2 * ed, :]
+                    v_scales = qkv_scales[2 * ed:, :]
+                    q_qzeros = qkv_qzeros[:ed, :]
+                    k_qzeros = qkv_qzeros[ed:2 * ed, :]
+                    v_qzeros = qkv_qzeros[2 * ed:, :]
+
+                    q_path = f"{self.vit_path}.blocks.{i}.attn.q"
+                    k_path = f"{self.vit_path}.blocks.{i}.attn.k"
+                    v_path = f"{self.vit_path}.blocks.{i}.attn.v"
+
+                    weights_dict[q_path + ".qweight"] = q_qweight
+                    weights_dict[k_path + ".qweight"] = k_qweight
+                    weights_dict[v_path + ".qweight"] = v_qweight
+                    weights_dict[q_path + ".scales"] = q_scales
+                    weights_dict[k_path + ".scales"] = k_scales
+                    weights_dict[v_path + ".scales"] = v_scales
+                    weights_dict[q_path + ".qzeros"] = q_qzeros
+                    weights_dict[k_path + ".qzeros"] = k_qzeros
+                    weights_dict[v_path + ".qzeros"] = v_qzeros
+
+                    self.model.quantized_tensors[q_path] = {
+                        'is_quantized': True,
+                        'quant_type': qkv_quant_type,
+                        'converted_bits': bits,
+                        'converted_group_size': gs,
+                    }
+                    self.model.quantized_tensors[k_path] = {
+                        'is_quantized': True,
+                        'quant_type': qkv_quant_type,
+                        'converted_bits': bits,
+                        'converted_group_size': gs,
+                    }
+                    self.model.quantized_tensors[v_path] = {
+                        'is_quantized': True,
+                        'quant_type': qkv_quant_type,
+                        'converted_bits': bits,
+                        'converted_group_size': gs,
+                    }
+                else:
+                    weight = self.model.read(qkv_weight_path).reshape(3 * self.embed_dim,
+                                                                      self.embed_dim)
+                    q_w = weight[:self.embed_dim, :]
+                    k_w = weight[self.embed_dim:2 * self.embed_dim, :]
+                    v_w = weight[2 * self.embed_dim:, :]
+                    q_w = np.ascontiguousarray(np.transpose(q_w, (1, 0)))
+                    k_w = np.ascontiguousarray(np.transpose(k_w, (1, 0)))
+                    v_w = np.ascontiguousarray(np.transpose(v_w, (1, 0)))
+                    weights_dict[f"{self.vit_path}.blocks.{i}.attn.q.weight"] = q_w
+                    weights_dict[f"{self.vit_path}.blocks.{i}.attn.k.weight"] = k_w
+                    weights_dict[f"{self.vit_path}.blocks.{i}.attn.v.weight"] = v_w
+
                 bias = self.model.read(f"{self.vit_path}.blocks.{i}.attn.qkv.bias").reshape(
                     3 * self.embed_dim)
-                q_w = weight[:self.embed_dim, :]
-                k_w = weight[self.embed_dim:2 * self.embed_dim, :]
-                v_w = weight[2 * self.embed_dim:, :]
                 q_b = bias[:self.embed_dim]
                 k_b = bias[self.embed_dim:2 * self.embed_dim]
                 v_b = bias[2 * self.embed_dim:]
-                q_w = np.ascontiguousarray(np.transpose(q_w, (1, 0)))
-                k_w = np.ascontiguousarray(np.transpose(k_w, (1, 0)))
-                v_w = np.ascontiguousarray(np.transpose(v_w, (1, 0)))
-                weights_dict[f"{self.vit_path}.blocks.{i}.attn.q.weight"] = q_w
-                weights_dict[f"{self.vit_path}.blocks.{i}.attn.k.weight"] = k_w
-                weights_dict[f"{self.vit_path}.blocks.{i}.attn.v.weight"] = v_w
                 weights_dict[f"{self.vit_path}.blocks.{i}.attn.q.bias"] = q_b
                 weights_dict[f"{self.vit_path}.blocks.{i}.attn.k.bias"] = k_b
                 weights_dict[f"{self.vit_path}.blocks.{i}.attn.v.bias"] = v_b
             # save weights
             np.savez(vit_npz, **weights_dict)
+            self.weight_keys.extend(list(weights_dict.keys()))
 
         # create mlir file
+        # First save weights to populate weight_keys and quantized_tensors
+        # before MLIR gen, so is_key_quantized() can detect quantized vit weights
+        save_weights()
+
+        # Register VIT as a layer with its own quant info (GGUF only)
+        if hasattr(self.model, 'quantized_tensors'):
+            vit_bits_set = set()
+            vit_sym_all = True
+            vit_gs_set = set()
+            for key, info in self.model.quantized_tensors.items():
+                if key.startswith("model.visual."):
+                    vit_bits_set.add(info.get('converted_bits', 8))
+                    vit_gs_set.add(info.get('converted_group_size', 32))
+                    qt = info.get('quant_type')
+                    if qt is not None and not self.loader._is_quant_type_symmetric(qt):
+                        vit_sym_all = False
+            if vit_bits_set:
+                vit_bits = min(vit_bits_set)
+                vit_gs = max(vit_gs_set) if len(vit_gs_set) > 1 else next(iter(vit_gs_set))
+                from llm.ModelHandle import LayerQuantInfo
+                self.vit_quant_info = LayerQuantInfo(
+                    quant_bits=vit_bits,
+                    symmetric=vit_sym_all,
+                    q_group_size=vit_gs,
+                    mixed=len(vit_bits_set) > 1 or len(vit_gs_set) > 1,
+                )
+
         in_shape = [patches, self.patch_dim]
         position_shape = [patches, 2]
         out_dim = patches // (self.spatial_merge_size**2)
@@ -527,7 +615,6 @@ class Qwen3VLConverter(LlmConverter):
 
         vit_mlir.create_return_op(ret_ops)
         self.save_mlir_module(vit_mlir, name)
-        save_weights()
 
     def gen_add_mlir(self):
         name = "add"
@@ -561,12 +648,28 @@ class Qwen3VLConverter(LlmConverter):
         name = f"vit"
         if self.register_bmodel(name):
             return
-        if self.half_precision_quantize == 'bf16' and self.vit_f16_out_bf16:
+        vit_info = getattr(self, 'vit_quant_info', None)
+        if vit_info and vit_info.quant_bits != 16:
+            import torch
+            dtype = torch.bfloat16 if self.half_precision_quantize == 'bf16' else torch.float16
+            vit_q = self.get_qtype(dtype, vit_info.quant_bits)
+        else:
+            vit_q = self.vit_quantize or self.half_precision_quantize
+        if self.half_precision_quantize == 'bf16' and self.vit_f16_out_bf16 and vit_q in ('f16',
+                                                                                          'bf16'):
             extra_args = ['--quantize f16', '--quant_output_bf16']
         else:
-            extra_args = [f'--quantize {self.half_precision_quantize}', '--quant_output']
+            extra_args = [f'--quantize {vit_q}', '--quant_output']
+        if vit_info:
+            extra_args.append(f'--q_group_size {vit_info.q_group_size}')
+        elif isinstance(self.loader, GGUFModelHandle):
+            extra_args.append(f'--q_group_size {self.q_group_size}')
+        elif self.quant_mode is not None:
+            extra_args.append(f'--q_group_size {self.q_group_size}')
+        vit_sym = vit_info.symmetric if vit_info else self.symmetric
         self.submit_deploy_task(
             name,
             extra_args,
             dynamic=True,
+            symmetric=vit_sym,
         )

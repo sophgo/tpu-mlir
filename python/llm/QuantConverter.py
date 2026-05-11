@@ -7,6 +7,7 @@
 
 import numpy as np
 import math
+import logging
 from typing import Dict, List, Optional, Tuple, Union
 from enum import Enum
 import os
@@ -16,6 +17,8 @@ import os
 # Import GGUF types
 from gguf import GGMLQuantizationType
 from gguf.constants import GGML_QUANT_SIZES, GGUF_DEFAULT_ALIGNMENT
+
+logger = logging.getLogger(__name__)
 
 
 class QuantFormat(Enum):
@@ -155,7 +158,8 @@ class QuantConverter:
                           gguf_data: np.ndarray,
                           quant_type: GGMLQuantizationType,
                           original_shape: Tuple[int, ...],
-                          group_size: Optional[int] = None) -> Dict[str, np.ndarray]:
+                          group_size: Optional[int] = None,
+                          transpose: bool = False) -> Dict[str, np.ndarray]:
         """Convert GGUF quantized data to LlmConverter format.
 
         Args:
@@ -164,6 +168,7 @@ class QuantConverter:
             original_shape: Original tensor shape (before quantization)
             group_size: Override group_size for this conversion. If None, uses
                 the natural sub-block size for the quant type (16 for Q6_K, 32 for others).
+            transpose: Whether to transpose weight via block rearrangement.
 
         Returns:
             Dictionary with keys:
@@ -172,6 +177,7 @@ class QuantConverter:
             - 'qzeros': Zero point tensor (if applicable)
             - 'bits': Quantization bits (4 or 8)
             - 'group_size': Group size used
+            - 'pre_transposed': True if data was transposed via block rearrangement
         """
 
         reshaped_data, processed_shape = self._reshape_gguf_data(gguf_data, quant_type,
@@ -188,11 +194,17 @@ class QuantConverter:
         if quant_type == GGMLQuantizationType.Q4_0:
             return self._convert_q4_0(reshaped_data, processed_shape, group_size)
         elif quant_type == GGMLQuantizationType.Q8_0:
-            return self._convert_q8_0(reshaped_data, processed_shape, group_size)
+            return self._convert_q8_0(reshaped_data,
+                                      processed_shape,
+                                      group_size,
+                                      transpose=transpose)
         elif quant_type == GGMLQuantizationType.Q4_1:
             return self._convert_q4_1(reshaped_data, processed_shape, group_size)
         elif quant_type == GGMLQuantizationType.Q8_1:
-            return self._convert_q8_1(reshaped_data, processed_shape, group_size)
+            return self._convert_q8_1(reshaped_data,
+                                      processed_shape,
+                                      group_size,
+                                      transpose=transpose)
         elif quant_type == GGMLQuantizationType.Q5_0:
             return self._convert_q5_0(reshaped_data, processed_shape, group_size)
         elif quant_type == GGMLQuantizationType.Q5_1:
@@ -270,16 +282,91 @@ class QuantConverter:
                                        original_shape,
                                        bits=4)
 
+    def widen_q4_to_q4_1(self, gguf_data: np.ndarray,
+                         original_shape: Tuple[int, ...]) -> Dict[str, np.ndarray]:
+        """Widen Q4_0 to Q4_1 format (zp=0) via bit-expansion, no dequant/requant.
+        Q4_0: signed 4-bit [-8,7] with symmetric scale.
+        Add 8 to convert to unsigned 4-bit Q4_1(zp=0), range preserved.
+        """
+        n_blocks = gguf_data.shape[0]
+        scales_fp16 = gguf_data[:, :2].view(np.float16).astype(self.scale_dtype)
+        qdata_packed = gguf_data[:, 2:].view(np.uint8)
+        out_dim, in_dim = original_shape
+
+        low = (qdata_packed & 0x0F).astype(np.int16)
+        high = ((qdata_packed >> 4) & 0x0F).astype(np.int16)
+        low_u4 = ((low + 8) & 0x0F).astype(np.uint8)
+        high_u4 = ((high + 8) & 0x0F).astype(np.uint8)
+        q4_1_packed = (high_u4 << 4) | low_u4
+
+        weights_reshaped = q4_1_packed.reshape(n_blocks, 16)
+        blocks_per_row = in_dim // 32
+        scales_reshaped = scales_fp16.reshape(out_dim, blocks_per_row)
+        return self._regroup_to_groups(weights_reshaped,
+                                       scales_reshaped,
+                                       None, (out_dim, in_dim),
+                                       bits=4)
+
+    def widen_q4_to_q8(self, gguf_data: np.ndarray, quant_type,
+                       original_shape: Tuple[int, ...]) -> Dict[str, np.ndarray]:
+        """Widen Q4_0 or Q4_1 to Q8_0 via bit-manipulation, no dequant/requant.
+        Q4_0: signed int4 -> sign-extend to int8, same scale.
+        Q4_1: uint4 - zp_int -> signed int8, same scale.
+        """
+        n_blocks = gguf_data.shape[0]
+        out_dim, in_dim = original_shape
+        blocks_per_row = in_dim // 32
+
+        if quant_type == GGMLQuantizationType.Q4_0:
+            scales_fp16 = gguf_data[:, :2].view(np.float16).astype(self.scale_dtype)
+            qdata_packed = gguf_data[:, 2:].view(np.uint8)
+            low = (qdata_packed & 0x0F).astype(np.int16)
+            high = ((qdata_packed >> 4) & 0x0F).astype(np.int16)
+            vals = np.empty((n_blocks, 32), dtype=np.int16)
+            vals[:, 0::2] = low
+            vals[:, 1::2] = high
+            vals_signed = np.where(vals > 7, vals - 16, vals)
+        elif quant_type == GGMLQuantizationType.Q4_1:
+            delta_fp16 = gguf_data[:, :2].view(np.float16).astype(self.scale_dtype)
+            min_fp16 = gguf_data[:, 2:4].view(np.float16).astype(self.scale_dtype)
+            qdata_packed = gguf_data[:, 4:].view(np.uint8)
+            zp_int = np.round(-min_fp16 /
+                              np.where(delta_fp16 == 0, np.float32(1e-8), delta_fp16)).astype(
+                                  np.int32)
+            zp_int = np.clip(zp_int, 0, 15)
+            low = (qdata_packed & 0x0F).astype(np.int16)
+            high = ((qdata_packed >> 4) & 0x0F).astype(np.int16)
+            vals = np.empty((n_blocks, 32), dtype=np.int16)
+            vals[:, 0::2] = low
+            vals[:, 1::2] = high
+            vals_signed = vals - zp_int.reshape(n_blocks, 1)
+            scales_fp16 = delta_fp16
+        else:
+            raise ValueError(f"widen_q4_to_q8 only supports Q4_0/Q4_1, got {quant_type}")
+
+        weights_clipped = np.clip(vals_signed, -127, 127).astype(np.int8)
+        weights_reshaped = weights_clipped.reshape(out_dim, in_dim)
+        scales_reshaped = scales_fp16.reshape(out_dim, blocks_per_row)
+        return self._regroup_to_groups(weights_reshaped,
+                                       scales_reshaped,
+                                       None, (out_dim, in_dim),
+                                       bits=8)
+
     def _convert_q8_0(self,
                       gguf_data: np.ndarray,
                       original_shape: Tuple[int, ...],
-                      group_size: int = 32) -> Dict[str, np.ndarray]:
+                      group_size: int = 32,
+                      transpose: bool = False) -> Dict[str, np.ndarray]:
         """Convert GGUF Q8_0 to LlmConverter 8-bit format.
 
         GGUF Q8_0 format:
         - Block size: 32 elements
         - Bytes per block: 2 (fp16 scale) + 32 (8-bit weights)
         - Quantization: value = scale * q where q ∈ [-127, 127]
+
+        GGUF stores weights as (in_feat, out_feat) with Q8_0 blocks along
+        the quickest-varying dimension (in_feat).  We need (out_feat, in_feat)
+        for the MLIR.  Swap dimensions so blocks correctly cover in_feat values.
         """
         # GGUF data shape: [n_blocks, 34]
         n_blocks = gguf_data.shape[0]
@@ -294,25 +381,23 @@ class QuantConverter:
         # Q8_0 is symmetric quantization, no zero points
         zero_points = None
 
-        # Reshape to original tensor dimensions
         out_dim, in_dim = original_shape
 
-        # Calculate blocks per row
+        # Calculate blocks per row (along in_dim)
         blocks_per_row = in_dim // 32
         if in_dim % 32 != 0:
             raise ValueError(f"Input dimension {in_dim} not divisible by GGUF block size 32")
 
-        # Reshape weights to [out_dim, in_dim]
+        # Reshape weights to [out_dim, in_dim] = [out_feat, in_feat]
         weights_reshaped = qdata.reshape(out_dim, in_dim)
 
         # Reshape scales from [n_blocks, 1] to [out_dim, blocks_per_row]
-        scales = scales.reshape(out_dim, blocks_per_row)
+        scales_reshaped = scales.reshape(out_dim, blocks_per_row)
 
         # Regroup to LlmConverter group size
         return self._regroup_to_groups(weights_reshaped,
-                                       scales,
-                                       zero_points,
-                                       original_shape,
+                                       scales_reshaped,
+                                       zero_points, (out_dim, in_dim),
                                        bits=8)
 
     def _convert_q4_1(self,
@@ -380,7 +465,8 @@ class QuantConverter:
     def _convert_q8_1(self,
                       gguf_data: np.ndarray,
                       original_shape: Tuple[int, ...],
-                      group_size: int = 32) -> Dict[str, np.ndarray]:
+                      group_size: int = 32,
+                      transpose: bool = False) -> Dict[str, np.ndarray]:
         """Convert GGUF Q8_1 to LlmConverter 8-bit format.
 
         GGUF Q8_1 format:
@@ -409,28 +495,37 @@ class QuantConverter:
         # Zero point outside this range would cause overflow; we clamp zero point to reasonable range
         zero_points_int = np.clip(zero_points_int, -128, 127)
 
-        # Adjust weights: q' = q - zero_point (int8 with possible overflow)
-        # We'll keep as int16 to avoid overflow, then clamp to int8 range
+        # Adjust weights: q' = q - zero_point (int16 to avoid overflow, then clamp)
         q_adjusted = qdata.astype(np.int16) - zero_points_int.astype(np.int16)
         q_adjusted = np.clip(q_adjusted, -127, 127).astype(np.int8)
 
-        # Reshape to original tensor dimensions
         out_dim, in_dim = original_shape
         blocks_per_row = in_dim // 32
         if in_dim % 32 != 0:
             raise ValueError(f"Input dimension {in_dim} not divisible by GGUF block size 32")
 
-        # Reshape weights to [out_dim, in_dim]
+        # Reshape weights to [out_dim, in_dim] = [out_feat, in_feat]
         weights_reshaped = q_adjusted.reshape(out_dim, in_dim)
 
         # Reshape scales (delta) from [n_blocks, 1] to [out_dim, blocks_per_row]
-        delta = delta.reshape(out_dim, blocks_per_row)
+        delta_reshaped = delta.reshape(out_dim, blocks_per_row)
+
+        # if transpose:
+        #     weights_t, scales_t, shape_t = self._transpose_quant_blocks(
+        #         weights_reshaped, delta_reshaped, (out_dim, in_dim))
+        #     result = self._regroup_to_groups(weights_t,
+        #                                      scales_t,
+        #                                      None,
+        #                                      shape_t,
+        #                                      bits=8,
+        #                                      group_size=group_size)
+        #     result['pre_transposed'] = True
+        #     return result
 
         # Regroup to LlmConverter group size (8-bit, no zero points)
         return self._regroup_to_groups(weights_reshaped,
-                                       delta,
-                                       None,
-                                       original_shape,
+                                       delta_reshaped,
+                                       None, (out_dim, in_dim),
                                        bits=8,
                                        group_size=group_size)
 
@@ -807,14 +902,11 @@ class QuantConverter:
             odd = weights[:, 1::2] & 0x0F
             qweight = (even | (odd << 4)).astype(np.uint8)
         else:  # 8-bit
-            # Convert signed int8 to unsigned uint8 by adding 128
-            # GGUF stores signed int8 values in range [-127, 127]
-            # MLIR expects uint8 with zero point 128
+            # Convert signed int8 to unsigned uint8 by adding 128.
+            # Zp=128 centers the uint8 range so that signed zero maps to 0x80.
             if weights.dtype == np.int8:
-                # Convert to uint8: (weights + 128) mod 256
                 weights_uint8 = ((weights.astype(np.int16) + 128) & 0xFF).astype(np.uint8)
             else:
-                # Already uint8 (should not happen for GGUF 8-bit)
                 weights_uint8 = weights.astype(np.uint8)
 
             # Store unpacked uint8 weights
@@ -847,7 +939,7 @@ class QuantConverter:
                 zp_int = np.clip(zp_int, -128, 127)
                 qzeros = ((zp_int + 128) & 0xFF).astype(np.uint8)
             else:
-                # Symmetric: zero point is 128 for uint8 representation
+                # Symmetric quantization: zp=128 centers the uint8 range
                 qzeros = np.full((out_dim, n_groups), 128, dtype=np.uint8)
         elif bits == 4:
             # For 4-bit quantization, create unpacked zero points per group
@@ -897,7 +989,6 @@ class QuantConverter:
         if not tensor_info:
             raise RuntimeError(f"Tensor {key} not found")
 
-        # import pdb;pdb.set_trace()
         # Read quantized data
         gguf_data, quant_info = gguf_loader.read_quantized(key)
 
@@ -908,12 +999,8 @@ class QuantConverter:
                 data = np.ascontiguousarray(np.transpose(data, (1, 0)))
             return {'weight': data, 'is_quantized': False}
 
-        # Get original shape
+        # Get original shape and convert from GGUF dimension order
         original_shape = quant_info['original_shape']
-
-        # Convert GGML dimension order to numpy dimension order
-        # GGUF stores dims as [outermost, innermost] but data is in numpy order [rows, cols]
-        # The transpose here is needed for _reshape_gguf_data to work correctly
         if len(original_shape) == 2:
             original_shape = (original_shape[1], original_shape[0])
 
@@ -921,12 +1008,14 @@ class QuantConverter:
         quant_type = quant_info['quant_type']
         effective_group_size = get_quant_type_group_size(quant_type)
 
-        # Convert quantization format
+        # Convert quantization format — pass transpose flag for Q8_0/Q8_1
+        # block rearrangement instead of broken shape swap
         try:
             converted = self.convert_from_gguf(gguf_data,
                                                quant_type,
                                                original_shape,
-                                               group_size=effective_group_size)
+                                               group_size=effective_group_size,
+                                               transpose=transpose)
             converted['is_quantized'] = True
             return converted
         except (NotImplementedError, ValueError) as e:

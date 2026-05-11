@@ -6,6 +6,7 @@
 # ==============================================================================
 
 from .LlmConverter import *
+from .ModelHandle import GGUFModelHandle
 from typing_extensions import override
 
 int64_max = np.iinfo(np.int64).max
@@ -16,6 +17,8 @@ class InternVL3Converter(LlmConverter):
     def __init__(self, args, config, loader=None):
         super().__init__(args, config, loader=loader)
         self.do_vit = True
+        if isinstance(loader, GGUFModelHandle):
+            self.vit_gguf_float = True
         # modify weight info
         for i in ["LAYERS", "EMBEDING", "NORM", "LMHEAD"]:
             self.model_info.weights[i] = "language_model." + self.model_info.weights[i]

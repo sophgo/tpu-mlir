@@ -100,6 +100,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='llm_exporter', formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-m', '--model_path', type=str, required=True,
                         help='original weight, like ./Qwen2-7B-Instruct or ./model.gguf')
+    parser.add_argument('--mmproj', type=str, default=None,
+                        help='path to mmproj GGUF file for vision models. '
+                             'If not set and the model is a VLM GGUF, auto-discover mmproj*.gguf '
+                             'in the same directory as the model GGUF file.')
     parser.add_argument('-s', '--seq_length', type=int, required=True,
                         help="sequence length")
     parser.add_argument('-q', '--quantize', type=str, default="auto",
@@ -192,6 +196,8 @@ if __name__ == '__main__':
 
     is_gguf = os.path.isfile(args.model_path) and args.model_path.lower().endswith('.gguf')
 
+    mmproj_path = None
+
     if is_gguf:
         from llm.ModelHandle import GGUFModelHandle, create_gguf_config
 
@@ -201,8 +207,50 @@ if __name__ == '__main__':
         arch_field = reader.get_field("general.architecture")
         architecture = arch_field.contents() if arch_field else "qwen3"
         print("GGUF model architecture: {}".format(architecture))
-        config = create_gguf_config(reader, args.quantize, args.seq_length)
-        model_type = architecture
+        model_type = GGUFModelHandle.ARCH_TO_MODEL_TYPE.get(architecture, architecture)
+
+        tags_field = reader.fields.get("general.tags")
+        if tags_field is not None:
+            try:
+                tags = tags_field.contents()
+                if isinstance(tags, list) and "internvl" in tags:
+                    model_type = "internvl_chat"
+                    print(
+                        "Detected InternVL3 model (via general.tags), override model_type to internvl_chat"
+                    )
+            except Exception:
+                pass
+
+        if model_type in GGUFModelHandle.VLM_ARCHS or architecture in GGUFModelHandle.VLM_ARCHS:
+            if args.mmproj:
+                mmproj_path = args.mmproj
+            else:
+                model_dir = os.path.dirname(os.path.abspath(args.model_path))
+                candidates = [
+                    f for f in os.listdir(model_dir)
+                    if f.lower().startswith("mmproj") and f.lower().endswith(".gguf")
+                ]
+                if len(candidates) == 1:
+                    mmproj_path = os.path.join(model_dir, candidates[0])
+                    print("Auto-discovered mmproj GGUF: {}".format(mmproj_path))
+                elif len(candidates) > 1:
+                    raise RuntimeError("Multiple mmproj GGUF files found in '{}': {}. "
+                                       "Please specify one with --mmproj.".format(
+                                           model_dir, candidates))
+                else:
+                    raise RuntimeError(
+                        "VLM GGUF model detected (arch={}) but no mmproj GGUF found in '{}'. "
+                        "Please provide one with --mmproj.".format(architecture, model_dir))
+
+            print("Using mmproj GGUF: {}".format(mmproj_path))
+            loader.load_mmproj(mmproj_path)
+            mmproj_reader = loader.model.mmproj_reader
+            config = create_gguf_config(reader,
+                                        args.quantize,
+                                        args.seq_length,
+                                        mmproj_reader=mmproj_reader)
+        else:
+            config = create_gguf_config(reader, args.quantize, args.seq_length)
     else:
         from transformers import AutoConfig
         from llm.ModelHandle import SafetensorsModelHandle

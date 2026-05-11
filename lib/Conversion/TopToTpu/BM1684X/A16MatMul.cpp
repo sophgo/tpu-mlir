@@ -55,10 +55,12 @@ void A16MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
   // lowering weights
   auto weight_value = op.getWeight();
   auto weight_op = dyn_cast<top::WeightOp>(weight_value.getDefiningOp());
-  auto weight_data = weight_op.read<int8_t>();
+  auto weight_stype = module::getStorageType(weight_value);
+  bool is_unsigned = weight_stype.isUnsignedInteger(8);
+  auto weight_data = weight_op.read<uint8_t>();
   auto new_weight_type = RankedTensorType::get(
       weight_op.getType().cast<RankedTensorType>().getShape(),
-      rewriter.getIntegerType(8, false));
+      rewriter.getIntegerType(8, !is_unsigned));
   auto new_weight_value =
       top::WeightOp::create(op, "weight", *weight_data, new_weight_type);
   operands.push_back(new_weight_value);
@@ -71,7 +73,7 @@ void A16MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
 
   // lowering zps
   auto zp_op = op.getZp().getDefiningOp<top::WeightOp>();
-  auto zp_data = zp_op.read<int8_t>();
+  auto zp_data = zp_op.read<uint8_t>();
   auto new_zp_type = RankedTensorType::get(
       // {N, K * 8 / (int)q_group_size},
       zp_op.getType().cast<RankedTensorType>().getShape(),
@@ -103,6 +105,21 @@ void A16MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
       rewriter.getNamedAttr("q_group_size", op.getQGroupSizeAttr());
   attrs.push_back(q_group_size_attr);
 
+  bool is_4bit = op.getWeightBits() == 4;
+  bool has_nonzero_zp = false;
+  if (is_unsigned && !is_4bit) {
+    auto zp_data = op.getZp().getDefiningOp<top::WeightOp>().read<uint8_t>();
+    for (auto z : *zp_data) {
+      if (z != 0) {
+        has_nonzero_zp = true;
+        break;
+      }
+    }
+  }
+  auto sign_attr = rewriter.getNamedAttr(
+      "sign", rewriter.getBoolAttr(is_4bit || !is_unsigned || has_nonzero_zp));
+  attrs.push_back(sign_attr);
+
   rewriter.replaceOpWithNewOp<tpu::A16MatMulOp>(op, newType, operands, attrs);
 }
 
@@ -117,10 +134,12 @@ void A16MatMulLowering::LoweringF16(PatternRewriter &rewriter,
   // lowering weights
   auto weight_value = op.getWeight();
   auto weight_op = dyn_cast<top::WeightOp>(weight_value.getDefiningOp());
-  auto weight_data = weight_op.read<int8_t>();
+  auto weight_stype = module::getStorageType(weight_value);
+  bool is_unsigned = weight_stype.isUnsignedInteger(8);
+  auto weight_data = weight_op.read<uint8_t>();
   auto new_weight_type = RankedTensorType::get(
       weight_op.getType().cast<RankedTensorType>().getShape(),
-      rewriter.getIntegerType(8, false));
+      rewriter.getIntegerType(8, !is_unsigned));
   auto new_weight_value =
       top::WeightOp::create(op, "weight", *weight_data, new_weight_type);
   operands.push_back(new_weight_value);
@@ -133,7 +152,7 @@ void A16MatMulLowering::LoweringF16(PatternRewriter &rewriter,
 
   // lowering zps
   auto zp_op = op.getZp().getDefiningOp<top::WeightOp>();
-  auto zp_data = zp_op.read<int8_t>();
+  auto zp_data = zp_op.read<uint8_t>();
   auto new_zp_type = RankedTensorType::get(
       // {N, K * 8 / (int)q_group_size},
       zp_op.getType().cast<RankedTensorType>().getShape(),
@@ -164,6 +183,21 @@ void A16MatMulLowering::LoweringF16(PatternRewriter &rewriter,
   auto q_group_size_attr =
       rewriter.getNamedAttr("q_group_size", op.getQGroupSizeAttr());
   attrs.push_back(q_group_size_attr);
+
+  bool is_4bit = op.getWeightBits() == 4;
+  bool has_nonzero_zp = false;
+  if (is_unsigned && !is_4bit) {
+    auto zp_data = op.getZp().getDefiningOp<top::WeightOp>().read<uint8_t>();
+    for (auto z : *zp_data) {
+      if (z != 0) {
+        has_nonzero_zp = true;
+        break;
+      }
+    }
+  }
+  auto sign_attr = rewriter.getNamedAttr(
+      "sign", rewriter.getBoolAttr(is_4bit || !is_unsigned || has_nonzero_zp));
+  attrs.push_back(sign_attr);
 
   rewriter.replaceOpWithNewOp<tpu::A16MatMulOp>(op, newType, operands, attrs);
 }

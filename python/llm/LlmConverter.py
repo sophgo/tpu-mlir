@@ -108,6 +108,7 @@ class LlmConverter(BaseConverter):
         self.all_bmodels = []
         self.all_bmodels_without_bytes = []
         self.extern_block_weights = {}
+        self.vit_quantize = None
         # store all weights name because some weights like qkv.weights may be splitted
         self.weight_keys = []
         self.fused_mlp = True
@@ -128,6 +129,7 @@ class LlmConverter(BaseConverter):
         os.chdir(self.bmodel_dir)
         if not self.again:
             self.gen_all_mlir()
+        self.vit_quantize = self._detect_vit_quantize()
         del self.model
         if not self.only_mlir:
             self.compile_all()
@@ -151,6 +153,9 @@ class LlmConverter(BaseConverter):
         if self.model.is_exist(key + ".weight_packed"):
             return True
         if key + ".qweight" in self.weight_keys:
+            return True
+        if hasattr(self.model, 'quantized_tensors') and isinstance(
+                self.model.quantized_tensors, dict) and key in self.model.quantized_tensors:
             return True
         return False
 
@@ -516,6 +521,19 @@ class LlmConverter(BaseConverter):
             elif bits == 16:
                 return "bf16"
         raise NotImplementedError(f"Not support quantize type: {dtype} with bits: {bits}")
+
+    def _detect_vit_quantize(self):
+        if getattr(self, 'vit_gguf_float', False):
+            return self.half_precision_quantize
+        if not hasattr(self.model, 'quantized_tensors') or not self.model.quantized_tensors:
+            return self.half_precision_quantize
+        for key in self.model.quantized_tensors:
+            if key.startswith("model.visual."):
+                info = self.model.quantized_tensors[key]
+                bits = info.get('converted_bits', 8)
+                dtype = torch.bfloat16 if self.half_precision_quantize == 'bf16' else torch.float16
+                return self.get_qtype(dtype, bits)
+        return self.half_precision_quantize
 
     def init_quantization(self):
         self.loader.init_quantization(self)
@@ -1134,11 +1152,14 @@ class LlmConverter(BaseConverter):
         else:
             bias_op = mlir_gen.none_op
         if self.is_key_quantized(proj):
-            qweight_op = mlir_gen.create_weight_op(
-                proj + ".qweight", [weight_shape[1], weight_shape[0] // (8 // self.quant_bits)],
-                'UINT8')
+            quant_info = self.model.quantized_tensors.get(proj, {}) \
+                if hasattr(self.model, 'quantized_tensors') else {}
+            weight_bits = quant_info.get('converted_bits', self.quant_bits)
+            qweight_shape = [weight_shape[1], weight_shape[0] // (8 // weight_bits)]
             scale_shape = [weight_shape[1], weight_shape[0] //
                            self.q_group_size] if self.q_group_size > 0 else [weight_shape[1], 1]
+            right_transpose = True
+            qweight_op = mlir_gen.create_weight_op(proj + ".qweight", qweight_shape, 'UINT8')
             scale_op = mlir_gen.create_weight_op(proj + ".scales", scale_shape)
             zp_op = mlir_gen.create_weight_op(proj + ".qzeros", scale_shape, 'UINT8')
             new_op = top.A16MatMulOp(mlir_gen.get_tensor_type(out_shape),
@@ -1147,9 +1168,9 @@ class LlmConverter(BaseConverter):
                                      scale_op,
                                      zp_op,
                                      bias_op,
-                                     right_transpose=True,
+                                     right_transpose=right_transpose,
                                      q_group_size=self.q_group_size,
-                                     weight_bits=self.quant_bits,
+                                     weight_bits=weight_bits,
                                      loc=self.get_loc(proj, mlir_gen),
                                      ip=mlir_gen.insert_point).output
         else:
@@ -2229,6 +2250,13 @@ class LlmConverter(BaseConverter):
             return
         self.submit_deploy_task(name, ['--dynamic'], multi_device=False, addr_mode='io_alone')
 
+    def _get_block_symmetric(self, layer_id):
+        if isinstance(self.loader, GGUFModelHandle):
+            info = self.loader._block_quant_info.get(layer_id)
+            if info and info.quant_bits != 16:
+                return info.symmetric
+        return self.symmetric
+
     def compile_block(self, layer_id):
         name = f"block_{layer_id}"
         if self.register_bmodel(name, with_size=False):
@@ -2237,16 +2265,18 @@ class LlmConverter(BaseConverter):
         extra_deploy_args = []
         if isinstance(self.loader, GGUFModelHandle):
             quantize_param, extra_deploy_args = self.loader.compile_block_args(self, layer_id)
+        base_args = [
+            f'--quantize {quantize_param}',
+        ]
+        if not isinstance(self.loader, GGUFModelHandle):
+            base_args.append(f'--q_group_size {self.q_group_size}')
         self.submit_deploy_task(
             name,
-            [
-                f'--quantize {quantize_param}',
-                f'--q_group_size {self.q_group_size}',
-            ] + extra_deploy_args + [
+            base_args + extra_deploy_args + [
                 '--quant_input',
                 '--quant_output',
             ],
-            symmetric=True,
+            symmetric=self._get_block_symmetric(layer_id),
             dynamic=True,
         )
 
@@ -2260,16 +2290,18 @@ class LlmConverter(BaseConverter):
             quantize_param, extra_deploy_args = self.loader.compile_block_args(self,
                                                                                layer_id,
                                                                                is_cache=True)
+        base_args = [
+            f'--quantize {quantize_param}',
+        ]
+        if not isinstance(self.loader, GGUFModelHandle):
+            base_args.append(f'--q_group_size {self.q_group_size}')
         self.submit_deploy_task(
             name,
-            [
-                f'--quantize {quantize_param}',
-                f'--q_group_size {self.q_group_size}',
-            ] + extra_deploy_args + [
+            base_args + extra_deploy_args + [
                 '--quant_input',
                 '--quant_output',
             ],
-            symmetric=True,
+            symmetric=self._get_block_symmetric(layer_id),
             addr_mode='io_alone',
         )
 
@@ -2289,20 +2321,61 @@ class LlmConverter(BaseConverter):
             dynamic=True,
         )
 
+    def _detect_vit_symmetric(self):
+        """Determine whether ViT weights use symmetric quantization.
+
+        Priority:
+          1. vit_quant_info (set by gen_vit_mlir for GGUF Qwen3VL-style quantized ViT)
+          2. GGUFModelHandle._block_quant_info for ViT (if available, GGUF path)
+          3. vit_gguf_float flag – ViT stored as float (no quant → symmetric moot)
+          4. Quantized-tensor scan in self.model.quantized_tensors (GGUF path)
+          5. self.symmetric (command-line flag, default False)
+        """
+        vit_info = getattr(self, 'vit_quant_info', None)
+        if vit_info:
+            return vit_info.symmetric
+
+        if hasattr(self.loader, 'quantized_tensors') and self.loader.quantized_tensors:
+            all_sym = True
+            for key, info in self.loader.quantized_tensors.items():
+                if key.startswith("model.visual.") or key.startswith("vision_model."):
+                    qt = info.get('quant_type')
+                    if qt is not None and hasattr(self.loader, '_is_quant_type_symmetric') \
+                            and not self.loader._is_quant_type_symmetric(qt):
+                        all_sym = False
+                        break
+            return all_sym
+
+        if getattr(self, 'vit_gguf_float', False):
+            return False
+
+        return self.symmetric
+
     def compile_vit(self):
         if not self.do_vit:
             return
         name = "vit"
         if self.register_bmodel(name):
             return
-        if self.half_precision_quantize == 'bf16' and self.vit_f16_out_bf16:
+        vit_q = self.vit_quantize or self.half_precision_quantize
+        if self.half_precision_quantize == 'bf16' and self.vit_f16_out_bf16 and vit_q in ('f16',
+                                                                                          'bf16'):
             extra_args = ['--quantize f16', '--quant_output_bf16']
         else:
-            extra_args = [f'--quantize {self.half_precision_quantize}', '--quant_output']
+            extra_args = [f'--quantize {vit_q}', '--quant_output']
+        vit_info = getattr(self, 'vit_quant_info', None)
+        if vit_info and vit_info.quant_bits != 16:
+            extra_args.append(f'--q_group_size {vit_info.q_group_size}')
+        elif isinstance(self.loader,
+                        GGUFModelHandle) and not getattr(self, 'vit_gguf_float', False):
+            extra_args.append(f'--q_group_size {self.q_group_size}')
+        elif self.quant_mode is not None:
+            extra_args.append(f'--q_group_size {self.q_group_size}')
         self.submit_deploy_task(
             name,
             extra_args,
             dynamic=True,
+            symmetric=self._detect_vit_symmetric(),
         )
 
     def compile_common(self, name, with_size=False, io_alone=False):
