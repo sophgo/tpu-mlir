@@ -4598,12 +4598,14 @@ public:
       }
     }
 
+    int32_t raw_shift_in_quant;
     if (module::isBM1688()) {
-      int16_t packed_shift = static_cast<int16_t>(quantData[1] & 0xffff);
-      new_rshift0[0] = -static_cast<int64_t>(packed_shift);
+      raw_shift_in_quant =
+          static_cast<int32_t>(static_cast<int16_t>(quantData[1] & 0xffff));
     } else {
-      new_rshift0[0] = -quantData[1];
+      raw_shift_in_quant = quantData[1];
     }
+    new_rshift0[0] = std::abs(raw_shift_in_quant);
 
     rewriter.setInsertionPoint(op);
     std::vector<int32_t> reshaped_multi0(channels);

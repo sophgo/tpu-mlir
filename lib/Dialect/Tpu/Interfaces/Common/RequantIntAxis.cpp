@@ -65,18 +65,27 @@ LogicalResult tpu::RequantIntAxisOp::inference(InferenceParameter &p) {
       }
     }
   } else if (mode == tpu::RequantMode::MultiplierShift) {
+
+    auto unpack_rshift_axis = [&](int64_t packed) -> int64_t {
+      if (module::isBM1684X()) {
+        return std::abs(static_cast<int32_t>(packed));
+      }
+      return std::abs(
+          static_cast<int32_t>(static_cast<int16_t>(packed & 0xffff)));
+    };
+
     if (fuse_rq_axis) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[shape.size() - 1]))
       for (int w = 0; w < shape[shape.size() - 1]; ++w) {
         int64_t multi, shift_val, zero_point;
         if (module::isBM1684X()) {
           multi = p.inputs[1][w * 3];
-          shift_val = p.inputs[1][w * 3 + 1];
+          shift_val = unpack_rshift_axis(p.inputs[1][w * 3 + 1]);
           zero_point = p.inputs[1][w * 3 + 2];
         } else {
           multi = p.inputs[1][w * 2];
           uint32_t tmp = p.inputs[1][w * 2 + 1];
-          shift_val = (int64_t)((char)(tmp & 0xff));
+          shift_val = unpack_rshift_axis(tmp);
           zero_point = (int64_t)(short)((tmp & 0xffff0000) >> 16);
         }
         for (int i = 0; i < outner; i++) {
@@ -96,12 +105,12 @@ LogicalResult tpu::RequantIntAxisOp::inference(InferenceParameter &p) {
         int64_t multi, rshift_val, zero_point;
         if (module::isBM1684X()) {
           multi = p.inputs[1][c * 3];
-          rshift_val = -p.inputs[1][c * 3 + 1];
+          rshift_val = unpack_rshift_axis(p.inputs[1][c * 3 + 1]);
           zero_point = p.inputs[1][c * 3 + 2];
         } else {
           multi = p.inputs[1][c * 2];
           uint32_t tmp = p.inputs[1][c * 2 + 1];
-          rshift_val = (int64_t)(-(char)(tmp & 0xff));
+          rshift_val = unpack_rshift_axis(tmp);
           zero_point = (int64_t)(short)((tmp & 0xffff0000) >> 16);
         }
         for (int n = 0; n < shape[0]; ++n) {
