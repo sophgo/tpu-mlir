@@ -10,6 +10,7 @@ import json
 import numpy as np
 import os, sys
 import argparse
+import subprocess
 from utils.timer import Timer
 from typing import List, Dict, Any, Optional, Callable, Tuple, Union
 from utils.regression_logger import run_in_log_wrapper
@@ -390,12 +391,28 @@ class MLIR_IR_TESTER(object):
     def _deploy_test_case(self, case_name: str, tolerance: Tuple[float,
                                                                  float] = (0.98, 0.95)) -> None:
         """
-        Deploy test case for each quantization mode.
+        Run shape-infer sanity check, then deploy test case for each quantization mode.
 
         Args:
             case_name: Test case name
             tolerance: Tolerance tuple (cos_tol, euclidean_tol)
         """
+        # Run shape-infer as a sanity check on the generated mlir
+        mlir_path = f"{case_name}.mlir"
+        try:
+            subprocess.run(
+                [
+                    "tpuc-opt", "--shape-infer", f"{case_name}.mlir", "-o",
+                    f"{case_name}_shape_infer.mlir"
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"shape-infer failed for {mlir_path}:\n"
+                               f"stdout: {e.stdout}\nstderr: {e.stderr}") from e
+
         for mode in self.quant_modes:
             try:
                 deploy_case_bmodel(case_name=case_name,
@@ -621,13 +638,13 @@ class MLIR_IR_TESTER(object):
                              eps=1e-6,
                              loc=self._L(block_mlir, "rmsnorm0"),
                              ip=ip).output
-        k_op = top.RMSNormOp(self._T(block_mlir, input_shapes[0]),
+        k_op = top.RMSNormOp(self._T(block_mlir, input_shapes[1]),
                              in1_op,
                              weight_ops[1],
                              eps=1e-6,
                              loc=self._L(block_mlir, "rmsnorm1"),
                              ip=ip).output
-        v_op = top.RMSNormOp(self._T(block_mlir, input_shapes[0]),
+        v_op = top.RMSNormOp(self._T(block_mlir, input_shapes[2]),
                              in2_op,
                              weight_ops[2],
                              eps=1e-6,
@@ -699,13 +716,13 @@ class MLIR_IR_TESTER(object):
                              eps=1e-6,
                              loc=self._L(block_mlir, "rmsnorm0"),
                              ip=ip).output
-        k_op = top.RMSNormOp(self._T(block_mlir, input_shapes[0]),
+        k_op = top.RMSNormOp(self._T(block_mlir, input_shapes[1]),
                              in1_op,
                              weight_ops[1],
                              eps=1e-6,
                              loc=self._L(block_mlir, "rmsnorm1"),
                              ip=ip).output
-        v_op = top.RMSNormOp(self._T(block_mlir, input_shapes[0]),
+        v_op = top.RMSNormOp(self._T(block_mlir, input_shapes[2]),
                              in2_op,
                              weight_ops[2],
                              eps=1e-6,

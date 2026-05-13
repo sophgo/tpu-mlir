@@ -26,7 +26,7 @@ void flash_attention_v1(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v, T *ptr_mask,
   const bool is_bf16 = std::is_same_v<T, bf16>;
   const float neg_inf = is_bf16 ? -1.5e10f : -15000.0f;
 
-  const int head_rep = q_head / kv_head;
+  int head_rep = q_head / kv_head;
   int core_index = get_core_index();
   if (core_index >= core_num)
     return;

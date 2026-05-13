@@ -22,8 +22,94 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-// fattention_prefill tiling
+// fattention v1/v2 tiling
+static int align_2n(int x, int limit = 512) {
+  int p = 1;
+  if (x >= limit) {
+    return limit;
+  }
+  while (p * 2 <= x) {
+    p *= 2;
+  }
+  return p;
+}
 
+void fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
+                       gaddr_t ptr_v, gaddr_t ptr_mask, int b, int qm, int kvm,
+                       int d, int q_head, int kv_head, float sqrt_d,
+                       int has_mask, int core_num, int dtype,
+                       bool high_precision, int &block_m, int &block_k,
+                       int &block_qh, int &block_kh) {
+  int ret = 0;
+  int keep_dim = 0;
+  bool is_mha = q_head == kv_head;
+  bool is_decode = qm == 1;
+  bool is_fp16 = dtype == DTYPE_FP16;
+  int npu_num, npu_size;
+  get_chip_info(&npu_num, &npu_size);
+  auto func = high_precision
+                  ? (is_fp16 ? fattention_v2_f16 : fattention_v2_bf16)
+                  : (is_fp16 ? fattention_v1_f16 : fattention_v1_bf16);
+  int safe_core_num = std::max(1, core_num);
+  int head_rep = std::max(1, q_head / kv_head);
+  if (is_decode) {
+    block_m = 1;
+    block_k = align_2n(kvm, 2048);
+  } else {
+    int val = std::min(qm, kvm);
+    block_m = align_2n(val);
+    block_k = block_m;
+  }
+  block_kh = kv_head / safe_core_num;
+  if (block_kh == 0) {
+    block_kh = 1;
+  }
+  block_qh = block_kh * head_rep;
+  while (block_m > 0 && block_k > 0) {
+    printf("fattention block_m:%d, block_k:%d, block_qh:%d\n", block_m, block_k,
+           block_qh);
+    ret = func(ptr_dst, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm, q_head,
+               kv_head, sqrt_d, has_mask, core_num, d, keep_dim, block_m,
+               block_k, block_qh, block_kh);
+    CHECK_PPL_RET(ret);
+    if (ret == PplL2AddrAssignErr || ret == PplLocalAddrAssignErr) {
+      printf("block is not suitable, have another try !!!\n");
+      if (is_decode) {
+        // For decode (block_m==1) prefer shrinking block_k before block_kh
+        // so that head-level parallelism is preserved as long as possible.
+        if (block_k > npu_num) {
+          block_k /= 2;
+        } else if (block_kh > 1) {
+          block_kh /= 2;
+          block_qh = block_kh * head_rep;
+        } else {
+          break;
+        }
+      } else {
+        if (block_kh > 1) {
+          block_kh /= 2;
+          block_qh = block_kh * head_rep;
+        } else if (block_m > npu_num) {
+          block_m /= 2;
+          block_k /= 2;
+        } else if (block_k > npu_num) {
+          block_k /= 2;
+        } else {
+          break;
+        }
+      }
+      continue;
+    }
+    break;
+  }
+  if (ret != 0) {
+    printf("Error: block split failed!!!\n");
+    exit(-1);
+  }
+  printf("fattention success!!\n");
+}
+
+// fattention_prefill tiling
 void fattention_prefill_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
                                gaddr_t ptr_v, gaddr_t ptr_mask, int b, int qm,
                                int kvm, int d, int q_head, int kv_head,
@@ -85,13 +171,6 @@ void fattention_prefill_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
   }
 }
 
-// fattention normal tiling
-extern int fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
-                             gaddr_t ptr_v, gaddr_t ptr_mask, int b, int qm,
-                             int kvm, int d, int q_head, int kv_head,
-                             float sqrt_d, int has_mask, int core_num,
-                             int dtype, bool high_precision, int &block_m,
-                             int &block_k, int &block_h);
 // static interface
 void api_fattention_global(void *param, size_t param_size, void *input_spec,
                            void *output_spec) {
@@ -104,7 +183,7 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
   auto v_spec = in_spec + 2;
   auto mask_spec = in_spec + 3;
   const int core_num = get_core_num();
-  int block_m, block_k, block_h;
+  int block_m, block_k, block_qh, block_kh;
   // The mask-free prefill kernel synthesises the causal mask in-kernel and
   // does NOT consume an external mask tensor. If the user actually supplied a
   // mask we must honour it -- fall through to the v2 path which adds the
@@ -117,14 +196,14 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
         _param->common.mq, _param->common.mk, _param->common.dim,
         _param->common.q_head, _param->common.kv_head, _param->common.scale,
         _param->common.hasmask, core_num, in_spec[0].dtype,
-        _param->common.high_precision, block_m, block_k, block_h);
+        _param->common.high_precision, block_m, block_k, block_qh, block_kh);
   } else {
     fattention_prefill_tiling(
         out_spec->addr, q_spec->addr, k_spec->addr, v_spec->addr,
         mask_spec->addr, _param->common.batch, _param->common.mq,
         _param->common.mk, _param->common.dim, _param->common.q_head,
         _param->common.kv_head, _param->common.mask_size, _param->common.scale,
-        core_num, in_spec[0].dtype, block_m, block_h);
+        core_num, in_spec[0].dtype, block_m, block_kh);
   }
 }
 
@@ -166,7 +245,7 @@ int api_dyn_fattention_global(void *param, void *input_spec, void *output_spec,
     auto kv_head = _param->common.kv_head;
     auto high_precision = _param->common.high_precision;
     int keep_dim = _param->common.keep_dim ? 1 : 0;
-    int block_m, block_k, block_h, block_kh;
+    int block_m, block_k, block_qh, block_kh;
     if (buffer) {
       // get tile info
       fattention_tiling(
@@ -174,9 +253,7 @@ int api_dyn_fattention_global(void *param, void *input_spec, void *output_spec,
           _param->common.hasmask ? mask_spec->addr : 0, _param->common.batch,
           _param->common.mq, _param->common.mk, _param->common.dim, q_head,
           kv_head, _param->common.scale, _param->common.hasmask, core_num,
-          dtype, high_precision, block_m, block_k, block_h);
-      int head_rep = std::max(1, q_head / kv_head);
-      block_kh = block_h / head_rep;
+          dtype, high_precision, block_m, block_k, block_qh, block_kh);
     }
     // If buffer is not null writre param info to buffer according to tile info,
     // return param struct lens.
@@ -187,7 +264,7 @@ int api_dyn_fattention_global(void *param, void *input_spec, void *output_spec,
                 _param->common.batch, _param->common.mq, _param->common.mk,
                 q_head, kv_head, _param->common.scale, _param->common.hasmask,
                 core_num, _param->common.dim, keep_dim, block_m, block_k,
-                block_h, block_kh, buffer);
+                block_qh, block_kh, buffer);
   } else {
     auto q_spec = in_spec;
     auto k_spec = in_spec + 1;
