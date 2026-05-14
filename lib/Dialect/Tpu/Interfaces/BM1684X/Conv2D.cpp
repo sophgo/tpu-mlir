@@ -172,6 +172,11 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   int use_3ic_optimize = getUse_3icOptimize();
   int64_t IC_PARALLEL = BM168x::ic_num(1);
   bool is_depthwise = p.groups == p.ic && p.groups == p.oc && p.groups > 1;
+  int64_t int_dw_crop_buffer =
+      is_depthwise && with_hw_margins &&
+              module::getStorageType(getInput()).isIntOrIndex()
+          ? int32_size * 3 + in_lmem_bytes
+          : 0;
 
   if (getWeightBits().has_value() && getWeightBits().value() == 4) {
     // unpack_weight to 8bits.
@@ -192,7 +197,7 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   if ((module::isBM1688() || module::isCV184X() || module::isSGTPUV8()) &&
       getCoeffMerged()) {
     if (module::getStorageType(getInput()).isIntOrIndex() && p.kernel_zp != 0)
-      return int32_size * 2;
+      return std::max<int64_t>(int32_size * 2, int_dw_crop_buffer);
     if (p.groups > 1) {
       if (module::isCV184X() && !is_depthwise) {
         // inputs
@@ -217,6 +222,7 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
               in_type_len;
         sz += ic_per_npu * 2 * in_type_len;
       }
+      sz = std::max(sz, int_dw_crop_buffer);
       return sz;
     }
     if (use_3ic_optimize == 0)
@@ -240,6 +246,7 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   if (p.is_dw) {
     sz += int32_size;               // conv_kzp_buffer_addr
     sz += oc_per_npu * p.kh * p.kw; // kzp_is_const
+    sz = std::max(sz, int_dw_crop_buffer);
   }
 
   int use_3ic = (use_3ic_optimize & 0x3);

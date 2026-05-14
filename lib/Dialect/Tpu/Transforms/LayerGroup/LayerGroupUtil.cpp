@@ -1704,6 +1704,12 @@ bool get_backward_slice_info(LgInfo &lg_info, slice_info_t &in_si,
 
   int64_t pre_end_idx = 0;
   idx = slice = 0;
+  bool support_hw_margin = module::isBM1684XFamily();
+  if (auto conv_op = dyn_cast<tpu::Conv2DOp>(op)) {
+    auto attr = getConv2DParam(conv_op);
+    bool support_dwconv2d_hw_margin = attr.is_dw;
+    support_hw_margin = support_hw_margin && support_dwconv2d_hw_margin;
+  }
   if (shape_secs.dsecs == 1) {
     in_si.d.emplace_back(slice_pair_t(0, d));
   } else {
@@ -1772,8 +1778,8 @@ bool get_backward_slice_info(LgInfo &lg_info, slice_info_t &in_si,
       } else {
         bool end_reached = idx + slice == pre_end_idx;
         bool reject_restart_from_top =
-            (idx == 0 && i > 0) && !module::isBM1684XFamily();
-        bool reject_end_reached = end_reached && !module::isBM1684XFamily();
+            (idx == 0 && i > 0) && !support_hw_margin;
+        bool reject_end_reached = end_reached && !support_hw_margin;
         // TMP
         // if (failed(ret) || slice == 0 ){
         if (failed(ret) || slice == 0 || reject_restart_from_top ||
@@ -1838,8 +1844,8 @@ bool get_backward_slice_info(LgInfo &lg_info, slice_info_t &in_si,
       } else {
         bool end_reached = idx + slice == pre_end_idx;
         bool reject_restart_from_left =
-            (idx == 0 && i > 0) && !module::isBM1684XFamily();
-        bool reject_end_reached = end_reached && !module::isBM1684XFamily();
+            (idx == 0 && i > 0) && !support_hw_margin;
+        bool reject_end_reached = end_reached && !support_hw_margin;
         if (failed(ret) || slice == 0 || reject_restart_from_left ||
             reject_end_reached) {
           LLVM_DEBUG(llvm::dbgs() << "BackwardW fail, at op:"
@@ -2198,9 +2204,13 @@ static bool backward_update_slice(
         // Whether backend func can accept input tensor with margins. (NOTE: LUT
         // has no backend support.)
         auto tpukernel_support_HWmargins = [&lg_info](Operation *op) -> bool {
-          if (isa<tpu::Conv2DOp>(op) &&
-              op->getAttrOfType<IntegerAttr>("group").getInt() > 1 &&
-              !module::isBM1684XFamily()) {
+          if (auto conv_op = dyn_cast<tpu::Conv2DOp>(op)) {
+            auto attr = getConv2DParam(conv_op);
+            bool support_dwconv2d_hw_margin =
+                module::isBM1684XFamily() && attr.is_dw;
+            if (support_dwconv2d_hw_margin) {
+              return true;
+            }
             // Note: backend function is incomplete, feel free to complete it
             // Realizing this functionality could lead to significant rewards.
             GROUP_DEBUG_WITH_TYPE("slice_backward", lg_info, [&]() {
