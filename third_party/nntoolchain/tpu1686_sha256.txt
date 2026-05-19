@@ -1,0 +1,10 @@
+=== bm1684x2 ===
+commit caf8d7b1bccf1a5010c189a7e6071e2ebc352960
+Author: pengchao.hu <pengchao.hu@sophgo.com>
+Date:   Fri May 22 11:04:14 2026 +0800
+
+    fix: keep id_node for mlir
+    
+    - or it would cause id_node missing and hang
+    
+    Change-Id: Ia6185bf3687ce6eecef206b0bd6521ac609cffd3

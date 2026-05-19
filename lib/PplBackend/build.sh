@@ -4,7 +4,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 CPU_NUM=$(cat /proc/stat | grep cpu[0-9] -c)
 BUILD_MODE="${1:-RELEASE}"
 usage() {
-  echo "Usage: $0 [RELEASE|DEBUG] [force]"
+  echo "Usage: $0 [RELEASE|DEBUG]"
 }
 
 if [[ -z "$INSTALL_PATH" ]]; then
@@ -20,37 +20,40 @@ elif [ "$BUILD_MODE" != "RELEASE" ]; then
     usage
     exit 1
 fi
-FORCE_BUILD=false
-if [ -n "$2" ]; then
-    if [ "$2" = "force" ]; then
-       FORCE_BUILD=true
-    else
-        echo "Invalid param: $2"
-        usage
-        exit 1
-    fi
-fi
+
 # func
-clean_up() {
-  local build_dir=${1:-build}
-  # clear cache
-	CACHE_PATH=${PPL_CACHE_PATH}
-  if [ x${CACHE_PATH} = x ];then
+clean_cache() {
+  # clear ppl compile cache (content-addressed; only need to wipe once per run)
+  local CACHE_PATH=${PPL_CACHE_PATH}
+  if [ x${CACHE_PATH} = x ]; then
     CACHE_PATH=${HOME}"/.ppl/cache"
   fi
-  rm -rf $CACHE_PATH
-  rm -rf $build_dir
-  mkdir -p $build_dir
+  rm -rf "$CACHE_PATH"
+}
+
+clean_up() {
+  local build_dir=${1:-build}
+  rm -rf "$build_dir"
+  mkdir -p "$build_dir"
+}
+
+# Parallel ppl-compile over all *.pl files in ../src
+# Args: chip [extra ppl-compile flags...]
+ppl_compile_all() {
+  local chip=$1
+  shift
+  ls ../src/*.pl | xargs -n1 -P"${CPU_NUM}" -I{} \
+    ppl-compile {} --chip "$chip" --mode 5 --O2 --o . "$@"
 }
 
 generate_md5_list() {
-  for dir in "$@"; do
-    while IFS= read -r -d '' file; do
-      rel=${file#"$dir"/}
-      md5=$(md5sum "$file" | awk '{print $1}')
-      printf '%s %s\n' "$rel" "$md5"
-    done < <(find "$dir" -type f -print0)
-  done
+  # Emit "<relpath> <md5>" lines for every regular file under the given
+  # paths (files or directories), with paths relative to $DIR and sorted
+  # for deterministic output.
+  ( cd "$DIR" && find "$@" -type f -print0 \
+      | xargs -0 -n64 -P"${CPU_NUM}" md5sum \
+      | awk '{printf "%s %s\n", $2, $1}' \
+      | sort )
 }
 
 has_md5_changes() {
@@ -69,7 +72,13 @@ has_md5_changes() {
 # check if files under PplBackend changed
 MD5FILE=$DIR/.md5
 file_changed=false
-mapfile -t md5_list < <(generate_md5_list "$DIR/src" "$DIR/src_dyn")
+# Track every input that can affect the build outputs: PPL sources, public
+# headers, the CMake build description, and the build script itself.
+mapfile -t md5_list < <(generate_md5_list \
+  src src_dyn include CMakeLists.txt Dynkernel.cmake)
+# RELEASE vs DEBUG produces different artifacts, so treat the build mode as
+# an input by embedding it as a sentinel line in the md5 list.
+md5_list=("__BUILD_MODE__ $BUILD_MODE" "${md5_list[@]}")
 if [ ! -f "$MD5FILE" ] || has_md5_changes "$MD5FILE" "${md5_list[@]}"; then
   file_changed=true
 fi
@@ -95,25 +104,21 @@ mapfile -t libs_md5_list < <(
 if [ ! -f "$VER_FILE" ] || has_md5_changes "$VER_FILE" "${libs_md5_list[@]}" || ! grep -Fxq -f "$PPL_VER_PATH" "$VER_FILE"; then
   lib_changed=true
 fi
-if [ "$FORCE_BUILD" = false ] &&
-   [ "$lib_changed" = false ] &&
-   [ "$file_changed" = false ]; then
+if [ "$lib_changed" = false ] && [ "$file_changed" = false ]; then
   exit 0
 fi
 # build third_party/nntoolchain/ppl lib
 echo "rebuilding ppl..."
 pushd "$DIR"
+# wipe ppl compile cache ONCE for the whole rebuild (not per-chip)
+clean_cache
 # dyn pio
 chips=("bm1684x" "bm1688" "bm1690" "sg2260e" "bm1684x2")
 for chip in "${chips[@]}"; do
   build_dir="build_${chip}_dyn"
   clean_up "$build_dir"
   pushd "$build_dir"
-  for file in `ls ../src/*.pl`
-  do
-    echo "ppl-compile $file --chip $chip --mode 5 --O2 --o ."
-    ppl-compile $file --chip $chip --mode 5 --O2 --o .
-  done
+  ppl_compile_all "$chip"
   cmake ../ ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=OFF -DCHIP=${chip} -DCMODEL=ON -DBUILD_DIR=${build_dir}
   make -j${CPU_NUM} install
   cmake ../ ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=OFF -DCHIP=${chip} -DCMODEL=OFF -DBUILD_DIR=${build_dir} -DBUILD_DYN_HOST=ON
@@ -127,11 +132,7 @@ for chip in "${chips_rvti[@]}"; do
   build_dir="build_${name}_dyn"
   clean_up "$build_dir"
   pushd "$build_dir"
-  for file in `ls ../src/*.pl`
-  do
-    echo "ppl-compile $file --chip $chip --mode 5 --O2 --o . --rv"
-    ppl-compile $file --chip $chip --mode 5 --O2 --o . --rv
-  done
+  ppl_compile_all "$chip" --rv
   cmake ../ ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=OFF -DCHIP=${name} -DCMODEL=ON -DBUILD_DIR=${build_dir}
   make -j${CPU_NUM} install
   cmake ../ ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=OFF -DCHIP=${name} -DCMODEL=OFF -DBUILD_DIR=${build_dir}
@@ -142,12 +143,10 @@ done
 # static
 clean_up
 pushd build
-for file in `ls ../src/*.pl`
-do
-  ppl-compile $file --I $PPL_PROJECT_ROOT/inc  --desc --O2 --o .
-done
+ls ../src/*.pl | xargs -n1 -P"${CPU_NUM}" -I{} \
+  ppl-compile {} --I "$PPL_PROJECT_ROOT/inc" --desc --O2 --o .
 cmake ../ ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=ON
-make install
+make -j${CPU_NUM} install
 popd
 
 # Check if each PPL_FW_LAYER_TYPE_T enum already exists in FW_LAYER_TYPE_T
@@ -172,13 +171,13 @@ if [ "$missing_count" -gt 0 ]; then
     echo -e "\033[1;31mERROR: Add above definitions to $header_file and rebuild tpu-mlir\033[0m"
     exit 1
 fi
-# write nntc and ppl version to VER_FILE
-if [ "$BUILD_MODE" = "DEBUG" ];then
-  exit 0
-fi
+# Persist the input hashes so subsequent runs can short-circuit. We do this
+# for DEBUG too; otherwise a DEBUG -> DEBUG rerun would always rebuild.
 if [ "$file_changed" = true ]; then
   printf '%s\n' "${md5_list[@]}" > "$MD5FILE"
 fi
+# VER_FILE records the nntoolchain/ppl versions that the installed RELEASE
+# artifacts were built against, so only update it on RELEASE builds.
 if [ "$lib_changed" = true ]; then
   printf '%s\n' "$BUILD_MODE" > "$VER_FILE"
   cat "$PPL_VER_PATH" >> "$VER_FILE"

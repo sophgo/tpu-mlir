@@ -53,7 +53,7 @@ export PYTHONPATH=$PROJECT_ROOT/python:$PYTHONPATH
 export PYTHONPATH=$PROJECT_ROOT/third_party/customlayer/python:$PYTHONPATH
 
 
-export OMP_NUM_THREADS=4
+export OMP_NUM_THREADS=8
 
 export FORBID_GEN_RISCV_CODE=1
 

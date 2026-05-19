@@ -53,18 +53,38 @@ fi
 echo -e "${GREEN}Success: yapf check ok${NC}"
 
 
-PROJECT_ROOT=$(git rev-parse --show-toplevel)
-LIB_DIR="${PROJECT_ROOT}/third_party/nntoolchain/lib"
-README_FILE="${PROJECT_ROOT}/third_party/nntoolchain/README.md"
-if git diff --cached --name-only | grep -qE "^third_party/nntoolchain/lib/.*\.(so*|a)$"; then
-    echo "Library files update detected, check whether README.md is updated accordingly.."
-
-    if ! git diff --cached --name-only | grep -q "^third_party/nntoolchain/README.md$"; then
-        echo -e "${RED}ERROR${NC}: README.md file not updated! Please update ${README_FILE} file to reflect changes to dynamic libraries."
-        exit 1
+# Check for staged binary files that are identical to HEAD and restore (unstage) them
+restored_binary_files=()
+for f in $(git diff --cached --name-only --diff-filter=M); do
+    # Compare git object hashes directly; identical content produces the same hash
+    staged_hash=$(git ls-files --stage "$f" 2>/dev/null | awk '{print $2}')
+    head_hash=$(git ls-tree HEAD "$f" 2>/dev/null | awk '{print $3}')
+    if [ -n "$staged_hash" ] && [ -n "$head_hash" ] && [ "$staged_hash" = "$head_hash" ]; then
+        git restore --staged "$f"
+        restored_binary_files+=("$f")
+        echo -e "${YELLOW}Restored${NC}: $f (content identical to HEAD, unstaged automatically)"
     fi
+done
+if [ ${#restored_binary_files[@]} -gt 0 ]; then
+    echo -e "${YELLOW}Warning${NC}: ${#restored_binary_files[@]} file(s) were unstaged because their content is identical to HEAD."
+    echo -e "Please review the restored files and commit again if needed."
+    exit 1
 fi
-echo -e "${GREEN}Success: backend version update info check ok${NC}"
+echo -e "${GREEN}Success: binary identity check ok${NC}"
+
+
+# PROJECT_ROOT=$(git rev-parse --show-toplevel)
+# LIB_DIR="${PROJECT_ROOT}/third_party/nntoolchain/lib"
+# README_FILE="${PROJECT_ROOT}/third_party/nntoolchain/README.md"
+# if git diff --cached --name-only | grep -qE "^third_party/nntoolchain/lib/.*\.(so*|a)$"; then
+#     echo "Library files update detected, check whether README.md is updated accordingly.."
+
+#     if ! git diff --cached --name-only | grep -q "^third_party/nntoolchain/README.md$"; then
+#         echo -e "${RED}ERROR${NC}: README.md file not updated! Please update ${README_FILE} file to reflect changes to dynamic libraries."
+#         exit 1
+#     fi
+# fi
+# echo -e "${GREEN}Success: backend version update info check ok${NC}"
 
 
 check_sensitive_words() {

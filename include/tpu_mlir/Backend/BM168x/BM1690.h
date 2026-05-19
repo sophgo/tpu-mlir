@@ -115,6 +115,8 @@ protected:
     L2_SRAM_START_ADDR = 0x6980000000 | TAG_L2MEM;
     L2_SRAM_SIZE = 0x8000000;
     SUPPORT_MEM_TAG = true;
+    USER_TAG_START = 4;
+    USER_TAG_END = 29;
     LIB_BACKEND_NAME = "libbackend_bm1690.so";
     LIB_PPL_DYN_HOST_NAME = "libppl_dyn_host_bm1690.so";
     // GDMA format

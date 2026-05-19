@@ -54,7 +54,17 @@ void fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
   int head_rep = std::max(1, q_head / kv_head);
   if (is_decode) {
     block_m = 1;
-    block_k = align_2n(kvm, 2048);
+    // For decode we want at least 2 iterations of the `_k` loop so that
+    // `ppl::enable_pipeline()` can overlap the K/V loads of iter N+1 with
+    // the QK/PV matmul + softmax compute of iter N. Capping the initial
+    // `block_k` to roughly half of `kvm` (still aligned to a power of two
+    // and >= npu_num for healthy NPU utilization) forces multiple iterations
+    // while keeping each tile large enough for good DMA bandwidth.
+    int half = kvm / 2;
+    if (half < npu_num) {
+      half = npu_num;
+    }
+    block_k = align_2n(half, 2048);
   } else {
     int val = std::min(qm, kvm);
     block_m = align_2n(val);

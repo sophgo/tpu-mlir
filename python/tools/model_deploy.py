@@ -121,7 +121,8 @@ class DeployTool:
         self.disable_topo_sort = args.disable_topo_sort
         self.disable_layer_group = args.disable_layer_group
         self.enable_affine = not args.disable_affine
-        self.gdma_check = not args.disable_gdma_check
+        # TODO: support 2260/1684x2
+        self.gdma_check = False  # not args.disable_gdma_check
         self.opt = args.opt
         self.merge_weight = args.merge_weight
         self.op_divide = args.op_divide

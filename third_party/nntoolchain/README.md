@@ -13,97 +13,19 @@ cp out/install/lib/libcmodel_bm1684.so /workspace/tpu-mlir/third_party/nntoolcha
 cp bmcompiler/libbackend/libbackend_bm1684.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 ```
 
-## TPU1684X/1688/BM1690/SG2380/CV184X/SGTPUV8 2026-05-14
+## TPU1684X/1688/BM1690/SG2380/CV184X/SGTPUV8
 
-```bash
-#bm1684x sha256: 11ede2ce02ffe6eb4b314f275ac373a697478b2c
-cd TPU1686
-source  scripts/envsetup.sh bm1684x
-debug: rebuild_backend_lib_cmodel
-release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
-cp build/backend_api/libbackend_bm1684x.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_bm1684x.so
-cp build_runtime/firmware_core/libcmodel_firmware.a  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_bm1684x.a
-rebuild_firmware
-cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.a
-
-#bm1688 sha256: 11ede2ce02ffe6eb4b314f275ac373a697478b2c
-cd TPU1686
-source  scripts/envsetup.sh bm1686
-debug: rebuild_backend_lib_cmodel
-release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
-cp build/backend_api/libbackend_bm1686.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_bm1688.so
-cp build_runtime/firmware_core/libcmodel_firmware.a  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_bm1688.a
-rebuild_firmware
-cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmtpulv60_kernel_module.a
-
-#bm1690 sha256: 7e9348bef687b763adaa9cb32ed17ad86f571d0f
-cd TPU1686
-source  scripts/envsetup.sh sg2260
-debug: rebuild_backend_lib_cmodel
-release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
-cp build/backend_api/libbackend_sg2260.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_bm1690.so
-export EXTRA_CONFIG="-DDEBUG=OFF -DUSING_FW_DEBUG=OFF" && rebuild_test sgdnn
-cp build/firmware_core/libcmodel_firmware.a  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_bm1690.a
-unset EXTRA_CONFIG && rebuild_firmware
-cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690_kernel_module.a
-
-#bm1690e sha256: 560960aeffbe8ba8f9b234ed3c614e8bb25daff0
-cd TPU1686
-source  scripts/envsetup.sh sg2260e
-debug: rebuild_backend_lib_cmodel
-release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
-cp build/backend_api/libbackend_sg2260e.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_bm1690e.so
-export EXTRA_CONFIG="-DDEBUG=OFF -DUSING_FW_DEBUG=OFF" && rebuild_test sgdnn
-cp build/firmware_core/libcmodel_firmware.a  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_bm1690e.a
-unset EXTRA_CONFIG && rebuild_firmware
-cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1690e_kernel_module.a
-
-#cv184x sha256: 11ede2ce02ffe6eb4b314f275ac373a697478b2c
-cd TPU1686
-source  scripts/envsetup.sh mars3
-debug: rebuild_backend_lib_cmodel
-release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
-cp build/backend_api/libbackend_mars3.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_cv184x.so
-cp build_runtime/firmware_core/libcmodel_firmware.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_cv184x.so
-
-#SGTPUV8 sha256: 560960aeffbe8ba8f9b234ed3c614e8bb25daff0
-cd TPU1686
-source  scripts/envsetup.sh sgtpuv8
-debug: rebuild_backend_lib_cmodel
-release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
-cp build/backend_api/libbackend_sgtpuv8.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_sgtpuv8.so
-cp build_runtime/firmware_core/libcmodel_firmware.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_sgtpuv8.so
-rebuild_firmware
-cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libsgtpuv8_kernel_module.so
-cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libsgtpuv8_kernel_module.a
-
-#sg2380 sha256: 4498fe9ae93429e3c7b79df24db596dc2e42aef4
-# no need to compile
-# cd TPU1686
-# source  scripts/envsetup.sh sg2380
-# debug: rebuild_backend_lib_cmodel
-# release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
-# cp build/backend_api/libbackend_sg2380.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_sg2380.so
-# cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_sg2380.so
-
-#BM1684X2 sha256:afc171b70511a5598e5e7aa80f2dc31a1a6fb779
-cd TPU1686
-source scripts/envsetup.sh bm1684x2
-debug: rebuild_backend_lib_cmodel
-release: unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
-cp build/backend_api/libbackend_bm1684x2.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_bm1684x2.so
-cp build_runtime/firmware_core/libcmodel_firmware.a  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_bm1684x2.a
-rebuild_firmware
-cp build/firmware_core/libfirmware_core.a /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x2_kernel_module.a
-
-# only build ppl once when all processor backend update
-/workspace/tpu-mlir/lib/PplBackend/build.sh
-
+``` bash
+# update all
+./build_tpu1686.sh -t /workspace/TPU1686
+# update one, (bm1684x2 for example)
+./build_tpu1686.sh -t /workspace/TPU1686 -c bm1684x2
+# if debug, add -d
 ```
 
-## tpu-runtime 2026-03-31
+## tpu-runtime 2026-05-22
 
-build from tpu-runtime fad5fd548a75a67ac0e05d2ff426ccdbaa28e6f5
+build from tpu-runtime 43a13605f667a2ceae45c8a3dda1ab7dc2192556
 
 ```bash
 pushd libsophon
@@ -113,7 +35,7 @@ ninja
 cp -P tpu-runtime/libbmrt.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
 cp -P bmlib/libbmlib.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
 cp -P tpu-bmodel/libmodel_combine.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
-# BM1684X2
+# libsopn need branch BM1684X2
 cp -P bmlib/libbmlib.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmlib_bm1684x2.so.0
 popd
 ```
@@ -129,21 +51,14 @@ cp /workspace/nntoolchain/net_compiler/out/lib/libcpuop.so* /workspace/tpu-mlir/
 # libbmcpu.so/libusercpu.so are deprecated
 ```
 
-## tpuv7-runtime 2025-11-18
+## tpuv7-runtime
 
 build from tpuv7-runtime ff61f7ed6bc0d15ea77f0c0f746acabd6cec8255
 
 ```bash
-mkdir -p build/emulator
-pushd build/emulator
-cmake -DCMAKE_INSTALL_PREFIX=$PWD/../install  -DUSING_CMODEL=ON -DUSING_DEBUG=OFF -DUSING_TP_DEBUG=OFF ../..
-make -j$(nproc)
-cp model-runtime/runtime/libtpuv7_modelrt.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
-cp cdmlib/host/cdm_runtime/libtpuv7_rt.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
-cp cdmlib/fw/ap/daemon/libcdm_daemon_emulator.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
-cp cdmlib/fw/tp/daemon/libtpuv7_scalar_emulator.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
-popd
-cp model-runtime/runtime/include/tpuv7_modelrt.h /workspace/tpu-mlir/third_party/nntoolchain/include
-cp cdmlib/host/cdm_runtime/include/tpuv7_rt.h /workspace/tpu-mlir/third_party/nntoolchain/include
+# RELEASE build (default)
+./build_tpuv7.sh -t /workspace/tpuv7-runtime
+# DEBUG build
+./build_tpuv7.sh -d -t /workspace/tpuv7-runtime
 ```
 

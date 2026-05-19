@@ -1,0 +1,10 @@
+=== tpuv7-runtime ===
+commit 903507d0e5f10f41e29ec7025d51b024781ca724
+Author: pengchao.hu <pengchao.hu@sophgo.com>
+Date:   Fri May 22 16:31:40 2026 +0800
+
+    feat: 1690/1690e support io tag bmodel
+    
+    - if io tag, no need to copy user mem
+    
+    Change-Id: I7041f84246785d74af406de66e1a2867945410cd

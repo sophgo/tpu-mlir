@@ -38,7 +38,14 @@ public:
   }
   virtual void before_codegen() override;
   virtual void after_codegen(int64_t flops = 0) override;
-
+  virtual uint64_t tag_addr(uint64_t tag_id) override {
+    assert(tag_id >= USER_TAG_START && tag_id <= USER_TAG_END);
+    return (tag_id << 40); // Why not | GMEM_START_ADDR?
+  }
+  uint64_t tag_id(uint64_t addr) override {
+    assert(SUPPORT_MEM_TAG);
+    return (addr >> 40) & 0x7;
+  }
   set_tiu_freq dl_set_tiu_freq;
   set_gdma_bw_s2s dl_set_gdma_bw_s2s;
   set_gdma_bw_s2l dl_set_gdma_bw_s2l;
@@ -78,11 +85,7 @@ private:
     TAG_USERS = 0,
     TAG_WEIGHT = (1ul << 40),
     TAG_ACTIVATION = (2ul << 40),
-    TAG_IO0 = (3ul << 40),
-    TAG_IO1 = (4ul << 40),
-    TAG_IO2 = (5ul << 40),
-    TAG_IO3 = (6ul << 40),
-    TAG_IO4 = (7ul << 40),
+    // 3 ~ 7 for user defined tag
   };
 
 protected:
@@ -100,12 +103,9 @@ protected:
     GMEM_START_ADDR = 0x80000000UL;
     COEFF_START_ADDR = GMEM_START_ADDR | TAG_WEIGHT;
     CTX_START_ADDR = GMEM_START_ADDR | TAG_ACTIVATION;
-    IO_ADDR[0] = TAG_IO0;
-    IO_ADDR[1] = TAG_IO1;
-    IO_ADDR[2] = TAG_IO2;
-    IO_ADDR[3] = TAG_IO3;
-    IO_ADDR[4] = TAG_IO4;
     SUPPORT_MEM_TAG = true;
+    USER_TAG_START = 3;
+    USER_TAG_END = 7;
     LIB_BACKEND_NAME = "libbackend_cv184x.so";
     // GDMA format
     GDMA_VALUE_FORMAT_INT8 = 0;

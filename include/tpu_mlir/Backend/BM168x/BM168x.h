@@ -123,9 +123,10 @@ typedef int (*bmcpu_dtype)(void *bmcpu_handle, int op_type, const void *param,
                            std::vector<int> &output_dtypes);
 
 typedef void (*fill_constant_gen_global_cmd_stride)(
-    uint64_t global_mem_start_addr, const void * const_val, int32_t data_format,
-    int N, int C, int H, int W, uint32_t n_stride, uint32_t c_stride, uint32_t h_stride, uint32_t w_stride,
-    bool enable_stride, CMD_ID_NODE *pid_node);
+    uint64_t global_mem_start_addr, const void *const_val, int32_t data_format,
+    int N, int C, int H, int W, uint32_t n_stride, uint32_t c_stride,
+    uint32_t h_stride, uint32_t w_stride, bool enable_stride,
+    CMD_ID_NODE *pid_node);
 
 namespace tpu_mlir {
 namespace backend {
@@ -252,7 +253,8 @@ public:
   static uint64_t CTX_START_ADDR;
   static uint64_t IO_START_ADDR;
   static bool SUPPORT_MEM_TAG;
-  static uint64_t IO_ADDR[5];
+  static uint64_t USER_TAG_START;
+  static uint64_t USER_TAG_END;
   static uint64_t L2_SRAM_SIZE;
   static uint64_t MAX_CORE_NUM;
   static const uint64_t CMODEL_GMEM_SIZE = 0x100000000ull;
@@ -348,8 +350,16 @@ public:
   void value_d2s(Value v, void *dst);
   void divide_sync_id();
   void merge_sync_id();
-  static int get_io_addr_num();
-
+  static int get_user_tag_num();
+  virtual uint64_t tag_addr(uint64_t tag_id) {
+    assert(SUPPORT_MEM_TAG);
+    assert(tag_id >= USER_TAG_START && tag_id <= USER_TAG_END);
+    return (tag_id << 40);
+  }
+  virtual uint64_t tag_id(uint64_t addr) {
+    assert(SUPPORT_MEM_TAG);
+    return (addr >> 40) & 0x1f;
+  }
   // arch info
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) = 0;
   virtual uint32_t get_gdma_len(int gdma_num, int group_id) = 0;

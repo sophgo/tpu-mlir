@@ -52,10 +52,6 @@ int64_t tpu::FAttentionOp::get_fw_type_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::FAttentionOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!module::isBM1684X() && !module::isBM1688() && !module::isBM1690() &&
-      !module::isBM1690E()) {
-    UNREACHABLE_THIS("Not Implemented");
-  }
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);

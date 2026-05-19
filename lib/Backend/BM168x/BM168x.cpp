@@ -573,7 +573,8 @@ int BM168x::call_local_bfsz_func(const char *symbolName, void *params,
 uint64_t BM168x::COEFF_START_ADDR = 0;
 uint64_t BM168x::CTX_START_ADDR = 0;
 uint64_t BM168x::IO_START_ADDR = 0;
-uint64_t BM168x::IO_ADDR[5] = {0};
+uint64_t BM168x::USER_TAG_START = 0;
+uint64_t BM168x::USER_TAG_END = 0;
 int64_t BM168x::IC_PARALLEL = 0;
 uint64_t BM168x::GMEM_START_ADDR = 0;
 int64_t BM168x::ALIGNMENT = 0;
@@ -661,12 +662,9 @@ void BM168x::end_env() {
   }
 }
 
-int BM168x::get_io_addr_num() {
-  int num = sizeof(IO_ADDR) / sizeof(IO_ADDR[0]);
-  for (int i = num - 1; i >= 0; i--) {
-    if (IO_ADDR[i] != 0) {
-      return i + 1;
-    }
+int BM168x::get_user_tag_num() {
+  if (SUPPORT_MEM_TAG) {
+    return USER_TAG_END - USER_TAG_START + 1;
   }
   return 0;
 }

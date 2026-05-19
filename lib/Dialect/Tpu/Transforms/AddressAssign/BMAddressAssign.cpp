@@ -125,6 +125,18 @@ static void sort_ios(std::vector<Value> &ios) {
             });
 }
 
+static int64_t get_tag_addr(uint64_t tag_id) {
+  return (int64_t)BM168x::instance()->tag_addr(tag_id + BM168x::USER_TAG_START);
+}
+
+static bool is_io_tag_addr(int64_t addr) {
+  uint64_t tag_id = BM168x::instance()->tag_id(addr);
+  if (tag_id >= BM168x::USER_TAG_START && tag_id <= BM168x::USER_TAG_END) {
+    return true;
+  }
+  return false;
+}
+
 void BMAddressAssign::updateAddressByAddrMode(mlir::ModuleOp &m,
                                               int64_t start_addr,
                                               int64_t addr_limit) {
@@ -141,17 +153,17 @@ void BMAddressAssign::updateAddressByAddrMode(mlir::ModuleOp &m,
     module::getInputsOutputs(m, ins, outs);
     // fix input and output address to IO_TAG
     int io_index = 0;
-    int in_tag = 0, out_tag = 1;
+    uint64_t in_tag = 0, out_tag = 1;
     int64_t in_offset = 0, out_offset = 0;
     // fuse inputs onto in_tag
     for (io_index = 0; io_index < ins.size(); io_index++) {
-      int64_t addr = BM168x::IO_ADDR[in_tag] + in_offset;
+      auto addr = get_tag_addr(in_tag) + in_offset;
       module::setAddress(ins[io_index], addr);
       in_offset += module::getBytes(ins[io_index]);
     }
     // fuse outputs onto out_tag
     for (io_index = 0; io_index < outs.size(); io_index++) {
-      int64_t addr = BM168x::IO_ADDR[out_tag] + out_offset;
+      auto addr = get_tag_addr(out_tag) + out_offset;
       module::setAddress(outs[io_index], addr);
       out_offset += module::getBytes(outs[io_index]);
     }
@@ -222,7 +234,7 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
         }
 
         if (module::isAddrMode(module::AddrMode::IO_TAG) &&
-            module::getAddress(input) >= BM168x::IO_ADDR[0]) {
+            is_io_tag_addr(module::getAddress(input))) {
           continue;
         }
         module::setAddress(input, addr + offset);
@@ -298,10 +310,12 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
             if (reshape_addr == 0) {
               continue;
             }
-            if (std::find(std::begin(BM168x::IO_ADDR),
-                          std::end(BM168x::IO_ADDR), reshape_addr)) {
-              pass_this_sliceOp = true;
-              module::setAddress(sliceOp.getOutput(), reshape_addr);
+            for (uint64_t i = 0; i < BM168x::get_user_tag_num(); i++) {
+              if (reshape_addr == get_tag_addr(i)) {
+                pass_this_sliceOp = true;
+                module::setAddress(sliceOp.getOutput(), reshape_addr);
+                break;
+              }
             }
           }
         }
@@ -603,10 +617,10 @@ void BMAddressAssign::assignIOByAddrMode(
 
     // assign io addr
     sort_ios(ios);
-    int io_num = BM168x::get_io_addr_num();
+    int io_num = BM168x::get_user_tag_num();
     int n_tags = ios.size() < io_num ? ios.size() : io_num;
     for (int io_index = 0; io_index < n_tags; io_index++) {
-      module::setAddress(ios[io_index], BM168x::IO_ADDR[io_index]);
+      module::setAddress(ios[io_index], get_tag_addr(io_index));
       ValueInfo v_info(ios[io_index].getDefiningOp(),
                        ios[io_index].cast<OpResult>().getResultNumber());
       inplace_addr_update(inplace_ops, v_info);

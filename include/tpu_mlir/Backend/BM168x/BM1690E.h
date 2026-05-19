@@ -93,6 +93,8 @@ private:
     TAG_USERS = 0,
     TAG_WEIGHT = (1ul << 40),
     TAG_ACTIVATION = (2ul << 40),
+    TAG_IOALONE = (3ul << 40),
+    // 4 ~ 29 for user defined tag
     TAG_L2MEM = (30ul << 40),
   };
 
@@ -111,9 +113,12 @@ protected:
     GMEM_START_ADDR = 0; // tag for global memory address
     COEFF_START_ADDR = GMEM_START_ADDR | TAG_WEIGHT;
     CTX_START_ADDR = GMEM_START_ADDR | TAG_ACTIVATION;
+    IO_START_ADDR = GMEM_START_ADDR | TAG_IOALONE;
     L2_SRAM_START_ADDR = 0x6980000000 | TAG_L2MEM;
     L2_SRAM_SIZE = 0x1000000;
     SUPPORT_MEM_TAG = true;
+    USER_TAG_START = 4;
+    USER_TAG_END = 29;
     LIB_BACKEND_NAME = "libbackend_bm1690e.so";
     LIB_PPL_DYN_HOST_NAME = "libppl_dyn_host_bm1690e.so";
     // GDMA format

@@ -459,7 +459,9 @@ class LlmConverter(BaseConverter):
         self.scale_depth = getattr(self.llm_config, "scale_depth", 1.)
         self.dim_model_base = getattr(self.llm_config, "dim_model_base", 1.)
         # whether llm head and embedding share weight
-        self.tie_word_embeddings = getattr(self.llm_config, 'tie_word_embeddings', False)
+        self.tie_word_embeddings = getattr(self.llm_config, 'tie_word_embeddings', None)
+        if self.tie_word_embeddings is None:
+            self.tie_word_embeddings = getattr(self.config, 'tie_word_embeddings', False)
         self.init_quantization()
 
     def get_qtype(self, dtype, bits):

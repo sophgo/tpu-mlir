@@ -63,13 +63,8 @@ private:
     TAG_WEIGHT = (1ul << 40),
     TAG_ACTIVATION = (2ul << 40),
     TAG_IOALONE = (3ul << 40),
-    TAG_IO0 = (4ul << 40),
-    TAG_IO1 = (5ul << 40),
-    TAG_IO2 = (6ul << 40),
-    TAG_IO3 = (7ul << 40),
-    TAG_PRIVATE = (29ul << 40),
-    TAG_SHARED_8CH = (28ul << 40),
-    TAG_SHARED_32CH = (27ul << 40)
+    TAG_L2MEM = (30ul << 40),
+    // 4 ~ 29 for user defined tag
   };
 
 public:
@@ -91,11 +86,10 @@ protected:
     COEFF_START_ADDR = GMEM_START_ADDR | TAG_WEIGHT;
     CTX_START_ADDR = GMEM_START_ADDR | TAG_ACTIVATION;
     IO_START_ADDR = GMEM_START_ADDR | TAG_IOALONE;
-    L2_SRAM_START_ADDR = GMEM_START_ADDR | TAG_SHARED_8CH;
-    IO_ADDR[0] = GMEM_START_ADDR | TAG_IO0;
-    IO_ADDR[1] = GMEM_START_ADDR | TAG_IO1;
-    IO_ADDR[2] = GMEM_START_ADDR | TAG_IO2;
-    IO_ADDR[3] = GMEM_START_ADDR | TAG_IO3;
+    L2_SRAM_START_ADDR = 0x26d20000UL | TAG_L2MEM;
+    L2_SRAM_SIZE = 0x100000;
+    USER_TAG_START = 4;
+    USER_TAG_END = 29;
     SUPPORT_MEM_TAG = true;
     LIB_BACKEND_NAME = "libbackend_bm1684x2.so";
     LIB_PPL_DYN_HOST_NAME = "libppl_dyn_host_bm1684x2.so";

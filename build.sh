@@ -72,12 +72,13 @@ cmake -G Ninja \
   -DCMAKE_INSTALL_PREFIX="${INSTALL_PATH}" \
   "${PROJECT_ROOT}"
 
-cpu_num=$(nproc)
+cpu_num=$(cat /proc/stat | grep cpu[0-9] -c)
 cmake --build "$BUILD_PATH" --target install -j${cpu_num}
 
 cmake --build "$BUILD_PATH" --target passes_json_files builder_python install_passes_files
 
 # build ppl code
+# bash lib/PplBackend/build.sh DEBUG
 bash lib/PplBackend/build.sh
 
 # Clean up some files for release build

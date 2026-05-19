@@ -88,14 +88,21 @@ private:
     TAG_USERS = 0,
     TAG_WEIGHT = (1ul << 36),
     TAG_ACTIVATION = (2ul << 36),
-    TAG_IO0 = (3ul << 36),
-    TAG_IO1 = (4ul << 36),
-    TAG_IO2 = (5ul << 36),
-    TAG_IO3 = (6ul << 36),
-    TAG_IO4 = (7ul << 36),
+    // 3 ~ 7 for user defined tag
   };
 
 public:
+  // BM1688 places the memory tag at bit 36 (rather than bit 40 used by
+  // BM1684X2/BM1690), so override the base tag layout accordingly.
+  uint64_t tag_addr(uint64_t tag_id) override {
+    assert(SUPPORT_MEM_TAG);
+    assert(tag_id >= USER_TAG_START && tag_id <= USER_TAG_END);
+    return GMEM_START_ADDR | (tag_id << 36);
+  }
+  uint64_t tag_id(uint64_t addr) override {
+    assert(SUPPORT_MEM_TAG);
+    return (addr >> 36) & 0x7;
+  }
   // specific global info
   static constexpr llvm::StringRef LIB_KERNEL_NAME =
       "libbmtpulv60_kernel_module.so";
@@ -116,11 +123,8 @@ protected:
     CTX_START_ADDR = GMEM_START_ADDR | TAG_ACTIVATION;
     IO_START_ADDR =
         0x100000000ull; // use 4GB for IO ALONE start address without tag
-    IO_ADDR[0] = GMEM_START_ADDR | TAG_IO0;
-    IO_ADDR[1] = GMEM_START_ADDR | TAG_IO1;
-    IO_ADDR[2] = GMEM_START_ADDR | TAG_IO2;
-    IO_ADDR[3] = GMEM_START_ADDR | TAG_IO3;
-    IO_ADDR[4] = GMEM_START_ADDR | TAG_IO4;
+    USER_TAG_START = 3;
+    USER_TAG_END = 7;
     LIB_BACKEND_NAME = "libbackend_bm1688.so";
     LIB_PPL_DYN_HOST_NAME = "libppl_dyn_host_bm1688.so";
     SUPPORT_MEM_TAG = true;

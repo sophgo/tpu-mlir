@@ -40,7 +40,13 @@ class Qwen2_5VLConverter(LlmConverter):
         self.vintermediate_size = self.vconfig.intermediate_size
         self.position_shape = [3, self.max_input_length]
         self.fullatt_block_indexes = self.vconfig.fullatt_block_indexes
-        self.mrope_section = getattr(self.config.rope_scaling, 'mrope_section', [16, 24, 24])
+        rope_scaling = getattr(self.config, 'rope_scaling', None)
+        if rope_scaling is None:
+            rope_scaling = getattr(self.llm_config, 'rope_scaling', {})
+        if isinstance(rope_scaling, dict):
+            self.mrope_section = rope_scaling.get('mrope_section', [16, 24, 24])
+        else:
+            self.mrope_section = getattr(rope_scaling, 'mrope_section', [16, 24, 24])
 
     @override
     def load_pretrained(self, config):
