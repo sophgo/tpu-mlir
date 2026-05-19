@@ -99,11 +99,15 @@ class SafetensorsModelHandle(ModelHandle):
         else:
             conv.quant_mode = conv.quantization_config["quant_method"]
             conv.platform = Platform.LLM_QUANTIZED
-            if conv.quant_mode not in ["gptq", "awq", "compressed-tensors", "auto-round"]:
+            if conv.quant_mode not in ["gptq", "awq", "compressed-tensors", "auto-round", "fp8"]:
                 raise NotImplementedError(f"Not support quantization method: {conv.quant_mode}")
-            if conv.quant_mode != "compressed-tensors":
+            if conv.quant_mode != "compressed-tensors" and conv.quant_mode != "fp8":
                 conv.q_group_size = conv.quantization_config["group_size"]
                 conv.quant_bits = conv.quantization_config["bits"]
+            if conv.quant_mode == "fp8":
+                conv.activation_scheme = conv.quantization_config["activation_scheme"]
+                conv.fmt = conv.quantization_config["fmt"]
+                conv.block_size = conv.quantization_config["weight_block_size"]
             if conv.quant_mode == "auto-round":
                 packing_format = conv.quantization_config.get("packing_format",
                                                               "auto_round:auto_gptq")
@@ -138,6 +142,8 @@ class SafetensorsModelHandle(ModelHandle):
                 real_quantize = conv.get_qtype(dtype, conv.quant_bits)
             elif conv.quant_mode == "gptq":
                 real_quantize = conv.get_qtype(dtype, conv.quant_bits)
+            elif conv.quant_mode == "fp8":
+                real_quantize = conv.get_qtype(dtype, 16)
             if conv.quantize != "auto" and conv.quantize != real_quantize:
                 logger.warning("%s is different from quantization config %s. Force to %s",
                                conv.quantize, real_quantize, real_quantize)
@@ -158,6 +164,117 @@ class SafetensorsModelHandle(ModelHandle):
                                                       "*.py", "*.bin", "*.bin.index.json",
                                                       "model.safetensors.index.json"),
                         dirs_exist_ok=True)
+
+    def fp32_to_fp8(self, x: np.ndarray, fmt: str = "e4m3") -> np.ndarray:
+        """
+        convert fp32 to fp8
+        """
+        x = np.asarray(x, dtype=np.float32)
+
+        if fmt.lower() == "e4m3":
+            ebits, mbits, bias = 4, 3, 7
+            has_inf = False
+            max_finite_exp_field = (1 << ebits) - 1  # 15
+            max_finite_mant_field = (1 << mbits) - 2  # 6
+        elif fmt.lower() == "e5m2":
+            ebits, mbits, bias = 5, 2, 15
+            has_inf = True
+            max_finite_exp_field = ((1 << ebits) - 1) - 1  # 30
+            max_finite_mant_field = (1 << mbits) - 1  # 3
+        else:
+            raise ValueError("fmt only support 'e4m3' and 'e5m2'")
+
+        sign_bit = 1 << (ebits + mbits)
+        exp_mask_all_ones = (1 << ebits) - 1
+        mant_mask = (1 << mbits) - 1
+
+        out = np.zeros_like(x, dtype=np.uint8)
+
+        sign = np.signbit(x).astype(np.uint8)
+        out |= sign << (ebits + mbits)
+
+        ax = np.abs(x)
+
+        is_nan = np.isnan(ax)
+        is_inf = np.isinf(ax)
+        is_zero = (ax == 0)
+
+        out[is_nan] = ((sign[is_nan] <<
+                        (ebits + mbits)) | (exp_mask_all_ones << mbits) | 1).astype(np.uint8)
+
+        if np.any(is_inf):
+            if has_inf:
+                out[is_inf] = ((sign[is_inf] <<
+                                (ebits + mbits)) | (exp_mask_all_ones << mbits)).astype(np.uint8)
+            else:
+                out[is_inf] = ((sign[is_inf] << (ebits + mbits)) | (max_finite_exp_field << mbits)
+                               | max_finite_mant_field).astype(np.uint8)
+
+        normal_mask = ~(is_nan | is_inf | is_zero)
+        if not np.any(normal_mask):
+            return out
+
+        vals = ax[normal_mask]
+
+        m, e = np.frexp(vals)
+        m2 = m * 2.0
+        e2 = e - 1
+
+        exp_field = e2 + bias
+        overflow = exp_field > max_finite_exp_field
+
+        is_normal_num = (exp_field >= 1) & (~overflow)
+        is_subnormal = exp_field <= 0
+
+        enc = np.zeros_like(vals, dtype=np.uint8)
+
+        if np.any(is_normal_num):
+            mn = m2[is_normal_num] - 1.0  # [0,1)
+            frac = np.round(mn * (1 << mbits)).astype(np.int32)
+
+            expn = exp_field[is_normal_num].astype(np.int32)
+
+            carry = frac == (1 << mbits)
+            if np.any(carry):
+                frac[carry] = 0
+                expn[carry] += 1
+
+            ov2 = expn > max_finite_exp_field
+            if np.any(ov2):
+                idx_sat = np.where(is_normal_num)[0][ov2]
+                if has_inf:
+                    enc[idx_sat] = np.uint8(exp_mask_all_ones << mbits)
+                else:
+                    enc[idx_sat] = np.uint8((max_finite_exp_field << mbits) | max_finite_mant_field)
+                keep = ~ov2
+                if np.any(keep):
+                    idx_keep = np.where(is_normal_num)[0][keep]
+                    enc[idx_keep] = ((expn[keep] << mbits) | (frac[keep] & mant_mask)).astype(
+                        np.uint8)
+            else:
+                idx = np.where(is_normal_num)[0]
+                enc[idx] = ((expn << mbits) | (frac & mant_mask)).astype(np.uint8)
+
+        if np.any(is_subnormal):
+            vs = vals[is_subnormal]
+            scale = np.float32(2.0**(1 - bias - mbits))
+            mant = np.round(vs / scale).astype(np.int32)
+            mant = np.clip(mant, 0, mant_mask)
+            idx = np.where(is_subnormal)[0]
+            enc[idx] = mant.astype(np.uint8)
+
+        if np.any(overflow):
+            idx = np.where(overflow)[0]
+            if has_inf:
+                enc[idx] = np.uint8(exp_mask_all_ones << mbits)
+            else:
+                enc[idx] = np.uint8((max_finite_exp_field << mbits) | max_finite_mant_field)
+
+        sign_local = sign[normal_mask]
+        enc |= (sign_local << (ebits + mbits)).astype(np.uint8)
+
+        out[normal_mask] = enc
+        return out
 
     def unpack_weights(self, conv, qweight, qzeros, bits, quant_mode, path):
         dtype = np.int32
@@ -279,7 +396,7 @@ class SafetensorsModelHandle(ModelHandle):
             if self.model.is_exist(path + ".qweight") or self.model.is_exist(path +
                                                                              ".weight_packed"):
                 is_quant = True
-        if not is_quant:
+        if not is_quant and conv.quant_mode != "fp8":
             weight_path = path + ".weight"
             if self.model.is_exist(weight_path):
                 data = self.model.read(weight_path)
@@ -331,6 +448,16 @@ class SafetensorsModelHandle(ModelHandle):
             weight_dict[path + ".qzeros"] = unpacked_zeros
             K = pack_int8_weights.shape[1] * (8 // conv.quant_bits)
             N = pack_int8_weights.shape[0]
+        elif conv.quant_mode == "fp8":
+            weight_path = path + ".weight"
+            scale_path = path + ".weight_scale_inv"
+            weight_data = self.model.read(weight_path)
+            weight_data = self.fp32_to_fp8(weight_data, conv.fmt)
+            scale_data = self.model.read(scale_path)
+            weight_dict[weight_path] = weight_data
+            weight_dict[scale_path] = scale_data
+            K = weight_data.shape[1]
+            N = weight_data.shape[0]
 
         bias_path = path + ".bias"
         if self.model.is_exist(bias_path):

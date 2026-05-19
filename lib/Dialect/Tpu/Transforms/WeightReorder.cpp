@@ -87,6 +87,16 @@ public:
       } else if (result == user.getIndices()) {
         path += ".index";
       }
+    } else if (auto user = dyn_cast<tpu::Fp8MatMulOp>(user_op)) {
+      if (result == user.getInput()) {
+        path += ".input";
+      } else if (result == user.getWeight()) {
+        path += ".weight";
+      } else if (result == user.getWeightScale()) {
+        path += ".scale";
+      } else if (result == user.getBias()) {
+        path += ".bias";
+      }
     } else {
       int index = 0;
       for (int i = 0; i < user_op->getNumOperands(); i++) {

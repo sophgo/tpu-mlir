@@ -2441,6 +2441,11 @@ typedef struct recurrent_gated_delta_rule_spec {
   float scale;
 } recurrent_gated_delta_rule_spec_t;
 
+typedef struct w8a8_block_matmul_spec {
+  int block_size_k;
+  int block_size_n;
+} w8a8_block_matmul_spec_t;
+
 typedef struct concat_slice_spec {
   int axis;
 } concat_slice_spec_t;

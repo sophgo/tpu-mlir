@@ -129,6 +129,8 @@ class MLIR_IR_TESTER(object):
             "fattention": (self.test_fattention, Y, Y),
             "fattention_prefill": (self.test_fattention_prefill, Y, Y),
             "fattention_decode": (self.test_fattention_decode, Y, Y),
+            "fattn_o_proj": (self.test_fattn_o_proj, Y, Y),
+            "fp8matmul": (self.test_fp8matmul, Y, Y),
             "slice": (self.test_slice, Y, Y),
             "a16matmul": (self.test_a16matmul, Y, Y),
             "chunk_gated_delta_rule": (self.test_chunk_gated_delta_rule, Y, Y),
@@ -152,6 +154,7 @@ class MLIR_IR_TESTER(object):
         self.no_check = args.no_check
         self.ip = getattr(args, "ip", "")
         self.pwd = getattr(args, "pwd", "")
+        self.weights_path = getattr(args, "weights_path", "").strip()
         if self.chip not in SUPPORTED_CHIPS:
             raise ValueError(f"Unsupported chip: {self.chip}. Supported: {SUPPORTED_CHIPS}")
 
@@ -844,6 +847,168 @@ class MLIR_IR_TESTER(object):
         # Deploy for each quantization mode
         self._deploy_test_case(case_name)
 
+    def test_fattn_o_proj(self, case_name):
+        """FAttention (keep_dims=false) -> Fp8MatMul o_proj, Qwen3 block_0-like shapes."""
+        S, D = 512, 128
+        Q_HEAD, KV_HEAD = 16, 8
+        block_size = 128
+        W_N, W_K = 1024, 2048
+
+        input_shapes = [
+            [1, S, Q_HEAD, D],
+            [1, S, KV_HEAD, D],
+            [1, S, KV_HEAD, D],
+            [1, 1, S, S],
+        ]
+        output_shapes = [
+            [1, S, 2048],
+            [1, S, 1024],
+        ]
+
+        block_mlir, input_ops, _, ip = self._create_mlir_importer(case_name, input_shapes, [],
+                                                                  output_shapes)
+        q, k, v, mask = input_ops
+        w_op = block_mlir.create_weight_op("fp8_weight", [W_N, W_K], "F8E4M3")
+        s_op = block_mlir.create_weight_op("fp8_scale", [W_N // block_size, W_K // block_size],
+                                           "F32")
+
+        fattn = top.FAttentionOp(self._T(block_mlir, output_shapes[0]),
+                                 q,
+                                 k,
+                                 v,
+                                 mask,
+                                 block_mlir.none_op,
+                                 batch=1,
+                                 q_head=Q_HEAD,
+                                 kv_head=KV_HEAD,
+                                 dim=D,
+                                 scale=1.0 / (D**0.5),
+                                 mq=S,
+                                 mk=S,
+                                 keep_dims=False,
+                                 loc=self._L(block_mlir, "fattention"),
+                                 ip=ip).output
+        o_proj = top.Fp8MatMulOp(self._T(block_mlir, output_shapes[1]),
+                                 fattn,
+                                 w_op,
+                                 s_op,
+                                 block_mlir.none_op,
+                                 weight_transpose=True,
+                                 block_size=block_size,
+                                 loc=self._L(block_mlir, "o_proj"),
+                                 ip=ip).output
+        block_mlir.create_return_op([fattn, o_proj])
+
+        inputs = {
+            "in0": rand_data(input_shapes[0], "float32", -1, 1),
+            "in1": rand_data(input_shapes[1], "float32", -1, 1),
+            "in2": rand_data(input_shapes[2], "float32", -1, 1),
+            "in3": self._causal_attention_mask(S),
+        }
+        weights = self._default_fp8_matmul_weights(W_N, W_K, block_size)
+        # if self.weights_path:
+        #     weights.update(self._load_fp8_matmul_weights(self.weights_path, W_N, W_K, block_size))
+        #     print(f"[fattn_o_proj] fp8 weights from {self.weights_path}")
+
+        with open(f"{case_name}.mlir", "w") as f:
+            f.write(block_mlir.print_module())
+        np.savez(f"{case_name}_top_f32_all_origin_weight.npz", **weights)
+        if not self.no_check:
+            np.savez(f"{case_name}_input.npz", **inputs)
+
+        saved_modes = self.quant_modes
+        self.quant_modes = [m for m in saved_modes if m in ("f16", "bf16")]
+        self._deploy_test_case(case_name, tolerance=(0.99, 0.90))
+        self.quant_modes = saved_modes
+
+    @staticmethod
+    def _causal_attention_mask(seq_len: int) -> np.ndarray:
+        mask = np.triu(np.full((seq_len, seq_len), -1.0e10, dtype=np.float32), k=1)
+        return mask.reshape(1, 1, seq_len, seq_len)
+
+    @staticmethod
+    def _default_fp8_matmul_weights(w_n: int, w_k: int, block_size: int) -> dict:
+        return {
+            "fp8_weight": np.random.randint(0, 256, (w_n, w_k), dtype=np.uint8),
+            "fp8_scale": rand_data([w_n // block_size, w_k // block_size], "float32", 0, 0.1),
+        }
+
+    # def _load_fp8_matmul_weights(
+    #         self,
+    #         npz_path: str,
+    #         w_n: int,
+    #         w_k: int,
+    #         block_size: int,
+    #         weight_key: str = "model.layers.0.self_attn.o_proj.weight",
+    #         scale_key: str = "model.layers.0.self_attn.o_proj.weight_scale_inv") -> dict:
+    #     if not os.path.isfile(npz_path):
+    #         raise FileNotFoundError(f"weights npz not found: {npz_path}")
+    #     wnpz = np.load(npz_path)
+    #     try:
+    #         if weight_key not in wnpz.files:
+    #             raise KeyError(f"{weight_key} not in {npz_path}, keys={wnpz.files[:8]}...")
+    #         if scale_key not in wnpz.files:
+    #             raise KeyError(f"{scale_key} not in {npz_path}")
+    #         weight = wnpz[weight_key]
+    #         scale = wnpz[scale_key]
+    #     finally:
+    #         wnpz.close()
+    #     if tuple(weight.shape) != (w_n, w_k):
+    #         raise ValueError(f"weight shape {weight.shape} != ({w_n}, {w_k})")
+    #     scale_shape = (w_n // block_size, w_k // block_size)
+    #     if tuple(scale.shape) != scale_shape:
+    #         raise ValueError(f"scale shape {scale.shape} != {scale_shape}")
+    #     return {"fp8_weight": weight, "fp8_scale": scale}
+
+    def test_fp8matmul(self, case_name):
+        """Standalone Fp8MatMul (Qwen3 o_proj-like: 1x512x2048 -> 1x512x1024)."""
+        S = 512
+        W_N, W_K = 1024, 2048
+        block_size = 128
+
+        input_shapes = [[1, S, W_K]]
+        output_shapes = [[1, S, W_N]]
+
+        block_mlir, input_ops, _, ip = self._create_mlir_importer(case_name, input_shapes, [],
+                                                                  output_shapes)
+        in0 = input_ops[0]
+        w_op = block_mlir.create_weight_op("fp8_weight", [W_N, W_K], "F8E4M3")
+        s_op = block_mlir.create_weight_op("fp8_scale", [W_N // block_size, W_K // block_size],
+                                           "F32")
+        out = top.Fp8MatMulOp(self._T(block_mlir, output_shapes[0]),
+                              in0,
+                              w_op,
+                              s_op,
+                              block_mlir.none_op,
+                              weight_transpose=True,
+                              block_size=block_size,
+                              loc=self._L(block_mlir, "fp8matmul"),
+                              ip=ip).output
+        block_mlir.create_return_op([out])
+
+        weights = self._default_fp8_matmul_weights(W_N, W_K, block_size)
+        # if self.weights_path:
+        #     weights.update(self._load_fp8_matmul_weights(self.weights_path, W_N, W_K, block_size))
+        #     print(f"[fp8matmul] fp8 weights from {self.weights_path}")
+
+        act = rand_data(input_shapes[0], "float32", -1, 1)
+        if self.weights_path:
+            act = np.load(
+                "/workspace/tpu-mlir/mlir_test_bm1684x2/fattn_o_proj_bm1684x2_bf16_model_outputs.npz"
+            )["fattention_f32"]
+        inputs = {"in0": act}
+
+        with open(f"{case_name}.mlir", "w") as f:
+            f.write(block_mlir.print_module())
+        np.savez(f"{case_name}_top_f32_all_origin_weight.npz", **weights)
+        if not self.no_check:
+            np.savez(f"{case_name}_input.npz", **inputs)
+
+        saved_modes = self.quant_modes
+        self.quant_modes = [m for m in saved_modes if m in ("f16", "bf16")]
+        self._deploy_test_case(case_name, tolerance=(0.99, 0.90))
+        self.quant_modes = saved_modes
+
     def test_a16matmul(self, case_name):
         """Test case A16MatMul: Simple A16MatMul operation."""
         B = 1
@@ -1291,6 +1456,13 @@ def main():
                         help="remote server as 'username@ip' to run bmodel inference")
     parser.add_argument("--pwd", default="", type=str,
                         help="remote server password for ssh/scp")
+    parser.add_argument(
+        "--weights_path",
+        default="",
+        type=str,
+        help="Optional npz for fp8matmul/fattn_o_proj: o_proj weight/scale; "
+        "optional activation keys fattention_in / model.layers.0.fattention",
+    )
     # yapf: enable
     args = parser.parse_args()
     tester = MLIR_IR_TESTER(args)

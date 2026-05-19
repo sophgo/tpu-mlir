@@ -513,6 +513,43 @@ def Tpu_A16MatMulOp : Tpu_Op<"A16MatMul",
   let results = (outs AnyRankedTensor:$output);
 }
 
+def Tpu_Fp8MatMulOp : Tpu_Op<"Fp8MatMul",
+    [DeclareOpInterfaceMethods<IndexingMapsInterface>]> {
+  let summary = "fp8 matmul operator";
+
+  let description = [{
+    1.Op Introduction
+    The special matrix multiplication designed for fp8.
+    Weight is saved in fp8.
+
+    2.Math formula
+    ```math
+            y_f16 = (x_fp8 x weight_fp8) * (scale_f16 * x_scale_f16)
+    ```
+
+    3.activation and weight
+    input(act.): input tensor.;
+    weight(w.): weight tensor.;
+    weight_scale(w.): weight scale tensor.;
+    bias(w.): an optional tensor can be added to the result of the matrix multiplication. ;
+
+    4.attributes
+    weight_transpose: whether the weight tensor should be transposed;
+    block_size: the block size for fp8 quantization.;
+  }];
+
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    AnyRankedTensor:$weight,
+    AnyRankedTensor:$weight_scale,
+    AnyTensorOrNone:$bias, // note: bias has to be the last operand
+    DefaultValuedAttr<BoolAttr, "false">:$weight_transpose,
+    DefaultValuedAttr<I64Attr, "128">:$block_size
+  );
+
+  let results = (outs AnyRankedTensor:$output);
+}
+
 def Tpu_ActiveOp : Tpu_Op<"Active", [
   InOutSameShape, SupportElementwise,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,

@@ -17,6 +17,8 @@ public:
 
   void dequant_weight(float *dq_weight, float *weight, float *scale, float *zp,
                       int weight_len, int q_group_size, int weight_bits);
+  void dequant_fp8_weight(float *dq_weight, float *weight, float *scale,
+                          int weight_len, int block_size, int N, int K);
   void right_init(float *right, int64_t right_zp, int64_t batch,
                   int64_t batch_low, int64_t K, int64_t N,
                   bool right_transpose);

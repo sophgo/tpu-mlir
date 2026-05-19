@@ -159,6 +159,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       LutLowering,
       MatMulLowering,
       A16MatMulLowering,
+      Fp8MatMulLowering,
       MaxLowering,
       MaxConstLowering,
       MaxPoolLowering,

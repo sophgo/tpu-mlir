@@ -122,6 +122,19 @@ typedef struct {
 
 typedef struct {
   int64_t batch;
+  int64_t M;
+  int64_t K;
+  int64_t N;
+  bool with_bias;
+  int64_t block_size;
+  bool weight_transpose;
+  std::vector<int64_t> L_shape;
+  std::vector<int64_t> R_shape;
+  std::vector<int64_t> scale_shape;
+} fp8matmul_attr_t;
+
+typedef struct {
+  int64_t batch;
   int64_t len;
   int64_t hidden_size;
   int64_t intermediate_size;

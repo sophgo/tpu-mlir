@@ -398,6 +398,30 @@ def Top_A16MatMulOp : Top_Op<"A16MatMul"> {
   }];
 }
 
+def Top_Fp8MatMulOp : Top_Op<"Fp8MatMul"> {
+  let summary = "fp8 matmul operator";
+
+  let description = [{
+    The matrix multiplication designed for fp8.
+
+    y_f16 = (x_fp8 x weight_fp8) * (scale_f16 * x_scale_f16)
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$weight,
+    AnyTensor:$weight_scale,
+    AnyTensorOrNone:$bias,
+    DefaultValuedAttr<BoolAttr, "false">:$weight_transpose,
+    DefaultValuedAttr<I64Attr, "128">:$block_size
+  );
+
+  let results = (outs AnyTensor:$output);
+  let extraClassDeclaration = [{
+    fp8matmul_attr_t parseParam();
+  }];
+}
+
 def Top_AbsOp : Top_Op<"Abs"> {
   let summary = " Abs operator";
   let description = [{

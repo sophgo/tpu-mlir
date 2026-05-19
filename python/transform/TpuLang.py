@@ -29,11 +29,13 @@ import inspect
 
 logger = logging.getLogger("root")
 
-device_list = ['cpu', 'bm1684x', 'bm1688', 'cv183x']
+device_list = ['cpu', 'bm1684x', 'bm1688', 'cv183x', 'bm1684x2']
 MLIRImporterTypeStr = {
     "float64": "F64",
     "float32": "F32",
     "float16": "F16",
+    "fp8e4m3": "F8E4M3",
+    "fp8e5m2": "F8E5M2",
     "int8": "INT8",
     "int16": "INT16",
     "int32": "INT32",
@@ -388,7 +390,8 @@ def compile_f32(name: str,
     if mode == 'all':
         mode_list = ['f32', 'f16', 'bf16']
     assert (TpuLang.chip == "bm1684x" and num_core == 1) or \
-       (TpuLang.chip == "bm1688" and num_core in (1, 2)), \
+       (TpuLang.chip == "bm1688" and num_core in (1, 2)) or \
+       (TpuLang.chip == "bm1684x2" and num_core in (1, 4)), \
        f"Invalid core configuration: chip={TpuLang.chip}, cores={num_core}"
     converter = TpuLangConverter(name=name, graph=TpuLang.graph, mode="f32", no_save=no_save)
     qtable = ""
@@ -2044,6 +2047,149 @@ def a16matmul(
     output = Tensor(dtype=out_dtype, name=out_name)
     inputs = [input, weight, scale, zp, bias]
     TpuLang.insert_op("top.A16MatMul", inputs=inputs, outputs=[output], params=attr)
+    return output
+
+
+def fp32_to_fp8(x: np.ndarray, fmt: str = "e4m3") -> np.ndarray:
+    """
+    convert fp32 to fp8
+    """
+    x = np.asarray(x, dtype=np.float32)
+
+    if fmt.lower() == "e4m3":
+        ebits, mbits, bias = 4, 3, 7
+        has_inf = False
+        max_finite_exp_field = (1 << ebits) - 1  # 15
+        max_finite_mant_field = (1 << mbits) - 2  # 6
+    elif fmt.lower() == "e5m2":
+        ebits, mbits, bias = 5, 2, 15
+        has_inf = True
+        max_finite_exp_field = ((1 << ebits) - 1) - 1  # 30
+        max_finite_mant_field = (1 << mbits) - 1  # 3
+    else:
+        raise ValueError("fmt 只支持 'e4m3' 或 'e5m2'")
+
+    sign_bit = 1 << (ebits + mbits)
+    exp_mask_all_ones = (1 << ebits) - 1
+    mant_mask = (1 << mbits) - 1
+
+    out = np.zeros_like(x, dtype=np.uint8)
+
+    sign = np.signbit(x).astype(np.uint8)
+    out |= sign << (ebits + mbits)
+
+    ax = np.abs(x)
+
+    is_nan = np.isnan(ax)
+    is_inf = np.isinf(ax)
+    is_zero = (ax == 0)
+
+    out[is_nan] = ((sign[is_nan] <<
+                    (ebits + mbits)) | (exp_mask_all_ones << mbits) | 1).astype(np.uint8)
+
+    if np.any(is_inf):
+        if has_inf:
+            out[is_inf] = ((sign[is_inf] <<
+                            (ebits + mbits)) | (exp_mask_all_ones << mbits)).astype(np.uint8)
+        else:
+            out[is_inf] = ((sign[is_inf] << (ebits + mbits)) | (max_finite_exp_field << mbits)
+                           | max_finite_mant_field).astype(np.uint8)
+
+    normal_mask = ~(is_nan | is_inf | is_zero)
+    if not np.any(normal_mask):
+        return out
+
+    vals = ax[normal_mask]
+
+    m, e = np.frexp(vals)
+    m2 = m * 2.0
+    e2 = e - 1
+
+    exp_field = e2 + bias
+    overflow = exp_field > max_finite_exp_field
+
+    is_normal_num = (exp_field >= 1) & (~overflow)
+    is_subnormal = exp_field <= 0
+
+    enc = np.zeros_like(vals, dtype=np.uint8)
+
+    if np.any(is_normal_num):
+        mn = m2[is_normal_num] - 1.0  # [0,1)
+        frac = np.round(mn * (1 << mbits)).astype(np.int32)
+
+        expn = exp_field[is_normal_num].astype(np.int32)
+
+        carry = frac == (1 << mbits)
+        if np.any(carry):
+            frac[carry] = 0
+            expn[carry] += 1
+
+        ov2 = expn > max_finite_exp_field
+        if np.any(ov2):
+            idx_sat = np.where(is_normal_num)[0][ov2]
+            if has_inf:
+                enc[idx_sat] = np.uint8(exp_mask_all_ones << mbits)
+            else:
+                enc[idx_sat] = np.uint8((max_finite_exp_field << mbits) | max_finite_mant_field)
+            keep = ~ov2
+            if np.any(keep):
+                idx_keep = np.where(is_normal_num)[0][keep]
+                enc[idx_keep] = ((expn[keep] << mbits) | (frac[keep] & mant_mask)).astype(np.uint8)
+        else:
+            idx = np.where(is_normal_num)[0]
+            enc[idx] = ((expn << mbits) | (frac & mant_mask)).astype(np.uint8)
+
+    if np.any(is_subnormal):
+        vs = vals[is_subnormal]
+        scale = np.float32(2.0**(1 - bias - mbits))
+        mant = np.round(vs / scale).astype(np.int32)
+        mant = np.clip(mant, 0, mant_mask)
+        idx = np.where(is_subnormal)[0]
+        enc[idx] = mant.astype(np.uint8)
+
+    if np.any(overflow):
+        idx = np.where(overflow)[0]
+        if has_inf:
+            enc[idx] = np.uint8(exp_mask_all_ones << mbits)
+        else:
+            enc[idx] = np.uint8((max_finite_exp_field << mbits) | max_finite_mant_field)
+
+    sign_local = sign[normal_mask]
+    enc |= (sign_local << (ebits + mbits)).astype(np.uint8)
+
+    out[normal_mask] = enc
+    return out
+
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
+def fp8matmul(
+    input: Tensor,
+    weight: Tensor,
+    scale: Tensor,
+    bias: Tensor = None,
+    right_transpose: bool = True,
+    out_dtype: str = 'float16',
+    out_name: str = None,
+    block_size: int = 128,
+):
+    attr = {
+        "weight_transpose": Attr(right_transpose, "bool"),
+        "block_size": Attr(block_size, "int64"),
+    }
+    assert input.dtype in [
+        "float32", "float16"
+    ] and weight.dtype == "float32" and scale.dtype == "float32" and out_dtype in [
+        "float32", "float16"
+    ]
+
+    weight.update(fp32_to_fp8(weight.buffer, "e4m3"), weight.buffer.shape)
+    weight.dtype = "fp8e4m3"
+
+    output = Tensor(dtype=out_dtype, name=out_name)
+    inputs = [input, weight, scale, bias]
+    TpuLang.insert_op("top.Fp8MatMul", inputs=inputs, outputs=[output], params=attr)
     return output
 
 

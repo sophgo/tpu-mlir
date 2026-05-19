@@ -30,7 +30,9 @@ class LlmLoad:
                     data = f[key]
                 else:
                     data = f.get_tensor(key)
-                if data.dtype in [torch.float16, torch.bfloat16]:
+                if data.dtype in [
+                        torch.float16, torch.bfloat16, torch.float8_e4m3fn, torch.float8_e5m2
+                ]:
                     return data.float().numpy()
                 return data.numpy()
         raise RuntimeError(f"Can't find key: {key}")

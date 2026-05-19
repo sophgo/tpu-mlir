@@ -86,6 +86,8 @@ class MLIRImporter(object):
             "F64": F64Type.get(),
             "F32": F32Type.get(),
             "F16": F16Type.get(),
+            "F8E4M3": Float8E4M3FNType.get(),
+            "F8E5M2": Float8E5M2Type.get(),
             "BF16": BF16Type.get(),
             "DICT": DictAttr.get(),
         }

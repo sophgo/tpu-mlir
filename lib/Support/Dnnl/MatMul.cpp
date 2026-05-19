@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Support/Dnnl/MatMul.h"
 #include "tpu_mlir/Support/Dnnl/DnnlUtils.h"
+#include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace dnnl;
@@ -37,6 +38,20 @@ void MatMul::dequant_weight(float *dq_weight, float *weight, float *scale,
            scale_i);
     }
     i += compress_ratio - 1;
+  }
+}
+
+void MatMul::dequant_fp8_weight(float *dq_weight, float *weight, float *scale,
+                                int weight_len, int block_size, int N, int K) {
+  int scale_K = K / block_size;
+  int row = 0;
+  int col = 0;
+  int scale_idx = 0;
+  for (int i = 0; i < weight_len; i++) {
+    row = i / K;
+    col = i % K;
+    scale_idx = row / block_size * scale_K + col / block_size;
+    dq_weight[i] = weight[i] * scale[scale_idx];
   }
 }
 

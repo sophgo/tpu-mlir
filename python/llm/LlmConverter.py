@@ -70,6 +70,9 @@ class LlmConverter(BaseConverter):
         self.quant_mode = None
         self.quant_bits = 0
         self.vit_f16_out_bf16 = False  # force vit f16, output bf16
+        self.activation_scheme = None
+        self.fmt = None
+        self.block_size = []
         # init config
         self.load_pretrained(config)
         self.llm_config.max_position_embeddings = self.seq_length
@@ -121,6 +124,18 @@ class LlmConverter(BaseConverter):
     def use_small_mask(self):
         # TODO: other chip support small mask in future
         return self.dynamic and self.chip in ["bm1684x"]
+
+    def get_core_num(self, chip):
+        core_map = {
+            "bm1684x": 1,
+            "bm1688": 2,
+            "cv186x": 1,
+            "bm1690": 8,
+            "bm1684x2": 1,
+        }
+        if chip in core_map:
+            return core_map[chip]
+        return 1
 
     def run(self):
         os.makedirs(self.bmodel_dir, exist_ok=True)
@@ -464,6 +479,112 @@ class LlmConverter(BaseConverter):
                            loc=self.get_loc(name + ".l2norm", mlir_gen),
                            ip=mlir_gen.insert_point).output
         return new_op
+
+    def unpack_weights(self, qweight, qzeros, bits, quant_mode, path):
+        dtype = np.int32
+        compress_ratio = 32 // bits
+        mask = 0xF if bits == 4 else 0xFF
+        K, N = qweight.shape
+        Kz, Nz = qzeros.shape
+        unpacked_zeros = np.zeros((Kz, Nz * compress_ratio), dtype=np.uint8)
+        unpack_mlp_weights = False
+        if self.use_mlp:
+            if self.model_info.weights[LlmList.MLP_GATE] in path or self.model_info.weights[
+                    LlmList.MLP_UP] in path or self.model_info.weights[LlmList.MLP_DOWN] in path:
+                unpack_mlp_weights = True
+
+        if quant_mode == "gptq":
+            unpacked_weights = np.zeros((K * compress_ratio, N), dtype=dtype)
+            pack_int8_weights = np.zeros((K * compress_ratio // 2, N), dtype=np.uint8)
+            order_map = [i for i in range(compress_ratio)]
+            for row in range(unpacked_weights.shape[0]):
+                i = order_map[row % compress_ratio]
+                unpacked_weights[row, :] = (qweight[row // compress_ratio, :] >> (bits * i)) & mask
+                if bits == 4:
+                    if row % 2 == 0:
+                        pack_int8_weights[row // 2, :] = unpacked_weights[row, :]
+                    else:
+                        pack_int8_weights[
+                            row //
+                            2, :] = unpacked_weights[row, :] << 4 | pack_int8_weights[row // 2, :]
+        elif quant_mode == "awq":
+            unpacked_weights = np.zeros((K, N * compress_ratio), dtype=dtype)
+            pack_int8_weights = np.zeros((K // 2, N * compress_ratio), dtype=np.uint8)
+            order_map = [0, 4, 1, 5, 2, 6, 3, 7]
+            for col in range(unpacked_weights.shape[1]):
+                i = order_map[col % compress_ratio]
+                unpacked_weights[:, col] = (qweight[:, col // compress_ratio] >> (bits * i)) & mask
+            if bits == 4:
+                for row in range(unpacked_weights.shape[0]):
+                    if row % 2 == 0:
+                        pack_int8_weights[row // 2, :] = unpacked_weights[row, :]
+                    else:
+                        pack_int8_weights[
+                            row //
+                            2, :] = unpacked_weights[row, :] << 4 | pack_int8_weights[row // 2, :]
+        else:
+            raise NotImplementedError(f"Not support now: {quant_mode}")
+
+        for col in range(unpacked_zeros.shape[1]):
+            i = order_map[col % compress_ratio]
+            unpacked_zeros[:, col] = (qzeros[:, col // compress_ratio] >> (bits * i)) & mask
+
+        if bits == 8:
+            pack_int8_weights = unpacked_weights.astype("uint8")
+
+        if unpack_mlp_weights:
+            pack_int8_zeros = np.zeros((Kz // 2, Nz * compress_ratio), dtype=np.uint8)
+            if quant_mode == "gptq":
+                unpacked_zeros += 1
+            if bits == 4:
+                for row in range(unpacked_zeros.shape[0]):
+                    if row % 2 == 0:
+                        pack_int8_zeros[row // 2, :] = unpacked_zeros[row, :]
+                    else:
+                        pack_int8_zeros[row //
+                                        2, :] = unpacked_zeros[row, :] << 4 | pack_int8_zeros[row //
+                                                                                              2, :]
+            return unpacked_weights, pack_int8_weights, pack_int8_zeros
+
+        if quant_mode == "gptq":
+            return unpacked_weights, pack_int8_weights, unpacked_zeros + 1
+        else:
+            return unpacked_weights, pack_int8_weights, unpacked_zeros
+
+    def decompressed_weights(self, weight_packed, weight_scale, qzeros):
+        N, K = weight_packed.shape
+        Ns, Ks = weight_scale.shape
+        assert (N == Ns)
+        bits = self.quant_bits
+        compress_ratio = 32 // bits
+        mask = 0xF if bits == 4 else 0xFF
+        unpacked_weights = np.zeros((N, K * compress_ratio), dtype=np.int32)
+        pack_int8_weights = np.zeros((N, K * compress_ratio // 2), dtype=np.uint8)
+        unpacked_zeros = np.zeros((Ns, Ks), dtype=np.uint8)
+        order_map = [i for i in range(compress_ratio)]
+        for row in range(unpacked_weights.shape[1]):
+            i = order_map[row % compress_ratio]
+            unpacked_weights[:, row] = (weight_packed[:, row // compress_ratio] >>
+                                        (bits * i)) & mask
+            if bits == 4:
+                if row % 2 == 0:
+                    pack_int8_weights[:, row // 2] = unpacked_weights[:, row]
+                else:
+                    pack_int8_weights[:, row //
+                                      2] = unpacked_weights[:, row] << 4 | pack_int8_weights[:,
+                                                                                             row //
+                                                                                             2]
+        if qzeros is not None:
+            for col in range(unpacked_zeros.shape[0]):
+                i = order_map[col % compress_ratio]
+                unpacked_zeros[col, :] = (qzeros[col // compress_ratio, :] >> (bits * i)) & mask
+        else:
+            # fill for zero points
+            unpacked_zeros.fill((1 << (bits - 1)))
+
+        if bits == 8:
+            pack_int8_weights = unpacked_weights.astype("uint8")
+        return unpacked_weights, pack_int8_weights, unpacked_zeros
 
     def init_config(self):
         c = self.model_info.config
@@ -1155,7 +1276,22 @@ class LlmConverter(BaseConverter):
             bias_op = mlir_gen.create_weight_op(proj + ".bias", bias_shape)
         else:
             bias_op = mlir_gen.none_op
-        if self.is_key_quantized(proj):
+        if self.quant_mode == "fp8":
+            weight_op = mlir_gen.create_weight_op(proj + ".weight",
+                                                  [weight_shape[1], weight_shape[0]], "F8E4M3")
+            scale_op = mlir_gen.create_weight_op(
+                proj + ".weight_scale_inv",
+                [weight_shape[1] // self.block_size[1], weight_shape[0] // self.block_size[0]])
+            new_op = top.Fp8MatMulOp(mlir_gen.get_tensor_type(out_shape),
+                                     input_op,
+                                     weight_op,
+                                     scale_op,
+                                     bias_op,
+                                     weight_transpose=True,
+                                     block_size=self.block_size[0],
+                                     loc=self.get_loc(proj, mlir_gen),
+                                     ip=mlir_gen.insert_point).output
+        elif self.is_key_quantized(proj):
             quant_info = self.model.quantized_tensors.get(proj, {}) \
                 if hasattr(self.model, 'quantized_tensors') else {}
             weight_bits = quant_info.get('converted_bits', self.quant_bits)

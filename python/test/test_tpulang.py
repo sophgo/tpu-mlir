@@ -351,6 +351,7 @@ class TPULANG_IR_TESTER(object):
             "VitL": (self.test_Vit_L, Y, Y),
             # "VitB": (self.test_Vit_B,                   Y, Y),
             "A16Matmul": (self.test_A16Matmul, Y, Y),
+            "Fp8Matmul": (self.test_Fp8Matmul, Y, Y),
             "KeepOutputOrder": (self.test_KeepOutputOrder, Y, Y),
             "MeanStdScale": (self.test_MeanStdScale, Y, N),
             "MeanStdScaleConv": (self.test_MeanStdScale_Conv, Y, N),
@@ -2052,6 +2053,58 @@ class TPULANG_IR_TESTER(object):
         # _test_A16Matmul(dtype, group_size=128, bits=4, read_file=True)
         # _test_A16Matmul(dtype, group_size=128, bits=8)
         # _test_A16Matmul(dtype, group_size=128, bits=8, read_file=True)
+
+    def test_Fp8Matmul(self, case_name):
+
+        def gen_params(read_file, block_size):
+            if read_file:
+                file_path = "/workspace/Qwen3-0.6B-FP8/debug/cuda_out/q_proj_dump.pth"
+                model_weights = torch.load(file_path, map_location=torch.device('cpu'))
+                hidden_states = model_weights['input_hidden_states'].float().numpy()
+                weight = model_weights['weight'].float().numpy()
+                scale = model_weights['weight_scale_inv'].float().numpy()
+                bias = model_weights['bias'].float().numpy() if model_weights['bias'] else None
+            else:
+                w_n = 1024
+                w_k = 2048
+                seq_length = 512
+                hidden_states = rand_data((1, seq_length, w_k), "float32")
+                weight = np.random.uniform(low=-448.0, high=448.0,
+                                           size=(w_n, w_k)).astype(np.float32)
+                scale = np.random.uniform(low=0,
+                                          high=0.1,
+                                          size=(w_n // block_size,
+                                                w_k // block_size)).astype("float32")
+                bias = None
+
+            hidden_states = tpul.Tensor(dtype="float32",
+                                        shape=list(hidden_states.shape),
+                                        data=hidden_states)
+            weight = tpul.Tensor(dtype="float32",
+                                 shape=list(weight.shape),
+                                 data=weight,
+                                 ttype="coeff")
+            scale = tpul.Tensor(dtype="float32", shape=list(scale.shape), data=scale, ttype="coeff")
+            bias = tpul.Tensor(dtype="float32", shape=list(bias.shape), data=bias,
+                               ttype="coeff") if bias else None
+
+            return hidden_states, weight, scale, bias
+
+        @tpulang(self.chip)
+        def _test_Fp8Matmul(dtype, block_size, read_file=False):
+            hidden_states, weight, scale, bias = gen_params(read_file, block_size)
+            output = tpul.fp8matmul(hidden_states,
+                                    weight,
+                                    scale,
+                                    bias,
+                                    right_transpose=True,
+                                    out_dtype=dtype,
+                                    out_name="output",
+                                    block_size=block_size)
+            self.compile_and_check(self.unique_name(case_name), [hidden_states], [output])
+
+        # _test_Fp8Matmul('float32', block_size=128, read_file=True)
+        _test_Fp8Matmul('float32', block_size=128, read_file=False)
 
     #######################################################################
     # Convolution
@@ -6672,7 +6725,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684x', 'bm1688'], help="chip platform name")
+                        choices=['bm1684x', 'bm1688', 'bm1684x2'], help="chip platform name")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16'], help="quantize modes, only supports fp for now")
     parser.add_argument("--simple", action="store_true", help='do simple test for commit test')
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")

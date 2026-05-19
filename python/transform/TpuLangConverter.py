@@ -18,7 +18,10 @@ import pickle
 
 logger = logging.getLogger("root")
 
-supported_dtypes = ["float32", "float16", "int32", "uint32", "int16", "uint16", "int8", "uint8"]
+supported_dtypes = [
+    "float32", "float16", "fp8e4m3", "fp8e5m2", "int32", "uint32", "int16", "uint16", "int8",
+    "uint8"
+]
 
 _current_func_name = None
 
@@ -204,7 +207,12 @@ class Tensor:
                 data = data.astype("float16")
             if self.dtype == "float32" and data.dtype == "float16":
                 data = data.astype("float32")
-            assert data.dtype == self.dtype
+            if self.dtype == "fp8e4m3" or self.dtype == "fp8e5m2":
+                if data.dtype != "uint8":
+                    raise AssertionError(
+                        "Tensor data for fp8e4m3/fp8e5m2 must be uint8 encoded bytes")
+            else:
+                assert data.dtype == self.dtype
         if data is not None and tuple(shape) != tuple(data.shape):
             num = 1
             for s in shape:
@@ -481,6 +489,7 @@ class TpuLangConverter(BaseConverter):
         "float64": "F64",
         "float32": "F32",
         "float16": "F16",
+        "fp8e4m3": "F8E4M3",
         "int8": "INT8",
         "int16": "INT16",
         "int32": "INT32",
@@ -598,6 +607,8 @@ class TpuLangConverter(BaseConverter):
             "float64": F64Type.get(mlir_ctx),
             "float32": F32Type.get(mlir_ctx),
             "float16": F16Type.get(mlir_ctx),
+            "fp8e4m3": Float8E4M3FNType.get(mlir_ctx),
+            "fp8e5m2": Float8E5M2Type.get(mlir_ctx),
             "int64": IntegerType.get_signless(64, mlir_ctx),
             "int32": IntegerType.get_signed(32, mlir_ctx),
             "int16": IntegerType.get_signed(16, mlir_ctx),
