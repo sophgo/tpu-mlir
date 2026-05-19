@@ -38,13 +38,6 @@ def get_chip_from_model(model_file: str) -> str:
     return chip
 
 
-def get_kernel_mode_from_model(model_file: str) -> str:
-    fd = os.popen("model_tool --kernel_mode {}".format(model_file))
-    kernel_mode = fd.read()
-    fd.close()
-    return kernel_mode
-
-
 def pack_bmodel_context_generator(model_file, net):
     out_dir = model_file.rsplit(".", maxsplit=1)[0]
     os.makedirs(out_dir, exist_ok=True)
@@ -149,28 +142,23 @@ def model_inference(inputs: dict,
     return outputs
 
 
-def get_cmodel_so(chip: str, is_rvti: bool = False) -> str:
+def get_cmodel_so(chip: str):
     if chip == 'BM1688' or chip == 'CV186X':
-        return 'libcmodel_bm1688.so'
+        return 'libcmodel_1688.so'
     elif chip == 'BM1684':
-        return 'libcmodel_bm1684.so'
+        return 'libcmodel_1684.so'
     elif chip == "BM1690":
         return 'libtpuv7_emulator.so'
     elif chip == "BM1690E":
-        if is_rvti:
-            return 'libtpuv7.1rv_emulator.so'
-        else:
-            return 'libtpuv7.1_emulator.so'
+        return 'libtpuv7.1_emulator.so'
     elif chip == "CV184X":
         return 'libcmodel_cv184x.so'
     elif chip == "SGTPUV8":
         return 'libcmodel_sgtpuv8.so'
     elif chip == "SG2380":
         return 'libcmodel_sg2380.so'
-    elif chip == "BM1684X2":
-        return 'libcmodel_bm1684x2.so'
     else:
-        return 'libcmodel_bm1684x.so'
+        return 'libcmodel_1684x.so'
 
 
 def link_custom_so(chip: str):
@@ -197,8 +185,8 @@ def link_custom_so(chip: str):
         os.system(f'ln -sf {custom_path} {custom_link}')
 
 
-def link_cmodel_so(chip: str, is_rvti: bool = False):
-    lib_so = get_cmodel_so(chip, is_rvti)
+def link_cmodel_so(chip: str):
+    lib_so = get_cmodel_so(chip)
     lib_path = os.path.join(TPUC_ROOT, "lib", lib_so)
     link_path = os.path.join(TPUC_ROOT, "lib", "libcmodel.so")
     cur_lib = ""
@@ -211,13 +199,6 @@ def link_cmodel_so(chip: str, is_rvti: bool = False):
         cmd = f'ln -sf {lib_path} {link_path}'
         print(cmd)
         os.system(cmd)
-
-
-def link_bmlib_so(chip: str):
-    src = "libbmlib_bm1684x2.so.0" if chip == "BM1684X2" else "libbmlib.so.0"
-    src_path = os.path.join(TPUC_ROOT, "lib", src)
-    link_so_0 = os.path.join(TPUC_ROOT, "lib", "libbmlib.so.0")
-    os.system(f'ln -sf "{src_path}" "{link_so_0}"')
 
 
 def _model_inference(inputs: dict,
@@ -233,12 +214,9 @@ def _model_inference(inputs: dict,
             pyruntime = pyruntime + "tpuv7"
         else:
             pyruntime = pyruntime + "bm"
-        kernel_mode = get_kernel_mode_from_model(model_file)
-        is_rvti = kernel_mode == "1"
         with FileLock("/tmp/cmodel_so.lock"):
-            link_cmodel_so(chip, is_rvti)
+            link_cmodel_so(chip)
             link_custom_so(chip)
-            link_bmlib_so(chip)
             pyrtlib = importlib.import_module(pyruntime)
             model = pyrtlib.Model(model_file, 0, decrypt_lib)
         net = model.Net(model.networks[0])
@@ -321,8 +299,8 @@ def _model_inference(inputs: dict,
         else:
             outputs[i.name] = np.array(i.data)
         if not is_cv18xx:
-            if list(outputs[i.name].shape) != dyn_output_shapes[dyn_idx]:
-                dyn_len = np.prod(dyn_output_shapes[dyn_idx])
+            if dyn_output_shapes[dyn_idx] and list(outputs[i.name].shape) != dyn_output_shapes[dyn_idx]:
+                dyn_len = int(np.prod(dyn_output_shapes[dyn_idx]))
                 outputs[i.name] = outputs[i.name].flatten()[:dyn_len].reshape(
                     *dyn_output_shapes[dyn_idx])
             dyn_idx += 1
@@ -417,7 +395,7 @@ def mlir_inference(inputs: dict,
                    dump_all: bool = True,
                    mute: bool = False,
                    out_fixed: bool = False,
-                   use_cuda: bool = False,
+                   use_cuda: bool = True,
                    log_level: str = 'normal') -> dict:
     if mute or log_level == "quiet":
         with open(os.devnull, "w") as devnull:
@@ -574,8 +552,6 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
             dtype = np.bool_
         elif node.type == 'tensor(int32)':
             dtype = np.int32
-        elif node.type == 'tensor(int16)':
-            dtype = np.int16
         if not only_one:
             assert (name in inputs)
             data[name] = inputs[name].astype(dtype)

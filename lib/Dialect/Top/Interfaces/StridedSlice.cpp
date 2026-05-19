@@ -95,4 +95,31 @@ LogicalResult top::StridedSliceOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::StridedSliceOp::shape_inference() {}
+void top::StridedSliceOp::shape_inference() {
+  auto in_shape = module::getShape(getInput());
+  auto num_dims = in_shape.size();
+  auto begin_mask = getBeginMask();
+  auto end_mask = getEndMask();
+  auto starts_op = getStarts().getDefiningOp<top::WeightOp>();
+  auto ends_op = getEnds().getDefiningOp<top::WeightOp>();
+  auto strides_op = getStrides().getDefiningOp<top::WeightOp>();
+  if (!starts_op || !ends_op || !strides_op) return;
+  auto starts = starts_op.read_as_float();
+  auto ends = ends_op.read_as_float();
+  auto strides = strides_op.read_as_float();
+  std::vector<int64_t> out_shape;
+  for (size_t i = 0; i < num_dims; i++) {
+    int64_t start_val = (int64_t)starts->at(i);
+    int64_t end_val = (int64_t)ends->at(i);
+    int64_t stride_val = (int64_t)strides->at(i);
+    if (begin_mask & (1 << i)) start_val = (stride_val > 0) ? 0 : in_shape[i] - 1;
+    if (end_mask & (1 << i)) end_val = (stride_val > 0) ? in_shape[i] : -1;
+    if (start_val < 0) start_val += in_shape[i];
+    if (end_val < 0) end_val += in_shape[i];
+    int64_t dim_len = (end_val - start_val + (stride_val > 0 ? stride_val - 1 : stride_val + 1)) / stride_val;
+    if (dim_len < 0) dim_len = 0;
+    out_shape.push_back(dim_len);
+  }
+  auto out_type = RankedTensorType::get(out_shape, module::getStorageType(getInput()));
+  getOutput().setType(out_type);
+}

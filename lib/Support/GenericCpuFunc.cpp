@@ -3253,11 +3253,11 @@ void ScatterNDFunc::scatternd_update_core(float *data, const float *updates,
     }
   } else if (op == CPU_SCATTER_MAX) {
     for (int i = 0; i < len; i++) {
-      data[i] += std::max(data[i], updates[i]);
+      data[i] = std::max(data[i], updates[i]);
     }
   } else if (op == CPU_SCATTER_MIN) {
     for (int i = 0; i < len; i++) {
-      data[i] += std::min(data[i], updates[i]);
+      data[i] = std::min(data[i], updates[i]);
     }
   } else {
     llvm_unreachable("error scatter_nd op_type");

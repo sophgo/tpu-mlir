@@ -46,4 +46,14 @@ LogicalResult top::UnpackOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::UnpackOp::shape_inference() {}
+void top::UnpackOp::shape_inference() {
+  auto in_shape = module::getShape(getInput());
+  int axis = getAxis();
+  if (axis < 0) axis += in_shape.size();
+  int num = getOutputs().size();
+  std::vector<int64_t> out_shape = in_shape;
+  out_shape[axis] /= num;
+  auto out_type = RankedTensorType::get(out_shape, module::getStorageType(getInput()));
+  for (auto out : getOutputs())
+    out.setType(out_type);
+}

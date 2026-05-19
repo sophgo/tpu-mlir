@@ -24,8 +24,12 @@ LogicalResult top::ModOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
   for (int64_t i = 0; i < num_element; i++) {
     double divisor = (input2_size == 1) ? p.inputs[1][0] : p.inputs[1][i];
-    double mid = p.inputs[0][i] / divisor;
-    p.outputs[0][i] = p.inputs[0][i] - static_cast<int>(mid) * divisor;
+    if (divisor == 0.0) {
+      p.outputs[0][i] = 0.0;
+    } else {
+      double mid = p.inputs[0][i] / divisor;
+      p.outputs[0][i] = p.inputs[0][i] - static_cast<int>(mid) * divisor;
+    }
   }
   return success();
 }

@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 #pragma once
-
+#include "cuda_global.cuh"
 #include "cuda_helper.h"
 #include <cuda_fp16.h>
 #include <cstdint>
@@ -23,20 +23,17 @@ struct bfloat16 {
 
   __device__ bfloat16() : value(0) {}
   __device__ bfloat16(uint16_t v) : value(v) {}
-  __device__ bfloat16(float val, rounding_mode_t rmode = RD_HALF_TO_EVEN) {
-     if (rmode == RD_TOWARDS_ZERO) {
+  __device__ bfloat16(float val, bool half_up = true) {
+    if (half_up) {
       uint32_t u32_val = *((uint32_t *)(&val));
+      uint32_t lsb = (u32_val >> 16) & 1;
+      u32_val += (0x7fff + lsb);
       value = ((uint16_t *)(&u32_val))[1];
-    } else { // RD_HALF_TO_EVEN
-      uint32_t u32_val = *((uint32_t *)(&val));
-      uint16_t high = ((uint16_t *)(&u32_val))[1];
-      uint16_t low = ((uint16_t *)(&u32_val))[0];
-      if (low > 0x8000 || (low == 0x8000 && (high & 1))) {
-        high += 1;
-      }
-      value = high;
-      // infinity set to max finite positive value to match HW
+      /* HW behavior */
+      // infinity set to max finite positive value
       value = ((value & 0x7f80) == 0x7f80) ? 0x7f7f : value;
+    } else {
+      value = ((uint16_t *)(&val))[1];
     }
   }
 
@@ -46,8 +43,8 @@ struct bfloat16 {
   }
 };
 
-__device__ float d_BF16(float data, rounding_mode_t rmode = RD_HALF_TO_EVEN) {
-  bfloat16 in_bf16(data, rmode);
+__device__ float d_BF16(float data, bool round_up = true) {
+  bfloat16 in_bf16(data, round_up);
   return static_cast<float>(in_bf16);
 }
 
@@ -56,8 +53,8 @@ __device__ float d_RawBF16(uint16_t data) {
   return static_cast<float>(in_bf16);
 }
 
-__device__ uint16_t d_BF16Raw(float data, rounding_mode_t rmode = RD_HALF_TO_EVEN) {
-  bfloat16 in_bf16(data, rmode);
+__device__ uint16_t d_BF16Raw(float data, bool round_up = true) {
+  bfloat16 in_bf16(data, round_up);
   return in_bf16.value;
 }
 
@@ -209,7 +206,7 @@ __device__ uint8_t fp32_to_fp8(const float single, bool is_e5m2=false, bool satu
   uint32_t int_value = __float_as_int(single);
   uint32_t exp = (int_value >> 23) & 0xff;
   bool sign = int_value >> 31;
-  uint32_t frac = (int_value & ((1ul<<23)-1));
+  uint32_t frac = (int_value & (1ul<<23-1));
 
   if (exp > (127 - FP8_EXP_BIAS) && exp < 0xff) {
     const uint32_t mantissa = frac;
@@ -332,16 +329,16 @@ __device__ void d_copyElement(void *src, int sidx, void *dst, int didx,
   }
 }
 
-__device__ void d_setValue(void *dst, int didx, int tbytes, float value) {
+__device__ void d_setZero(void *dst, int didx, int tbytes) {
   switch (tbytes) {
   case 1:
-    static_cast<int8_t *>(dst)[didx] = static_cast<int8_t>(value);
+    static_cast<uint8_t *>(dst)[didx] = 0;
     break;
   case 2:
-    static_cast<int16_t *>(dst)[didx] = static_cast<int16_t>(value);
+    static_cast<uint16_t *>(dst)[didx] = 0;
     break;
   case 4:
-    static_cast<float *>(dst)[didx] = static_cast<float>(value);
+    static_cast<uint32_t *>(dst)[didx] = 0;
     break;
   default:
     break;
@@ -386,26 +383,6 @@ __device__ uint16_t d_lutMantissaBF16(uint16_t input, uint16_t *exp_table,
   float mantissa = d_RawBF16(mantissa_table[input & 0xff]);
   float out = is_log ? (exponent + mantissa) : (exponent * mantissa);
   return d_BF16Raw(out);
-}
-
-__device__ float d_lutMantissaBF16(float input, float *exp_table,
-                                   float *mantissa_table, bool is_log) {
-  uint16_t input_bf16 = d_BF16Raw(input);
-  float val = input;
-  int exponentIndex;
-  if (val == 0) {
-    exponentIndex = 0;
-  } else if (val >= 0) {
-    exponentIndex = floor(log2(val));
-    exponentIndex += 62 + 1; // 62 means start with 2^-62, index from 1
-  } else {
-    exponentIndex = floor(log2(-1 * val));
-    exponentIndex += 62 + 129; // 62 means start with 2^-62, index from 129
-  }
-  float exponent = exp_table[exponentIndex];
-  float mantissa = mantissa_table[input_bf16 & 0xff];
-  float out = is_log ? d_BF16(exponent + mantissa) : d_BF16(exponent * mantissa);
-  return out;
 }
 
 } // namespace cuda
