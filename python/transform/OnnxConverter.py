@@ -192,8 +192,8 @@ class OnnxConverter(BaseConverter):
             "ConstantOfShape": lambda node: self.convert_constantofshape_op(node),
             "Conv": lambda node: self.convert_conv_op(node),
             "Correlation": lambda node: self.convert_correlation_op(node),
-            "ConcatVolume": lambda node: self.convert_concat_volume_op(node),
             "Cos": lambda node: self.convert_cos_op(node),
+            "Cosh": lambda node: self.convert_cosh_op(node),
             "Clip": lambda node: self.convert_clip_op(node),
             "ConvTranspose": lambda node: self.convert_conv_transpose_op(node),
             "CumSum": lambda node: self.convert_cumsum_op(node),
@@ -267,6 +267,7 @@ class OnnxConverter(BaseConverter):
             "ReverseSequence": lambda node: self.convert_reverse_sequence_op(node),
             "RoiAlign": lambda node: self.convert_roi_align_op(node),
             "Round": lambda node: self.convert_round_op(node),
+            "Rsqrt": lambda node: self.convert_rsqrt_op(node),
             "ScatterElements": lambda node: self.convert_scatter_elements_op(node),
             "ScatterND": lambda node: self.convert_scatternd_op(node),
             "SelectiveScan": lambda node: self.convert_selective_scan(node),
@@ -883,6 +884,14 @@ class OnnxConverter(BaseConverter):
                                 loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                                 ip=self.mlir.insert_point).output
             self.addOperand(onnx_node.name, new_op)
+        elif onnx_node.attrs['to'] == np.float16:
+            op = self.getOp(onnx_node.inputs[0])
+            new_op = top.DtypeCastOp(self.unranked_type,
+                                     op,
+                                     loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                     onnx_node.op_type)),
+                                     ip=self.mlir.insert_point).output
+            self.addOperand(onnx_node.name, new_op)
         else:
             if self.isWeight(onnx_node.inputs[0]):
                 data = self.getWeight(onnx_node.inputs[0])
@@ -981,12 +990,7 @@ class OnnxConverter(BaseConverter):
     def convert_conv_op(self, onnx_node):
         assert (onnx_node.op_type == "Conv")
         op = self.getOp(onnx_node.inputs[0])  # input can be weight
-        try:
-            kernel_shape = onnx_node.attrs['kernel_shape']
-        except KeyError:
-            # try to get kernel shape from weight
-            filter_weight = self.getWeight(onnx_node.inputs[1])
-            kernel_shape = filter_weight.shape[2:]
+        kernel_shape = onnx_node.attrs['kernel_shape']
         dim = len(kernel_shape)
         dilations = onnx_node.attrs.get("dilations", dim * [1])
         group = onnx_node.attrs.get("group", 1)
@@ -1032,18 +1036,6 @@ class OnnxConverter(BaseConverter):
                                    loc=self.get_loc("{}_{}".format(onnx_node.name,
                                                                    onnx_node.op_type)),
                                    ip=self.mlir.insert_point).output
-        self.addOperand(onnx_node.name, new_op)
-
-    def convert_concat_volume_op(self, onnx_node):
-        assert (onnx_node.op_type == "ConcatVolume")
-        l_op = self.getOperand(onnx_node.inputs[0])
-        r_op = self.getOperand(onnx_node.inputs[1])
-        max_disp = onnx_node.attrs.get('max_disp', 0)
-        new_op = top.ConcatVolumeOp(self.unranked_type, [l_op, r_op],
-                                    max_disp=max_disp,
-                                    loc=self.get_loc("{}_{}".format(onnx_node.name,
-                                                                    onnx_node.op_type)),
-                                    ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
     def convert_depth2space_op(self, onnx_node):
@@ -1644,6 +1636,15 @@ class OnnxConverter(BaseConverter):
                            ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
+    def convert_cosh_op(self, onnx_node):
+        assert (onnx_node.op_type == "Cosh")
+        op = self.getOperand(onnx_node.inputs[0])
+        new_op = top.CoshOp(self.unranked_type,
+                            op,
+                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
     def convert_slice_op(self, onnx_node):
 
         def try_get_slice_input(node, i, attr):
@@ -2047,7 +2048,7 @@ class OnnxConverter(BaseConverter):
     def convert_clip_op(self, onnx_node):
         assert (onnx_node.op_type == "Clip")
         input = self.getOperand(onnx_node.inputs[0])
-        if len(onnx_node.inputs) > 1:
+        if len(onnx_node.inputs) == 3:
             try:
                 min = self.getWeight(onnx_node.inputs[1])
             except:
@@ -3452,6 +3453,15 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "Round")
         operand = self.getOperand(onnx_node.inputs[0])
         new_op = top.RoundOp(self.unranked_type,
+                             operand,
+                             loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                             ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_rsqrt_op(self, onnx_node):
+        assert (onnx_node.op_type == "Rsqrt")
+        operand = self.getOperand(onnx_node.inputs[0])
+        new_op = top.RsqrtOp(self.unranked_type,
                              operand,
                              loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                              ip=self.mlir.insert_point).output

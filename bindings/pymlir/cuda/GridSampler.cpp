@@ -1,63 +1,35 @@
+//===----------------------------------------------------------------------===//
+//
+// Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
+//
+// TPU-MLIR is licensed under the 2-Clause BSD License except for the
+// third-party components.
+//
+//===----------------------------------------------------------------------===//
+
 #include "../pycuda.h"
 #include "cuda_helper.h"
 
+void py_cuda::cudaGridSamplerOp(top::GridSamplerOp op) {
+  auto in_shape = module::getShape(op.getInput());
+  int n = in_shape[0], c = in_shape[1], h = in_shape[2], w = in_shape[3];
+  auto out_shape = module::getShape(op.getOutput());
+  int oh = out_shape[2], ow = out_shape[3];
 
-void py_cuda::cudaGridSamplerOp(tpu::GridSamplerOp op) {
-  cuda::grid_sample_interpolation_mode_t interpolation_mode =
-    static_cast<cuda::grid_sample_interpolation_mode_t>(op.getMode());
-  cuda::grid_sample_padding_mode_t padding_mode =
-    static_cast<cuda::grid_sample_padding_mode_t>(op.getPaddingMode());
-  auto align_corners = op.getAlignCorners();
-  void *input = getCudaData(op.getInput());
-  void *grid = getCudaData(op.getGrid());
-  void *output = getCudaData(op.getOutput());
-  auto input_shape = module::getShape(op.getInput());
-  auto grid_shape = module::getShape(op.getGrid());
-  if (input_shape.size() != 4) {
-    llvm_unreachable("Only support 4D input for GridSampler now");
-  }
-  if (module::isUniformQuantized(op.getOutput())) {
-    llvm_unreachable("Not support quantized output for GridSampler now");
-  } else if (module::getStorageType(op.getOutput()).isF32()) {
-    cuda::GridSample4D(input, grid, output, input_shape[0], input_shape[1],
-             input_shape[2], input_shape[3], grid_shape[1],
-             grid_shape[2], align_corners, interpolation_mode,
-             padding_mode);
-  } else {
-    if (module::getStorageType(op.getOutput()).isFloat8E4M3FN()) {
-      llvm_unreachable("Not Implemented");
-    }
-    auto input_f32 = newCudaData(op.getInput(), cuda::DT_F32);
-    auto grid_f32 = newCudaData(op.getGrid(), cuda::DT_F32);
-    auto output_f32 = newCudaData(op.getOutput(), cuda::DT_F32);
-    cuda::GridSample4D(input_f32.get(), grid_f32.get(), output_f32.get(),
-             input_shape[0], input_shape[1], input_shape[2], input_shape[3],
-             grid_shape[1], grid_shape[2], align_corners, interpolation_mode,
-             padding_mode);
-    cuda::convertType(output_f32.get(), output, module::getNumElements(op.getOutput()),
-                      cuda::DT_F32, getCudaType(op.getOutput()));
-    input_f32.reset();
-    grid_f32.reset();
-    output_f32.reset();
-  }
+  cuda::bmGridSampler(getCudaData(op.getInput()), getCudaData(op.getGrid()),
+                       getCudaData(op.getOutput()),
+                       n, c, h, w, oh, ow,
+                       op.getMode(), op.getPaddingMode(), op.getAlignCorners());
 }
 
-void py_cuda::cudaGridSamplerOp(top::GridSamplerOp op) {
-  cuda::grid_sample_interpolation_mode_t interpolation_mode =
-    static_cast<cuda::grid_sample_interpolation_mode_t>(op.getMode());
-  cuda::grid_sample_padding_mode_t padding_mode =
-    static_cast<cuda::grid_sample_padding_mode_t>(op.getPaddingMode());
-  auto align_corners = op.getAlignCorners();
-  void *input = getCudaData(op.getInput());
-  void *grid = getCudaData(op.getGrid());
-  void *output = getCudaData(op.getOutput());
-  auto input_shape = module::getShape(op.getInput());
-  auto grid_shape = module::getShape(op.getGrid());
-  if (input_shape.size() != 4) {
-    llvm_unreachable("Only support 4D input for GridSampler now");
-  }
-  cuda::GridSample4D(input, grid, output, input_shape[0], input_shape[1],
-             input_shape[2], input_shape[3], grid_shape[1],
-             grid_shape[2], align_corners, interpolation_mode,
-             padding_mode);
+void py_cuda::cudaGridSamplerOp(tpu::GridSamplerOp op) {
+  auto in_shape = module::getShape(op.getInput());
+  int n = in_shape[0], c = in_shape[1], h = in_shape[2], w = in_shape[3];
+  auto out_shape = module::getShape(op.getOutput());
+  int oh = out_shape[2], ow = out_shape[3];
+
+  cuda::bmGridSampler(getCudaData(op.getInput()), getCudaData(op.getGrid()),
+                       getCudaData(op.getOutput()),
+                       n, c, h, w, oh, ow,
+                       op.getMode(), op.getPaddingMode(), op.getAlignCorners());
 }

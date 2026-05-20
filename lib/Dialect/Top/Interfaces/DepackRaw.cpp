@@ -32,6 +32,7 @@ void top::DepackRawOp::shape_inference() {
   int pw = getPaddingW();
 
   int ic = in_shape[1];
+  (void)ic;
   int ih = in_shape[2] - ph;
   int iw = in_shape[3] - pw;
   assert(ic == bh * bw);

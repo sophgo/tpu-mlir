@@ -145,6 +145,7 @@ void parse_npy_header(unsigned char* buffer, size_t& word_size,  char& type,
     //not sure when this applies except for byte array
     loc1 = header.find("descr")+9;
     bool littleEndian = (header[loc1] == '<' || header[loc1] == '|' ? true : false);
+    (void)littleEndian;
     assert(littleEndian);
 
     type = header[loc1+1];
@@ -200,6 +201,7 @@ void parse_npy_header(FILE* fp, size_t& word_size, char& type,
                 "failed to find header keyword: 'descr'");
     loc1 += 9;
     bool littleEndian = (header[loc1] == '<' || header[loc1] == '|' ? true : false);
+    (void)littleEndian;
     assert(littleEndian);
 
     type = header[loc1+1];

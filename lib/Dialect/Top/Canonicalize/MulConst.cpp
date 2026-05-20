@@ -232,6 +232,7 @@ public:
     auto weight_type = RankedTensorType::get(tile_vec, rewriter.getF32Type());
     auto ret = module::weightFile().addTensor(weight_name, weight_data->data(),
                                               weight_type);
+    (void)ret;
     assert(succeeded(ret));
     auto nameAttr = rewriter.getStringAttr(weight_name);
     auto weight_op = rewriter.create<top::WeightOp>(NameLoc::get(nameAttr),

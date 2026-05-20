@@ -12,7 +12,7 @@
 
 using namespace tpu_mlir::cuda;
 
-void *py_cuda::getCudaData(mlir::Value v) {
+void *py_cuda::getCudaData(mlir::Value v) {     
   auto name = module::getName(v).str();
   if (module::isWeight(v)) {
     if (weight_map_.find(name) != weight_map_.end()) {
@@ -22,26 +22,6 @@ void *py_cuda::getCudaData(mlir::Value v) {
   } else {
     if (activation_map_.find(name) != activation_map_.end()) {
       return activation_map_[name].get();
-    } else if (infer_map_.find(name) != infer_map_.end()) {
-      auto buffer = infer_map_[name];
-      void *data_ptr = buffer->data();
-      auto num = module::getNumElements(v);
-      auto dtype = getCudaType(v);
-      // need to check if convert is enough?
-      if (dtype == cuda::DT_F32) {
-        activation_map_[name] = std::move(
-            cuda_malloc(num * cuda::get_dtype_bytes(cuda::DT_F32)));
-        CHECK_CUDA(cudaMemcpy(activation_map_[name].get(), data_ptr,
-                              num * sizeof(float), cudaMemcpyHostToDevice));
-        return activation_map_[name].get();
-      } else {
-        auto tmp = cuda_malloc(num * sizeof(float));
-        CHECK_CUDA(cudaMemcpy(tmp.get(), data_ptr, num * sizeof(float),cudaMemcpyHostToDevice));
-        auto new_data = newCudaData(tmp.get(), num, DT_F32, dtype);
-        activation_map_[name] = std::move(new_data);
-        tmp.reset();
-        return activation_map_[name].get();
-      }
     }
     UNREACHABLE_OP("Can't find activation data", v.getDefiningOp());
   }
@@ -76,14 +56,16 @@ data_type_t py_cuda::getCudaType(mlir::Value v) {
   return DT_F32;
 }
 
-cuda_ptr py_cuda::newCudaData(void *data, size_t num, data_type_t src_type,
+cuda_ptr py_cuda::newCudaData(void *data, size_t num, data_type_t src_type,   
                               data_type_t dst_type) {
-  if (src_type == dst_type) {
-    llvm_unreachable("Same type shouldn't convert");
-  }
+  size_t bytes = num * cuda::get_dtype_bytes(dst_type);
   void *newData;
-  CHECK_CUDA(cudaMalloc(&newData, num * cuda::get_dtype_bytes(dst_type)));
-  CHECK_CUDA(convertType(data, newData, num, src_type, dst_type));
+  CHECK_CUDA(cudaMalloc(&newData, bytes));
+  if (src_type == dst_type) {
+    CHECK_CUDA(cudaMemcpy(newData, data, bytes, cudaMemcpyDeviceToDevice));
+  } else {
+    CHECK_CUDA(convertType(data, newData, num, src_type, dst_type));
+  }
   cuda_ptr wrapper(newData);
   return std::move(wrapper);
 }

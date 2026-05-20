@@ -1,86 +1,55 @@
+//===----------------------------------------------------------------------===//
+//
+// Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
+//
+// TPU-MLIR is licensed under the 2-Clause BSD License except for the
+// third-party components.
+//
+//===----------------------------------------------------------------------===//
+
 #include "../pycuda.h"
 #include "cuda_helper.h"
 
-
-void py_cuda::cudaDivOp(tpu::DivOp op) {
-  auto out = op.getOutput();
-  auto num_inputs = op.getInputs().size();
-  if (num_inputs != 2) {
-    UNREACHABLE_OP("Not Implemented", op);
-  }
-  auto in0 = op.getInputs()[0];
-  auto in1 = op.getInputs()[1];
-  auto input0 = getCudaData(in0);
-  auto input1 = getCudaData(in1);
-  auto output = getCudaData(out);
-  auto shape0 = std::vector<int64_t>(module::getShape(in0));
-  auto shape1 = std::vector<int64_t>(module::getShape(in1));
-  auto shape2 = std::vector<int64_t>(module::getShape(out));
-  auto is_reverse = op.getIsReverse();
-  auto num_dims = shape0.size();
-  auto do_relu = op.getDoRelu();
-  if (module::isUniformQuantized(op.getOutput())) {
-    llvm_unreachable("Not Implemented");
-  } else if (module::getStorageType(op.getOutput()).isF32()) {
-    if (is_reverse) {
-      cuda::divMDF32(input1, input0, output, shape1.data(), shape0.data(), shape2.data(), num_dims);
-    } else {
-      cuda::divMDF32(input0, input1, output, shape0.data(), shape1.data(), shape2.data(), num_dims);
-    }
-    if (do_relu) {
-      auto relu_limit = op.getReluLimit().convertToDouble();
-      cuda::bmActive(output, output, module::getNumElements(out),
-                    cuda::ACTIVE_RELU, 0, relu_limit);
-    }
-  } else {
-    if (module::getStorageType(op.getOutput()).isFloat8E4M3FN()) {
-      llvm_unreachable("Not Implemented");
-    }
-    auto input0_f32 = newCudaData(in0, cuda::DT_F32);
-    auto input1_f32 = newCudaData(in1, cuda::DT_F32);
-    auto output_f32 = newCudaData(out, cuda::DT_F32);
-    if (is_reverse) {
-      cuda::divMDF32(input1_f32.get(), input0_f32.get(), output_f32.get(), shape1.data(), shape0.data(), shape2.data(), num_dims);
-    } else {
-      cuda::divMDF32(input0_f32.get(), input1_f32.get(), output_f32.get(), shape0.data(), shape1.data(), shape2.data(), num_dims);
-    }
-    if (do_relu) {
-      auto relu_limit = op.getReluLimit().convertToDouble();
-      cuda::bmActive(output_f32.get(), output_f32.get(), module::getNumElements(out),
-                    cuda::ACTIVE_RELU, 0, relu_limit);
-    }
-    cuda::convertType(output_f32.get(), output, module::getNumElements(out), cuda::DT_F32, getCudaType(out));
-    input0_f32.reset();
-    input1_f32.reset();
-    output_f32.reset();
-  }
-}
+// ==========================================================================
+// Div
+// ==========================================================================
 
 void py_cuda::cudaDivOp(top::DivOp op) {
+  auto inputs = op.getInputs();
   auto out = op.getOutput();
-  auto num_inputs = op.getInputs().size();
-  if (2 != num_inputs) {
-    UNREACHABLE_OP("Not Implemented", op);
-  }
-  auto in0 = op.getInputs()[0];
-  auto in1 = op.getInputs()[1];
-  auto input0 = getCudaData(in0);
-  auto input1 = getCudaData(in1);
-  auto output = getCudaData(out);
-  auto shape0 = std::vector<int64_t>(module::getShape(in0));
-  auto shape1 = std::vector<int64_t>(module::getShape(in1));
-  auto shape2 = std::vector<int64_t>(module::getShape(out));
-  auto is_reverse = op.getIsReverse();
-  auto num_dims = shape0.size();
-  auto do_relu = op.getDoRelu();
-  if (is_reverse) {
-    cuda::divMDF32(input1, input0, output, shape1.data(), shape0.data(), shape2.data(), num_dims);
-  } else {
-    cuda::divMDF32(input0, input1, output, shape0.data(), shape1.data(), shape2.data(), num_dims);
-  }
-  if (do_relu) {
-    auto relu_limit = op.getReluLimit().convertToDouble();
-    cuda::bmActive(output, output, module::getNumElements(out),
-                   cuda::ACTIVE_RELU, 0, relu_limit);
-  }
+  int64_t n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2;
+  module::getNCHW(inputs[0], n0, c0, h0, w0, false);
+  module::getNCHW(inputs[1], n1, c1, h1, w1, false);
+  module::getNCHW(out, n2, c2, h2, w2, false);
+
+  cuda::div4DF32(getCudaData(inputs[0]), getCudaData(inputs[1]),
+                  getCudaData(out), op.getDoRelu(), op.getIsReverse(),
+                  n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+}
+
+void py_cuda::cudaDivOp(tpu::DivOp op) {
+  auto inputs = op.getInputs();
+  auto out = op.getOutput();
+  int64_t n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2;
+  module::getNCHW(inputs[0], n0, c0, h0, w0, false);
+  module::getNCHW(inputs[1], n1, c1, h1, w1, false);
+  module::getNCHW(out, n2, c2, h2, w2, false);
+
+  cuda::div4DF32(getCudaData(inputs[0]), getCudaData(inputs[1]),
+                  getCudaData(out), op.getDoRelu(), op.getIsReverse(),
+                  n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+}
+
+// ==========================================================================
+// DivConst
+// ==========================================================================
+
+void py_cuda::cudaDivConstOp(top::DivConstOp op) {
+  float const_v = op.getConstVal().convertToDouble();
+  int64_t n, c, h, w;
+  module::getNCHW(op.getOutput(), n, c, h, w, false);
+
+  cuda::divConst4DF32(getCudaData(op.getInput()), const_v,
+                       getCudaData(op.getOutput()),
+                       op.getDoRelu(), op.getIsReverse(), n, c, h, w);
 }

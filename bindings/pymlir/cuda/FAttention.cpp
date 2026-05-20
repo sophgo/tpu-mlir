@@ -1,41 +1,47 @@
+//===----------------------------------------------------------------------===//
+//
+// Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
+//
+// TPU-MLIR is licensed under the 2-Clause BSD License except for the
+// third-party components.
+//
+//===----------------------------------------------------------------------===//
+
 #include "../pycuda.h"
 #include "cuda_helper.h"
 
+void py_cuda::cudaFAttentionOp(top::FAttentionOp op) {
+  int batch = op.getBatch(), M_q = op.getMq(), M_k = op.getMk();
+  int q_head = op.getQHead(), kv_head = op.getKvHead(), d = op.getDim();
+  (void)kv_head; // GQA support pending;
+  float scale = (float)op.getScale().convertToDouble();
+  int Hd = q_head * d;
 
-void py_cuda::cudaFAttentionOp(tpu::FAttentionOp op) {
-  auto out_type = module::getStorageType(op.getOutput());
-  bool is_bf16 = out_type.isBF16();
-  int batch = op.getBatch();
-  int M_q = op.getMq();
-  int M_k = op.getMk();
-  uint64_t d = op.getDim();
-  uint64_t q_head = op.getQHead();
-  auto kv_head = op.getKvHead();
-  float scale = op.getScale().convertToDouble();
-  scale = is_bf16 ? scale : F16(scale);
-  bool has_mask = !module::isNone(op.getMask());
-  // Q * K
-  if (out_type.isF32()) {
-    void *Q = getCudaData(op.getQueries()); // batch * M_q * q_head * dim
-    void *K = getCudaData(op.getKeys()); // batch * M_k * kv_head * dim
-    void *V = getCudaData(op.getValues()); // batch * M_k * kv_head * dim
-    void *mask = has_mask ? getCudaData(op.getMask()) : nullptr; // M_q * M_k
-    void *output = getCudaData(op.getOutput()); // batch * M_q * (q_head * dim)
-    cuda::GQA(Q, K, V, has_mask ? mask : nullptr, output, batch, M_q, M_k, q_head, kv_head, d, scale, is_bf16);
-  } else {
-    auto Q = newCudaData(op.getQueries(), cuda::DT_F32); // batch * M_q * q_head * dim
-    auto K = newCudaData(op.getKeys(), cuda::DT_F32); // batch * M_k * kv_head * dim
-    auto V = newCudaData(op.getValues(), cuda::DT_F32); // batch * M_k * kv_head * dim
-    auto mask = has_mask ? newCudaData(op.getMask(), cuda::DT_F32) : nullptr; // M_q * M_k
-    auto output = newCudaData(op.getOutput(), cuda::DT_F32); // batch * M_q * (q_head * dim)
-    cuda::GQA(Q.get(), K.get(), V.get(), has_mask ? mask.get() : nullptr, output.get(),
-                     batch, M_q, M_k, q_head, kv_head, d, scale, is_bf16);
-    if (is_bf16) {
-      cuda::convertType(output.get(), getCudaData(op.getOutput()),
-                        batch * M_q * q_head * d, cuda::DT_F32, cuda::DT_BF16);
-    } else {
-      cuda::convertType(output.get(), getCudaData(op.getOutput()),
-                        batch * M_q * q_head * d, cuda::DT_F32, cuda::DT_F16);
-    }
-  }
+  // Step 1: Q@K^T / scale → [batch, q_head, M_q, M_k]
+  auto scores = cuda_malloc(batch * q_head * M_q * M_k * sizeof(float));
+  cuda::bmAttentionQK(getCudaData(op.getQueries()), getCudaData(op.getKeys()),
+                       scores.get(), batch, q_head, M_q, M_k, d, scale);
+
+  // Step 2: mask (optional) — broadcast [M_q, M_k] to [batch, q_head, M_q, M_k]
+  // TODO: implement mask addition
+
+  // Step 3: softmax along M_k
+  cuda::bmSoftmax(scores.get(), nullptr, scores.get(),
+                   batch * q_head * M_q, M_k, 1, false);
+
+  // Step 4: scores@V → [batch, q_head, M_q, d]
+  auto context = cuda_malloc(batch * q_head * M_q * d * sizeof(float));
+  cuda::bmAttentionPV(scores.get(), getCudaData(op.getValues()),
+                       context.get(), batch, q_head, M_q, M_k, d);
+  scores.reset();
+
+  // Step 5: transpose [batch, q_head, M_q, d] → [batch, M_q, q_head, d]
+  auto ctx_perm = cuda_malloc(batch * q_head * M_q * d * sizeof(float));
+  cuda::bmPermuteBMHD(context.get(), ctx_perm.get(), batch, q_head, M_q, d);
+  context.reset();
+
+  // Step 6: reshape to [batch, M_q, q_head*d] and copy to output
+  CHECK_CUDA(cudaMemcpy(getCudaData(op.getOutput()), ctx_perm.get(),
+                        batch * M_q * Hd * sizeof(float),
+                        cudaMemcpyDeviceToDevice));
 }

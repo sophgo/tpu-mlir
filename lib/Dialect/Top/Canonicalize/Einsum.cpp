@@ -278,6 +278,7 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
       RankedTensorType newType;
       if (auto wOp = dyn_cast<top::WeightOp>(rhs.getDefiningOp())) {
         auto storage_type = module::getStorageType(rhs);
+        (void)storage_type;
         assert(storage_type.isF32() && "Todo, supoort more weight type");
         auto data = wOp.read_as_byte();
         uint8_t *dptr;
@@ -358,6 +359,7 @@ struct ConvertEinsum : public OpRewriterPatternEx<EinsumOp> {
       rewriter.setInsertionPointAfter(rhs.getDefiningOp());
       if (auto wOp = dyn_cast<top::WeightOp>(rhs.getDefiningOp())) {
         auto storage_type = module::getStorageType(rhs);
+        (void)storage_type;
         assert(storage_type.isF32() && "Todo, supoort more weight type");
         auto data = wOp.read_as_byte();
         uint8_t *dptr;

@@ -500,10 +500,13 @@ class ReForm(object):
         self.weight = model.graph.initializer
         self.gout = model.graph.output
         self.ginfo = model.graph.value_info
-        self.dtype_info = {
-            info.name: info.type.tensor_type.elem_type
-            for info in model.graph.value_info
-        }
+        self.dtype_info = {}
+        for info in model.graph.value_info:
+            self.dtype_info[info.name] = info.type.tensor_type.elem_type
+        for inp in model.graph.input:
+            self.dtype_info[inp.name] = inp.type.tensor_type.elem_type
+        for out in model.graph.output:
+            self.dtype_info[out.name] = out.type.tensor_type.elem_type
         # store node shape
         self.shape_info = [info for info in model.graph.value_info]
         self.shape_info.extend(model.graph.output)
@@ -965,15 +968,14 @@ class ReForm(object):
                 ]:
                     # keep int->float cast
                     continue
+                if input_dtype is not None and input_dtype != to_attr:
+                    # keep non-identity cast (e.g. f32->f16, f16->f32, bool->f32, etc.)
+                    continue
                 cast_ops.append(node)
                 cast_in_dict[node.output[0]] = node.input[0]
                 if node.output[0] in net_out_names: reverse_search = True
                 continue
-
-        for node in self.nodes:
             if node.op_type == "Constant":
-                continue
-            if node.op_type == "Cast" and node in cast_ops:
                 continue
             for i in range(len(node.input)):
                 if node.input[i] in cast_in_dict:
@@ -1341,47 +1343,6 @@ def SelectiveScan(c, deltaA, deltaB_u, u, D):
         out = y
 
     return out
-
-
-############ ConcatVolume ############
-@onnx_op(
-    op_type="tpu_mlir::ConcatVolume",
-    inputs=[
-        PyOp.dt_float,  # 0: left_features
-        PyOp.dt_float,  # 1: right_features
-    ],
-    outputs=[PyOp.dt_float],
-    attrs={"max_disp": PyOp.dt_int64})
-def concat_volume(left_features, right_features, max_disp):
-    """
-    ConcatVolume operator for stereo matching cost volume construction.
-
-    Concatenates left and right features with disparity shifts to build
-    a 5D cost volume tensor.
-
-    Parameters:
-        left_features:  left image features [B, C, H, W]
-        right_features: right image features [B, C, H, W]
-        max_disp:       maximum disparity value
-
-    Returns:
-        volume: cost volume tensor [B, 2*C, max_disp, H, W]
-    """
-    B, C, H, W = left_features.shape
-    volume = np.zeros([B, 2 * C, max_disp, H, W], dtype=left_features.dtype)
-
-    for i in range(max_disp):
-        if i > 0:
-            # Copy left feature to first C channels
-            volume[:, :C, i, :, :] = left_features[:, :, :, :]
-            # Copy right feature (shifted) to last C channels
-            volume[:, C:, i, :, i:] = right_features[:, :, :, :-i]
-        else:
-            # i=0: direct concatenation without shift
-            volume[:, :C, i, :, :] = left_features
-            volume[:, C:, i, :, :] = right_features
-
-    return volume
 
 
 def remove_tensor_from_input(model):
