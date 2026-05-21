@@ -340,7 +340,7 @@ class LlmConverter(BaseConverter):
         weight_op = mlir_gen.create_weight_op(norm_path + ".weight", norm_shape)
         loc_name = name if name else norm_path
         eps = self.rms_norm_eps if eps is None else eps
-        weight_keep_f32 = True if self.llm_type in [LlmType.GEMMA3] else False
+        weight_keep_f32 = True if self.llm_type in [LlmType.GEMMA3, LlmType.GEMMA4] else False
         return top.RMSNormOp(mlir_gen.get_tensor_type(input_shape),
                              in_op,
                              weight_op,
@@ -390,6 +390,11 @@ class LlmConverter(BaseConverter):
             return top.GELUOp(mlir_gen.get_tensor_type(input_shape),
                               in_op,
                               loc=self.get_loc(path + ".gelu", mlir_gen),
+                              ip=mlir_gen.insert_point).output
+        elif act_type == ActType.RELU:
+            return top.ReluOp(mlir_gen.get_tensor_type(input_shape),
+                              in_op,
+                              loc=self.get_loc(path + ".relu", mlir_gen),
                               ip=mlir_gen.insert_point).output
         else:
             raise NotImplementedError(f"Unsupported activation type: {act_type}")
@@ -449,7 +454,7 @@ class LlmConverter(BaseConverter):
         self.decoder_sparse_step = getattr(self.llm_config, "decoder_sparse_step", 1)
         # for minicpm4
         self.scale_emb = getattr(self.llm_config, "scale_emb", 1.)
-        if self.llm_type == LlmType.GEMMA3:
+        if self.llm_type in [LlmType.GEMMA3, LlmType.GEMMA4]:
             self.scale_emb = self.hidden_size**0.5
         self.scale_depth = getattr(self.llm_config, "scale_depth", 1.)
         self.dim_model_base = getattr(self.llm_config, "dim_model_base", 1.)
@@ -653,6 +658,27 @@ class LlmConverter(BaseConverter):
                                       lmhead_op,
                                       loc=self.get_loc(lmhead + ".reshape", lmhead_mlir),
                                       ip=lmhead_mlir.insert_point).output
+            # Gemma4 logit softcapping
+            if self.llm_type == LlmType.GEMMA4:
+                softcap = getattr(self.llm_config, 'final_logit_softcapping', None)
+                if softcap is not None:
+                    lmhead_op = top.MulConstOp(lmhead_mlir.get_tensor_type([1, self.vocab_size]),
+                                               lmhead_op,
+                                               const_val=1.0 / softcap,
+                                               loc=self.get_loc(lmhead + ".softcap_div",
+                                                                lmhead_mlir),
+                                               ip=lmhead_mlir.insert_point).output
+                    lmhead_op = top.TanhOp(lmhead_mlir.get_tensor_type([1, self.vocab_size]),
+                                           lmhead_op,
+                                           loc=self.get_loc(lmhead + ".softcap_tanh", lmhead_mlir),
+                                           ip=lmhead_mlir.insert_point).output
+                    lmhead_op = top.MulConstOp(lmhead_mlir.get_tensor_type([1, self.vocab_size]),
+                                               lmhead_op,
+                                               const_val=softcap,
+                                               loc=self.get_loc(lmhead + ".softcap_mul",
+                                                                lmhead_mlir),
+                                               ip=lmhead_mlir.insert_point).output
+
             if self.lmhead_with_topk:
                 topk_op = top.TopKOp(*lmhead_mlir.get_tensor_type([[1, 1], [1, 1]]),
                                      lmhead_op,

@@ -41,6 +41,7 @@ class LlmType:
     QWEN3_5 = "qwen3_5_text"
     CHATGLM3 = "chatglm"
     GEMMA3 = "gemma3_text"
+    GEMMA4 = "gemma4_text"
     MINICPM4 = "minicpm"
     GLM4V = "glm4v_text"
     LFM2 = "lfm2_text"
@@ -66,6 +67,7 @@ class WeightType:
 class LlmList:
     LAYERS = "LAYERS"
     EMBEDING = "EMBEDING"
+    EMBEDING_PER_LAYER = "EMBEDING_PER_LAYER"
     # =========== in layers ==========
     INPUT_LN = "INPUT_LN"
     Q_PROJ = "Q_PROJ"
@@ -73,6 +75,7 @@ class LlmList:
     K_PROJ = "K_PROJ"
     K_NORM = "K_NORM"  # qwen3
     V_PROJ = "V_PROJ"
+    V_NORM = "V_NORM"  # gemma4
     O_PROJ = "O_PROJ"
     C_Q_PROJ = "C_Q_PROJ"
     C_Q_NORM = "C_Q_NORM"  # mllama
@@ -94,6 +97,13 @@ class LlmList:
     MLP_UP = "MLP_UP"
     MLP_DOWN = "MLP_DOWN"
     MLP_GATE_UP = "MLP_GATE_UP"
+    # Gemma4 specific
+    LAYER_SCALAR = "LAYER_SCALAR"
+    PER_LAYER_INPUT_GATE = "PER_LAYER_INPUT_GATE"
+    PER_LAYER_PROJECTION = "PER_LAYER_PROJECTION"
+    POST_PER_LAYER_INPUT_NORM = "POST_PER_LAYER_INPUT_NORM"
+    PER_LAYER_MODEL_PROJECTION = "PER_LAYER_MODEL_PROJECTION"
+    PER_LAYER_PROJECTION_NORM = "PER_LAYER_PROJECTION_NORM"
     # MoE
     SHARED_GATE = "SHARED_GATE"
     SHARED_EXPERT_GATE = "SHARED_EXPERT_GATE"
@@ -379,4 +389,38 @@ LFM2_INFO = ModelInfo(
         # ================================
         LlmList.NORM: "model.language_model.embedding_norm",
         LlmList.LMHEAD: "lm_head",
+    })
+
+# gemma4
+GEMMA4_INFO = ModelInfo(
+    ModelConfig(hidden_act="hidden_activation", ),
+    weights={
+        LlmList.LAYERS: "model.language_model.layers",
+        LlmList.EMBEDING: "model.language_model.embed_tokens",
+        LlmList.EMBEDING_PER_LAYER: "model.language_model.embed_tokens_per_layer",
+        # ========= in layers =============
+        LlmList.INPUT_LN: "input_layernorm",
+        LlmList.LAYER_SCALAR: "layer_scalar",
+        LlmList.Q_PROJ: "self_attn.q_proj",
+        LlmList.Q_NORM: "self_attn.q_norm",
+        LlmList.K_PROJ: "self_attn.k_proj",
+        LlmList.K_NORM: "self_attn.k_norm",
+        LlmList.V_PROJ: "self_attn.v_proj",
+        LlmList.V_NORM: "self_attn.v_norm",
+        LlmList.O_PROJ: "self_attn.o_proj",
+        LlmList.POST_ATTN_LN: "post_attention_layernorm",
+        LlmList.PRE_MLP_LN: "pre_feedforward_layernorm",
+        LlmList.POST_MLP_LN: "post_feedforward_layernorm",
+        LlmList.MLP_GATE: "mlp.gate_proj",
+        LlmList.MLP_UP: "mlp.up_proj",
+        LlmList.MLP_DOWN: "mlp.down_proj",
+        LlmList.PER_LAYER_INPUT_GATE: "per_layer_input_gate",
+        LlmList.PER_LAYER_PROJECTION: "per_layer_projection",
+        LlmList.POST_PER_LAYER_INPUT_NORM: "post_per_layer_input_norm",
+        # Per-layer input (model-level)
+        LlmList.PER_LAYER_MODEL_PROJECTION: "model.language_model.per_layer_model_projection",
+        LlmList.PER_LAYER_PROJECTION_NORM: "model.language_model.per_layer_projection_norm",
+        # ================================
+        LlmList.NORM: "model.language_model.norm",
+        LlmList.LMHEAD: "model.language_model.embed_tokens",
     })

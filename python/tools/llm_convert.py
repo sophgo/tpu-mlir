@@ -69,6 +69,7 @@ LLM_CONVERTERS = [
     (("qwen3_asr", ), "llm.Qwen3AsrConverter", "Qwen3AsrConverter", {}),
     (("internvl_chat", ), "llm.InternVL3Converter", "InternVL3Converter", {}),
     (("gemma3", ), "llm.Gemma3Converter", "Gemma3Converter", {}),
+    (("gemma4", ), "llm.Gemma4Converter", "Gemma4Converter", {}),
     (("glm4v", ), "llm.GLM4VConverter", "GLM4VConverter", {
         "pixel_multiple": 28
     }),
@@ -135,6 +136,8 @@ if __name__ == '__main__':
                         help="max pixels for vit as 'width,height', e.g. 672,896. "
                              "If unset, defaults are picked by model_type: "
                              "qwen2_5_vl -> 672,896, minicpmv -> 980,980, others -> 768,768.")
+    parser.add_argument('--audio_length', type=int, default=0,
+                        help='audio sequence length for audio bmodel')
     parser.add_argument('--dynamic', action='store_true',
                         help='enable dynamic compiling for llm prefill')
     parser.add_argument('--debug', action='store_true',
