@@ -11,6 +11,7 @@ import os
 import re
 
 from .LlmInfo import WeightType
+from transform.MLIRImporter import Platform
 import logging
 
 logger = logging.getLogger(__name__)
@@ -83,6 +84,7 @@ class SafetensorsModelHandle(ModelHandle):
                 raise RuntimeError(f"Quantize {conv.quantize} mismatch with model dtype :{dtype}")
         else:
             conv.quant_mode = conv.quantization_config["quant_method"]
+            conv.platform = Platform.LLM_QUANTIZED
             if conv.quant_mode not in ["gptq", "awq", "compressed-tensors", "auto-round"]:
                 raise NotImplementedError(f"Not support quantization method: {conv.quant_mode}")
             if conv.quant_mode != "compressed-tensors":
@@ -589,6 +591,7 @@ class GGUFModelHandle(ModelHandle):
 
         if quantized_count > 0:
             conv.quant_mode = "gptq"
+            conv.platform = Platform.LLM_QUANTIZED
             self._determine_quant_bits(conv)
             self._determine_symmetric(conv)
             if self.quantized_tensors:
