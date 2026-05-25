@@ -27,6 +27,10 @@ import mlir.dialects.top as top
 
 
 class LlmConverter(BaseConverter):
+    # Small upper-triangular mask size for FAttentionOp in dynamic prefill
+    MASK_SIZE = 256
+    # Weight key name for the small attention mask
+    ATTN_MASK_WEIGHT = "attention_mask.weight"
 
     def __init__(self, args, config, loader=None):
         super().__init__()
@@ -1375,6 +1379,62 @@ class LlmConverter(BaseConverter):
     def set_common_weight(self, path: str, weight_dict: dict, type=WeightType.NORMAL):
         self.loader.set_common_weight(self, path, weight_dict, type)
 
+    def create_small_attn_mask(self):
+        """Create a small upper-triangular mask for dynamic prefill FAttentionOp.
+
+        Returns a MASK_SIZE x MASK_SIZE upper-triangular matrix filled with -1e10
+        below the diagonal, suitable for use as a static weight in FAttentionOp
+        when dynamic mode is enabled (eliminating the need for a dynamic mask input).
+        """
+        return np.triu(
+            np.ones((self.MASK_SIZE, self.MASK_SIZE), dtype=np.float32) * (-1.0e10),
+            k=1,
+        )
+
+    def save_small_attn_mask_weight(self, weight_dict: dict):
+        """Save the small attention mask into the weight dict if dynamic mode is on.
+
+        When self.dynamic is True, adds a small upper-triangular mask weight so
+        the prefill FAttentionOp can reference it as a static weight instead of
+        a dynamic input. This reduces MLIR input complexity (2 inputs vs 3).
+        """
+        if self.dynamic:
+            weight_dict[self.ATTN_MASK_WEIGHT] = self.create_small_attn_mask()
+
+    def get_fattention_mask_op(self, block_mlir, in2_op=None):
+        """Get the mask operand for FAttentionOp in prefill phase.
+
+        In dynamic mode, uses a static weight op (small 256x256 upper-triangular mask).
+        In static mode, uses the dynamic mask input (in2_op).
+        Returns (mask_op, mask_size) tuple.
+        """
+        if self.dynamic:
+            mask_op = block_mlir.create_weight_op(
+                self.ATTN_MASK_WEIGHT,
+                [self.MASK_SIZE, self.MASK_SIZE],
+                placeholder=True,
+            )
+            mask_size = self.MASK_SIZE
+        else:
+            mask_op = in2_op
+            mask_size = 0
+        return mask_op, mask_size
+
+    def create_decode_mask_placeholder(self, block_mlir):
+        """Create a placeholder weight op for the attention mask in decode phase.
+
+        When dynamic mode is on, prefill uses the small mask as a weight, which
+        gets saved in the shared weight file. The decode block must also reference
+        this weight (as a placeholder) so the weight file layout stays consistent
+        between prefill and decode blocks.
+        """
+        if self.dynamic:
+            block_mlir.create_weight_op(
+                self.ATTN_MASK_WEIGHT,
+                [self.MASK_SIZE, self.MASK_SIZE],
+                placeholder=True,
+            )
+
     def split_fused_moe(self):
 
         def align(x, a):
@@ -1461,6 +1521,7 @@ class LlmConverter(BaseConverter):
             rotary_cos + ".weight": self.cos,
             rotary_sin + ".weight": self.sin,
         }
+        self.save_small_attn_mask_weight(weight_dict)
         self.set_common_weight(input_ln, weight_dict, self.rmsnorm_type)
         self.set_linear_weight(q_proj, weight_dict, do_lora=self.do_lora)
         self.set_linear_weight(k_proj, weight_dict, do_lora=self.do_lora)
@@ -1635,14 +1696,17 @@ class LlmConverter(BaseConverter):
             input_shape = [1, input_len, self.hidden_size]
             id_shape = list(self.position_shape)
             id_shape[-1] = input_len
-            mask_shape = [1, 1, input_len, input_len]
 
             q_shape = [1, input_len, self.num_attention_heads, self.head_dim]
             kv_shape = [1, input_len, self.num_key_value_heads, self.head_dim]
-            block_mlir = MLIRImporter([input_shape, id_shape, mask_shape],
-                                      [input_shape, kv_shape, kv_shape],
+            mask_shape = [1, 1, input_len, input_len]
+            input_shapes = [input_shape, id_shape
+                            ] if self.dynamic else [input_shape, id_shape, mask_shape]
+            input_types = ["F32", "INT32"] if self.dynamic else ["F32", "INT32", "F32"]
+            block_mlir = MLIRImporter(input_shapes, [input_shape, kv_shape, kv_shape],
                                       name,
-                                      self.platform, ["F32", "INT32", "F32"],
+                                      self.platform,
+                                      input_types,
                                       lora_rank=self.lora_rank,
                                       weight_file=f"../{weight_file}")
 
@@ -1653,7 +1717,8 @@ class LlmConverter(BaseConverter):
 
             in0_op = block_mlir.create_input_op(L("input_states"), 0)
             in1_op = block_mlir.create_input_op(L("position_ids"), 1)
-            in2_op = block_mlir.create_input_op(L("attention_mask"), 2)
+            in2_op = block_mlir.create_input_op(L("attention_mask"), 2) if not self.dynamic \
+                else None
             return_ops = []
             ln_op = self.rms_norm(block_mlir, in0_op, input_ln)
 
@@ -1700,11 +1765,12 @@ class LlmConverter(BaseConverter):
             return_ops.append(k_op)
             return_ops.append(v_op)
             # ======= fattention =========
+            mask_op, mask_size = self.get_fattention_mask_op(block_mlir, in2_op)
             fa_op = top.FAttentionOp(T([1, input_len, q_dim]),
                                      q_op,
                                      k_op,
                                      v_op,
-                                     in2_op,
+                                     mask_op,
                                      block_mlir.none_op,
                                      scale=self.head_dim**-0.5,
                                      batch=1,
@@ -1714,6 +1780,7 @@ class LlmConverter(BaseConverter):
                                      mq=input_len,
                                      mk=input_len,
                                      keep_dims=False,
+                                     mask_size=mask_size,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
             o_op = self.linear(block_mlir,
@@ -1843,6 +1910,7 @@ class LlmConverter(BaseConverter):
                                     loc=L(v_proj + ".insert"),
                                     ip=ip).output
             # ======= fattention =========
+            self.create_decode_mask_placeholder(block_mlir)
             fa_op = top.FAttentionOp(T([self.batch, 1, q_dim]),
                                      q_op,
                                      k_op,

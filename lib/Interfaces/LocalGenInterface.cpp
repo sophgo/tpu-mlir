@@ -307,6 +307,9 @@ LogicalResult BroadCastBinaryLocalGenSupport(Operation *op) {
   auto rhs_shape = module::getShape(op->getOperand(1));
   if (lhs_shape.size() != rhs_shape.size())
     return failure();
+  // BD ISA packs N/C/H/W in 16-bit register fields; C > 65535 can't fit.
+  if (lhs_shape.size() >= 3 && (lhs_shape[1] > 65535 || rhs_shape[1] > 65535))
+    return failure();
   if (module::isWeight(op->getOperand(0)) ||
       module::isWeight(op->getOperand(1)))
     if (!isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MinOp,

@@ -12,6 +12,13 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
+static void LoweringFattention(PatternRewriter &rewriter, top::FAttentionOp op,
+                               Type type) {
+  rewriter.setInsertionPointAfter(op);
+  rewriter.replaceOpWithNewOp<tpu::FAttentionOp>(op, type, op.getOperands(),
+                                                 op->getAttrs());
+}
+
 void FAttentionLowering::LoweringF32(PatternRewriter &rewriter,
                                      top::FAttentionOp op) const {
   lowering_common_f32<tpu::FAttentionOp>(rewriter, op);
@@ -31,12 +38,22 @@ void FAttentionLowering::LoweringINT4(PatternRewriter &rewriter,
 
 void FAttentionLowering::LoweringBF16(PatternRewriter &rewriter,
                                       top::FAttentionOp op) const {
-  lowering_common_bf16<tpu::FAttentionOp>(rewriter, op);
+  auto msize = op.getMaskSize();
+  if (msize == 0) {
+    lowering_common_bf16<tpu::FAttentionOp>(rewriter, op);
+  } else {
+    LoweringFattention(rewriter, op, getQuantBF16Type(op.getOutput()));
+  }
 }
 
 void FAttentionLowering::LoweringF16(PatternRewriter &rewriter,
                                      top::FAttentionOp op) const {
-  lowering_common_f16<tpu::FAttentionOp>(rewriter, op);
+  auto msize = op.getMaskSize();
+  if (msize == 0) {
+    lowering_common_f16<tpu::FAttentionOp>(rewriter, op);
+  } else {
+    LoweringFattention(rewriter, op, getQuantF16Type(op.getOutput()));
+  }
 }
 
 void FAttentionLowering::LoweringF8(PatternRewriter &rewriter,

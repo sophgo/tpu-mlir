@@ -436,6 +436,7 @@ class LFM2VLConverter(LlmConverter):
             rotary_cos + ".weight": self.cos,
             rotary_sin + ".weight": self.sin,
         }
+        self.save_small_attn_mask_weight(weight_dict)
         self.set_common_weight(input_ln, weight_dict, WeightType.RMSNORM)
         if self.layer_types[idx] == "full_attention":
             self.set_linear_weight(q_proj, weight_dict, do_lora=self.do_lora)
@@ -508,8 +509,12 @@ class LFM2VLConverter(LlmConverter):
             kv_shape = [1, input_len, self.num_key_value_heads, self.head_dim]
             mask_shape = [1, 1, input_len, input_len]
             if self.layer_types[idx] == "full_attention":
-                input_shapes = [input_shape, id_shape, mask_shape]
-                input_dtypes = ["F32", "INT32", "F32"]
+                if self.dynamic:
+                    input_shapes = [input_shape, id_shape]
+                    input_dtypes = ["F32", "INT32"]
+                else:
+                    input_shapes = [input_shape, id_shape, mask_shape]
+                    input_dtypes = ["F32", "INT32", "F32"]
                 output_shapes = [input_shape, kv_shape, kv_shape]
             else:
                 conv_state_dim_shape = [1]
@@ -535,7 +540,8 @@ class LFM2VLConverter(LlmConverter):
             ln_op = self.rms_norm(block_mlir, in0_op, input_ln)
             if self.layer_types[idx] == "full_attention":
                 in1_op = block_mlir.create_input_op(L("position_ids"), 1)
-                in2_op = block_mlir.create_input_op(L("attention_mask"), 2)
+                in2_op = block_mlir.create_input_op(L("attention_mask"), 2) if not self.dynamic \
+                    else None
                 # q_proj
                 q_dim = self.num_attention_heads * self.head_dim
                 q_op = self.linear(block_mlir,
@@ -580,11 +586,12 @@ class LFM2VLConverter(LlmConverter):
                 return_ops.append(k_op)
                 return_ops.append(v_op)
                 # Apply attention with proper mask handling
+                mask_op, mask_size = self.get_fattention_mask_op(block_mlir, in2_op)
                 fa_op = top.FAttentionOp(T([1, input_len, q_dim]),
                                          q_op,
                                          k_op,
                                          v_op,
-                                         in2_op,
+                                         mask_op,
                                          block_mlir.none_op,
                                          scale=self.head_dim**-0.5,
                                          batch=1,
@@ -594,6 +601,7 @@ class LFM2VLConverter(LlmConverter):
                                          mq=input_len,
                                          mk=input_len,
                                          keep_dims=False,
+                                         mask_size=mask_size,
                                          loc=L(TOP_PATH + "fattention"),
                                          ip=ip).output
                 # attn_output = self.eager_attention(block_mlir, q_op, q_shape, k_op, v_op, kv_shape, None, TOP_PATH+"eager_attn")
@@ -801,6 +809,7 @@ class LFM2VLConverter(LlmConverter):
                 return_ops.append(v_op)
                 k_op = in3_op
                 v_op = in4_op
+                self.create_decode_mask_placeholder(block_mlir)
                 fa_op = top.FAttentionOp(
                     T([1, 1, q_dim]),
                     q_op,

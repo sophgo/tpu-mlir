@@ -534,13 +534,13 @@ class Qwen3_5Converter(LlmConverter):
         do_norm = self.num_device < 2 and idx == self.num_layers - 1
         rotary_cos = "rotary_cos"
         rotary_sin = "rotary_sin"
-
-        # save weight
+        # ===== save weight ===========
         weight_file = f"block_{idx}_top_weights.npz"
         weight_dict = {
             rotary_cos + ".weight": self.cos,
             rotary_sin + ".weight": self.sin,
         }
+        self.save_small_attn_mask_weight(weight_dict)
         self.set_common_weight(input_ln, weight_dict, self.rmsnorm_type)
         # q_proj split if not do lora
         self.set_linear_weight(q_proj, weight_dict, do_lora=self.do_lora)
@@ -615,15 +615,13 @@ class Qwen3_5Converter(LlmConverter):
             input_shape = [1, input_len, self.hidden_size]
             id_shape = list(self.position_shape)
             id_shape[-1] = input_len
-            mask_shape = [1, 1, input_len, input_len]
             q_dim = self.num_attention_heads * self.head_dim
 
             q_shape = [1, input_len, self.num_attention_heads, self.head_dim]
             kv_shape = [1, input_len, self.num_key_value_heads, self.head_dim]
-            block_mlir = MLIRImporter([input_shape, id_shape, mask_shape],
-                                      [input_shape, kv_shape, kv_shape],
+            block_mlir = MLIRImporter([input_shape, id_shape], [input_shape, kv_shape, kv_shape],
                                       name,
-                                      self.platform, ["F32", "INT32", "F32"],
+                                      self.platform, ["F32", "INT32"],
                                       lora_rank=self.lora_rank,
                                       weight_file=f"../{weight_file}")
 
@@ -634,7 +632,6 @@ class Qwen3_5Converter(LlmConverter):
 
             in0_op = block_mlir.create_input_op(L("input_states"), 0)
             in1_op = block_mlir.create_input_op(L("position_ids"), 1)
-            in2_op = block_mlir.create_input_op(L("attention_mask"), 2)
             return_ops = []
             ln_op = self.rms_norm(block_mlir, in0_op, input_ln)
 
@@ -709,11 +706,12 @@ class Qwen3_5Converter(LlmConverter):
             return_ops.append(k_op)
             return_ops.append(v_op)
             # ======= fattention =========
+            mask_op, mask_size = self.get_fattention_mask_op(block_mlir)
             fa_op = top.FAttentionOp(T([1, input_len, q_dim]),
                                      q_op,
                                      k_op,
                                      v_op,
-                                     in2_op,
+                                     mask_op,
                                      block_mlir.none_op,
                                      scale=self.head_dim**-0.5,
                                      batch=1,
@@ -723,6 +721,7 @@ class Qwen3_5Converter(LlmConverter):
                                      mq=input_len,
                                      mk=input_len,
                                      keep_dims=False,
+                                     mask_size=mask_size,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
             gate_op = top.ReshapeOp(T([1, input_len, q_dim]),
@@ -765,7 +764,6 @@ class Qwen3_5Converter(LlmConverter):
             mask_shape = [self.batch, 1, 1, mask_len]
             history_shape = [self.batch, self.seq_length, self.num_key_value_heads, self.head_dim]
 
-            q_shape = [self.batch, 1, self.num_attention_heads, self.head_dim]
             kv_shape = [self.batch, 1, self.num_key_value_heads, self.head_dim]
             output_shapes = [input_shape] if self.use_insert else [input_shape, kv_shape, kv_shape]
             block_mlir = MLIRImporter(
@@ -881,6 +879,8 @@ class Qwen3_5Converter(LlmConverter):
                                     loc=L(v_proj + ".insert"),
                                     ip=ip).output
             # ======= fattention =========
+            # no use - placeholder to match weight file from prefill block
+            self.create_decode_mask_placeholder(block_mlir)
             fa_op = top.FAttentionOp(T([self.batch, 1, q_dim]),
                                      q_op,
                                      k_op,

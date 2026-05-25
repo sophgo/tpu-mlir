@@ -11,6 +11,7 @@ import numpy as np
 import os, sys
 import argparse
 import subprocess
+import shlex
 from utils.timer import Timer
 from typing import List, Dict, Any, Optional, Callable, Tuple, Union
 from utils.regression_logger import run_in_log_wrapper
@@ -37,7 +38,9 @@ def deploy_case_bmodel(case_name: str,
                        rvti: bool = False,
                        disable_lg: bool = False,
                        disable_hp: bool = False,
-                       no_check: bool = False) -> None:
+                       no_check: bool = False,
+                       ip: str = "",
+                       pwd: str = "") -> None:
     """
     Run `model_deploy.py` for a single case/chip/mode.
 
@@ -72,6 +75,10 @@ def deploy_case_bmodel(case_name: str,
     if not disable_hp:
         deploy_cmd.append("--high_precision")
     deploy_cmd.append("--disable_gdma_check")
+    if ip:
+        deploy_cmd.append(f"--ip {ip}")
+        if pwd:
+            deploy_cmd.append(f"--pwd {shlex.quote(pwd)}")
     deploy_cmd = " ".join(deploy_cmd)
     print(deploy_cmd)
     assert os.system(deploy_cmd) == 0
@@ -157,6 +164,7 @@ class MLIR_IR_TESTER(object):
             "chunk_gated_delta_rule": (self.test_chunk_gated_delta_rule, Y, Y),
             "recurrent_gated_delta_rule": (self.test_recurrent_gated_delta_rule, Y, Y),
             "concat_slice": (self.test_concat_slice, Y, Y),
+            "softplus_mul": (self.test_softplus_mul, Y, Y),
         }
         # currently test_mlir.py only supports fp quant mode
         self.support_quant_modes = ["f32", "f16"]  # no need "bf16" for now
@@ -171,6 +179,8 @@ class MLIR_IR_TESTER(object):
         self.disable_lg = args.disable_lg
         self.disable_hp = args.disable_hp
         self.no_check = args.no_check
+        self.ip = getattr(args, "ip", "")
+        self.pwd = getattr(args, "pwd", "")
         if self.chip not in SUPPORTED_CHIPS:
             raise ValueError(f"Unsupported chip: {self.chip}. Supported: {SUPPORTED_CHIPS}")
 
@@ -426,7 +436,9 @@ class MLIR_IR_TESTER(object):
                                    rvti=self.rvti,
                                    disable_lg=self.disable_lg,
                                    disable_hp=self.disable_hp,
-                                   no_check=self.no_check)
+                                   no_check=self.no_check,
+                                   ip=self.ip,
+                                   pwd=self.pwd)
             except Exception as e:
                 # print(f"[Error] Mode {mode} failed for {case_name}: {e}")
                 raise RuntimeError(
@@ -1142,6 +1154,50 @@ class MLIR_IR_TESTER(object):
         # Deploy for each quantization mode
         self._deploy_test_case(case_name)
 
+    def test_softplus_mul(self, case_name):
+        """Test case: Softplus followed by Mul with a weight tensor.
+
+        Reproduces the pattern from block_0.mlir:
+          %33 = top.Softplus(%18)
+          %34 = top.Weight() -> tensor<1x1x16xf32>
+          %35 = top.Mul(%33, %34)
+        """
+        input_shapes = [
+            [1, 65536, 16],  # input activation (matches in_proj_a output)
+        ]
+        weight_shapes = [
+            [1, 1, 16],  # A_log weight (broadcast multiplier)
+        ]
+        output_shapes = [
+            [1, 65536, 16],  # output after softplus+mul
+        ]
+
+        # Create MLIR importer
+        block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
+            case_name, input_shapes, weight_shapes, output_shapes, ["F32"])
+
+        in0_op = input_ops[0]
+
+        # Softplus
+        softplus_out = top.SoftplusOp(self._T(block_mlir, input_shapes[0]),
+                                      in0_op,
+                                      loc=self._L(block_mlir, "softplus"),
+                                      ip=ip).output
+
+        # Mul with weight
+        mul_out = top.MulOp(self._T(block_mlir, output_shapes[0]), [softplus_out, weight_ops[0]],
+                            loc=self._L(block_mlir, "mul"),
+                            ip=ip).output
+
+        # Create return operation
+        block_mlir.create_return_op([mul_out])
+
+        # Save MLIR text, weights, and inputs
+        self._save_mlir_and_data(case_name, block_mlir, input_shapes, weight_shapes)
+
+        # Deploy for each quantization mode
+        self._deploy_test_case(case_name)
+
 
 def test_one_case_in_all(tester: MLIR_IR_TESTER, case: str, error_cases: List,
                          success_cases: List) -> None:
@@ -1219,6 +1275,10 @@ def main():
     parser.add_argument("--no_check", action="store_true", help='do not check result, only run deploy')
     parser.add_argument("--disable_lg", action="store_true", help='disable layergroup')
     parser.add_argument("--disable_hp", action="store_true", help='disable high precision')
+    parser.add_argument("--ip", default="", type=str,
+                        help="remote server as 'username@ip' to run bmodel inference")
+    parser.add_argument("--pwd", default="", type=str,
+                        help="remote server password for ssh/scp")
     # yapf: enable
     args = parser.parse_args()
     tester = MLIR_IR_TESTER(args)

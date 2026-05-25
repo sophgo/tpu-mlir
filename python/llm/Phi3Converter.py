@@ -321,6 +321,7 @@ class Phi3Converter(Chatglm3Converter):
         weight_dict = {
             rotary_inv_freq + ".weight": self.cos,
         }
+        self.save_small_attn_mask_weight(weight_dict)
         self.set_common_weight(input_ln, weight_dict)
         self.set_linear_weight(qkv_w, weight_dict)
         self.set_linear_weight(att_dense, weight_dict)
@@ -383,14 +384,17 @@ class Phi3Converter(Chatglm3Converter):
             name = f"block_{idx}"
             input_shape = [1, self.seq_length, self.hidden_size]
             id_shape = list(self.position_shape)
-            mask_shape = [1, 1, self.seq_length, self.seq_length]
 
             q_shape = [1, self.seq_length, self.num_attention_heads, self.head_dim]
             kv_shape = [1, self.seq_length, self.num_key_value_heads, self.head_dim]
-            block_mlir = MLIRImporter([input_shape, id_shape, mask_shape],
-                                      [input_shape, kv_shape, kv_shape],
+            mask_shape = [1, 1, self.seq_length, self.seq_length]
+            input_shapes = [input_shape, id_shape
+                            ] if self.dynamic else [input_shape, id_shape, mask_shape]
+            input_types = ["F32", "INT32"] if self.dynamic else ["F32", "INT32", "F32"]
+            block_mlir = MLIRImporter(input_shapes, [input_shape, kv_shape, kv_shape],
                                       name,
-                                      self.platform, ["F32", "INT32", "F32"],
+                                      self.platform,
+                                      input_types,
                                       weight_file=f"../{weight_file}")
 
             T = block_mlir.get_tensor_type
@@ -400,7 +404,8 @@ class Phi3Converter(Chatglm3Converter):
 
             in0_op = block_mlir.create_input_op(L("input_states"), 0)
             in1_op = block_mlir.create_input_op(L("position_ids"), 1)
-            in2_op = block_mlir.create_input_op(L("attention_mask"), 2)
+            in2_op = block_mlir.create_input_op(L("attention_mask"), 2) if not self.dynamic \
+                else None
             return_ops = []
             ln_op = self.rms_norm(block_mlir, in0_op, input_ln)
 
@@ -426,11 +431,12 @@ class Phi3Converter(Chatglm3Converter):
             return_ops.append(k_op)
             return_ops.append(v_op)
             # ======= fattention =========
+            mask_op, mask_size = self.get_fattention_mask_op(block_mlir, in2_op)
             fa_op = top.FAttentionOp(T([1, self.seq_length, q_dim]),
                                      q_op,
                                      k_op,
                                      v_op,
-                                     in2_op,
+                                     mask_op,
                                      block_mlir.none_op,
                                      scale=self.head_dim**-0.5,
                                      batch=1,
@@ -440,6 +446,7 @@ class Phi3Converter(Chatglm3Converter):
                                      mq=self.seq_length,
                                      mk=self.seq_length,
                                      keep_dims=False,
+                                     mask_size=mask_size,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
             o_op = self.linear(block_mlir, att_dense, fa_op, [q_dim, self.hidden_size], input_shape)
@@ -513,6 +520,7 @@ class Phi3Converter(Chatglm3Converter):
                                 loc=L(qkv_w + "_v.concat"),
                                 ip=ip).output
             # ======= fattention =========
+            self.create_decode_mask_placeholder(block_mlir)
             fa_op = top.FAttentionOp(T([1, 1, q_dim]),
                                      q_op,
                                      k_op,

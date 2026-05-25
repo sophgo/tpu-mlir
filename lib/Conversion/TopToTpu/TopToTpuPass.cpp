@@ -2063,7 +2063,9 @@ void ConvertTopToTpu::weight_process() {
   mainFunc_.walk([&](Operation *op) {
     if (auto weightOp = dyn_cast<top::WeightOp>(op)) {
       auto dtype = module::getStorageType(weightOp.getType());
-      if (dtype.isF32() && weightOp.getPlaceholder().value_or(false)) {
+      auto isHolder = weightOp.getPlaceholder().value_or(false);
+      auto noUse = weightOp.use_empty();
+      if (dtype.isF32() && isHolder && noUse) {
         if (module::isBF16Modes()) {
           weightOp.clone_bf16(op);
           op->setAttr("placeholder", builder.getBoolAttr(false));

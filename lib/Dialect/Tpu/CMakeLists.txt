@@ -68,3 +68,31 @@ add_llvm_library(TPUMLIRTpu
   TPUMLIRBuilder
   ortools
 )
+
+# Exclude files with conflicting static function/class names from unity builds.
+# These files define identically-named static functions or inline classes
+# that would cause ODR violations when combined into a single translation unit.
+if(CMAKE_UNITY_BUILD)
+  foreach(_file ${_sources})
+    # BM1684X: is_sign, SpecAssign, has_pad
+    if(_file MATCHES "BM1684X/(AddConst|Mul|MulConst|SubConst|MaxPoolWithMask|Pooling1D|Pooling2D|Pooling3D)\\.cpp$")
+      set_source_files_properties(${_file} PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
+    endif()
+    # BM1684: isInt8
+    if(_file MATCHES "BM1684/(Max|Min)\\.cpp$")
+      set_source_files_properties(${_file} PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
+    endif()
+    # Common: normlize_bf16, normlize_f32, inference, cvi_int8_to_bf16, active_func
+    if(_file MATCHES "Common/(GroupNorm|GroupNormTrain|InstanceNorm|LayerNorm|LayerNormTrain|RMSNorm|PixelNorm|Cast|DtypeCast|Active|ActiveCast|GRU)\\.cpp$")
+      set_source_files_properties(${_file} PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
+    endif()
+    # CV18xx WeightReorder: transposeBiasFp32, transposeConvolutionFilter, packWeight, transpose_row_col
+    if(_file MATCHES "WeightReorder/CV18xx/(Conv2D|Conv3D|Deconv|GRU|LSTM)\\.cpp$")
+      set_source_files_properties(${_file} PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
+    endif()
+    # ProcessorOptimize files — include Common.h headers with inline class definitions
+    if(_file MATCHES "ProcessorOptimize/")
+      set_source_files_properties(${_file} PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
+    endif()
+  endforeach()
+endif()

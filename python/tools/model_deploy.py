@@ -148,6 +148,8 @@ class DeployTool:
         self.addr_mode = args.addr_mode
         self.same_addr = args.same_addr
         self.cuda = args.cuda
+        self.ip = getattr(args, "ip", "")
+        self.pwd = getattr(args, "pwd", "")
         self.q_group_size = args.q_group_size if (self.quantize.endswith('dyn') or self.quantize
                                                   in ["w4f16", "w4bf16", "w8f16", "w8bf16"]) else 0
         self.q_symmetric = args.q_symmetric
@@ -482,7 +484,11 @@ class DeployTool:
 
     def validate_model(self):
         show_fake_cmd(self.in_f32_npz, self.bmodel_path, self.model_npz, self.compare_all)
-        model_outputs = model_inference(self.tpu_inputs, self.bmodel_path, self.compare_all)
+        model_outputs = model_inference(self.tpu_inputs,
+                                        self.bmodel_path,
+                                        self.compare_all,
+                                        ip=self.ip,
+                                        pwd=self.pwd)
         np.savez(self.model_npz, **model_outputs)
         if self.enable_maskrcnn:
             self.revise_MaskRCNN_tpu_ref()
@@ -560,6 +566,10 @@ if __name__ == '__main__':
     parser.add_argument("--fazzy_match", action="store_true",
                         help="do fazzy match bettwen target and ref data")
     parser.add_argument("--cuda", action="store_true", help="do inference by cuda")
+    parser.add_argument("--ip", default="", type=str,
+                        help="remote server as 'username@ip' to run bmodel inference")
+    parser.add_argument("--pwd", default="", type=str,
+                        help="remote server password for ssh/scp")
     # ========== Fuse Preprocess Options ==============
     parser.add_argument("--fuse_preprocess", action='store_true',
                         help="add tpu preprocesses (mean/scale/channel_swap) in the front of model")

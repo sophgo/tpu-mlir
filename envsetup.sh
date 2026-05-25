@@ -58,7 +58,14 @@ export OMP_NUM_THREADS=8
 export FORBID_GEN_RISCV_CODE=1
 
 # CCache configuration
+export CCACHE_DIR=${CCACHE_DIR:-$HOME/.ccache}
+export CCACHE_MAXSIZE=${CCACHE_MAXSIZE:-20G}
+export CCACHE_COMPRESS=true
+export CCACHE_COMPRESSLEVEL=6
 export CCACHE_REMOTE_STORAGE=redis://10.132.3.118:6379
+function ccache_stats() {
+    ccache -s
+}
 
 # Coverage related settings
 export ENABLE_COVERAGE=False

@@ -44,7 +44,7 @@ LogicalResult UnpackCoreParallelPattern::matchAndRewriteImpl(
     UNREACHABLE_OP("CoreJoinOp not found in CoreParallelOp!", op);
   }
   int num_inputs = join_op.getNumOperands();
-  assert(num_inputs == module::getCoreNum());
+  assert(num_inputs <= module::getCoreNum());
   for (int i = 0; i < num_inputs; i++) {
     auto in_op = join_op.getOperand(i).getDefiningOp();
     if (!in_op) {

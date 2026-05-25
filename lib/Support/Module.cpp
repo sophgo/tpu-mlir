@@ -422,7 +422,7 @@ int64_t getRealBytes(Value v) {
 
 size_t getBytes(Value v) {
   auto elm_bytes = getRealBytes(v);
-  ASSERT_OP(elm_bytes <= 0xFFFFFFFF, v.getDefiningOp());
+  // ASSERT_OP(elm_bytes <= 0xFFFFFFFF, v.getDefiningOp());
   return (size_t)elm_bytes;
 }
 

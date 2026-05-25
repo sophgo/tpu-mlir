@@ -27,10 +27,29 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
-find_program(CCACHE ccache)
-if(CCACHE)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE})
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ${CCACHE})
+# Unity builds: batch multiple .cpp files into single translation units.
+# Can dramatically reduce header re-parsing overhead for builds with many small .cpp files.
+# Disabled by default due to MLIR name collisions; enable with -DTPUMLIR_UNITY_BUILD=ON.
+# When enabled, SKIP_UNITY_BUILD_INCLUSION in sub-CMakeLists handles known conflicts.
+option(TPUMLIR_UNITY_BUILD "Use CMake unity builds for faster compilation (experimental)" OFF)
+if(TPUMLIR_UNITY_BUILD)
+    set(CMAKE_UNITY_BUILD ON)
+    set(CMAKE_UNITY_BUILD_BATCH_SIZE 8)
+    message(STATUS "Unity build enabled (batch size: ${CMAKE_UNITY_BUILD_BATCH_SIZE})")
+endif()
+
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
+    set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
+    message(STATUS "Using ccache: ${CCACHE_PROGRAM}")
+else()
+    find_program(SCCACHE_PROGRAM sccache)
+    if(SCCACHE_PROGRAM)
+        set(CMAKE_C_COMPILER_LAUNCHER ${SCCACHE_PROGRAM})
+        set(CMAKE_CXX_COMPILER_LAUNCHER ${SCCACHE_PROGRAM})
+        message(STATUS "Using sccache: ${SCCACHE_PROGRAM}")
+    endif()
 endif()
 #-------------------------------------------------------------------------------
 # MLIR/LLVM Configuration
@@ -212,6 +231,24 @@ add_definitions(-DMLIR_VERSION="${MLIR_VERSION}")
 #-------------------------------------------------------------------------------
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Werror -Wno-unused-result -Wreturn-type -Wunused-variable")
+
+# ThinLTO for release builds: parallelizes link-time optimization across cores
+set(CMAKE_CXX_LINK_OPTIONS "${CMAKE_CXX_LINK_OPTIONS} -Wl,-plugin-opt=-import-instr-limit=5")
+
+# Debug builds: use split DWARF to reduce object size and link time
+if(CMAKE_BUILD_TYPE STREQUAL "DEBUG" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -gsplit-dwarf")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -gsplit-dwarf")
+endif()
+
+# Release builds: enable ThinLTO for faster link-time optimization.
+# Use CMAKE_INTERPROCEDURAL_OPTIMIZATION so cmake properly knows to use the
+# LTO linker plugin, not just the compile flags.
+if(CMAKE_BUILD_TYPE STREQUAL "RELEASE" OR CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto=thin")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -flto=thin")
+endif()
 message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 add_subdirectory(include)
 add_subdirectory(third_party)

@@ -14,6 +14,8 @@ import numpy as np
 import argparse
 import os
 import shutil
+import subprocess
+import shlex
 from filelock import FileLock
 import fcntl
 import time
@@ -123,8 +125,12 @@ def model_inference(inputs: dict,
                     mute: bool = False,
                     out_fixed: bool = False,
                     decrypt_lib: str = "",
-                    log_level: str = 'normal') -> dict:
+                    log_level: str = 'normal',
+                    ip: str = "",
+                    pwd: str = "") -> dict:
     is_bmodel = model_file.endswith(".bmodel")
+    if ip and is_bmodel:
+        return remote_model_inference(inputs, model_file, ip, pwd)
     if not is_bmodel:  # cv183x...
         return _model_inference(inputs, model_file, dump_all, out_fixed, decrypt_lib)
     if mute or log_level == "quiet":
@@ -725,6 +731,61 @@ def torch_inference(inputs: dict, model: str, dump_all: bool = True) -> dict:
     return outputs
 
 
+def remote_inference(host: str, pwd: str, input_file: str, model_file: str, output_file: str):
+    """Run bmodel inference on a remote server via ssh/scp.
+
+    host is in the form 'username@ip'. Copies input and model to server ~/tmp,
+    runs model_runner there, and copies output.npz back to local.
+    """
+    import uuid
+    tmp_dir = "tmp_{}".format(uuid.uuid4().hex[:8])
+    remote_dir = "~/tmp/{}".format(tmp_dir)
+
+    ssh_base = ["sshpass", "-p", pwd, "ssh", "-o", "StrictHostKeyChecking=no", host]
+    scp_base = ["sshpass", "-p", pwd, "scp", "-o", "StrictHostKeyChecking=no"]
+
+    # Create remote directory
+    print("[Remote] Creating directory on server: {}".format(remote_dir))
+    subprocess.run(ssh_base + ["mkdir -p {}".format(remote_dir)], check=True)
+
+    # Copy input and model to server
+    remote_input = "{}/{}".format(remote_dir, os.path.basename(input_file))
+    remote_model = "{}/{}".format(remote_dir, os.path.basename(model_file))
+    print("[Remote] Copying input and model to server...")
+    subprocess.run(scp_base + [input_file, "{}:{}".format(host, remote_input)], check=True)
+    subprocess.run(scp_base + [model_file, "{}:{}".format(host, remote_model)], check=True)
+
+    # Run model_runner on server (use login shell so PATH/env is loaded)
+    remote_output = "{}/output.npz".format(remote_dir)
+    inner_cmd = "model_runner --input {} --model {} --output {}".format(
+        remote_input, remote_model, remote_output)
+    cmd = "bash -lc {}".format(shlex.quote(inner_cmd))
+    print("[Remote] Running on server: {}".format(inner_cmd))
+    subprocess.run(ssh_base + [cmd], check=True)
+
+    # Copy output back to local
+    print("[Remote] Copying output from server...")
+    subprocess.run(scp_base + ["{}:{}".format(host, remote_output), output_file], check=True)
+
+    # Clean up remote directory
+    print("[Remote] Cleaning up remote directory...")
+    subprocess.run(ssh_base + ["rm -rf {}".format(remote_dir)], check=True)
+
+    print("[Remote] Done. Output saved to: {}".format(output_file))
+
+
+def remote_model_inference(inputs: dict, model_file: str, ip: str, pwd: str) -> dict:
+    """Save inputs to a temp npz, run remote bmodel inference, and return outputs as a dict."""
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        input_npz = os.path.join(tmp_dir, "input.npz")
+        output_npz = os.path.join(tmp_dir, "output.npz")
+        np.savez(input_npz, **inputs)
+        remote_inference(ip, pwd, input_npz, model_file, output_npz)
+        data = np.load(output_npz)
+        return {k: data[k] for k in data.files}
+
+
 if __name__ == '__main__':
     # yapf: disable
     parser = argparse.ArgumentParser()
@@ -745,31 +806,38 @@ if __name__ == '__main__':
                         help="use cuda to do inference")
     parser.add_argument("--decrypt_lib", type=str, default="",
                         help="use decrypt_lib to load encrypted bmodel")
+    parser.add_argument("--ip", type=str, default="",
+                        help="remote server as 'username@ip' to run bmodel inference")
+    parser.add_argument("--pwd", type=str, default="",
+                        help="remote server password for ssh/scp")
     # yapf: enable
     args = parser.parse_args()
-    data = np.load(args.input)
-    output = dict()
-    if args.model.endswith("final.mlir"):
-        output = final_mlir_inference(data, args.model, args.dump_all_tensors)
-    elif args.model.endswith(".mlir"):
-        output = mlir_inference(data, args.model, args.dump_all_tensors, args.debug, args.out_fixed,
-                                args.cuda)
-    elif args.model.endswith('.onnx'):
-        output = onnx_inference(data, args.model, args.dump_all_tensors)
-    elif args.model.endswith(".tflite"):
-        output = tflite_inference(data, args.model, args.dump_all_tensors)
-    elif args.model.endswith(".prototxt") and args.weight.endswith(".caffemodel"):
-        output = caffe_inference(data, args.model, args.weight, args.dump_all_tensors)
-    elif args.model.endswith(".pt") or args.model.endswith(".pth"):
-        output = torch_inference(data, args.model, args.dump_all_tensors)
-    elif args.model.endswith(".bmodel") or args.model.endswith(".cvimodel"):
-        output = model_inference(data,
-                                 args.model,
-                                 out_fixed=args.out_fixed,
-                                 decrypt_lib=args.decrypt_lib)
+    if args.ip and (args.model.endswith(".bmodel") or args.model.endswith(".cvimodel")):
+        remote_inference(args.ip, args.pwd, args.input, args.model, args.output)
     else:
-        raise RuntimeError("not support model file:{}".format(args.model))
-    print("\nSaving ...")
-    if output:
-        np.savez(args.output, **output)
-        print("\nResult saved to:{}".format(args.output))
+        data = np.load(args.input)
+        output = dict()
+        if args.model.endswith("final.mlir"):
+            output = final_mlir_inference(data, args.model, args.dump_all_tensors)
+        elif args.model.endswith(".mlir"):
+            output = mlir_inference(data, args.model, args.dump_all_tensors, args.debug,
+                                    args.out_fixed, args.cuda)
+        elif args.model.endswith('.onnx'):
+            output = onnx_inference(data, args.model, args.dump_all_tensors)
+        elif args.model.endswith(".tflite"):
+            output = tflite_inference(data, args.model, args.dump_all_tensors)
+        elif args.model.endswith(".prototxt") and args.weight.endswith(".caffemodel"):
+            output = caffe_inference(data, args.model, args.weight, args.dump_all_tensors)
+        elif args.model.endswith(".pt") or args.model.endswith(".pth"):
+            output = torch_inference(data, args.model, args.dump_all_tensors)
+        elif args.model.endswith(".bmodel") or args.model.endswith(".cvimodel"):
+            output = model_inference(data,
+                                     args.model,
+                                     out_fixed=args.out_fixed,
+                                     decrypt_lib=args.decrypt_lib)
+        else:
+            raise RuntimeError("not support model file:{}".format(args.model))
+        print("\nSaving ...")
+        if output:
+            np.savez(args.output, **output)
+            print("\nResult saved to:{}".format(args.output))

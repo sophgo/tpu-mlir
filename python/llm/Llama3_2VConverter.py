@@ -909,7 +909,6 @@ class Llama3_2VConverter(LlmConverter):
         do_norm = self.do_lmhead_merge and idx == self.num_layers - 1
         rotary_cos = "rotary_cos"
         rotary_sin = "rotary_sin"
-
         # save weight
         weight_file = f"block_{idx}_top_weights.npz"
         weight_dict = {
@@ -938,6 +937,7 @@ class Llama3_2VConverter(LlmConverter):
         self.set_linear_weight(mlp_down, weight_dict)
         if do_norm:
             self.set_common_weight(norm, weight_dict, self.rmsnorm_type)
+        self.save_small_attn_mask_weight(weight_dict)
 
         np.savez(weight_file, **weight_dict)
 
@@ -999,14 +999,17 @@ class Llama3_2VConverter(LlmConverter):
             input_len = self.seq_length
             input_shape = [1, input_len, self.hidden_size]
             id_shape = list(self.position_shape)
-            mask_shape = [1, 1, input_len, input_len]
 
             q_shape = [1, input_len, self.num_attention_heads, self.head_dim]
             kv_shape = [1, input_len, self.num_key_value_heads, self.head_dim]
-            block_mlir = MLIRImporter([input_shape, id_shape, mask_shape],
-                                      [input_shape, kv_shape, kv_shape],
+            mask_shape = [1, 1, input_len, input_len]
+            input_shapes = [input_shape, id_shape, mask_shape
+                            ] if not self.dynamic else [input_shape, id_shape]
+            input_types = ["F32", "INT32", "F32"] if not self.dynamic else ["F32", "INT32"]
+            block_mlir = MLIRImporter(input_shapes, [input_shape, kv_shape, kv_shape],
                                       name,
-                                      self.platform, ["F32", "INT32", "F32"],
+                                      self.platform,
+                                      input_types,
                                       weight_file=f"../{weight_file}")
 
             T = block_mlir.get_tensor_type
@@ -1016,7 +1019,8 @@ class Llama3_2VConverter(LlmConverter):
 
             in0_op = block_mlir.create_input_op(L("input_states"), 0)
             in1_op = block_mlir.create_input_op(L("position_ids"), 1)
-            in2_op = block_mlir.create_input_op(L("attention_mask"), 2)
+            in2_op = block_mlir.create_input_op(L("attention_mask"), 2) if not self.dynamic \
+                else None
             return_ops = []
             ln_op = self.rms_norm(block_mlir, in0_op, input_ln)
 
@@ -1042,11 +1046,12 @@ class Llama3_2VConverter(LlmConverter):
             return_ops.append(k_op)
             return_ops.append(v_op)
             # ======= fattention =========
+            mask_op, mask_size = self.get_fattention_mask_op(block_mlir, in2_op)
             fa_op = top.FAttentionOp(T([1, input_len, q_dim]),
                                      q_op,
                                      k_op,
                                      v_op,
-                                     in2_op,
+                                     mask_op,
                                      block_mlir.none_op,
                                      scale=self.head_dim**-0.5,
                                      batch=1,
@@ -1056,6 +1061,7 @@ class Llama3_2VConverter(LlmConverter):
                                      mq=input_len,
                                      mk=input_len,
                                      keep_dims=False,
+                                     mask_size=mask_size,
                                      loc=L(TOP_PATH + "fattention"),
                                      ip=ip).output
             o_op = self.linear(block_mlir, o_proj, fa_op, [q_dim, self.hidden_size], input_shape)
@@ -1510,6 +1516,7 @@ class Llama3_2VConverter(LlmConverter):
                                 loc=L(v_proj + ".concat"),
                                 ip=ip).output
             # ======= fattention =========
+            self.create_decode_mask_placeholder(block_mlir)
             fa_op = top.FAttentionOp(T([1, 1, q_dim]),
                                      q_op,
                                      k_op,

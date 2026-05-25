@@ -7,6 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#pragma once
+
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/OpRewriterPatternEx.h"

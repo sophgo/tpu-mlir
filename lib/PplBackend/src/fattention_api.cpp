@@ -67,7 +67,13 @@ void fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
     block_k = align_2n(half, 2048);
   } else {
     int val = std::min(qm, kvm);
-    block_m = align_2n(val);
+    // On chips with fewer NPUs (e.g., BM1688), a 512-wide tile can
+    // overflow local memory and cause silent data corruption in the
+    // fattention v1/v2 kernels.  Cap block_m / block_k at 256 on such
+    // chips to match the same mitigation used in the prefill path
+    // (see fattention_prefill_tiling block_m = mask_size/2 comment).
+    int tiling_limit = (npu_num <= 32) ? 256 : 512;
+    block_m = align_2n(val, tiling_limit);
     block_k = block_m;
   }
   block_kh = kv_head / safe_core_num;

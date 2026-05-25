@@ -99,3 +99,8 @@ if [ "$1" != "DEBUG" ]; then
   find ./ -name "*.a" ! -name "*_kernel_module.a" | xargs rm
   popd
 fi
+
+# Show ccache stats
+echo ""
+echo "=== CCache Stats ==="
+ccache -s
