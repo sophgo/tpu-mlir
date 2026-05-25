@@ -60,7 +60,7 @@ sphinx-rtd-theme==1.2.2
 termcolor==2.3.0
 tf2onnx==1.8.4
 torch==2.11.0
-torchaudio==2.1.0+cpu
+torchaudio==2.11.0+cpu
 torchvision==0.26.0
 tqdm==4.65.0
 transformers==5.6.2
