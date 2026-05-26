@@ -5,26 +5,51 @@
 # third-party components.
 #
 # ==============================================================================
+"""MLIR-level regression tester.
 
-import json
-import numpy as np
-import os, sys
+Drives small hand-built Top-dialect MLIR cases (attention kernels, slice,
+softplus-mul, …) end-to-end through ``model_deploy.py``. Common helpers
+(random data, working-directory context manager, chip-support resolver) come
+from :mod:`_test_base`.
+"""
+
 import argparse
-import subprocess
-import shlex
-from utils.timer import Timer
-from typing import List, Dict, Any, Optional, Callable, Tuple, Union
-from utils.regression_logger import run_in_log_wrapper
-from contextlib import contextmanager
+import json
 import multiprocessing
-from utils.misc import collect_process
+import os
+import shlex
+import subprocess
+import sys
+import traceback
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
+import numpy as np
+
 from mlir.ir import *
 import mlir.dialects.top as top
 from transform.MLIRImporter import MLIRImporter, Platform
 
+from utils.misc import collect_process
+from utils.regression_logger import run_in_log_wrapper
+from utils.timer import Timer
+
+from _test_base import (
+    Y,
+    N,
+    change_directory,
+    make_chip_resolver,
+    rand_data,
+)
+
 # Constants
 SUPPORTED_CHIPS = ["bm1684x", "bm1688", "bm1690", "bm1690e", "bm1684x2"]
 SUPPORTED_MODES = ["f32", "f16", "bf16"]  # Extend as needed
+
+# Chip columns of the per-row support tuples in ``_test_functions``.
+_CHIP_COLUMNS = ("bm1684x", "bm1688")
+# ``bm1684x2`` shares the ``bm1684x`` support column.
+_CHIP_ALIASES = {"bm1684x2": "bm1684x"}
+_resolve_chip_support = make_chip_resolver(_CHIP_COLUMNS, _CHIP_ALIASES)
 
 
 def deploy_case_bmodel(case_name: str,
@@ -84,61 +109,6 @@ def deploy_case_bmodel(case_name: str,
     assert os.system(deploy_cmd) == 0
 
 
-def rand_data(shape: List[int],
-              dtype: str,
-              min_val: float = -10,
-              max_val: float = 10,
-              seed: Optional[int] = None,
-              int_satu: bool = False) -> np.ndarray:
-    """
-    Generate random data with specified shape and dtype.
-
-    Args:
-        shape: Shape of the output array
-        dtype: Data type ('float32', 'float16', 'int32', etc.)
-        min_val: Minimum value for clipping
-        max_val: Maximum value for clipping
-        seed: Random seed for reproducibility
-        int_satu: Whether to apply saturation for integer types
-
-    Returns:
-        np.ndarray: Generated random data array.
-    """
-    if seed is not None:
-        np.random.seed(seed)
-
-    if dtype in ['float32', 'float16']:
-        data = np.random.randn(*shape).astype(dtype)
-        return np.clip(data, min_val, max_val)
-
-    int_dtypes = ['int32', 'uint32', 'int16', 'uint16', 'int8', 'uint8']
-    if dtype in int_dtypes:
-        if int_satu:
-            data = np.random.randint(0, 127, size=shape).astype(dtype)
-            return np.clip(data, min_val, max_val)
-        else:
-            return np.random.randint(0, 127, size=shape).astype(dtype)
-
-    raise ValueError(f"Unsupported data type: {dtype}")
-
-
-@contextmanager
-def change_directory(path: str):
-    """
-    Context manager for temporarily changing the working directory.
-
-    Args:
-        path: Directory to change to
-    """
-    original_dir = os.getcwd()
-    try:
-        os.makedirs(path, exist_ok=True)
-        os.chdir(path)
-        yield
-    finally:
-        os.chdir(original_dir)
-
-
 Failed_Cases = []
 
 
@@ -147,7 +117,6 @@ class MLIR_IR_TESTER(object):
 
     # This class is built for testing single operator transform.
     def __init__(self, args):
-        Y, N = True, False
         # Test function registry with chip support
         self._test_functions = {
             #############################
@@ -235,7 +204,7 @@ class MLIR_IR_TESTER(object):
         if case not in self._test_functions:
             raise RuntimeError(f"Test case '{case}' does not exist")
 
-        func, _, _ = self._test_functions[case]
+        func = self._test_functions[case][0]
 
         with change_directory(case):
             func(case)
@@ -246,15 +215,8 @@ class MLIR_IR_TESTER(object):
         """Check if a test case is supported by the current chip."""
         if case not in self._test_functions:
             return False
-
-        _, bm1684x_support, bm1688_support = self._test_functions[case]
-
-        if self.chip in ["bm1684x", "bm1684x2"] and bm1684x_support:
-            return True
-        if self.chip == "bm1688" and bm1688_support:
-            return True
-
-        return False
+        flags = self._test_functions[case][1:]
+        return _resolve_chip_support(self.chip, flags)
 
     def _L(self, block_mlir: MLIRImporter, names: Union[str, List[str]]) -> Location:
         """

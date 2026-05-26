@@ -5,6 +5,15 @@
 # third-party components.
 #
 # ==============================================================================
+"""Chip- and model-support matrices used by the regression driver.
+
+Each entry in :data:`basic_model_list` / :data:`full_model_list` /
+:data:`basic_multi_core_model_list` / :data:`full_multi_core_model_list`
+is keyed by model name and holds a tuple of booleans whose order matches the
+keys of :data:`chip_support` (also exposed as :data:`CHIP_COLUMNS`). Use
+:func:`models_for_chip` to extract the models enabled for a given chip
+without indexing the tuple manually.
+"""
 
 # yapf: disable
 ######################################
@@ -182,3 +191,27 @@ full_multi_core_model_list = {
     "inception_v3":               (N,      N,       Y,      N,      N,      N,      N,      N,      N,       N,       N,     N,       N), # bm1690 f16, b16 has problem
     "pp_ocr_cls":                 (N,      N,       Y,      N,      N,      N,      N,      N,      Y,       N,       N,     N,       N),
 }
+
+# yapf: enable
+
+######################################
+# Helpers
+######################################
+# Ordered list of chip names — also defines the column order used by every
+# ``*_model_list`` tuple above. Iterating ``CHIP_COLUMNS`` (or
+# ``chip_support.keys()``) is the canonical way to map a tuple index to a chip.
+CHIP_COLUMNS = tuple(chip_support.keys())
+
+
+def models_for_chip(model_list, chip):
+    """Return the names of models in ``model_list`` enabled for ``chip``.
+
+    ``model_list`` must use :data:`CHIP_COLUMNS` ordering. Returns ``[]`` for
+    unknown chips, which silently filters out columns that have been added to
+    ``chip_support`` but not yet to a particular model list.
+    """
+    try:
+        idx = CHIP_COLUMNS.index(chip)
+    except ValueError:
+        return []
+    return [name for name, flags in model_list.items() if idx < len(flags) and flags[idx]]

@@ -5,26 +5,57 @@
 # third-party components.
 #
 # ==============================================================================
-import numpy as np
+"""PyTorch operator-level regression tester.
+
+This file declares :class:`TORCH_IR_TESTER`, used by both ``python test_torch.py
+--case ...`` and the regression harness (``regression/main_entry.py``).
+Common test infrastructure lives in :mod:`_test_base` so it can be shared with
+``test_onnx.py`` and ``test_mlir.py``.
+"""
+
+import os
+import sys
+import traceback
 from typing import List, Union
+
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.jit as jit
+from torchvision.ops import DeformConv2d
+from torchvision.ops import roi_align
 
 from tools.model_runner import mlir_inference, model_inference, torch_inference, show_fake_cmd
 from tools.npz_tool import npz_compare
 from tools.model_transform import *
 from utils.mlir_shell import *
 from utils.auto_remove import clean_kmp_files
-from utils.timer import Timer
 from utils.regression_logger import run_in_log_wrapper
-import os
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.jit as jit
-import traceback
+from _test_base import (
+    Y,
+    N,
+    cosine_similarity,
+    generate_random,
+    make_chip_resolver,
+    make_simple_calibration_table,
+    run_all_cases,
+    square_rooted,
+)
 
-from torchvision.ops import DeformConv2d
-from torchvision.ops import roi_align
+# Chip columns of the per-row support tuples in ``test_cases``. The order MUST
+# match the order of flags following the test function in every row. This is
+# also the contract relied upon by ``regression/main_entry.py``.
+_CHIP_COLUMNS = (
+    "bm1684",
+    "bm1684x",
+    "bm1688",
+    "cv183x",
+    "cv184x",
+)
+
+_resolve_chip_support = make_chip_resolver(_CHIP_COLUMNS)
 
 
 class TORCH_IR_TESTER(object):
@@ -245,44 +276,35 @@ class TORCH_IR_TESTER(object):
         torch.manual_seed(7)
         TORCH_IR_TESTER.ID = 0
         TORCH_IR_TESTER.CURRENT_CASE = case
-        print("Test: {}".format(case))
-        if case in self.test_cases:
-            os.makedirs(case, exist_ok=True)
-            os.chdir(case)
-            func, _, _, _, _, _ = self.test_cases[case]
-            func()
-            print("====== TEST {} Success ======".format(case))
-        else:
-            raise RuntimeError("case [{}] is not exist".format(case))
+        print(f"Test: {case}")
+        if case not in self.test_cases:
+            raise RuntimeError(f"case [{case}] is not exist")
+        os.makedirs(case, exist_ok=True)
+        os.chdir(case)
+        func = self.test_cases[case][0]
+        func()
+        print(f"====== TEST {case} Success ======")
 
     def check_support(self, case):
-        _, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, cv184x_support = self.test_cases[
-            case]
-        if self.is_cv18xx and cv183x_support:
-            return True
-        if self.chip == "bm1684" and bm1684_support:
-            return True
-        if self.chip == "bm1684x" and bm1684x_support:
-            return True
-        if self.chip in ["bm1688", "cv186x"] and bm1688_support:
-            return True
-        if self.chip == "cv184x" and cv184x_support:
-            return True
-        if self.chip == "bm1684x2" and bm1684x_support:
-            return True
-        return False
+        flags = self.test_cases[case][1:]
+        if self.is_cv18xx:
+            chip = "cv183x"
+        elif self.chip in ("cv186x", "bm1684x2"):
+            # cv186x re-uses the bm1688 column; bm1684x2 re-uses bm1684x.
+            chip = "bm1688" if self.chip == "cv186x" else "bm1684x"
+        else:
+            chip = self.chip
+        return _resolve_chip_support(chip, flags)
 
     def square_rooted(self, x):
-        return np.sqrt(np.sum(np.power(x, 2)))
+        return square_rooted(x)
 
     def cosine_similarity(self, x, y):
-        numerator = np.sum(x * y)
-        denominator = self.square_rooted(x) * self.square_rooted(y)
-        return round(numerator / float(denominator), 3)
+        return cosine_similarity(x, y)
 
     def compare(self, ref_out, target_out, use_cos: bool = False):
         if ref_out.dtype in [np.int64, np.int32, np.int16, np.int8] or use_cos:
-            cos = self.cosine_similarity(ref_out, target_out)
+            cos = cosine_similarity(ref_out, target_out)
             assert (cos > 0.997
                     or (np.linalg.norm(ref_out) == 0 and np.linalg.norm(target_out) == 0))
         elif len(target_out) == 1 and len(ref_out) == 1 and ref_out[0] != 0:
@@ -292,23 +314,10 @@ class TORCH_IR_TESTER(object):
             np.testing.assert_allclose(ref_out, target_out, rtol=1e-5, atol=1e-01)
 
     def make_test_calibration_table(self, tensors, table_name):
-        # simple calibration table
-        with open(table_name, 'w') as f:
-            for name in tensors:
-                flatten_tensor = tensors[name].flatten()
-                max_val = max(flatten_tensor)
-                min_val = min(flatten_tensor)
-                if max_val == min_val:
-                    max_val = max_val + 0.01
-                t = 1.1 * max(abs(min_val), abs(max_val)) + 0.01
-                f.write("{} {} {} {}\n".format(name, t, min_val, max_val))
+        make_simple_calibration_table(tensors, table_name)
 
     def generate_random(self, shape, dtype='float32', min=-10, max=10):
-        scale = max - min
-        data = np.random.rand(*shape) * scale + min
-        if dtype == 'bool':
-            data = data.astype('int')
-        return data.astype(dtype)
+        return generate_random(shape, dtype, min, max)
 
     def create_random_input(self, shapes, descs: List[Desc]):
         if len(descs) == 0:
@@ -4154,35 +4163,12 @@ class TORCH_IR_TESTER(object):
         # self.trace_and_test([(1,3,224,224)], model)
 
 
-def test_one_case_in_all(tester: TORCH_IR_TESTER, case, error_cases, success_cases):
-    t = Timer()
-    try:
-        tester.test_single(case)
-    except:
-        error_cases.append("{}:{}s".format(case, int(t.elapsed_time())))
-        traceback.print_exc()
-        return
-    success_cases.append("{}:{}s".format(case, int(t.elapsed_time())))
-
-
 def test_all(tester: TORCH_IR_TESTER):
-    error_cases = []
-    success_cases = []
-    for case in tester.test_cases:
-        if tester.check_support(case):
-            test_one_case_in_all(tester, case, error_cases, success_cases)
-    print("Success: {}".format(success_cases))
-    print("Failure: {}".format(error_cases))
-    if error_cases:
-        print("====== test_torch.py --chip {} TEST Failed ======".format(tester.chip))
-        # exit(1)
-    else:
-        print("====== test_torch.py --chip {} TEST Success ======".format(tester.chip))
-    clean_kmp_files()
-    return error_cases
+    """Run every supported case on ``tester``; matches the legacy entrypoint."""
+    return run_all_cases(tester, label="test_torch.py", print_traceback=True)
 
 
-if __name__ == "__main__":
+def _build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
@@ -4201,7 +4187,11 @@ if __name__ == "__main__":
     parser.add_argument("--cuda", action="store_true", help="test cuda inference")
     parser.add_argument("--concise_log", action="store_true", help="use concise log")
     # yapf: enable
-    args = parser.parse_args()
+    return parser
+
+
+def main(argv=None) -> None:
+    args = _build_arg_parser().parse_args(argv)
     tester = TORCH_IR_TESTER(args.chip, args.mode, args.simple, args.quant_input, args.quant_output,
                              args.debug, args.num_core, args.debug_cmd, args.cuda, args.dynamic,
                              args.concise_log)
@@ -4209,13 +4199,17 @@ if __name__ == "__main__":
         print("====== Show All Cases ============")
         for case in tester.test_cases:
             print(case)
-        exit(0)
-    dir = "torch_test_{}".format(args.chip)
-    os.makedirs(dir, exist_ok=True)
-    os.chdir(dir)
+        return
+    work_dir = f"torch_test_{args.chip}"
+    os.makedirs(work_dir, exist_ok=True)
+    os.chdir(work_dir)
     if args.case == "" or args.case.lower() == "all":
         test_all(tester)
     else:
         tester.test_single(args.case)
-    if args.debug == False:
+    if not args.debug:
         file_clean()
+
+
+if __name__ == "__main__":
+    main()

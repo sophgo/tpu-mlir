@@ -5,27 +5,62 @@
 # third-party components.
 #
 # ==============================================================================
+"""ONNX operator-level regression tester.
+
+This file declares :class:`ONNX_IR_TESTER`, the test driver used by both the
+in-tree CLI (``python test_onnx.py --case ...``) and the regression harness
+(see ``regression/main_entry.py``). Common test infrastructure lives in
+:mod:`_test_base` so it can be shared with ``test_torch.py`` and
+``test_mlir.py``.
+"""
 
 from copy import deepcopy
+import os
+import sys
+
 import numpy as np
 import onnx
 from onnx import helper
 from onnx import TensorProto
 from onnx import OperatorSetIdProto
+import onnxruntime
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torchvision
+
 from tools.model_runner import mlir_inference, model_inference, onnx_inference, show_fake_cmd
 from tools.npz_tool import npz_compare
 from tools.model_transform import *
 from utils.auto_remove import file_mark, file_clean, clean_kmp_files
 from utils.mlir_shell import *
-from utils.timer import Timer
 from utils.regression_logger import run_in_log_wrapper
-import os
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torchvision
-import onnxruntime
 from transform.OnnxOpt import *
+
+from _test_base import (
+    Y,
+    N,
+    cosine_similarity,
+    make_chip_resolver,
+    make_simple_calibration_table,
+    run_all_cases,
+    square_rooted,
+)
+
+# Chip columns of the per-row support tuples in ``test_cases``. The order MUST
+# match the order of flags following the test function in every row. This is
+# also the contract relied upon by ``regression/main_entry.py``.
+_CHIP_COLUMNS = (
+    "bm1684",
+    "bm1684x",
+    "bm1688",
+    "cv183x",
+    "bm1690",
+    "bm1690e",
+    "cv184x",
+)
+
+_resolve_chip_support = make_chip_resolver(_CHIP_COLUMNS)
 
 
 class ONNX_IR_TESTER(object):
@@ -442,34 +477,19 @@ class ONNX_IR_TESTER(object):
     def test_single(self, case: str):
         np.random.seed(0)
         torch.manual_seed(7)
-        print("Test: {}".format(case))
-        if case in self.test_cases:
-            os.makedirs(case, exist_ok=True)
-            os.chdir(case)
-            func, _, _, _, _, _, _, _ = self.test_cases[case]
-            func(case)
-            print("====== TEST {} Success ======".format(case))
-        else:
-            raise RuntimeError("case [{}] is not exist".format(case))
+        print(f"Test: {case}")
+        if case not in self.test_cases:
+            raise RuntimeError(f"case [{case}] is not exist")
+        os.makedirs(case, exist_ok=True)
+        os.chdir(case)
+        func = self.test_cases[case][0]
+        func(case)
+        print(f"====== TEST {case} Success ======")
 
     def check_support(self, case):
-        _, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support = self.test_cases[
-            case]
-        if self.is_cv18xx and cv183x_support:
-            return True
-        if self.chip == "bm1684" and bm1684_support:
-            return True
-        if self.chip == "bm1684x" and bm1684x_support:
-            return True
-        if self.chip == "bm1688" and bm1688_support:
-            return True
-        if self.chip == "bm1690" and bm1690_support:
-            return True
-        if self.chip == "bm1690e" and bm1690e_support:
-            return True
-        if self.chip == "cv184x" and cv184x_support:
-            return True
-        return False
+        flags = self.test_cases[case][1:]
+        chip = "cv183x" if self.is_cv18xx else self.chip
+        return _resolve_chip_support(chip, flags)
 
     def create_random_input(self, graph_def: onnx.GraphProto):
         inputs = {}
@@ -717,22 +737,7 @@ class ONNX_IR_TESTER(object):
         print("[Success] test {} {}".format(model_name, msg))
 
     def make_test_calibration_table(self, tensors, table_name, qmode=None):
-        # simple calibration table
-        if qmode == 'f8e4m3' or qmode == 'f8e5m2':
-            table_name = table_name + "_" + qmode
-        elif qmode not in ['int8', 'int4', 'w4int8']:
-            return
-        with open(table_name, 'w') as f:
-            if qmode == 'f8e4m3' or qmode == 'f8e5m2':
-                f.write("#tpu-mlir-fp8 caliration table\n")
-            for name in tensors:
-                flatten_tensor = tensors[name].flatten()
-                max_val = max(flatten_tensor)
-                min_val = min(flatten_tensor)
-                if max_val == min_val:
-                    max_val = max_val + 0.01
-                t = 1.1 * max(abs(min_val), abs(max_val)) + 0.01
-                f.write("{} {} {} {}\n".format(name, t, min_val, max_val))
+        make_simple_calibration_table(tensors, table_name, qmode)
 
     def simple_onnx_inference(self, input_data, onnx_file):
         try:
@@ -744,12 +749,10 @@ class ONNX_IR_TESTER(object):
         return ort_session.run(None, input_data)
 
     def square_rooted(self, x):
-        return np.sqrt(np.sum(np.power(x, 2)))
+        return square_rooted(x)
 
     def cosine_similarity(self, x, y):
-        numerator = np.sum(x * y)
-        denominator = self.square_rooted(x) * self.square_rooted(y)
-        return round(numerator / float(denominator), 3)
+        return cosine_similarity(x, y)
 
     def compare(self, ref_out, targe_out):
         if ref_out.dtype in [np.int64, np.int32, np.int16, np.int8]:
@@ -8198,37 +8201,17 @@ class ONNX_IR_TESTER(object):
                             support_modes=["f16", "bf16"])
 
 
-def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):
-    t = Timer()
-    try:
-        tester.test_single(case)
-    except:
-        error_cases.append("{}:{}s".format(case, int(t.elapsed_time())))
-        return
-    success_cases.append("{}:{}s".format(case, int(t.elapsed_time())))
-
-
 def test_all(tester: ONNX_IR_TESTER):
-    error_cases = []
-    success_cases = []
-    for case in tester.test_cases:
-        if tester.check_support(case):
-            test_one_case_in_all(tester, case, error_cases, success_cases)
-    print("Success: {}".format(success_cases))
-    print("Failure: {}".format(error_cases))
-    if error_cases:
-        print("====== test_onnx.py --chip {} TEST Failed ======".format(tester.chip))
-        # exit(1)
-    else:
-        print("====== test_onnx.py --chip {} TEST Success ======".format(tester.chip))
-        for k in error_cases:
-            case_name = k.split(":")[0]
-            print("{} --chip {} --case {} failed".format(sys.argv[0], tester.chip, case_name))
-    clean_kmp_files()
-    return error_cases
+    """Run every supported case on ``tester``; matches the legacy entrypoint."""
+    return run_all_cases(
+        tester,
+        label="test_onnx.py",
+        print_failure_command=True,
+        script_name=sys.argv[0],
+    )
 
 
-if __name__ == "__main__":
+def _build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
@@ -8246,20 +8229,28 @@ if __name__ == "__main__":
     parser.add_argument("--cuda", action="store_true", help="test cuda inference")
     parser.add_argument("--concise_log", action="store_true", help="use concise log")
     # yapf: enable
-    args = parser.parse_args()
+    return parser
+
+
+def main(argv=None) -> None:
+    args = _build_arg_parser().parse_args(argv)
     tester = ONNX_IR_TESTER(args.chip, args.mode, args.dynamic, args.simple, args.num_core,
                             args.debug_cmd, args.cuda, args.concise_log)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_cases:
             print(case)
-        exit(0)
-    dir = "onnx_test_{}".format(args.chip)
-    os.makedirs(dir, exist_ok=True)
-    os.chdir(dir)
+        return
+    work_dir = f"onnx_test_{args.chip}"
+    os.makedirs(work_dir, exist_ok=True)
+    os.chdir(work_dir)
     if args.case == "" or args.case.lower() == "all":
         test_all(tester)
     else:
         tester.test_single(args.case)
     if not args.debug:
         file_clean()
+
+
+if __name__ == "__main__":
+    main()
