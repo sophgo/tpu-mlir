@@ -8,6 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Support/Module.h"
+using namespace tpu_mlir;
 
 using namespace tpu_mlir;
 using namespace mlir;
@@ -48,4 +50,13 @@ LogicalResult top::PackOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::PackOp::shape_inference() {}
+void top::PackOp::shape_inference() {
+  auto in_shape = module::getShape(getInputs()[0]);
+  int axis = getAxis();
+  int dims = in_shape.size();
+  if (axis < 0) axis += dims + 1;
+  std::vector<int64_t> out_shape = in_shape;
+  out_shape.insert(out_shape.begin() + axis, getValuesCount());
+  auto out_type = RankedTensorType::get(out_shape, module::getStorageType(getInputs()[0]));
+  getOutput().setType(out_type);
+}

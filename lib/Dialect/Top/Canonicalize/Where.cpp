@@ -344,8 +344,47 @@ struct RemoveInvalidWhere : public OpRewriterPatternEx<WhereOp> {
   }
 };
 
+// Where(cond, const_val, brn) => MaskedFill(cond, brn) {const_val, inversed=false}
+// Where(cond, brn, const_val) => MaskedFill(cond, brn) {const_val, inversed=true}
+struct WhereToMaskedFill : public OpRewriterPatternEx<WhereOp> {
+  using OpRewriterPatternEx::OpRewriterPatternEx;
+
+  WhereToMaskedFill(mlir::MLIRContext *context)
+      : OpRewriterPatternEx<WhereOp>(context, "WhereToMaskedFill") {}
+
+  LogicalResult matchAndRewriteImpl(WhereOp op,
+                                    PatternRewriter &rewriter) const override {
+    bool inversed = false;
+    float const_val = 0.0f;
+    Value brn;
+
+    if (op.getXIsConst() && !op.getYIsConst()) {
+      const_val = op.getXConstVal().convertToDouble();
+      brn = op.getFbrn();
+      inversed = false;
+    } else if (op.getYIsConst() && !op.getXIsConst()) {
+      const_val = op.getYConstVal().convertToDouble();
+      brn = op.getTbrn();
+      inversed = true;
+    } else {
+      return failure();
+    }
+
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(const_val)));
+    attrs.push_back(
+        rewriter.getNamedAttr("inversed", rewriter.getBoolAttr(inversed)));
+    rewriter.replaceOpWithNewOp<MaskedFillOp>(
+        op, op.getOutput().getType(),
+        ValueRange{op.getCond(), brn}, attrs);
+    return success();
+  }
+};
+
 void WhereOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
   results.insert<FilterWhereWeightPattern, WhereBroadcastToTile, WhereTooLarge,
-                 WhereToMax, RemoveInvalidWhere, WhereFuseConstant>(context);
+                 WhereToMax, RemoveInvalidWhere, WhereFuseConstant,
+                 WhereToMaskedFill>(context);
 }

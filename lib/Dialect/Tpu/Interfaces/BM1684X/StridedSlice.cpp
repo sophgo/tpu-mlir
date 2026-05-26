@@ -31,14 +31,14 @@ void tpu::StridedSliceOp::codegen_global_bm1684x() {
   auto out_dims = output_shape.size();
   assert(in_dims == out_dims);
   auto start_v =
-      cast<top::WeightOp>(getStarts().getDefiningOp()).read<int32_t>();
+      cast<top::WeightOp>(getStarts().getDefiningOp()).read_as_float();
   auto stride_v =
-      cast<top::WeightOp>(getStrides().getDefiningOp()).read<int32_t>();
-  auto end_v = cast<top::WeightOp>(getEnds().getDefiningOp()).read<int32_t>();
+      cast<top::WeightOp>(getStrides().getDefiningOp()).read_as_float();
+  auto end_v = cast<top::WeightOp>(getEnds().getDefiningOp()).read_as_float();
   for (int i = 0; i < in_dims; i++) {
-    param.begin_index[i] = start_v->at(i);
-    param.end_index[i] = end_v->at(i);
-    param.strides[i] = stride_v->at(i);
+    param.begin_index[i] = (int)start_v->at(i);
+    param.end_index[i] = (int)end_v->at(i);
+    param.strides[i] = (int)stride_v->at(i);
   }
   BM168x::call_global_func("backend_api_strideslice_global", &param,
                            sizeof(param), input_spec->data(),
@@ -62,14 +62,14 @@ int64_t tpu::StridedSliceOp::dyn_codegen_global_bm1684x(void *buffer) {
   auto out_dims = output_shape.size();
   assert(in_dims == out_dims);
   auto start_v =
-      cast<top::WeightOp>(getStarts().getDefiningOp()).read<int32_t>();
+      cast<top::WeightOp>(getStarts().getDefiningOp()).read_as_float();
   auto stride_v =
-      cast<top::WeightOp>(getStrides().getDefiningOp()).read<int32_t>();
-  auto end_v = cast<top::WeightOp>(getEnds().getDefiningOp()).read<int32_t>();
+      cast<top::WeightOp>(getStrides().getDefiningOp()).read_as_float();
+  auto end_v = cast<top::WeightOp>(getEnds().getDefiningOp()).read_as_float();
   for (int i = 0; i < in_dims; i++) {
-    param.begin_index[i] = start_v->at(i);
-    param.end_index[i] = end_v->at(i);
-    param.strides[i] = stride_v->at(i);
+    param.begin_index[i] = (int)start_v->at(i);
+    param.end_index[i] = (int)end_v->at(i);
+    param.strides[i] = (int)stride_v->at(i);
   }
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }

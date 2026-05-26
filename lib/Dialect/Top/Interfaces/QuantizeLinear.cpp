@@ -46,10 +46,15 @@ LogicalResult top::QuantizeLinearOp::inference(InferenceParameter &p) {
   ASSERT_THIS(raw_scale.size() == raw_zero_point.size() &&
               "zero point & scale size missmatch");
   if (raw_zero_point.size() == 1) {
+    if (raw_scale[0] == 0.0) {
+      std::fill_n(p.outputs[0], num_element, 0.0f);
+      return success();
+    }
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
     for (int i = 0; i < num_element; ++i) {
       auto val = p.inputs[0][i];
-      p.outputs[0][i] = onnx_rounding(val / raw_scale[0] + raw_zero_point[0]);
+      int64_t v = onnx_rounding(val / raw_scale[0] + raw_zero_point[0]);
+      p.outputs[0][i] = (float)v;
     }
   } else {
     ASSERT_THIS(getAxis() == 0 && "Cannot handle axis!=0");
@@ -60,10 +65,15 @@ LogicalResult top::QuantizeLinearOp::inference(InferenceParameter &p) {
       res *= shape[i];
 #pragma omp parallel for schedule(static, omp_schedule(shape[0]))
     for (int i = 0; i < shape[0]; ++i) {
+      if (raw_scale[i] == 0.0) {
+        std::fill_n(p.outputs[0] + i * res, res, 0.0f);
+        continue;
+      }
       for (int j = 0; j < res; j++) {
         auto val = p.inputs[0][i * res + j];
-        p.outputs[0][i * res + j] =
+        int64_t v =
             onnx_rounding(val / raw_scale[i] + raw_zero_point[i]);
+        p.outputs[0][i * res + j] = (float)v;
       }
     }
   }
