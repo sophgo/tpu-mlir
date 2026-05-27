@@ -1158,6 +1158,344 @@ __global__ void g_mmInt8(T0 *A, T1 *B, int32_t *C, int m, int k, int n,
   }
 }
 
+__global__ void g_mmIntDynamicQuantize(float *input, float *right, float *output,
+    float *input_max_values, float *right_max_values, int m, int k, int n,
+    bool left_transpose, bool right_transpose, bool output_transpose,
+    int q_group_size, int quant_bits
+  ) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_m = idx / n;
+  int idx_n = idx % n;
+  if (idx_m >= m || idx_n >= n) return;
+  float int_max = (1 << (quant_bits - 1)) - 1;
+  int num_groups = (k + q_group_size - 1) / q_group_size;
+  float sum = 0.0f;
+  for (int g = 0; g < num_groups; g++) {
+    int k_start = g * q_group_size;
+    int k_end = min(k_start + q_group_size, k);
+
+    float max_A = input_max_values[idx_m * num_groups + g];
+    float max_B = right_max_values[idx_n * num_groups + g];
+
+    float group_dot = 0;
+    for (int i = k_start; i < k_end; i++) {
+      float a_val = left_transpose ? input[i * m + idx_m] : input[idx_m * k + i];
+      float b_val = right_transpose ? right[idx_n * k + i] : right[i * n + idx_n];
+
+      float a_int = roundf(a_val / max_A * int_max);
+      float b_int = roundf(b_val / max_B * int_max);
+      group_dot += a_int * b_int;
+    }
+    sum += group_dot * (max_A / int_max) * (max_B / int_max);
+  }
+  int c_idx = output_transpose ? idx_n * m + idx_m : idx_m * n + idx_n;
+  output[c_idx] = sum;
+}
+
+__global__ void g_mmIntDynamicQuantize(float *input, uint8_t *weight, float *output,
+  float *input_max_values, float *weight_scale, float *weight_zp, int m, int k,
+  int n, int group_size, int quant_bits) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_m = idx / n;
+  int idx_n = idx % n;
+  if (idx_m >= m || idx_n >= n) return;
+  float int_max = (1 << (quant_bits - 1)) - 1;
+  int num_groups = (k + group_size - 1) / group_size;
+  float sum = 0.0f;
+  for (int g = 0; g < num_groups; g++) {
+    int k_start = g * group_size;
+    int k_end = min(k_start + group_size, k);
+
+    float input_max = input_max_values[idx_m * num_groups + g];
+    float w_scale = weight_scale[idx_n * num_groups + g];
+    float w_zp = weight_zp[idx_n * num_groups + g];
+
+    float group_dot = 0;
+    for (int k_idx = k_start; k_idx < k_end; k_idx++) {
+      float a_val = input[idx_m * k + k_idx];
+      float a_int = roundf(a_val * int_max / input_max);
+
+      float w_int;
+      if (quant_bits == 8) {
+        w_int = (float)(int32_t)weight[idx_n * k + k_idx];
+      } else { // quant_bits == 4
+        int byte_idx = idx_n * ((k + 1) >> 1) + (k_idx >> 1);
+        uint8_t byte_val = weight[byte_idx];
+        w_int = (k_idx & 1) ? (float)(int32_t)(byte_val >> 4)
+                            : (float)(int32_t)(byte_val & 0x0F);
+      }
+      w_int -= w_zp;
+      group_dot += a_int * w_int;
+    }
+    sum += group_dot * (input_max / int_max) * w_scale;
+  }
+
+  output[idx_m * n + idx_n] = sum;
+}
+
+__global__ void g_mmF8DynamicQuantize(float *input, float *right, float *output,
+    float *input_max_values, float *right_max_values, int m, int k, int n,
+    bool left_transpose, bool right_transpose, bool output_transpose, int q_group_size
+  ) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_m = idx / n;
+  int idx_n = idx % n;
+  if (idx_m >= m || idx_n >= n) return;
+
+  int num_groups = (k + q_group_size - 1) / q_group_size;
+  float sum = 0.0f;
+  for (int g = 0; g < num_groups; g++) {
+    int k_start = g * q_group_size;
+    int k_end = min(k_start + q_group_size, k);
+
+    float max_A = input_max_values[idx_m * num_groups + g];
+    float max_B = right_max_values[idx_n * num_groups + g];
+    float step_A = max_A / 448.0f;
+    float step_B = max_B / 448.0f;
+
+    float group_dot = 0.0f;
+    for (int i = k_start; i < k_end; i++) {
+      float a_val = left_transpose ? input[i * m + idx_m] : input[idx_m * k + i];
+      float b_val = right_transpose ? right[idx_n * k + i] : right[i * n + idx_n];
+
+      uint8_t a_fp8 = fp32_to_fp8(a_val / step_A, false);
+      uint8_t b_fp8 = fp32_to_fp8(b_val / step_B, false);
+      float a_fp = f8_to_fp32(a_fp8, 1, false);
+      float b_fp = f8_to_fp32(b_fp8, 1, false);
+      group_dot += a_fp * b_fp;
+    }
+    sum += group_dot * step_A * step_B;
+  }
+
+  int c_idx = output_transpose ? idx_n * m + idx_m : idx_m * n + idx_n;
+  output[c_idx] = sum;
+}
+
+__global__ void g_mmF8DynamicQuantize(float *input, uint8_t *weight, float *output,
+  float *input_max_values, float *weight_scale, float *weight_zp, int m, int k,
+  int n, int group_size) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_m = idx / n;
+  int idx_n = idx % n;
+  if (idx_m >= m || idx_n >= n) return;
+
+  int num_groups = (k + group_size - 1) / group_size;
+  float sum = 0.0f;
+  for (int g = 0; g < num_groups; g++) {
+    int k_start = g * group_size;
+    int k_end = min(k_start + group_size, k);
+
+    float max_A = input_max_values[idx_m * num_groups + g];
+    float w_scale = weight_scale[idx_n * num_groups + g];
+
+    float group_dot = 0.0f;
+    for (int k_idx = k_start; k_idx < k_end; k_idx++) {
+      float a_val = input[idx_m * k + k_idx];
+      uint8_t a_fp8 = fp32_to_fp8(a_val * 448 / max_A, false);
+      float a_fp = f8_to_fp32(a_fp8, 1, false);
+
+      uint8_t w_fp8 = weight[idx_n * k + k_idx];
+      float w_fp = f8_to_fp32(w_fp8, 1, false);
+      group_dot += a_fp * w_fp;
+    }
+    sum += group_dot * (max_A / 448.0f) * w_scale;
+  }
+
+  output[idx_m * n + idx_n] = sum;
+}
+
+__global__ void g_mmF4DynamicQuantize(float *input, float *right, float *output,
+    float *input_max_values, float *right_max_values, int m, int k, int n,
+    bool left_transpose, bool right_transpose, bool output_transpose, int q_group_size
+  ) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_m = idx / n;
+  int idx_n = idx % n;
+  if (idx_m >= m || idx_n >= n) return;
+
+  int num_groups = (k + q_group_size - 1) / q_group_size;
+  float sum = 0.0f;
+  for (int g = 0; g < num_groups; g++) {
+    int k_start = g * q_group_size;
+    int k_end = min(k_start + q_group_size, k);
+
+    float max_A = input_max_values[idx_m * num_groups + g];
+    float max_B = right_max_values[idx_n * num_groups + g];
+    float group_dot = 0.0f;
+    for (int i = k_start; i < k_end; i++) {
+      float a_val = left_transpose ? input[i * m + idx_m] : input[idx_m * k + i];
+      float b_val = right_transpose ? right[idx_n * k + i] : right[i * n + idx_n];
+      group_dot += f32_to_f4e2m1(a_val, max_A / 6.0f) *
+                   f32_to_f4e2m1(b_val, max_B / 6.0f);
+    }
+    sum += group_dot * (max_A / 6.0f) * (max_B / 6.0f);
+  }
+
+  int c_idx = output_transpose ? idx_n * m + idx_m : idx_m * n + idx_n;
+  output[c_idx] = sum;
+}
+
+__global__ void g_mmF4DynamicQuantize(float *input, uint8_t *weight, float *output,
+  float *input_max_values, float *weight_scale, float *weight_zp, int m, int k,
+  int n, int group_size) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_m = idx / n;
+  int idx_n = idx % n;
+  if (idx_m >= m || idx_n >= n) return;
+
+  int num_groups = (k + group_size - 1) / group_size;
+  float sum = 0.0f;
+  for (int g = 0; g < num_groups; g++) {
+    int k_start = g * group_size;
+    int k_end = min(k_start + group_size, k);
+
+    float max_A = input_max_values[idx_m * num_groups + g];
+    float w_scale = weight_scale[idx_n * num_groups + g];
+
+    float group_dot = 0.0f;
+    for (int k_idx = k_start; k_idx < k_end; k_idx++) {
+      float a_val = input[idx_m * k + k_idx];
+      float a_f4 = f32_to_f4e2m1(a_val, max_A / 6.0f);
+
+      int byte_idx = idx_n * ((k + 1) >> 1) + (k_idx >> 1);
+      uint8_t packed = weight[byte_idx];
+      uint8_t nibble = (k_idx & 1) ? (packed >> 4) : (packed & 0x0F);
+      int sign = nibble >> 3;
+      int exp  = (nibble >> 1) & 0x3;
+      int mant = nibble & 0x1;
+      float w_val = (exp == 0) ? (mant ? 0.5f : 0.0f)
+                               : (1.0f + mant * 0.5f) * (float)(1 << (exp - 1));
+      float w_f4 = sign ? -w_val : w_val;
+
+      group_dot += a_f4 * w_f4;
+    }
+    sum += group_dot * (max_A / 6.0f) * w_scale;
+  }
+
+  output[idx_m * n + idx_n] = sum;
+}
+
+__global__ void g_mmMXF4DynamicQuantize(float *input, float *right, float *output,
+    float *input_max_values, float *right_max_values, int m, int k, int n,
+    bool left_transpose, bool right_transpose, bool output_transpose, int q_group_size
+  ) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_m = idx / n;
+  int idx_n = idx % n;
+  if (idx_m >= m || idx_n >= n) return;
+
+  int num_groups = (k + q_group_size - 1) / q_group_size;
+  float sum = 0.0f;
+  for (int g = 0; g < num_groups; g++) {
+    int k_start = g * q_group_size;
+    int k_end = min(k_start + q_group_size, k);
+
+    float max_A = input_max_values[idx_m * num_groups + g];
+    float max_B = right_max_values[idx_n * num_groups + g];
+    float step_A = max_A / 6.0f;
+    float step_B = max_B / 6.0f;
+    step_A = powf(2.0f, ceilf(log2f(step_A)));
+    step_B = powf(2.0f, ceilf(log2f(step_B)));
+    float group_dot = 0.0f;
+    for (int i = k_start; i < k_end; i++) {
+      float a_val = left_transpose ? input[i * m + idx_m] : input[idx_m * k + i];
+      float b_val = right_transpose ? right[idx_n * k + i] : right[i * n + idx_n];
+      group_dot += f32_to_f4e2m1(a_val, step_A) *
+                   f32_to_f4e2m1(b_val, step_B);
+    }
+    sum += group_dot * step_A * step_B;
+  }
+
+  int c_idx = output_transpose ? idx_n * m + idx_m : idx_m * n + idx_n;
+  output[c_idx] = sum;
+}
+
+__global__ void g_mmMXF4DynamicQuantize(float *input, uint8_t *weight, float *output,
+  float *input_max_values, float *weight_scale, float *weight_zp, int m, int k,
+  int n, int group_size) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_m = idx / n;
+  int idx_n = idx % n;
+  if (idx_m >= m || idx_n >= n) return;
+
+  int num_groups = (k + group_size - 1) / group_size;
+  float sum = 0.0f;
+  for (int g = 0; g < num_groups; g++) {
+    int k_start = g * group_size;
+    int k_end = min(k_start + group_size, k);
+
+    float max_A = input_max_values[idx_m * num_groups + g];
+    float w_scale = weight_scale[idx_n * num_groups + g];
+    float step_A = powf(2.0f, ceilf(log2f(max_A / 6.0f)));
+
+    for (int k_idx = k_start; k_idx < k_end; k_idx++) {
+      float a_val = input[idx_m * k + k_idx];
+      float a_fp = f32_to_f4e2m1(a_val, step_A);
+
+      int byte_idx = idx_n * ((k + 1) >> 1) + (k_idx >> 1);
+      uint8_t packed = weight[byte_idx];
+      uint8_t nibble = (k_idx & 1) ? (packed >> 4) : (packed & 0x0F);
+      int sign = nibble >> 3;
+      int exp  = (nibble >> 1) & 0x3;
+      int mant = nibble & 0x1;
+      float w_val = (exp == 0) ? (mant ? 0.5f : 0.0f)
+                               : (1.0f + mant * 0.5f) * (float)(1 << (exp - 1));
+      float w_fp = (sign ? -w_val : w_val) * w_scale;
+
+      sum += a_fp * w_fp * step_A;
+    }
+  }
+
+  output[idx_m * n + idx_n] = sum;
+}
+
+__global__ void g_groupAbsMax(float *input, float *output, int m, int n, int group_size, bool transpose) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int num_groups = (n + group_size - 1) / group_size;
+  if (idx >= m * num_groups) return;
+
+  int row = idx / num_groups;
+  int group = idx % num_groups;
+  int start = group * group_size;
+  int end = min(start + group_size, n);
+
+  float max_val = 1e-8f;
+  for (int j = start; j < end; j++) {
+    float val = transpose ? fabsf(input[j * m + row]) : fabsf(input[row * n + j]);
+    max_val = fmaxf(max_val, val);
+  }
+  output[idx] = max_val;
+}
+
+__global__ void g_dequantA16MMWeight(int8_t *input, float *output, float *scale,
+  float *zp, int num, int group_size, int bits) {
+  int group_num = (num + group_size - 1) / group_size;
+  int group_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (group_idx >= group_num) return;
+  float s = scale[group_idx];
+  float z = zp[group_idx];
+  if (bits == 8) {
+    int start = group_idx * group_size;
+    int end = min(start + group_size, num);
+    for (int i = start; i < end; i++) {
+      int8_t val = input[i];
+      output[i] = (val - z) * s;
+    }
+  } else if (bits == 4) {
+    int start = group_idx * group_size / 2;
+    int end = min((group_idx + 1) * group_size / 2, (num + 1) / 2);
+    for (int i = start; i < end; i++) {
+      uint8_t val = ((uint8_t *)input)[i];
+      int8_t high = val >> 4;
+      int8_t low = val & 0x0F;
+      output[i * 2] = (low - z) * s;
+      if (i * 2 + 1 < num) {
+        output[i * 2 + 1] = (high - z) * s;
+      }
+    }
+  }
+}
+
 __global__ void g_requantInt8Perchannel(int32_t *input, void *output,
                                         int32_t *multipliers, int32_t *shifts,
                                         int n, int c, int h, int w,

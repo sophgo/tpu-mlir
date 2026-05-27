@@ -455,14 +455,15 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
       imax = get_f8e4m3_max();
       // } else if (dynamic_quantize_type == "F8E5M2") {
       //   imax = get_f8e5m2_max();
-    } else if (dynamic_quantize_type == "F4") {
+    } else if (dynamic_quantize_type == "F4" ||
+               dynamic_quantize_type == "MXF4") {
       imax = get_f4e2m1_max();
     } else {
       return failure();
     }
     int q_group_size =
         getQGroupSize() ? getQGroupSize() : module::getQuantGroupSize();
-    if (q_group_size == -1)
+    if (q_group_size <= 0 || q_group_size > a.K)
       q_group_size = a.K;
     int group_num = (a.K + q_group_size - 1) / q_group_size;
     float *tmp_output = new float[a.batch * a.batch_low * a.M * a.N];
@@ -529,6 +530,15 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
                                col] =
                     F4E2M1(p.inputs[0][act_idx],
                            cur_group_left_max[b * a.M + row] / imax);
+              else if (dynamic_quantize_type == "MXF4") {
+                float log2_abs_max = std::log2(
+                    std::abs(cur_group_left_max[b * a.M + row]) / imax);
+                float pot_scale = std::pow(2, std::ceil(log2_abs_max));
+                assert(pot_scale != 0);
+                cur_group_left_max[b * a.M + row] = pot_scale * imax;
+                cur_group_left[b * a.M * q_group_size + row * q_group_size +
+                               col] = F4E2M1(p.inputs[0][act_idx], pot_scale);
+              }
             } else {
               cur_group_left[b * a.M * q_group_size + row * q_group_size +
                              col] = 0;
@@ -562,6 +572,15 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
                 cur_group_right[b * a.N * q_group_size + col * a.N + row] =
                     F4E2M1(p.inputs[1][right_act_idx],
                            cur_group_right_max[b * a.N + row] / imax);
+              else if (dynamic_quantize_type == "MXF4") {
+                float log2_abs_max = std::log2(
+                    std::abs(cur_group_right_max[b * a.N + row]) / imax);
+                float pot_scale = std::pow(2, std::ceil(log2_abs_max));
+                assert(pot_scale != 0);
+                cur_group_right_max[b * a.N + row] = pot_scale * imax;
+                cur_group_right[b * a.N * q_group_size + col * a.N + row] =
+                    F4E2M1(p.inputs[1][right_act_idx], pot_scale);
+              }
             } else {
               cur_group_right[b * a.N * q_group_size + col * a.N + row] = 0;
             }
@@ -583,12 +602,6 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
           }
         }
       }
-    }
-    auto num_elem = module::getNumElements(getOutput());
-    if (module::isF16Modes()) {
-      F16(p.outputs[0], p.outputs[0], num_elem);
-    } else {
-      BF16(p.outputs[0], p.outputs[0], num_elem);
     }
     delete[] tmp_output;
     delete[] cur_group_left;

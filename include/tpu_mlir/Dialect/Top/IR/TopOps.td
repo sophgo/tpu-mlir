@@ -166,7 +166,7 @@ def ImageOutFormatAttr : AnyStrAttrOf<["FLOAT32", "UINT8"]>;
 def Yuv2rgbFormulaAttr : AnyStrAttrOf<["_601_limited", "_601_full"]>;
 def GELUModeAttr : AnyStrAttrOf<["normal", "tanh", "sigm"]>;
 def RopeModeAttr : AnyStrAttrOf<["interleaved_pairs", "contiguous_halves"]>;
-def DqTypeAttr : AnyStrAttrOf<["NONE", "F16", "BF16", "INT8", "INT4", "F8E4M3", "F4"]>;
+def DqTypeAttr : AnyStrAttrOf<["NONE", "F16", "BF16", "INT8", "INT4", "F8E4M3", "F4", "MXF4"]>;
 
 //===----------------------------------------------------------------------===//
 // TOP Types.

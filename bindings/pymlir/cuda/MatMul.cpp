@@ -26,10 +26,23 @@ void py_cuda::cudaMatMulOp(tpu::MatMulOp op) {
   bool right_transpose = op.getRightTranspose();
   bool left_transpose = op.getLeftTranspose();
   bool out_transpose = op.getOutputTranspose();
+  auto dynamic_quantize_type = op.getDqType();
+  int q_group_size = 0;
   // auto op_output = getCudaData(op.getOutput());
   cuda_ptr input_cuda_ptr, right_cuda_ptr;
   void *raw_op_input = nullptr, *raw_op_right = nullptr;
-  if (module::isUniformQuantized(op.getInput())) {
+  if (module::isDynamicQuantize() && !module::isWeight(op.getRight()) &&
+      dynamic_quantize_type != "F16" && dynamic_quantize_type != "BF16") {
+    q_group_size = op.getQGroupSize() ? op.getQGroupSize() : module::getQuantGroupSize();
+    if (q_group_size <= 0 || q_group_size > p.K) {
+      q_group_size = p.K;
+    }
+    assert(!module::isWeight(op.getRight()));
+    input_cuda_ptr = newCudaData(op.getInput(), cuda::DT_F32);
+    right_cuda_ptr = newCudaData(op.getRight(), cuda::DT_F32);
+    raw_op_input = input_cuda_ptr.get();
+    raw_op_right = right_cuda_ptr.get();
+  } else if (module::isUniformQuantized(op.getInput())) {
     raw_op_input = getCudaData(op.getInput());
     raw_op_right = getCudaData(op.getRight());
   } else if (!module::getStorageType(op.getInput()).isF32()) {
@@ -86,7 +99,30 @@ void py_cuda::cudaMatMulOp(tpu::MatMulOp op) {
     op_input = raw_op_input;
     op_right = raw_op_right;
   }
-  if (module::isUniformQuantized(op.getInput())) {
+  if (module::isDynamicQuantize() && !module::isWeight(op.getRight()) &&
+      dynamic_quantize_type != "F16" && dynamic_quantize_type != "BF16") {
+    for (size_t b = 0; b < batch_size; b++) {
+      auto cur_in = (float *)op_input + b*batch_elem_left;
+      auto cur_right = (float *)op_right + b*batch_elem_right;
+      auto cur_out = (float *)out_f32.get() + b*batch_elem_out;
+      if (dynamic_quantize_type == "INT8") {
+        cuda::mmInt8DynamicQuantize(cur_in, cur_right, cur_out, p.M, p.K, p.N,
+          left_transpose, right_transpose, out_transpose, q_group_size);
+      } else if (dynamic_quantize_type == "INT4") {
+        cuda::mmInt4DynamicQuantize(cur_in, cur_right, cur_out, p.M, p.K, p.N,
+          left_transpose, right_transpose, out_transpose, q_group_size);
+      } else if (dynamic_quantize_type == "F8E4M3") {
+        cuda::mmF8DynamicQuantize(cur_in, cur_right, cur_out, p.M, p.K, p.N,
+          left_transpose, right_transpose, out_transpose, q_group_size);
+      } else if (dynamic_quantize_type == "F4") {
+        cuda::mmF4DynamicQuantize(cur_in, cur_right, cur_out, p.M, p.K, p.N,
+          left_transpose, right_transpose, out_transpose, q_group_size);
+      } else if (dynamic_quantize_type == "MXF4") {
+        cuda::mmMXF4DynamicQuantize(cur_in, cur_right, cur_out, p.M, p.K, p.N,
+          left_transpose, right_transpose, out_transpose, q_group_size);
+      }
+    }
+  } else if (module::isUniformQuantized(op.getInput())) {
     for (size_t b = 0; b < batch_size; b++) {
       auto cur_in = (int8_t *)op_input + b*batch_elem_left;
       auto cur_right = (int8_t *)op_right + b*batch_elem_right;

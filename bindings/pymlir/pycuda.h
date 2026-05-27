@@ -77,6 +77,7 @@ private:
 
   // -------------------------------------------------------------------
   // -------------- op inference by cuda -------------------------------
+  void cudaA16MatMulOp(tpu::A16MatMulOp op);
   void cudaActiveOp(tpu::ActiveOp op);
   void cudaAddConstOp(tpu::AddConstOp op);
   void cudaAddOp(tpu::AddOp op);
@@ -120,6 +121,7 @@ private:
   void cudaUpsampleOp(tpu::UpsampleOp op);
   void cudaUnsqueezeOp(tpu::UnsqueezeOp op);
 
+  void cudaA16MatMulOp(top::A16MatMulOp op);
   void cudaAddConstOp(top::AddConstOp op);
   void cudaAddOp(top::AddOp op);
   void cudaArgOp(top::ArgOp op);

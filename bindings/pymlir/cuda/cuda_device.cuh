@@ -408,5 +408,20 @@ __device__ float d_lutMantissaBF16(float input, float *exp_table,
   return out;
 }
 
+__device__ float f32_to_f4e2m1(float val, float step) {
+  float abs_s = fabsf(val / step);
+  float nearest;
+  if (abs_s <= 0.25f)      nearest = 0.0f;  // 0
+  else if (abs_s <= 0.75f) nearest = 0.5f;  // 0.5
+  else if (abs_s <= 1.25f) nearest = 1.0f;  // 1.0
+  else if (abs_s <= 1.75f) nearest = 1.5f;  // 1.5
+  else if (abs_s <= 2.5f)  nearest = 2.0f;  // 2.0
+  else if (abs_s <= 3.5f)  nearest = 3.0f;  // 3.0
+  else if (abs_s <= 5.0f)  nearest = 4.0f;  // 4.0
+  else                     nearest = 6.0f;
+
+  return copysignf(nearest, val);
+}
+
 } // namespace cuda
 } // namespace tpu_mlir

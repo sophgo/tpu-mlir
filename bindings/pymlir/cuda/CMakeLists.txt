@@ -9,6 +9,10 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler -fPIC")
 
 add_library(cuda_helper STATIC cuda_helper.cu)
 
+target_compile_options(cuda_helper PRIVATE
+  $<$<COMPILE_LANGUAGE:CUDA>:--fmad=false --ftz=false --prec-div=true --prec-sqrt=true>
+)
+
 target_include_directories(cuda_helper PUBLIC
   ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
 )

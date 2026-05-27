@@ -518,7 +518,8 @@ if __name__ == '__main__':
                         choices=['F32', 'BF16', 'F16', 'INT8', 'INT4', 'W8F16', 'W8BF16',
                                  'W4F16', 'W4BF16', 'W4INT8', "F8E4M3", "F8E5M2", 'QDQ',
                                  "INT8F16DYN", "INT8BF16DYN", "INT4F16DYN", "INT4BF16DYN",
-                                 "F8E4M3F16DYN", "F8E4M3BF16DYN", "F4F16DYN", "F4BF16DYN"],
+                                 "F8E4M3F16DYN", "F8E4M3BF16DYN", "F4F16DYN", "F4BF16DYN",
+                                 "MXF4F16DYN", "MXF4BF16DYN"],
                         help="set default qauntization type")
     parser.add_argument("--model", required=True, help='output model')
     # ========== Quantization Options ==============
@@ -679,7 +680,10 @@ if __name__ == '__main__':
     deprecated_option(args.io_alone, "DEPRECATED, please use --addr_mode io_alone")
     deprecated_option(args.ignore_f16_overflow, "DEPRECATED, please use --high_precision")
     if args.quant_output_bf16:
-        if args.quantize in ["BF16", "INT8BF16DYN", "INT4BF16DYN", "F8E4M3BF16DYN", "F4BF16DYN"]:
+        if args.quantize in [
+                "BF16", "INT8BF16DYN", "INT4BF16DYN", "F8E4M3BF16DYN", "F4BF16DYN", "MXF4F16DYN",
+                "MXF4BF16DYN"
+        ]:
             RuntimeError("quantize is BF16, please use --quant_output instead")
         if args.quant_output:
             RuntimeError("quant_output and quant_output_bf16 can't both be true")

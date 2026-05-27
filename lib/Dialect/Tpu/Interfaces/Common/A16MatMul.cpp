@@ -56,7 +56,7 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
       imax = get_f8e4m3_max();
     // else if (dynamic_quantize_type == "F8E5M2")
     //   imax = get_f8e5m2_max();
-    else if (dynamic_quantize_type == "F4")
+    else if (dynamic_quantize_type == "F4" || dynamic_quantize_type == "MXF4")
       imax = get_f4e2m1_max();
     else
       return failure();
@@ -64,14 +64,14 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
       for (int i = 0; i < K * N; i++) {
         int quant_idx = i / q_group_size;
         auto zp_i = zp[quant_idx];
-        if (dynamic_quantize_type == "F4") {
-          new_weight[i] = f4e2m1_to_f32(int(weight[i / 2]) & 0x0F) - zp_i;
+        if (dynamic_quantize_type == "F4" || dynamic_quantize_type == "MXF4") {
+          new_weight[i] = f4e2m1_to_f32((uint8_t(weight[i / 2]) & 0x0F)) - zp_i;
           i++;
-          new_weight[i] = f4e2m1_to_f32(int(weight[i / 2]) >> 4) - zp_i;
+          new_weight[i] = f4e2m1_to_f32((uint8_t(weight[i / 2]) >> 4)) - zp_i;
         } else {
-          new_weight[i] = (int(weight[i / 2]) & 0x0F) - zp_i;
+          new_weight[i] = ((uint8_t)weight[i / 2] & 0x0F) - zp_i;
           i++;
-          new_weight[i] = (int(weight[i / 2]) >> 4) - zp_i;
+          new_weight[i] = ((uint8_t)weight[i / 2] >> 4) - zp_i;
         }
       }
       if (w_transpose) {
@@ -125,6 +125,15 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
             else if (dynamic_quantize_type == "F4")
               cur_group_act[row * q_group_size + col] =
                   F4E2M1(p.inputs[0][act_idx], cur_group_act_max[row] / imax);
+            else if (dynamic_quantize_type == "MXF4") {
+              float log2_abs_max =
+                  std::log2(std::abs(cur_group_act_max[row]) / imax);
+              float pot_scale = std::pow(2, std::ceil(log2_abs_max));
+              assert(pot_scale != 0);
+              cur_group_act_max[row] = pot_scale * imax;
+              cur_group_act[row * q_group_size + col] =
+                  F4E2M1(p.inputs[0][act_idx], pot_scale);
+            }
           } else {
             cur_group_act[row * q_group_size + col] = 0;
           }
@@ -150,10 +159,12 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
           p.outputs[0][row * N + col] += tmp_output[row * N + col] *
                                          (cur_group_act_max[row] / imax) *
                                          scale[col * group_num + gi];
-          if (gi == 0 && p.inputs[4] != nullptr) { // add bias
-            p.outputs[0][row * N + col] += p.inputs[4][col];
-          }
         }
+      }
+    }
+    if (p.inputs[4] != nullptr) {
+      for (int i = 0; i < M * N; i++) {
+        p.outputs[0][i] += p.inputs[4][i % N]; // add bias
       }
     }
     auto num_elem = module::getNumElements(getOutput());

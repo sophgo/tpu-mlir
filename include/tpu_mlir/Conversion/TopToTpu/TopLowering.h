@@ -321,6 +321,7 @@ protected:
     case module::Mode::INT4F16DYN:
     case module::Mode::F8E4M3F16DYN:
     case module::Mode::F4F16DYN:
+    case module::Mode::MXF4F16DYN:
       LoweringF16(rewriter, opTy);
       break;
     case module::Mode::BF16:
@@ -330,6 +331,7 @@ protected:
     case module::Mode::INT4BF16DYN:
     case module::Mode::F8E4M3BF16DYN:
     case module::Mode::F4BF16DYN:
+    case module::Mode::MXF4BF16DYN:
       LoweringBF16(rewriter, opTy);
       break;
     case module::Mode::F8:

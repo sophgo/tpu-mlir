@@ -103,6 +103,12 @@ void computePerGroupParam(
     } else if (is_dynamic_quant && dq_type == "F4") {
       scale->at(i) = std::abs(abs_max) / f4e2m1_max;
       zp->at(i) = 0.0;
+    } else if (is_dynamic_quant && dq_type == "MXF4") {
+      float log2_abs_max = std::log2(std::abs(abs_max) / f4e2m1_max);
+      float pot_scale = std::pow(2, std::ceil(log2_abs_max));
+      assert(pot_scale != 0);
+      scale->at(i) = pot_scale;
+      zp->at(i) = 0.0;
     } else if (q_symmetric) {
       scale->at(i) = 2 * std::abs(abs_max) / max_int;
     } else {
@@ -196,7 +202,7 @@ void weightQuantization(int bitwidth, bool sign, int row, int col,
         }
       } else {
         int real_weight_idx = i / 2;
-        if (dq_type == "F4") {
+        if (dq_type == "F4" || dq_type == "MXF4") {
           if (i % 2) {
             uint_weight_data->at(real_weight_idx) |= f32_to_f4e2m1(tmp_value)
                                                      << 4;

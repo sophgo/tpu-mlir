@@ -790,6 +790,180 @@ void mmInt8(void *input, bool left_signed, void *right, bool right_signed, void 
   }
 }
 
+void mmInt8DynamicQuantize(void *input, void *right, void *output, int m, int k, int n,
+                           bool left_transpose, bool right_transpose, bool output_transpose,
+                           int q_group_size) {
+  int block_size = CUDA_BLOCK_SIZE;
+  int num_groups = (k + q_group_size - 1) / q_group_size;
+  float *input_max_values, *right_max_values;
+  cudaMalloc(&input_max_values, m * num_groups * sizeof(float));
+  cudaMalloc(&right_max_values, n * num_groups * sizeof(float));
+  int num_blocks = CUDA_NUM_BLOCKS(m * num_groups);
+  g_groupAbsMax<<<num_blocks, block_size>>>((float *)input, input_max_values, m, k, q_group_size, left_transpose);
+  num_blocks = CUDA_NUM_BLOCKS(n * num_groups);
+  g_groupAbsMax<<<num_blocks, block_size>>>((float *)right, right_max_values, n, k, q_group_size, !right_transpose);
+  num_blocks = CUDA_NUM_BLOCKS(m * n);
+  g_mmIntDynamicQuantize<<<num_blocks, block_size>>>((float *)input, (float *)right, (float *)output, input_max_values,
+    right_max_values, m, k, n, left_transpose, right_transpose, output_transpose, q_group_size, 8);
+  cudaFree(input_max_values);
+  cudaFree(right_max_values);
+}
+
+void mmInt8DynamicQuantize(void *input, void *weight, void *output, void *scale, void *zp,
+                           int m, int k, int n, int q_group_size) {
+  int block_size = CUDA_BLOCK_SIZE;
+  int num_groups = (k + q_group_size - 1) / q_group_size;
+  float *input_max_values;
+  cudaMalloc(&input_max_values, m * num_groups * sizeof(float));
+  int num_blocks = CUDA_NUM_BLOCKS(m * num_groups);
+  g_groupAbsMax<<<num_blocks, block_size>>>((float *)input, input_max_values, m, k, q_group_size, false);
+  num_blocks = CUDA_NUM_BLOCKS(m * n);
+  g_mmIntDynamicQuantize<<<num_blocks, block_size>>>((float *)input, (uint8_t *)weight, (float *)output, input_max_values,
+    (float *)scale, (float *)zp, m, k, n, q_group_size, 8);
+  cudaFree(input_max_values);
+}
+
+void mmInt4DynamicQuantize(void *input, void *right, void *output, int m, int k, int n,
+                           bool left_transpose, bool right_transpose, bool output_transpose,
+                           int q_group_size) {
+  int block_size = CUDA_BLOCK_SIZE;
+  int num_groups = (k + q_group_size - 1) / q_group_size;
+  float *input_max_values, *right_max_values;
+  cudaMalloc(&input_max_values, m * num_groups * sizeof(float));
+  cudaMalloc(&right_max_values, n * num_groups * sizeof(float));
+  int num_blocks = CUDA_NUM_BLOCKS(m * num_groups);
+  g_groupAbsMax<<<num_blocks, block_size>>>((float *)input, input_max_values, m, k, q_group_size, left_transpose);
+  num_blocks = CUDA_NUM_BLOCKS(n * num_groups);
+  g_groupAbsMax<<<num_blocks, block_size>>>((float *)right, right_max_values, n, k, q_group_size, !right_transpose);
+  num_blocks = CUDA_NUM_BLOCKS(m * n);
+  g_mmIntDynamicQuantize<<<num_blocks, block_size>>>((float *)input, (float *)right, (float *)output, input_max_values,
+    right_max_values, m, k, n, left_transpose, right_transpose, output_transpose, q_group_size, 4);
+  cudaFree(input_max_values);
+  cudaFree(right_max_values);
+}
+
+void mmInt4DynamicQuantize(void *input, void *weight, void *output, void *scale, void *zp,
+                           int m, int k, int n, int q_group_size) {
+  int block_size = CUDA_BLOCK_SIZE;
+  int num_groups = (k + q_group_size - 1) / q_group_size;
+  float *input_max_values;
+  cudaMalloc(&input_max_values, m * num_groups * sizeof(float));
+  int num_blocks = CUDA_NUM_BLOCKS(m * num_groups);
+  g_groupAbsMax<<<num_blocks, block_size>>>((float *)input, input_max_values, m, k, q_group_size, false);
+  num_blocks = CUDA_NUM_BLOCKS(m * n);
+  g_mmIntDynamicQuantize<<<num_blocks, block_size>>>((float *)input, (uint8_t *)weight, (float *)output, input_max_values,
+    (float *)scale, (float *)zp, m, k, n, q_group_size, 4);
+  cudaFree(input_max_values);
+}
+
+void mmF8DynamicQuantize(void *input, void *right, void *output, int m, int k, int n,
+                           bool left_transpose, bool right_transpose, bool output_transpose,
+                           int q_group_size) {
+  int block_size = CUDA_BLOCK_SIZE;
+  int num_groups = (k + q_group_size - 1) / q_group_size;
+  float *input_max_values, *right_max_values;
+  cudaMalloc(&input_max_values, m * num_groups * sizeof(float));
+  cudaMalloc(&right_max_values, n * num_groups * sizeof(float));
+  int num_blocks = CUDA_NUM_BLOCKS(m * num_groups);
+  g_groupAbsMax<<<num_blocks, block_size>>>((float *)input, input_max_values, m, k, q_group_size, left_transpose);
+  num_blocks = CUDA_NUM_BLOCKS(n * num_groups);
+  g_groupAbsMax<<<num_blocks, block_size>>>((float *)right, right_max_values, n, k, q_group_size, !right_transpose);
+  num_blocks = CUDA_NUM_BLOCKS(m * n);
+  g_mmF8DynamicQuantize<<<num_blocks, block_size>>>((float *)input, (float *)right, (float *)output, input_max_values,
+    right_max_values, m, k, n, left_transpose, right_transpose, output_transpose, q_group_size);
+  cudaFree(input_max_values);
+  cudaFree(right_max_values);
+}
+
+void mmF8DynamicQuantize(void *input, void *weight, void *output, void *scale, void *zp,
+                           int m, int k, int n, int q_group_size) {
+  int block_size = CUDA_BLOCK_SIZE;
+  int num_groups = (k + q_group_size - 1) / q_group_size;
+  float *input_max_values;
+  cudaMalloc(&input_max_values, m * num_groups * sizeof(float));
+  int num_blocks = CUDA_NUM_BLOCKS(m * num_groups);
+  g_groupAbsMax<<<num_blocks, block_size>>>((float *)input, input_max_values, m, k, q_group_size, false);
+  num_blocks = CUDA_NUM_BLOCKS(m * n);
+  g_mmF8DynamicQuantize<<<num_blocks, block_size>>>((float *)input, (uint8_t *)weight, (float *)output, input_max_values,
+    (float *)scale, (float *)zp, m, k, n, q_group_size);
+  cudaFree(input_max_values);
+}
+
+void mmF4DynamicQuantize(void *input, void *right, void *output, int m, int k, int n,
+                           bool left_transpose, bool right_transpose, bool output_transpose,
+                           int q_group_size) {
+  int block_size = CUDA_BLOCK_SIZE;
+  int num_groups = (k + q_group_size - 1) / q_group_size;
+  float *input_max_values, *right_max_values;
+  cudaMalloc(&input_max_values, m * num_groups * sizeof(float));
+  cudaMalloc(&right_max_values, n * num_groups * sizeof(float));
+  int num_blocks = CUDA_NUM_BLOCKS(m * num_groups);
+  g_groupAbsMax<<<num_blocks, block_size>>>((float *)input, input_max_values, m, k, q_group_size, left_transpose);
+  num_blocks = CUDA_NUM_BLOCKS(n * num_groups);
+  g_groupAbsMax<<<num_blocks, block_size>>>((float *)right, right_max_values, n, k, q_group_size, !right_transpose);
+  num_blocks = CUDA_NUM_BLOCKS(m * n);
+  g_mmF4DynamicQuantize<<<num_blocks, block_size>>>((float *)input, (float *)right, (float *)output, input_max_values,
+    right_max_values, m, k, n, left_transpose, right_transpose, output_transpose, q_group_size);
+  cudaFree(input_max_values);
+  cudaFree(right_max_values);
+}
+
+void mmF4DynamicQuantize(void *input, void *weight, void *output, void *scale, void *zp,
+                           int m, int k, int n, int q_group_size) {
+  int block_size = CUDA_BLOCK_SIZE;
+  int num_groups = (k + q_group_size - 1) / q_group_size;
+  float *input_max_values;
+  cudaMalloc(&input_max_values, m * num_groups * sizeof(float));
+  int num_blocks = CUDA_NUM_BLOCKS(m * num_groups);
+  g_groupAbsMax<<<num_blocks, block_size>>>((float *)input, input_max_values, m, k, q_group_size, false);
+  num_blocks = CUDA_NUM_BLOCKS(m * n);
+  g_mmF4DynamicQuantize<<<num_blocks, block_size>>>((float *)input, (uint8_t *)weight, (float *)output, input_max_values,
+    (float *)scale, (float *)zp, m, k, n, q_group_size);
+  cudaFree(input_max_values);
+}
+
+void mmMXF4DynamicQuantize(void *input, void *right, void *output, int m, int k, int n,
+                           bool left_transpose, bool right_transpose, bool output_transpose,
+                           int q_group_size) {
+  int block_size = CUDA_BLOCK_SIZE;
+  int num_groups = (k + q_group_size - 1) / q_group_size;
+  float *input_max_values, *right_max_values;
+  cudaMalloc(&input_max_values, m * num_groups * sizeof(float));
+  cudaMalloc(&right_max_values, n * num_groups * sizeof(float));
+  int num_blocks = CUDA_NUM_BLOCKS(m * num_groups);
+  g_groupAbsMax<<<num_blocks, block_size>>>((float *)input, input_max_values, m, k, q_group_size, left_transpose);
+  num_blocks = CUDA_NUM_BLOCKS(n * num_groups);
+  g_groupAbsMax<<<num_blocks, block_size>>>((float *)right, right_max_values, n, k, q_group_size, !right_transpose);
+  num_blocks = CUDA_NUM_BLOCKS(m * n);
+  g_mmMXF4DynamicQuantize<<<num_blocks, block_size>>>((float *)input, (float *)right, (float *)output, input_max_values,
+    right_max_values, m, k, n, left_transpose, right_transpose, output_transpose, q_group_size);
+  cudaFree(input_max_values);
+  cudaFree(right_max_values);
+}
+
+void mmMXF4DynamicQuantize(void *input, void *weight, void *output, void *scale, void *zp,
+                           int m, int k, int n, int q_group_size) {
+  int block_size = CUDA_BLOCK_SIZE;
+  int num_groups = (k + q_group_size - 1) / q_group_size;
+  float *input_max_values;
+  cudaMalloc(&input_max_values, m * num_groups * sizeof(float));
+  int num_blocks = CUDA_NUM_BLOCKS(m * num_groups);
+  g_groupAbsMax<<<num_blocks, block_size>>>((float *)input, input_max_values, m, k, q_group_size, false);
+  num_blocks = CUDA_NUM_BLOCKS(m * n);
+  g_mmMXF4DynamicQuantize<<<num_blocks, block_size>>>((float *)input, (uint8_t *)weight, (float *)output, input_max_values,
+    (float *)scale, (float *)zp, m, k, n, q_group_size);
+  cudaFree(input_max_values);
+}
+
+void dequantA16MMWeight(void *input, void *output, void *scale, void *zp,
+  int num, int group_size, int bits) {
+  int block_size = CUDA_BLOCK_SIZE;
+  int group_num = (num + group_size - 1) / group_size;
+  int num_blocks = CUDA_NUM_BLOCKS(group_num);
+  g_dequantA16MMWeight<<<num_blocks, block_size>>>((int8_t *)input, (float *)output,
+    (float *)scale, (float *)zp, num, group_size, bits);
+}
+
 void gather(void *indices, void *embedding, void *output, int num_indices,
             int embedding_dim, int inner_dim, data_type_t ind_type,
             data_type_t embed_type) {

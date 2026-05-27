@@ -228,6 +228,32 @@ void mmF32(void *input, void *right, void *output, int m, int k, int n,
 void mmInt8(void *input, bool left_signed, void *right, bool right_signed, void *output, int m, int k, int n,
             bool left_transpose = false, bool right_transpose = false, bool output_transpose = false,
             int left_zp = 0, int right_zp = 0);
+void mmInt8DynamicQuantize(void *input, void *right, void *output, int m, int k, int n,
+                           bool left_transpose = false, bool right_transpose = false, bool output_transpose = false,
+                           int q_group_size = 32);
+void mmInt8DynamicQuantize(void *input, void *weight, void *output, void *scale, void *zp,
+                           int m, int k, int n, int q_group_size = 32);
+void mmInt4DynamicQuantize(void *input, void *right, void *output, int m, int k, int n,
+                           bool left_transpose = false, bool right_transpose = false, bool output_transpose = false,
+                           int q_group_size = 32);
+void mmInt4DynamicQuantize(void *input, void *weight, void *output, void *scale, void *zp,
+                           int m, int k, int n, int q_group_size = 32);
+void mmF8DynamicQuantize(void *input, void *right, void *output, int m, int k, int n,
+                           bool left_transpose = false, bool right_transpose = false, bool output_transpose = false,
+                           int q_group_size = 32);
+void mmF8DynamicQuantize(void *input, void *weight, void *output, void *scale, void *zp,
+                           int m, int k, int n, int q_group_size = 32);
+void mmF4DynamicQuantize(void *input, void *right, void *output, int m, int k, int n,
+                           bool left_transpose = false, bool right_transpose = false, bool output_transpose = false,
+                           int q_group_size = 32);
+void mmF4DynamicQuantize(void *input, void *weight, void *output, void *scale, void *zp,
+                            int m, int k, int n, int q_group_size = 32);
+void mmMXF4DynamicQuantize(void *input, void *right, void *output, int m, int k, int n,
+                           bool left_transpose = false, bool right_transpose = false, bool output_transpose = false,
+                           int q_group_size = 32);
+void mmMXF4DynamicQuantize(void *input, void *weight, void *output, void *scale, void *zp,
+                            int m, int k, int n, int q_group_size = 32);
+void dequantA16MMWeight(void *input, void *output, void *scale, void *zp, int num, int group_size, int bits);
 void requantInt8Perchannel(void *input, void *output, void *multipliers,
                            void *shifts, int n, int c, int h, int w,
                            bool out_sign, bool qdm = false, bool relu = false,

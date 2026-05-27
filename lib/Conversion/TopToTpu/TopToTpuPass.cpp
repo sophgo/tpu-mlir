@@ -1211,7 +1211,9 @@ public:
              qmode == module::Mode::INT4F16DYN ||
              qmode == module::Mode::INT4BF16DYN ||
              qmode == module::Mode::F4F16DYN ||
-             qmode == module::Mode::F4BF16DYN) {
+             qmode == module::Mode::F4BF16DYN ||
+             qmode == module::Mode::MXF4F16DYN ||
+             qmode == module::Mode::MXF4BF16DYN) {
       if (op.getWeightBits() == 4 || (group_size > 0 && K % group_size != 0)) {
         return failure();
       }
@@ -1619,6 +1621,9 @@ void ConvertTopToTpu::runOnOperation() {
         else if (op_mode == module::Mode::F4F16DYN ||
                  op_mode == module::Mode::F4BF16DYN)
           dq_type = "F4";
+        else if (op_mode == module::Mode::MXF4F16DYN ||
+                 op_mode == module::Mode::MXF4BF16DYN)
+          dq_type = "MXF4";
         else {
           if (module::isBF16Modes())
             dq_type = "BF16";

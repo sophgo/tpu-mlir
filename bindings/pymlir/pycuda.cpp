@@ -80,7 +80,7 @@ void py_cuda::load(std::string filename) {
 }
 
 bool py_cuda::is_cuda_support_op(Operation *op) {
-  if (isa<tpu::ActiveOp, tpu::AddConstOp, tpu::AddOp, tpu::ArgOp, tpu::CastOp,
+  if (isa<tpu::A16MatMulOp, tpu::ActiveOp, tpu::AddConstOp, tpu::AddOp, tpu::ArgOp, tpu::CastOp,
           tpu::ConcatOp, tpu::Conv2DOp, tpu::DeconvOp, tpu::Depth2SpaceOp,
           tpu::DivOp, tpu::FAttentionOp, tpu::GatherElementsOp, tpu::GatherOp,
           tpu::GenericCpuOp, tpu::GridSamplerOp, tpu::InterpOp, tpu::LayerNormOp,
@@ -92,7 +92,7 @@ bool py_cuda::is_cuda_support_op(Operation *op) {
           tpu::SubOp, tpu::SwapDimInnerOp, tpu::TileOp, tpu::UnsqueezeOp,
           tpu::UpsampleOp>(op))
     return true;
-  else if (isa<top::AddConstOp, top::AddOp, top::ArgOp, top::AvgPoolOp,
+  else if (isa<top::A16MatMulOp, top::AddConstOp, top::AddOp, top::ArgOp, top::AvgPoolOp,
                top::CastOp, top::ConcatOp, top::ConvOp, top::Depth2SpaceOp,
                top::DivOp, top::FloorOp, top::GatherElementsOp, top::GatherOp,
                top::GELUOp, top::GridSamplerOp, top::InterpOp, top::LayerNormOp,
@@ -460,7 +460,11 @@ void py_cuda::gpu_invoke(bool dump_all, const std::vector<std::string>& extra_ou
         }
         // 2. inference
         // printf("cuda invoke op: %s\n", op->getName().getStringRef().str().c_str());
-        if (auto tpuOp = dyn_cast<tpu::ActiveOp>(op)) {
+        if (auto topOp = dyn_cast<top::A16MatMulOp>(op)) {
+          cudaA16MatMulOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::A16MatMulOp>(op)) {
+          cudaA16MatMulOp(tpuOp);
+        } else if (auto tpuOp = dyn_cast<tpu::ActiveOp>(op)) {
           cudaActiveOp(tpuOp);
         } else if (auto topOp = dyn_cast<top::AddConstOp>(op)) {
           cudaAddConstOp(topOp);
@@ -718,7 +722,11 @@ void py_cuda::mix_invoke(bool dump_all, const std::vector<std::string>& extra_ou
         }
         // 2. inference
         // printf("CUDA invoke op %s.\n", op->getName().getStringRef().str().c_str());
-        if (auto tpuOp = dyn_cast<tpu::ActiveOp>(op)) {
+        if (auto topOp = dyn_cast<top::A16MatMulOp>(op)) {
+          cudaA16MatMulOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::A16MatMulOp>(op)) {
+          cudaA16MatMulOp(tpuOp);
+        } else if (auto tpuOp = dyn_cast<tpu::ActiveOp>(op)) {
           cudaActiveOp(tpuOp);
         } else if (auto topOp = dyn_cast<top::AddConstOp>(op)) {
           cudaAddConstOp(topOp);

@@ -102,7 +102,7 @@ def YoloVersionAttr : AnyStrAttrOf<[
 ]>;
 def MatchTemplateModeAttr : AnyStrAttrOf<["TM_CCOEFF_NORMED", "TM_SQDIFF"]>;
 def BinaryShiftAttr : AnyStrAttrOf<["Add","Sub", "Mul"]>;
-def DqTypeAttr : AnyStrAttrOf<["NONE", "F16", "BF16", "INT8", "INT4", "F8E4M3", "F4"]>;
+def DqTypeAttr : AnyStrAttrOf<["NONE", "F16", "BF16", "INT8", "INT4", "F8E4M3", "F4", "MXF4"]>;
 
 def Tpu_LayerGroupAttr : Tpu_Attr<"LayerGroup", "lg"> {
   let summary = "Structure of layer group parameters";
