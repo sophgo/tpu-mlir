@@ -11,6 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 from transform.MLIRImporter import MLIRImporter, Platform
 from transform.BaseConverter import BaseConverter
+from utils.tpu_info import get_tpu_info
 from .LlmInfo import *
 from .LlmLoad import *
 from .ModelHandle import ModelHandle, SafetensorsModelHandle, GGUFModelHandle
@@ -28,8 +29,7 @@ import re
 
 
 class LlmConverter(BaseConverter):
-    # Small upper-triangular mask size for FAttentionOp in dynamic prefill
-    MASK_SIZE = 256
+
     # Weight key name for the small attention mask
     ATTN_MASK_WEIGHT = "attention_mask.weight"
 
@@ -51,6 +51,8 @@ class LlmConverter(BaseConverter):
         self.high_precision = True
         self.symmetric = args.symmetric
         self.chip = args.chip
+        self.tpu_info = get_tpu_info(self.chip)
+        self.MASK_SIZE = self.tpu_info.npu_num * 4
         self.embedding_disk = args.embedding_disk
         self.dynamic = args.dynamic
         self.use_block_with_kv = args.use_block_with_kv
@@ -63,7 +65,7 @@ class LlmConverter(BaseConverter):
         self.lmhead_with_topk = False if args.do_sample or self.do_lora else True
         self.position_shape = [1, 1, self.max_input_length
                                ] if self.use_insert else [1, self.max_input_length]
-        self.num_core = args.num_core if args.num_core > 0 else self.get_core_num(self.chip)
+        self.num_core = args.num_core if args.num_core > 0 else self.tpu_info.max_core_num
         self.loader = loader
         self.quant_mode = None
         self.quant_bits = 0
@@ -115,17 +117,9 @@ class LlmConverter(BaseConverter):
             if self.quant_mode not in ["gptq", "awq"] or self.quant_bits != 4:
                 self.fused_mlp = False
 
-    def get_core_num(self, chip):
-        core_map = {
-            "bm1684x": 1,
-            "bm1688": 2,
-            "cv186x": 1,
-            "bm1690": 8,
-            "bm1684x2": 4,
-        }
-        if chip in core_map:
-            return core_map[chip]
-        return 1
+    def use_small_mask(self):
+        # TODO: other chip support small mask in future
+        return self.dynamic and self.chip in ["bm1684x"]
 
     def run(self):
         os.makedirs(self.bmodel_dir, exist_ok=True)
@@ -1500,7 +1494,7 @@ class LlmConverter(BaseConverter):
         the prefill FAttentionOp can reference it as a static weight instead of
         a dynamic input. This reduces MLIR input complexity (2 inputs vs 3).
         """
-        if self.dynamic:
+        if self.use_small_mask():
             weight_dict[self.ATTN_MASK_WEIGHT] = self.create_small_attn_mask()
 
     def get_fattention_mask_op(self, block_mlir, in2_op=None):
@@ -1510,12 +1504,10 @@ class LlmConverter(BaseConverter):
         In static mode, uses the dynamic mask input (in2_op).
         Returns (mask_op, mask_size) tuple.
         """
-        if self.dynamic:
-            mask_op = block_mlir.create_weight_op(
-                self.ATTN_MASK_WEIGHT,
-                [self.MASK_SIZE, self.MASK_SIZE],
-                placeholder=True,
-            )
+        if self.use_small_mask():
+            # TODO: only bm1684x support small mask, other chip need to be tested
+            mask_op = block_mlir.create_weight_op(self.ATTN_MASK_WEIGHT,
+                                                  [self.MASK_SIZE, self.MASK_SIZE])
             mask_size = self.MASK_SIZE
         else:
             mask_op = in2_op
@@ -1530,11 +1522,11 @@ class LlmConverter(BaseConverter):
         this weight (as a placeholder) so the weight file layout stays consistent
         between prefill and decode blocks.
         """
-        if self.dynamic:
+        if self.use_small_mask():
             block_mlir.create_weight_op(
                 self.ATTN_MASK_WEIGHT,
                 [self.MASK_SIZE, self.MASK_SIZE],
-                placeholder=True,
+                placeholder="F32",
             )
 
     def split_fused_moe(self):
@@ -1542,41 +1534,43 @@ class LlmConverter(BaseConverter):
         def align(x, a):
             return int((x + a - 1) / a) * a
 
-        def local_mem_need(batch, input_w, middle_w, dtype):
-            input_size = math.ceil(batch / npu_num[self.chip]) * align(
-                1 * input_w, tpu_eu_num[dtype]) * dtype_size[dtype]
-            weight0_size = math.ceil(middle_w / npu_num[self.chip]) * align(
-                1 * input_w, tpu_eu_num[dtype]) * dtype_size[dtype]
-            weight1_size = weight0_size
-            weight2_size = weight0_size
-            middle_buffer_f16_size = math.ceil(batch / npu_num[self.chip]) * align(
-                1 * middle_w, tpu_eu_num[dtype]) * dtype_size[dtype]
-            middle_buffer_f32_size = math.ceil(batch / npu_num[self.chip]) * align(
-                1 * middle_w, tpu_eu_num["f32"]) * dtype_size["f32"]
-            exp_coeff_size = align(1 * sfu_taylor_exp_len["f32"],
-                                   tpu_eu_num["f32"]) * dtype_size["f32"]
-            output_size = math.ceil(batch / npu_num[self.chip]) * align(
-                1 * input_w, tpu_eu_num["f32"]) * dtype_size["f32"]
-            middle_buffer_w_f16_size = math.ceil(middle_w / npu_num[self.chip]) * align(
-                1 * input_w, tpu_eu_num[dtype]) * dtype_size[dtype]
-            return input_size + weight0_size + weight1_size + weight2_size + middle_buffer_f16_size + middle_buffer_f32_size * 5 + exp_coeff_size + output_size + middle_buffer_w_f16_size
-
         batch = 1
         num_split = 1
         dtype = self.quantize
         assert dtype in ["bf16", "f16"]
-        npu_num = {"bm1684x": 64, "bm1688": 32, "bm1690": 64}
+        _info = get_tpu_info(self.chip)
+        _npu_num = _info.npu_num
         dtype_size = {"bf16": 2, "f16": 2, "f32": 4}
         sfu_taylor_exp_len = {"bf16": 7, "f16": 7, "f32": 10}
-        if self.chip in ["bm1684x", "bm1690"]:
-            tpu_eu_num = {"bf16": 32, "f16": 32, "f32": 16}
-        elif self.chip in ["bm1688"]:
-            tpu_eu_num = {"bf16": 8, "f16": 8, "f32": 4}
-        local_mem_size = {"bm1684x": 2**18, "bm1690": 2**18, "bm1688": 2**17}
+        _tpu_eu_num = {
+            dtype: _info.eu_num(bytesize)
+            for dtype, bytesize in [("bf16", 2), ("f16", 2), ("f32", 4)]
+        }
+        _local_mem_size = _info.lmem_bytes
+
+        def local_mem_need(batch, input_w, middle_w, dtype):
+            input_size = math.ceil(batch / _npu_num) * align(1 * input_w,
+                                                             _tpu_eu_num[dtype]) * dtype_size[dtype]
+            weight0_size = math.ceil(middle_w / _npu_num) * align(
+                1 * input_w, _tpu_eu_num[dtype]) * dtype_size[dtype]
+            weight1_size = weight0_size
+            weight2_size = weight0_size
+            middle_buffer_f16_size = math.ceil(batch / _npu_num) * align(
+                1 * middle_w, _tpu_eu_num[dtype]) * dtype_size[dtype]
+            middle_buffer_f32_size = math.ceil(batch / _npu_num) * align(
+                1 * middle_w, _tpu_eu_num["f32"]) * dtype_size["f32"]
+            exp_coeff_size = align(1 * sfu_taylor_exp_len["f32"],
+                                   _tpu_eu_num["f32"]) * dtype_size["f32"]
+            output_size = math.ceil(batch / _npu_num) * align(
+                1 * input_w, _tpu_eu_num["f32"]) * dtype_size["f32"]
+            middle_buffer_w_f16_size = math.ceil(middle_w / _npu_num) * align(
+                1 * input_w, _tpu_eu_num[dtype]) * dtype_size[dtype]
+            return input_size + weight0_size + weight1_size + weight2_size + middle_buffer_f16_size + middle_buffer_f32_size * 5 + exp_coeff_size + output_size + middle_buffer_w_f16_size
+
         while (num_split < self.moe_intermediate_size):
             middle_w = math.ceil(self.moe_intermediate_size / num_split)
             mem_need = local_mem_need(batch, self.hidden_size, middle_w, dtype)
-            if (mem_need < local_mem_size[self.chip]):
+            if (mem_need < _local_mem_size):
                 break
             num_split += 1
         return num_split
@@ -1803,8 +1797,8 @@ class LlmConverter(BaseConverter):
             kv_shape = [1, input_len, self.num_key_value_heads, self.head_dim]
             mask_shape = [1, 1, input_len, input_len]
             input_shapes = [input_shape, id_shape
-                            ] if self.dynamic else [input_shape, id_shape, mask_shape]
-            input_types = ["F32", "INT32"] if self.dynamic else ["F32", "INT32", "F32"]
+                            ] if self.use_small_mask() else [input_shape, id_shape, mask_shape]
+            input_types = ["F32", "INT32"] if self.use_small_mask() else ["F32", "INT32", "F32"]
             block_mlir = MLIRImporter(input_shapes, [input_shape, kv_shape, kv_shape],
                                       name,
                                       self.platform,
@@ -1819,7 +1813,7 @@ class LlmConverter(BaseConverter):
 
             in0_op = block_mlir.create_input_op(L("input_states"), 0)
             in1_op = block_mlir.create_input_op(L("position_ids"), 1)
-            in2_op = block_mlir.create_input_op(L("attention_mask"), 2) if not self.dynamic \
+            in2_op = block_mlir.create_input_op(L("attention_mask"), 2) if not self.use_small_mask() \
                 else None
             return_ops = []
             ln_op = self.rms_norm(block_mlir, in0_op, input_ln)

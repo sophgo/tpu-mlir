@@ -93,6 +93,7 @@ def deploy_case_bmodel(case_name: str,
         deploy_cmd.append("--debug")
     if dynamic:
         deploy_cmd.append("--dynamic")
+        deploy_cmd.append("--addr_mode basic")
     if rvti:
         deploy_cmd.append("--rvti")
     if disable_lg:
@@ -731,7 +732,7 @@ class MLIR_IR_TESTER(object):
             "in0": rand_data(input_shapes[0], 'float32', -1, 1),  # query
             "in1": rand_data(input_shapes[1], 'float32', -1, 1),  # key
             "in2": rand_data(input_shapes[2], 'float32', -1, 1),  # value
-            "in3": tril_mask * (-10000.0),  # mask
+            "in3": tril_mask * (-1.0e10),  # mask
         }
         weights = {
             "weight0": rand_data(weight_shapes[0], 'float32', -1, 1),
@@ -1224,7 +1225,7 @@ def main():
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
                         choices=SUPPORTED_CHIPS, help="chip platform name")
-    parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16'], help="quantize modes, only supports fp for now")
+    parser.add_argument("--mode", default="bf16", type=str, choices=['all', 'f32', 'f16', 'bf16'], help="quantize modes, only supports fp for now")
     parser.add_argument("--simple", action="store_true", help='do simple test for commit test')
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--show_all", action="store_true", help='show all cases')

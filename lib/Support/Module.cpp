@@ -357,8 +357,9 @@ static void removeUnusedOp(ModuleOp submodule) {
     if (isOpInGroup((*iter)))
       continue;
     auto op = *iter;
-    if (op->hasAttrOfType<mlir::BoolAttr>("placeholder") &&
-        op->getAttrOfType<mlir::BoolAttr>("placeholder").getValue()) {
+    if (op->hasAttrOfType<mlir::StringAttr>("placeholder") &&
+        op->getAttrOfType<mlir::StringAttr>("placeholder").getValue() !=
+            "None") {
       continue;
     }
     if (op->use_empty()) {

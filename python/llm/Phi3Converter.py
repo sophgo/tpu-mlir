@@ -389,8 +389,8 @@ class Phi3Converter(Chatglm3Converter):
             kv_shape = [1, self.seq_length, self.num_key_value_heads, self.head_dim]
             mask_shape = [1, 1, self.seq_length, self.seq_length]
             input_shapes = [input_shape, id_shape
-                            ] if self.dynamic else [input_shape, id_shape, mask_shape]
-            input_types = ["F32", "INT32"] if self.dynamic else ["F32", "INT32", "F32"]
+                            ] if self.use_small_mask() else [input_shape, id_shape, mask_shape]
+            input_types = ["F32", "INT32"] if self.use_small_mask() else ["F32", "INT32", "F32"]
             block_mlir = MLIRImporter(input_shapes, [input_shape, kv_shape, kv_shape],
                                       name,
                                       self.platform,
@@ -404,7 +404,7 @@ class Phi3Converter(Chatglm3Converter):
 
             in0_op = block_mlir.create_input_op(L("input_states"), 0)
             in1_op = block_mlir.create_input_op(L("position_ids"), 1)
-            in2_op = block_mlir.create_input_op(L("attention_mask"), 2) if not self.dynamic \
+            in2_op = block_mlir.create_input_op(L("attention_mask"), 2) if not self.use_small_mask() \
                 else None
             return_ops = []
             ln_op = self.rms_norm(block_mlir, in0_op, input_ln)

@@ -167,6 +167,7 @@ def Yuv2rgbFormulaAttr : AnyStrAttrOf<["_601_limited", "_601_full"]>;
 def GELUModeAttr : AnyStrAttrOf<["normal", "tanh", "sigm"]>;
 def RopeModeAttr : AnyStrAttrOf<["interleaved_pairs", "contiguous_halves"]>;
 def DqTypeAttr : AnyStrAttrOf<["NONE", "F16", "BF16", "INT8", "INT4", "F8E4M3", "F4", "MXF4"]>;
+def PlaceHolderAttr : AnyStrAttrOf<["Auto", "F32", "None"]>;
 
 //===----------------------------------------------------------------------===//
 // TOP Types.
@@ -211,7 +212,8 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
     OptionalAttr<I64ArrayAttr>:$indices_idx,
     OptionalAttr<I64ArrayAttr>:$indices_slice,
     OptionalAttr<StrAttr>:$path,
-    OptionalAttr<BoolAttr>:$placeholder,
+    OptionalAttr<PlaceHolderAttr>:$placeholder,
+
     //nnvlc param
     OptionalAttr<BoolAttr>:$do_compress,
     OptionalAttr<I64Attr>:$bias0,

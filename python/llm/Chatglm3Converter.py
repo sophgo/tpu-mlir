@@ -368,19 +368,16 @@ class Chatglm3Converter(LlmConverter):
 
             q_shape = [1, self.seq_length, self.num_attention_heads, self.head_dim]
             kv_shape = [1, self.seq_length, self.num_key_value_heads, self.head_dim]
-            if self.dynamic:
-                block_mlir = MLIRImporter([input_shape, id_shape],
-                                          [input_shape, kv_shape, kv_shape],
-                                          name,
-                                          self.platform, ["F32", "INT32"],
-                                          weight_file=f"../{weight_file}")
-            else:
-                mask_shape = [1, 1, self.seq_length, self.seq_length]
-                block_mlir = MLIRImporter([input_shape, id_shape, mask_shape],
-                                          [input_shape, kv_shape, kv_shape],
-                                          name,
-                                          self.platform, ["F32", "INT32", "F32"],
-                                          weight_file=f"../{weight_file}")
+            mask_shape = [1, 1, self.seq_length, self.seq_length]
+            input_shapes = [input_shape, id_shape
+                            ] if self.use_small_mask() else [input_shape, id_shape, mask_shape]
+            input_types = ["F32", "INT32"] if self.use_small_mask() else ["F32", "INT32", "F32"]
+
+            block_mlir = MLIRImporter(input_shapes, [input_shape, kv_shape, kv_shape],
+                                      name,
+                                      self.platform,
+                                      input_types,
+                                      weight_file=f"../{weight_file}")
 
             T = block_mlir.get_tensor_type
             L = lambda name: self.get_loc(name, block_mlir)
@@ -389,7 +386,7 @@ class Chatglm3Converter(LlmConverter):
 
             in0_op = block_mlir.create_input_op(L("input_states"), 0)
             in1_op = block_mlir.create_input_op(L("position_ids"), 1)
-            in2_op = block_mlir.create_input_op(L("attention_mask"), 2) if not self.dynamic \
+            in2_op = block_mlir.create_input_op(L("attention_mask"), 2) if not self.use_small_mask() \
                 else None
             return_ops = []
             ln_op = self.rms_norm(block_mlir, in0_op, input_ln)

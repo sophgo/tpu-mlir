@@ -1177,8 +1177,9 @@ public:
       if (!op->getUsers().empty()) {
         continue;
       }
-      if (op->hasAttrOfType<mlir::BoolAttr>("placeholder") &&
-          op->getAttrOfType<mlir::BoolAttr>("placeholder").getValue()) {
+      if (op->hasAttrOfType<mlir::StringAttr>("placeholder") &&
+          op->getAttrOfType<mlir::StringAttr>("placeholder").getValue() !=
+              "None") {
         continue;
       }
       op->erase();

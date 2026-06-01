@@ -757,9 +757,14 @@ class Qwen3_5Converter(LlmConverter):
 
             q_shape = [1, input_len, self.num_attention_heads, self.head_dim]
             kv_shape = [1, input_len, self.num_key_value_heads, self.head_dim]
-            block_mlir = MLIRImporter([input_shape, id_shape], [input_shape, kv_shape, kv_shape],
+            mask_shape = [1, 1, input_len, input_len]
+            input_shapes = [input_shape, id_shape
+                            ] if self.use_small_mask() else [input_shape, id_shape, mask_shape]
+            input_types = ["F32", "INT32"] if self.use_small_mask() else ["F32", "INT32", "F32"]
+            block_mlir = MLIRImporter(input_shapes, [input_shape, kv_shape, kv_shape],
                                       name,
-                                      self.platform, ["F32", "INT32"],
+                                      self.platform,
+                                      input_types,
                                       lora_rank=self.lora_rank,
                                       weight_file=f"../{weight_file}")
 
@@ -770,6 +775,8 @@ class Qwen3_5Converter(LlmConverter):
 
             in0_op = block_mlir.create_input_op(L("input_states"), 0)
             in1_op = block_mlir.create_input_op(L("position_ids"), 1)
+            in2_op = block_mlir.create_input_op(L("attention_mask"), 2) if not self.use_small_mask() \
+                else None
             return_ops = []
             ln_op = self.rms_norm(block_mlir, in0_op, input_ln)
 
@@ -844,7 +851,7 @@ class Qwen3_5Converter(LlmConverter):
             return_ops.append(k_op)
             return_ops.append(v_op)
             # ======= fattention =========
-            mask_op, mask_size = self.get_fattention_mask_op(block_mlir)
+            mask_op, mask_size = self.get_fattention_mask_op(block_mlir, in2_op)
             fa_op = top.FAttentionOp(T([1, input_len, q_dim]),
                                      q_op,
                                      k_op,
@@ -1682,11 +1689,11 @@ class Qwen3_5Converter(LlmConverter):
             in1_op = block_mlir.create_input_op(L("conv_state"), 1)
             in2_op = block_mlir.create_input_op(L("recurrent_state"), 2)
             # eye_key no use, just the same with block
-            block_mlir.create_weight_op(triu_mask_key, [chunk_size, chunk_size], placeholder=True)
+            block_mlir.create_weight_op(triu_mask_key, [chunk_size, chunk_size], placeholder="Auto")
             block_mlir.create_weight_op(strict_triu_mask_key, [chunk_size, chunk_size],
-                                        placeholder=True)
-            block_mlir.create_weight_op(tril_mask_key, [chunk_size, chunk_size], placeholder=True)
-            block_mlir.create_weight_op(eye_key, [chunk_size, chunk_size], placeholder=True)
+                                        placeholder="Auto")
+            block_mlir.create_weight_op(tril_mask_key, [chunk_size, chunk_size], placeholder="Auto")
+            block_mlir.create_weight_op(eye_key, [chunk_size, chunk_size], placeholder="Auto")
             return_ops = []
             in0_norm_op = self.rms_norm(block_mlir, in0_op, input_ln)
             # z/a/b

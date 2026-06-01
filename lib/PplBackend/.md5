@@ -19,8 +19,8 @@ src/concat_volume.cpp f2df31581e759e9a3d33807c9a15d215
 src/concat_volume_fp.pl 7c19e491a0e3dba8b8fb13fe29cf76e8
 src/correlation.cpp 3f764737c6039cf239d8bff4c967f99d
 src/correlation_fp.pl 965590f31010ac53e612b13b28fbe6f1
-src/fattention_api.cpp 4a45dcfcb2193b5c8d5f8302d0885649
-src/fattention_prefill.pl e3f43d3ea4578679bb68f29a48647ad4
+src/fattention_api.cpp 791109b079e20c8cf6078a6e1c186744
+src/fattention_prefill.pl eab462e0467d6fe049a9ceb81f999aa7
 src/fattention_v1.pl 57649be203be836a297516e3ce98dce0
 src/fattention_v2.pl 254b0f3eeead62a930680f71b57782e9
 src/insert_api.cpp 0ba6029996fcf4b1430651a5a9193f68

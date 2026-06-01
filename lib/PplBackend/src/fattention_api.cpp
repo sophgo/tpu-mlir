@@ -71,7 +71,7 @@ void fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
     // overflow local memory and cause silent data corruption in the
     // fattention v1/v2 kernels.  Cap block_m / block_k at 256 on such
     // chips to match the same mitigation used in the prefill path
-    // (see fattention_prefill_tiling block_m = mask_size/2 comment).
+    // (see fattention_prefill_tiling block_m = 2 * npu_num).
     int tiling_limit = (npu_num <= 32) ? 256 : 512;
     block_m = align_2n(val, tiling_limit);
     block_k = block_m;
@@ -130,7 +130,7 @@ void fattention_prefill_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
                                gaddr_t ptr_v, gaddr_t ptr_mask, int b, int qm,
                                int kvm, int d, int q_head, int kv_head,
                                int mask_size, float sqrt_d, int core_num,
-                               int dtype, int &block_m, int &block_h) {
+                               int dtype, int &block_m) {
   int ret = 0;
   int keep_dim = 0;
   auto func =
@@ -138,49 +138,10 @@ void fattention_prefill_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
   int npu_num, npu_size;
   get_chip_info(&npu_num, &npu_size);
 
-  // `block_h` is the number of KV heads per block; the kernel internally
-  // expands it to `block_h * head_rep` Q heads. Start from the full per-core
-  // KV-head footprint and shrink by halving on LMEM/L2 pressure.
-  int head_rep = q_head / kv_head;
-  if (head_rep < 1) {
-    head_rep = 1;
-  }
-  int kv_head_per_core = (kv_head + core_num - 1) / core_num;
-
-  // NOTE: starting `block_m` at `mask_size/2` (rather than `mask_size`).
-  // With block_m == mask_size and block_k_iter == block_m, on bm1684x the
-  // local tensors live on C = block_m, which on a 64-NPU chip means the
-  // 256-wide C dim is sharded as 4 rows per NPU; in that regime several
-  // ops (matmul / pooling / fadd of the fp32 mask) silently produce
-  // garbage for the upper EU rows (qi in [block_m/2, block_m)). Halving
-  // `block_m` keeps C <= 2 * NPU_NUM and matches the working v2 prefill
-  // tiling (see fattention_tile.cpp). The tiling fallback below can still
-  // shrink `block_m` further on LMEM pressure.
-  block_m = mask_size / 2;
-  block_h = kv_head_per_core;
-
-  while (block_m >= npu_num && block_h >= 1) {
-    printf("fattention prefill block_m:%d, block_h:%d\n", block_m, block_h);
-    ret = func(ptr_dst, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm, sqrt_d,
-               keep_dim, core_num, q_head, kv_head, d, block_m, block_h,
-               mask_size);
-    if (ret == 0) {
-      break;
-    }
-    if (ret == PplL2AddrAssignErr || ret == PplLocalAddrAssignErr) {
-      printf("block is not suitable, have another try !!!\n");
-      if (block_h > 1) {
-        block_h = block_h / 2;
-        if (block_h < 1) {
-          block_h = 1;
-        }
-      } else {
-        block_m = block_m / 2;
-      }
-      continue;
-    }
-    break;
-  }
+  block_m = 2 * npu_num;
+  assert(mask_size == 2 * block_m);
+  ret = func(ptr_dst, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm, sqrt_d,
+             keep_dim, core_num, q_head, kv_head, d, block_m, mask_size);
   if (ret != 0) {
     printf("Error: fattention_prefill split failed!!!\n");
     exit(-1);
@@ -219,7 +180,7 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
         mask_spec->addr, _param->common.batch, _param->common.mq,
         _param->common.mk, _param->common.dim, _param->common.q_head,
         _param->common.kv_head, _param->common.mask_size, _param->common.scale,
-        core_num, in_spec[0].dtype, block_m, block_kh);
+        core_num, in_spec[0].dtype, block_m);
   }
 }
 
@@ -290,14 +251,14 @@ int api_dyn_fattention_global(void *param, void *input_spec, void *output_spec,
     auto q_head = _param->common.q_head;
     auto kv_head = _param->common.kv_head;
     int keep_dim = _param->common.keep_dim ? 1 : 0;
-    int block_m, block_h;
+    int block_m;
     if (buffer) {
-      fattention_prefill_tiling(
-          out_spec->addr, q_spec->addr, k_spec->addr, v_spec->addr,
-          mask_spec->addr, _param->common.batch, _param->common.mq,
-          _param->common.mk, _param->common.dim, q_head, kv_head,
-          _param->common.mask_size, _param->common.scale, core_num, dtype,
-          block_m, block_h);
+      fattention_prefill_tiling(out_spec->addr, q_spec->addr, k_spec->addr,
+                                v_spec->addr, mask_spec->addr,
+                                _param->common.batch, _param->common.mq,
+                                _param->common.mk, _param->common.dim, q_head,
+                                kv_head, _param->common.mask_size,
+                                _param->common.scale, core_num, dtype, block_m);
     }
     // If buffer is not null writre param info to buffer according to tile info,
     // return param struct lens.
@@ -306,7 +267,7 @@ int api_dyn_fattention_global(void *param, void *input_spec, void *output_spec,
     return func(out_spec->addr, q_spec->addr, k_spec->addr, v_spec->addr,
                 mask_spec->addr, _param->common.batch, _param->common.mq,
                 _param->common.mk, _param->common.scale, keep_dim, core_num,
-                q_head, kv_head, _param->common.dim, block_m, block_h,
+                q_head, kv_head, _param->common.dim, block_m,
                 _param->common.mask_size, buffer);
   }
 }

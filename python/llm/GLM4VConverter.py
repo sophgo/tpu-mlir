@@ -982,9 +982,9 @@ class GLM4VConverter(LlmConverter):
             q_shape = [1, input_len, self.num_attention_heads, self.head_dim]
             kv_shape = [1, input_len, self.num_key_value_heads, self.head_dim]
             mask_shape = [1, 1, input_len, input_len]
-            input_shapes = [input_shape, id_shape, mask_shape
-                            ] if not self.dynamic else [input_shape, id_shape]
-            input_types = ["F32", "INT32", "F32"] if not self.dynamic else ["F32", "INT32"]
+            input_shapes = [input_shape, id_shape
+                            ] if self.use_small_mask() else [input_shape, id_shape, mask_shape]
+            input_types = ["F32", "INT32"] if self.use_small_mask() else ["F32", "INT32", "F32"]
             block_mlir = MLIRImporter(input_shapes, [input_shape, kv_shape, kv_shape],
                                       name,
                                       self.platform,

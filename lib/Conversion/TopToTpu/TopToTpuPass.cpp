@@ -2068,15 +2068,20 @@ void ConvertTopToTpu::weight_process() {
   mainFunc_.walk([&](Operation *op) {
     if (auto weightOp = dyn_cast<top::WeightOp>(op)) {
       auto dtype = module::getStorageType(weightOp.getType());
-      auto isHolder = weightOp.getPlaceholder().value_or(false);
+      auto holder_type = weightOp.getPlaceholder().value_or("None");
       auto noUse = weightOp.use_empty();
-      if (dtype.isF32() && isHolder && noUse) {
-        if (module::isBF16Modes()) {
-          weightOp.clone_bf16(op);
-          op->setAttr("placeholder", builder.getBoolAttr(false));
-        } else if (module::isF16Modes()) {
-          weightOp.clone_f16(op);
-          op->setAttr("placeholder", builder.getBoolAttr(false));
+      if (dtype.isF32() && holder_type != "None" && noUse) {
+        if (holder_type == "Auto") {
+          if (module::isBF16Modes()) {
+            weightOp.clone_bf16(op);
+            op->setAttr("placeholder", builder.getStringAttr("None"));
+          } else if (module::isF16Modes()) {
+            weightOp.clone_f16(op);
+            op->setAttr("placeholder", builder.getStringAttr("None"));
+          }
+        } else {
+          // keep f32
+          // if (holder_type == "F32")
         }
       }
     }

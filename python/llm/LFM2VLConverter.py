@@ -509,7 +509,7 @@ class LFM2VLConverter(LlmConverter):
             kv_shape = [1, input_len, self.num_key_value_heads, self.head_dim]
             mask_shape = [1, 1, input_len, input_len]
             if self.layer_types[idx] == "full_attention":
-                if self.dynamic:
+                if self.use_small_mask():
                     input_shapes = [input_shape, id_shape]
                     input_dtypes = ["F32", "INT32"]
                 else:
@@ -540,7 +540,7 @@ class LFM2VLConverter(LlmConverter):
             ln_op = self.rms_norm(block_mlir, in0_op, input_ln)
             if self.layer_types[idx] == "full_attention":
                 in1_op = block_mlir.create_input_op(L("position_ids"), 1)
-                in2_op = block_mlir.create_input_op(L("attention_mask"), 2) if not self.dynamic \
+                in2_op = block_mlir.create_input_op(L("attention_mask"), 2) if not self.use_small_mask() \
                     else None
                 # q_proj
                 q_dim = self.num_attention_heads * self.head_dim
