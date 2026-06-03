@@ -104,6 +104,7 @@ class ONNX_IR_TESTER(object):
             "Div":          (self.test_Div,           Y, Y, Y, Y, Y, Y, Y),
             "DivBcast":     (self.test_DivBcast,      Y, Y, Y, N, Y, Y, Y),
             "DivBcast2":    (self.test_DivBcast2,     Y, Y, Y, N, Y, Y, Y),
+            "DivConst":     (self.test_DivConst,      N, Y, Y, Y, Y, Y, N),
             "Einsum":       (self.test_Einsum,        Y, Y, Y, Y, Y, Y, Y),
             "Einsum2":      (self.test_Einsum2,       Y, Y, Y, Y, Y, Y, Y),
             "Einsum3":      (self.test_Einsum3,       Y, Y, Y, Y, Y, Y, Y),
@@ -120,6 +121,7 @@ class ONNX_IR_TESTER(object):
             "Einsum14":     (self.test_Einsum14,      N, Y, Y, N, Y, Y, N),
             "Elu":          (self.test_Elu,           Y, Y, Y, N, Y, Y, Y),
             "Erf":          (self.test_Erf,           N, Y, Y, N, Y, Y, N),
+            "Elu":          (self.test_Elu,           N, Y, Y, N, Y, Y, N),
             "Exp":          (self.test_Exp,           Y, Y, Y, Y, Y, Y, Y),
             "Expand":       (self.test_Expand,        Y, Y, Y, Y, Y, Y, Y),
             "Expand2":      (self.test_Expand2,       Y, Y, Y, Y, Y, Y, Y),
@@ -157,6 +159,33 @@ class ONNX_IR_TESTER(object):
             "MatMul2PC":    (self.test_MatMul2PC,     N, Y, Y, N, N, N, Y),
             "Max":          (self.test_Max,           Y, Y, Y, Y, Y, Y, Y),
             "MaxBcast":     (self.test_MaxBcast,      Y, Y, Y, N, Y, Y, Y),
+            "MaxPoolingIndicesBwd": (self.test_MaxPoolingIndicesBwd, N, Y, Y, N, Y, N, N),
+            "MaxPoolWithMask": (self.test_MaxPoolWithMask,  N, Y, Y, N, Y, N, N),
+            "MaxUnpool": (self.test_MaxUnpool,  N, Y, Y, N, Y, N, N),
+            "MeanRstd": (self.test_MeanRstd,  N, Y, Y, N, Y, N, N),
+            "MeanStdScale": (self.test_MeanStdScale,  N, Y, Y, N, Y, N, N),
+            "MeshGrid": (self.test_MeshGrid,  N, Y, Y, N, Y, N, N),
+            "MaskedFill":   (self.test_MaskedFill,    N, Y, Y, N, Y, Y, N),
+            "MaskRCNNBboxPooler": (self.test_MaskRCNNBboxPooler, N, Y, Y, N, Y, N, N),
+            "MaskRCNNGetBboxB": (self.test_MaskRCNNGetBboxB, N, Y, Y, N, Y, N, N),
+            "MaskRCNNMaskPooler": (self.test_MaskRCNNMaskPooler, N, Y, Y, N, Y, N, N),
+            "MatchTemplate": (self.test_MatchTemplate,  N, Y, Y, N, Y, N, N),
+            "Mish": (self.test_Mish,  N, Y, Y, N, Y, N, N),
+            "ScaleLut": (self.test_ScaleLut,  N, Y, Y, N, Y, N, N),
+            "ShuffleChannel": (self.test_ShuffleChannel,  N, Y, Y, N, Y, N, N),
+            "Sin":          (self.test_Sin,          N, Y, Y, N, Y, N, N),
+            "Sinh":         (self.test_Sinh,         N, Y, Y, N, Y, N, N),
+            "Tan":          (self.test_Tan,          N, Y, Y, N, Y, N, N),
+            "SliceAxis":    (self.test_SliceAxis,    N, Y, Y, N, Y, N, N),
+            "Softsign":     (self.test_Softsign,     N, Y, Y, N, Y, N, N),
+            "Sort":         (self.test_Sort,         N, Y, Y, N, Y, N, N),
+            "StridedSlice": (self.test_StridedSlice, N, Y, Y, N, Y, N, N),
+            "SwapChannel":  (self.test_SwapChannel,  N, Y, Y, N, Y, N, N),
+            "Swish":        (self.test_Swish,        N, Y, Y, N, Y, N, N),
+            "Pow":          (self.test_Pow1,          Y, Y, Y, Y, Y, Y, N),
+            "QuantizeLinear": (self.test_QuantizeLinear, N, Y, Y, N, Y, N, N),
+            "Pack":         (self.test_Pack,          Y, Y, Y, N, Y, Y, N),
+            "Unpack":       (self.test_Unpack,        Y, Y, Y, N, Y, Y, N),
             "Not":          (self.test_Not,           N, Y, Y, N, Y, Y, Y),
             # "MLP1":         (self.test_MLP1,          N, Y, Y, N, N, N, N),
             # "MLP2":         (self.test_MLP2,          N, Y, Y, N, N, N, N),
@@ -2606,6 +2635,21 @@ class ONNX_IR_TESTER(object):
                 self.onnx_and_test(graph_def, input_data={"a": a_data, "b": b_data, "c": c_data})
 
     def test_DivBcast2(self, case_name):
+        pass
+
+    def test_DivConst(self, case_name):
+        input_shape = [1, 3, 27, 27]
+        output_shape = [1, 3, 27, 27]
+
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            <float const_div = {2.0}>
+            {
+                output = Div(input, const_div)
+            }
+            """ % (case_name, input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
         shapes = ([5, 12, 1, 21], )
         bcast_shapes = ([1, 12, 9, 21], )
         out_shapes = ([5, 12, 9, 21], )
@@ -5735,6 +5779,911 @@ class ONNX_IR_TESTER(object):
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
+    def test_DivConst(self, case_name):
+        input_shape = [1, 3, 27, 27]
+        output_shape = [1, 3, 27, 27]
+
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            <float const_div = {2.0}>
+            {
+                output = Div(input, const_div)
+            }
+            """ % (case_name, input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+
+    def test_MaskedFill(self, case_name):
+        input_shape = [1, 3, 27, 27]
+        output_shape = [1, 3, 27, 27]
+
+        cond_data = np.random.randint(0, 2, input_shape).astype(np.bool_)
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+
+        graph_txt = """
+            %s (bool%s cond, float%s input) => (float%s output)
+            <float fill_val = {-1.0}>
+            {
+                output = Where(cond, fill_val, input)
+            }
+            """ % (case_name, input_shape, input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def,
+                           input_data={"cond": cond_data, "input": input_data})
+
+
+    def test_MaskRCNNBboxPooler(self, case_name):
+        N, C = 1, 4
+        roi_slice, roi_len = 2, 5
+        PH, PW, num_levels = 7, 7, 4
+
+        feat0_shape = [N, C, 32, 32]
+        feat1_shape = [N, C, 16, 16]
+        feat2_shape = [N, C, 8, 8]
+        feat3_shape = [N, C, 4, 4]
+        rois_shape = [N, roi_slice, 1, roi_len]
+        res_shape = [N * roi_slice, C, PH, PW]
+        rois_out_shape = [N, roi_slice, 1, roi_len]
+
+        feat0_info = helper.make_tensor_value_info('feat0', TensorProto.FLOAT, feat0_shape)
+        feat1_info = helper.make_tensor_value_info('feat1', TensorProto.FLOAT, feat1_shape)
+        feat2_info = helper.make_tensor_value_info('feat2', TensorProto.FLOAT, feat2_shape)
+        feat3_info = helper.make_tensor_value_info('feat3', TensorProto.FLOAT, feat3_shape)
+        rois_info = helper.make_tensor_value_info('rois', TensorProto.FLOAT, rois_shape)
+        res_info = helper.make_tensor_value_info('res', TensorProto.FLOAT, res_shape)
+        rois_out_info = helper.make_tensor_value_info('rois_out', TensorProto.FLOAT,
+                                                       rois_out_shape)
+
+        node_def = helper.make_node(
+            "MaskRCNN_BboxPooler",
+            inputs=["feat0", "feat1", "feat2", "feat3", "rois"],
+            outputs=["res", "rois_out"],
+            domain="tpu_mlir",
+            ROI_NUM_LEVELS=num_levels,
+            ROI_H=PH,
+            ROI_W=PW,
+            CHANNEL_ROI=C,
+            ROI_SLICE=roi_slice,
+            ROI_LEN=roi_len,
+            ROI_PH=PH,
+            ROI_PW=PW)
+
+        graph_def = helper.make_graph(
+            [node_def], case_name,
+            [feat0_info, feat1_info, feat2_info, feat3_info, rois_info],
+            [res_info, rois_out_info])
+        self.onnx_and_test(graph_def)
+
+
+    def test_MaskRCNNGetBboxB(self, case_name):
+        if not self.test_cuda:
+            return
+
+        num_classes, num_indexes = 4, 1
+        max_per_img, max_det = 50, 10
+        total_rois = 250
+
+        rois_shape = [1, total_rois, 1, num_classes + num_indexes]
+        bbox_shape = [1, total_rois, 1, num_classes * 4]
+        score_shape = [1, total_rois, 1, num_classes + 1]
+        maxval_shape = [1, total_rois * num_classes, 1, 4]
+        scale_shape = [1, 1, total_rois * num_classes, 4]
+
+        rois_info = helper.make_tensor_value_info('rois', TensorProto.FLOAT, rois_shape)
+        bbox_info = helper.make_tensor_value_info('bbox', TensorProto.FLOAT, bbox_shape)
+        score_info = helper.make_tensor_value_info('score', TensorProto.FLOAT, score_shape)
+        maxval_info = helper.make_tensor_value_info('max_val', TensorProto.FLOAT, maxval_shape)
+        scale_info = helper.make_tensor_value_info('scale', TensorProto.FLOAT, scale_shape)
+        out_bbox_info = helper.make_tensor_value_info('det_bboxes', TensorProto.FLOAT, [1])
+        out_label_info = helper.make_tensor_value_info('det_labels', TensorProto.FLOAT, [1])
+
+        node_def = helper.make_node(
+            "MaskRCNN_GetBboxB",
+            inputs=["rois", "bbox", "score", "max_val", "scale"],
+            outputs=["det_bboxes", "det_labels"],
+            domain="tpu_mlir",
+            threshold_score_eq=0.05,
+            wh_ratio_log=4.135,
+            nms_iou_thr=0.5,
+            delta2bbox_means=0.0,
+            delta2bbox_stds_0=0.1,
+            delta2bbox_stds_1=0.2,
+            NUM_INDEXES=num_indexes,
+            NUM_CLASSES=num_classes,
+            TOPK_ONNX_NMS=250,
+            NUM_CLASSES_getBboxB=num_classes,
+            MAX_NMS_LENGTH_GetBboxB=1000,
+            MAX_PER_IMG=max_per_img,
+            MAX_PER_IMG_GetBboxB=max_det)
+
+        graph_def = helper.make_graph(
+            [node_def], case_name,
+            [rois_info, bbox_info, score_info, maxval_info, scale_info],
+            [out_bbox_info, out_label_info])
+
+        model_def = helper.make_model(graph_def, producer_name=case_name)
+        model_def.opset_import[0].version = 14
+        custom_opset = OperatorSetIdProto()
+        custom_opset.domain = 'tpu_mlir'
+        custom_opset.version = 1
+        model_def.opset_import.extend([custom_opset])
+
+        input_data = {
+            'rois': np.random.randn(*rois_shape).astype(np.float32),
+            'bbox': np.random.randn(*bbox_shape).astype(np.float32),
+            'score': np.random.randn(*score_shape).astype(np.float32),
+            'max_val': np.random.randn(*maxval_shape).astype(np.float32),
+            'scale': np.random.randn(*scale_shape).astype(np.float32),
+        }
+        input_npz = "{}_in_fp32.npz".format(case_name)
+        np.savez(input_npz, **input_data)
+
+        tool = OnnxTransformer(case_name,
+                               model_def,
+                               test_input=input_npz,
+                               static_shape=True)
+        fp32_mlir = "{}.mlir".format(case_name)
+        tool.model_transform(fp32_mlir)
+
+        for quant_mode in self.quant_modes:
+            tpu_mlir, bmodel = self.bmodel_generate(case_name, quant_mode)
+            print("[Success] test {} {}".format(case_name, quant_mode.upper()))
+
+            tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
+            file_mark(tpu_npz)
+            show_fake_cmd(input_npz, tpu_mlir, tpu_npz, True, True)
+            cuda_outs = mlir_inference(input_data, tpu_mlir, dump_all=True, use_cuda=True)
+            np.savez(tpu_npz, **cuda_outs)
+
+            model_npz = bmodel.replace("." + bmodel.split(".")[-1], "_model_out.npz")
+            file_mark(model_npz)
+            show_fake_cmd(input_npz, bmodel, model_npz)
+            model_outs = model_inference(input_data, bmodel)
+            np.savez(model_npz, **model_outs)
+            npz_compare([model_npz, tpu_npz, "--tolerance", "0.99,0.90", "-v"])
+
+
+    def test_MaskRCNNMaskPooler(self, case_name):
+        if not self.test_cuda:
+            return
+
+        N, C = 1, 16
+        roi_slice, roi_len = 4, 5
+        PH, PW, num_levels = 7, 7, 4
+
+        feat0_shape = [N, C, 160, 160]
+        feat1_shape = [N, C, 80, 80]
+        feat2_shape = [N, C, 40, 40]
+        feat3_shape = [N, C, 20, 20]
+        bbox_shape = [N, roi_slice, 1, roi_len]
+        label_shape = [N, roi_slice, 1, 1]
+        scale_shape = [N, roi_slice, 1, 4]
+
+        feat0_info = helper.make_tensor_value_info('feat0', TensorProto.FLOAT, feat0_shape)
+        feat1_info = helper.make_tensor_value_info('feat1', TensorProto.FLOAT, feat1_shape)
+        feat2_info = helper.make_tensor_value_info('feat2', TensorProto.FLOAT, feat2_shape)
+        feat3_info = helper.make_tensor_value_info('feat3', TensorProto.FLOAT, feat3_shape)
+        bbox_info = helper.make_tensor_value_info('bbox', TensorProto.FLOAT, bbox_shape)
+        label_info = helper.make_tensor_value_info('label', TensorProto.FLOAT, label_shape)
+        scale_info = helper.make_tensor_value_info('scale', TensorProto.FLOAT, scale_shape)
+        res_info = helper.make_tensor_value_info('res', TensorProto.FLOAT, [1])
+
+        node_def = helper.make_node(
+            "MaskRCNN_MaskPooler",
+            inputs=["feat0", "feat1", "feat2", "feat3", "bbox", "label", "scale"],
+            outputs=["res"],
+            domain="tpu_mlir",
+            ROI_NUM_LEVELS=num_levels,
+            ROI_H=PH,
+            ROI_W=PW,
+            CHANNEL_ROI=C,
+            ROI_SLICE=roi_slice,
+            ROI_PH=PH,
+            ROI_PW=PW,
+            ROI_LEN=roi_len)
+
+        graph_def = helper.make_graph(
+            [node_def], case_name,
+            [feat0_info, feat1_info, feat2_info, feat3_info,
+             bbox_info, label_info, scale_info],
+            [res_info])
+
+        model_def = helper.make_model(graph_def, producer_name=case_name)
+        model_def.opset_import[0].version = 14
+        custom_opset = OperatorSetIdProto()
+        custom_opset.domain = 'tpu_mlir'
+        custom_opset.version = 1
+        model_def.opset_import.extend([custom_opset])
+
+        input_data = {
+            'feat0': np.random.randn(*feat0_shape).astype(np.float32),
+            'feat1': np.random.randn(*feat1_shape).astype(np.float32),
+            'feat2': np.random.randn(*feat2_shape).astype(np.float32),
+            'feat3': np.random.randn(*feat3_shape).astype(np.float32),
+            'bbox': np.zeros(bbox_shape, dtype=np.float32),
+            'label': np.ones(label_shape, dtype=np.float32),  # all class 1
+            'scale': np.ones(scale_shape, dtype=np.float32) * 1.0,
+        }
+        # Set valid ROI with proper coordinates: batch_idx=0, x1=10, y1=10, x2=50, y2=50
+        input_data['bbox'][0, :, 0, 0] = 0   # batch_idx
+        input_data['bbox'][0, :, 0, 1] = 10  # x1
+        input_data['bbox'][0, :, 0, 2] = 10  # y1
+        input_data['bbox'][0, :, 0, 3] = 50  # x2
+        input_data['bbox'][0, :, 0, 4] = 50  # y2
+        input_npz = "{}_in_fp32.npz".format(case_name)
+        np.savez(input_npz, **input_data)
+
+        tool = OnnxTransformer(case_name,
+                               model_def,
+                               test_input=input_npz,
+                               static_shape=True)
+        fp32_mlir = "{}.mlir".format(case_name)
+        tool.model_transform(fp32_mlir)
+
+        for quant_mode in self.quant_modes:
+            tpu_mlir, bmodel = self.bmodel_generate(case_name, quant_mode)
+            print("[Success] test {} {}".format(case_name, quant_mode.upper()))
+
+            tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
+            file_mark(tpu_npz)
+            show_fake_cmd(input_npz, tpu_mlir, tpu_npz, True, True)
+            cuda_outs = mlir_inference(input_data, tpu_mlir, dump_all=True, use_cuda=True)
+            np.savez(tpu_npz, **cuda_outs)
+
+            model_npz = bmodel.replace("." + bmodel.split(".")[-1], "_model_out.npz")
+            file_mark(model_npz)
+            show_fake_cmd(input_npz, bmodel, model_npz)
+            model_outs = model_inference(input_data, bmodel)
+            np.savez(model_npz, **model_outs)
+            npz_compare([model_npz, tpu_npz, "--tolerance", "0.99,0.90", "-v"])
+
+
+    def test_MatchTemplate(self, case_name):
+        if not self.test_cuda:
+            return
+
+        iH, iW = 128, 128
+        tH, tW = 32, 32
+        oH, oW = iH - tH + 1, iW - tW + 1
+
+        inp_info = helper.make_tensor_value_info('input', TensorProto.FLOAT, [iH, iW])
+        match_info = helper.make_tensor_value_info('template', TensorProto.FLOAT, [tH, tW])
+        out_info = helper.make_tensor_value_info('output', TensorProto.FLOAT, [oH, oW])
+
+        node_def = helper.make_node(
+            "MatchTemplate",
+            inputs=["input", "template"],
+            outputs=["output"],
+            domain="tpu_mlir",
+            mode="TM_CCOEFF_NORMED")
+
+        graph_def = helper.make_graph(
+            [node_def], case_name,
+            [inp_info, match_info],
+            [out_info])
+
+        model_def = helper.make_model(graph_def, producer_name=case_name)
+        model_def.opset_import[0].version = 14
+        custom_opset = OperatorSetIdProto()
+        custom_opset.domain = 'tpu_mlir'
+        custom_opset.version = 1
+        model_def.opset_import.extend([custom_opset])
+
+        input_data = {
+            'input': np.random.randn(iH, iW).astype(np.float32),
+            'template': np.random.randn(tH, tW).astype(np.float32),
+        }
+        input_npz = "{}_in_fp32.npz".format(case_name)
+        np.savez(input_npz, **input_data)
+
+        tool = OnnxTransformer(case_name, model_def, test_input=input_npz, static_shape=True)
+        fp32_mlir = "{}.mlir".format(case_name)
+        tool.model_transform(fp32_mlir)
+
+        for quant_mode in self.quant_modes:
+            # CPU reference
+            cpu_outs = mlir_inference(input_data, fp32_mlir, dump_all=True)
+            cpu_npz = "{}_cpu_out.npz".format(case_name)
+            np.savez(cpu_npz, **cpu_outs)
+
+            # CUDA inference
+            cuda_outs = mlir_inference(input_data, fp32_mlir, dump_all=True, use_cuda=True)
+            cuda_npz = "{}_cuda_out.npz".format(case_name)
+            np.savez(cuda_npz, **cuda_outs)
+
+            npz_compare([cuda_npz, cpu_npz, "--tolerance", "0.99,0.90", "-v"])
+            print("[Success] test {} {} (CPU vs CUDA)".format(case_name, quant_mode.upper()))
+
+    def test_MaxPoolingIndicesBwd(self, case_name):
+        N, C, H, W = 1, 3, 32, 32
+        kh, kw = 3, 3
+        sh, sw = 2, 2
+        ph, pw = 1, 1
+        H_out = (H + 2 * ph - kh) // sh + 1
+        W_out = (W + 2 * pw - kw) // sw + 1
+
+        grad_info = helper.make_tensor_value_info('grad', TensorProto.FLOAT,
+                                                  [N, C, H_out, W_out])
+        indices_info = helper.make_tensor_value_info('indices', TensorProto.FLOAT,
+                                                     [N, C, H_out, W_out])
+        grad_in_info = helper.make_tensor_value_info('grad_in', TensorProto.FLOAT,
+                                                     [N, C, H, W])
+
+        node_def = helper.make_node(
+            "MaxPoolingIndicesBwd",
+            inputs=["grad", "indices"],
+            outputs=["grad_in"],
+            domain="tpu_mlir",
+            kernel_shape=[kh, kw],
+            strides=[sh, sw],
+            pads=[ph, pw, ph, pw],
+            dilations=[1, 1],
+            input_shape=[N, C, H, W])
+
+        graph_def = helper.make_graph(
+            [node_def], case_name,
+            [grad_info, indices_info],
+            [grad_in_info])
+
+        indices_data = np.random.randint(0, kh * kw, [N, C, H_out, W_out]).astype(np.float32)
+        self.onnx_and_test(graph_def,
+                           input_data={
+                               "grad": np.random.randn(N, C, H_out, W_out).astype(np.float32),
+                               "indices": indices_data,
+                           })
+
+    def test_MaxPoolWithMask(self, case_name):
+        N, C, H, W = 1, 3, 32, 32
+        kh, kw = 3, 3
+        sh, sw = 2, 2
+        ph, pw = 1, 1
+        H_out = (H + 2 * ph - kh) // sh + 1
+        W_out = (W + 2 * pw - kw) // sw + 1
+
+        inp_info = helper.make_tensor_value_info('input', TensorProto.FLOAT,
+                                                 [N, C, H, W])
+        out_info = helper.make_tensor_value_info('out', TensorProto.FLOAT,
+                                                 [N, C, H_out, W_out])
+        mask_info = helper.make_tensor_value_info('mask', TensorProto.FLOAT,
+                                                  [N, C, H_out, W_out])
+
+        node_def = helper.make_node(
+            "MaxPoolWithMask",
+            inputs=["input"],
+            outputs=["out", "mask"],
+            domain="tpu_mlir",
+            kernel_shape=[kh, kw],
+            strides=[sh, sw],
+            pads=[ph, pw, ph, pw],
+            do_relu=False,
+            relu_limit=-1.0,
+            count_include_pad=False)
+
+        graph_def = helper.make_graph(
+            [node_def], case_name,
+            [inp_info],
+            [out_info, mask_info])
+        self.onnx_and_test(graph_def)
+
+    def test_MaxUnpool(self, case_name):
+        N, C, H, W = 1, 3, 4, 4
+        scale_h, scale_w = 2, 2
+        OH, OW = H * scale_h, W * scale_w
+
+        inp_info = helper.make_tensor_value_info('input', TensorProto.FLOAT, [N, C, H, W])
+        mask_info = helper.make_tensor_value_info('mask', TensorProto.FLOAT, [N, C, H, W])
+        out_info = helper.make_tensor_value_info('out', TensorProto.FLOAT, [N, C, OH, OW])
+
+        node_def = helper.make_node(
+            "MaxUnpool",
+            inputs=["input", "mask"],
+            outputs=["out"],
+            domain="tpu_mlir",
+            scale_h=scale_h,
+            scale_w=scale_w)
+
+        graph_def = helper.make_graph(
+            [node_def], case_name,
+            [inp_info, mask_info],
+            [out_info])
+        self.onnx_and_test(graph_def)
+
+        # mask needs valid indices into output space [0, OH*OW-1]
+        mask_data = np.random.randint(0, OH * OW, [N, C, H, W]).astype(np.float32)
+        self.onnx_and_test(graph_def,
+                           input_data={
+                               "input": np.random.randn(N, C, H, W).astype(np.float32),
+                               "mask": mask_data,
+                           })
+
+    def test_MeanRstd(self, case_name):
+        N, C, H, W = 1, 4, 8, 8
+        wshape = [1, C, 1, 1]
+
+        inp_info = helper.make_tensor_value_info('input', TensorProto.FLOAT,
+                                                 [N, C, H, W])
+        out_infos = [
+            helper.make_tensor_value_info(name, TensorProto.FLOAT, wshape)
+            for name in ['mean', 'rstd', 'rm_upd', 'rv_upd', 'scale', 'bias_new']
+        ]
+
+        rm_data = np.zeros(wshape).astype(np.float32)
+        rv_data = np.ones(wshape).astype(np.float32)
+        w_data = np.ones(wshape).astype(np.float32)
+        b_data = np.zeros(wshape).astype(np.float32)
+
+        node_def = helper.make_node(
+            "MeanRstd",
+            inputs=["input", "rm", "rv", "weight", "bias"],
+            outputs=[o.name for o in out_infos],
+            domain="tpu_mlir",
+            eps=1e-5,
+            momentum=0.1)
+
+        graph_def = helper.make_graph(
+            [node_def], case_name,
+            [inp_info],
+            out_infos)
+        graph_def.initializer.extend([
+            helper.make_tensor('rm', TensorProto.FLOAT, wshape, rm_data),
+            helper.make_tensor('rv', TensorProto.FLOAT, wshape, rv_data),
+            helper.make_tensor('weight', TensorProto.FLOAT, wshape, w_data),
+            helper.make_tensor('bias', TensorProto.FLOAT, wshape, b_data),
+        ])
+        self.onnx_and_test(graph_def)
+
+    def test_MeanStdScale(self, case_name):
+        if not self.test_cuda:
+            return
+
+        N, C, H, W = 1, 3, 32, 32
+
+        inp_info = helper.make_tensor_value_info('input', TensorProto.FLOAT,
+                                                 [N, C, H, W])
+        out_info = helper.make_tensor_value_info('out', TensorProto.FLOAT,
+                                                 [N, C, H, W])
+
+        node_def = helper.make_node(
+            "MeanStdScale",
+            inputs=["input"],
+            outputs=["out"],
+            domain="tpu_mlir",
+            quant_mode="NORMALIZED",
+            customization_format="NCHW",
+            channel_order="RGB",
+            sign=False,
+            scale=[1.0] * C,
+            std=[1.0] * C,
+            mean=[0.0] * C,
+            zero_points=[0.0] * C,
+            rounding_mode="ROUND_HALF_AWAY_FROM_ZERO")
+
+        graph_def = helper.make_graph(
+            [node_def], case_name,
+            [inp_info], [out_info])
+
+        model_def = helper.make_model(graph_def, producer_name=case_name)
+        model_def.opset_import[0].version = 14
+        custom_opset = OperatorSetIdProto()
+        custom_opset.domain = 'tpu_mlir'
+        custom_opset.version = 1
+        model_def.opset_import.extend([custom_opset])
+
+        input_data = {'input': np.random.randn(N, C, H, W).astype(np.float32)}
+        input_npz = "{}_in_fp32.npz".format(case_name)
+        np.savez(input_npz, **input_data)
+
+        tool = OnnxTransformer(case_name, model_def, test_input=input_npz, static_shape=True)
+        fp32_mlir = "{}.mlir".format(case_name)
+        tool.model_transform(fp32_mlir)
+
+        # Only F16 lowering is implemented
+        tpu_mlir, bmodel = self.bmodel_generate(case_name, "f16")
+        print("[Success] test {} F16".format(case_name))
+
+        tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
+        file_mark(tpu_npz)
+        show_fake_cmd(input_npz, tpu_mlir, tpu_npz, True, True)
+        cuda_outs = mlir_inference(input_data, tpu_mlir, dump_all=True, use_cuda=True)
+        np.savez(tpu_npz, **cuda_outs)
+
+        model_npz = bmodel.replace("." + bmodel.split(".")[-1], "_model_out.npz")
+        file_mark(model_npz)
+        show_fake_cmd(input_npz, bmodel, model_npz)
+        model_outs = model_inference(input_data, bmodel)
+        np.savez(model_npz, **model_outs)
+        npz_compare([model_npz, tpu_npz, "--tolerance", "0.99,0.90", "-v"])
+
+    def test_MeshGrid(self, case_name):
+        if not self.test_cuda:
+            return
+
+        dims = [3, 4]
+
+        inp_infos = [helper.make_tensor_value_info(f'in_{i}', TensorProto.FLOAT, [d])
+                     for i, d in enumerate(dims)]
+        out_infos = [helper.make_tensor_value_info(f'out_{i}', TensorProto.FLOAT, dims)
+                     for i in range(len(dims))]
+
+        node_def = helper.make_node(
+            "MeshGrid",
+            inputs=[o.name for o in inp_infos],
+            outputs=[o.name for o in out_infos],
+            domain="tpu_mlir",
+            is_reverse=False)
+
+        graph_def = helper.make_graph(
+            [node_def], case_name, inp_infos, out_infos)
+
+        model_def = helper.make_model(graph_def, producer_name=case_name)
+
+        input_data = {f'in_{i}': np.random.randn(d).astype(np.float32)
+                      for i, d in enumerate(dims)}
+        input_npz = "{}_in_fp32.npz".format(case_name)
+        np.savez(input_npz, **input_data)
+
+        tool = OnnxTransformer(case_name, model_def, test_input=input_npz, static_shape=True)
+        fp32_mlir = "{}.mlir".format(case_name)
+        tool.model_transform(fp32_mlir)
+
+        cpu_outs = mlir_inference(input_data, fp32_mlir, dump_all=True)
+        cpu_npz = "{}_cpu_out.npz".format(case_name)
+        np.savez(cpu_npz, **cpu_outs)
+
+        cuda_outs = mlir_inference(input_data, fp32_mlir, dump_all=True, use_cuda=True)
+        cuda_npz = "{}_cuda_out.npz".format(case_name)
+        np.savez(cuda_npz, **cuda_outs)
+
+        npz_compare([cuda_npz, cpu_npz, "--tolerance", "0.999,0.999", "-v"])
+        print("[Success] test {} CPU vs CUDA".format(case_name))
+
+    def test_Mish(self, case_name):
+        shape = [1, 3, 32, 32]
+        graph_txt = """
+            %s (float%s x) => (float%s y)
+            {
+                sp = Softplus(x)
+                th = Tanh(sp)
+                y = Mul(x, th)
+            }
+            """ % (case_name, shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+    def test_ScaleLut(self, case_name):
+        if not self.test_cuda:
+            return
+
+        N, C, H, W = 1, 3, 32, 32
+
+        inp_info = helper.make_tensor_value_info('input', TensorProto.FLOAT, [N, C, H, W])
+        out_info = helper.make_tensor_value_info('out', TensorProto.FLOAT, [N, C, H, W])
+
+        node_def = helper.make_node(
+            "ScaleLut",
+            inputs=["input"], outputs=["out"],
+            domain="tpu_mlir",
+            scale=[2.0, 1.5, 1.0],
+            bias=[0.5, 0.0, -0.5],
+            sign=True)
+
+        graph_def = helper.make_graph(
+            [node_def], case_name, [inp_info], [out_info])
+
+        model_def = helper.make_model(graph_def, producer_name=case_name)
+        model_def.opset_import[0].version = 14
+        custom_opset = OperatorSetIdProto()
+        custom_opset.domain = 'tpu_mlir'
+        custom_opset.version = 1
+        model_def.opset_import.extend([custom_opset])
+
+        input_data = {'input': np.random.randn(N, C, H, W).astype(np.float32)}
+        input_npz = "{}_in_fp32.npz".format(case_name)
+        np.savez(input_npz, **input_data)
+
+        tool = OnnxTransformer(case_name, model_def, test_input=input_npz, static_shape=True)
+        fp32_mlir = "{}.mlir".format(case_name)
+        tool.model_transform(fp32_mlir)
+
+        tpu_mlir, bmodel = self.bmodel_generate(case_name, "f16")
+        print("[Success] test {} F16".format(case_name))
+
+        tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
+        file_mark(tpu_npz)
+        show_fake_cmd(input_npz, tpu_mlir, tpu_npz, True, True)
+        cuda_outs = mlir_inference(input_data, tpu_mlir, dump_all=True, use_cuda=True)
+        np.savez(tpu_npz, **cuda_outs)
+
+        model_npz = bmodel.replace("." + bmodel.split(".")[-1], "_model_out.npz")
+        file_mark(model_npz)
+        show_fake_cmd(input_npz, bmodel, model_npz)
+        model_outs = model_inference(input_data, bmodel)
+        np.savez(model_npz, **model_outs)
+        npz_compare([model_npz, tpu_npz, "--tolerance", "0.99,0.90", "-v"])
+
+    def test_ShuffleChannel(self, case_name):
+        N, C, H, W = 1, 8, 16, 16
+        G = 4
+
+        inp_info = helper.make_tensor_value_info('input', TensorProto.FLOAT, [N, C, H, W])
+        mid_info = helper.make_tensor_value_info('mid', TensorProto.FLOAT, [N, G, C//G, H, W])
+        mid2_info = helper.make_tensor_value_info('mid2', TensorProto.FLOAT, [N, C//G, G, H, W])
+        out_info = helper.make_tensor_value_info('output', TensorProto.FLOAT, [N, C, H, W])
+
+        r0 = helper.make_node("Reshape", inputs=["input", "shape1"], outputs=["mid"])
+        t0 = helper.make_node("Transpose", inputs=["mid"], outputs=["mid2"], perm=[0,2,1,3,4])
+        r1 = helper.make_node("Reshape", inputs=["mid2", "shape2"], outputs=["output"])
+
+        graph_def = helper.make_graph([r0, t0, r1], case_name, [inp_info], [out_info])
+        graph_def.initializer.extend([
+            helper.make_tensor('shape1', TensorProto.INT64, [5], [N, G, C//G, H, W]),
+            helper.make_tensor('shape2', TensorProto.INT64, [4], [N, C, H, W]),
+        ])
+        self.onnx_and_test(graph_def)
+
+    def test_Sin(self, case_name):
+        shape = [1, 3, 32, 32]
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            {
+                output = Sin(input)
+            }
+            """ % (case_name, shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+    def test_Sinh(self, case_name):
+        shape = [1, 3, 32, 32]
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            {
+                output = Sinh(input)
+            }
+            """ % (case_name, shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+    def test_Tan(self, case_name):
+        shape = [1, 3, 32, 32]
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            {
+                output = Tan(input)
+            }
+            """ % (case_name, shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+    def test_SliceAxis(self, case_name):
+        shape = [1, 3, 32, 32]
+        out_shape = [1, 3, 16, 32]
+
+        inp_info = helper.make_tensor_value_info('input', TensorProto.FLOAT, shape)
+        out_info = helper.make_tensor_value_info('out', TensorProto.FLOAT, out_shape)
+
+        node_def = helper.make_node(
+            "Slice",
+            inputs=["input", "starts", "ends", "axes", "steps"],
+            outputs=["out"])
+
+        graph_def = helper.make_graph(
+            [node_def], case_name, [inp_info], [out_info])
+        graph_def.initializer.extend([
+            helper.make_tensor('starts', TensorProto.INT64, [1], [0]),
+            helper.make_tensor('ends', TensorProto.INT64, [1], [16]),
+            helper.make_tensor('axes', TensorProto.INT64, [1], [2]),
+            helper.make_tensor('steps', TensorProto.INT64, [1], [2]),
+        ])
+        self.onnx_and_test(graph_def)
+
+    def test_Softsign(self, case_name):
+        shape = [1, 3, 32, 32]
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            {
+                output = Softsign(input)
+            }
+            """ % (case_name, shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+    def test_Sort(self, case_name):
+        shape = [3, 16]
+
+        inp_info = helper.make_tensor_value_info('input', TensorProto.FLOAT, shape)
+        val_info = helper.make_tensor_value_info('val', TensorProto.FLOAT, shape)
+        idx_info = helper.make_tensor_value_info('idx', TensorProto.FLOAT, shape)
+
+        node_def = helper.make_node(
+            "Sort", inputs=["input"], outputs=["val", "idx"],
+            domain="tpu_mlir", axis=1, descending=False)
+
+        graph_def = helper.make_graph(
+            [node_def], case_name, [inp_info], [val_info, idx_info])
+        self.onnx_and_test(graph_def)
+
+    def test_StridedSlice(self, case_name):
+        shape = [1, 3, 32, 32]
+        out_shape = [1, 3, 8, 16]
+
+        inp_info = helper.make_tensor_value_info('x', TensorProto.FLOAT, shape)
+        out_info = helper.make_tensor_value_info('y', TensorProto.FLOAT, out_shape)
+
+        node_def = helper.make_node(
+            "Slice", inputs=["x", "starts", "ends", "axes", "steps"], outputs=["y"])
+
+        graph_def = helper.make_graph(
+            [node_def], case_name, [inp_info], [out_info])
+        graph_def.initializer.extend([
+            helper.make_tensor('starts', TensorProto.INT64, [4], [0, 0, 0, 0]),
+            helper.make_tensor('ends', TensorProto.INT64, [4], [1, 3, 16, 32]),
+            helper.make_tensor('axes', TensorProto.INT64, [4], [0, 1, 2, 3]),
+            helper.make_tensor('steps', TensorProto.INT64, [4], [1, 1, 2, 2]),
+        ])
+        self.onnx_and_test(graph_def)
+
+    def test_SwapChannel(self, case_name):
+        shape = [1, 3, 32, 32]
+
+        inp_info = helper.make_tensor_value_info('x', TensorProto.FLOAT, shape)
+        out_info = helper.make_tensor_value_info('y', TensorProto.FLOAT, shape)
+
+        node_def = helper.make_node(
+            "Gather", inputs=["x", "indices"], outputs=["y"],
+            axis=1)
+
+        graph_def = helper.make_graph(
+            [node_def], case_name, [inp_info], [out_info])
+        graph_def.initializer.extend([
+            helper.make_tensor('indices', TensorProto.INT64, [3], [2, 1, 0]),
+        ])
+        self.onnx_and_test(graph_def)
+
+    def test_Swish(self, case_name):
+        shape = [1, 3, 32, 32]
+        graph_txt = """
+            %s (float%s x) => (float%s y)
+            {
+                sig = Sigmoid(x)
+                y = Mul(x, sig)
+            }
+            """ % (case_name, shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+    def test_Abs(self, case_name):
+        input_shape = [1, 16, 64, 64]
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            {
+                output = Abs(input)
+            }
+            """ % (case_name, input_shape, input_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+    def test_Reciprocal(self, case_name):
+        input_shape = [4, 3, 224, 224]
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            {
+                output = Reciprocal(input)
+            }
+            """ % (case_name, input_shape, input_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        input_data = np.random.rand(*input_shape).astype(np.float32) + 0.5
+        # avoid divide 0
+        input_data[input_data == 0] = 1
+        self.onnx_and_test(graph_def, input_data={"input": input_data})
+
+    def test_PRelu(self, case_name):
+        input_shape = [2, 128, 100, 100]
+        slope_shape = [1, 128, 1, 1]
+        output_shape = [2, 128, 100, 100]
+        scales0 = np.random.rand(*slope_shape).astype(np.float32)
+        scales1 = np.negative(np.abs(scales0))
+        scales_case = [scales0, scales1]
+        for i, s in enumerate(scales_case):
+            slope = helper.make_tensor(
+                name="slope",
+                data_type=onnx.TensorProto.FLOAT,
+                dims=slope_shape,
+                vals=s,
+            )
+            graph_txt = """
+            %s (float%s input, float%s input1) => (float%s output)
+                {
+                    output0 = PRelu(input, slope)
+                    output = Add(output0, input1)
+                }
+                """ % (case_name, input_shape, input_shape, output_shape)
+            graph_def = onnx.parser.parse_graph(graph_txt)
+            graph_def.initializer.extend([slope])
+            self.onnx_and_test(graph_def)
+
+    def test_Sqrt(self, case_name):
+        shape = [3, 5, 100, 100]
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+                {
+                    output = Sqrt(input)
+                }
+                """ % (case_name, shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        input_data = np.abs(np.random.randn(*shape).astype(np.float32))
+        self.onnx_and_test(graph_def, input_data={"input": input_data})
+
+    def test_QuantizeLinear(self, case_name):
+        shape = [1, 3, 32, 32]
+        inp_info = helper.make_tensor_value_info('input', TensorProto.FLOAT, shape)
+        out_info = helper.make_tensor_value_info('output', TensorProto.INT8, shape)
+        scale = helper.make_tensor('scale', TensorProto.FLOAT, [1], [0.02])
+        zp = helper.make_tensor('zp', TensorProto.INT32, [1], [0])
+        node_def = helper.make_node("QuantizeLinear", inputs=["input", "scale", "zp"],
+                                     outputs=["output"])
+        graph_def = helper.make_graph([node_def], case_name, [inp_info], [out_info],
+                                       initializer=[scale, zp])
+        self.onnx_and_test(graph_def)
+
+    def test_Pow1(self, case_name):
+        shape = [1, 3, 27, 27]
+        input_data = np.abs(np.random.randn(*shape).astype(np.float32)) + 1e-6
+        constant = helper.make_tensor("constant", TensorProto.FLOAT, [1],
+                                      np.array([1.2]).astype(np.float32))
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            <float[1] constant>
+            {
+                output = Pow(input, constant)
+            }
+            """ % (case_name, shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([constant])
+    def test_Pack(self, case_name):
+        shape = [1, 3, 32, 32]
+        mid_shape = [1, 1, 3, 32, 32]
+        out_shape = [1, 3, 3, 32, 32]
+
+        inp_infos = [helper.make_tensor_value_info(f'i{i}', TensorProto.FLOAT, shape)
+                     for i in range(3)]
+        out_info = helper.make_tensor_value_info('o', TensorProto.FLOAT, out_shape)
+
+        nodes = []
+        u_names = []
+        for i in range(3):
+            u_name = f'u{i}'
+            u_names.append(u_name)
+            nodes.append(helper.make_node("Reshape", inputs=[f'i{i}', f'shape{i}'], outputs=[u_name]))
+        nodes.append(helper.make_node("Concat", inputs=u_names, outputs=["o"], axis=1))
+
+        graph_def = helper.make_graph(nodes, case_name, inp_infos, [out_info])
+        for i in range(3):
+            graph_def.initializer.extend([
+                helper.make_tensor(f'shape{i}', TensorProto.INT64, [5], mid_shape),
+            ])
+        self.onnx_and_test(graph_def)
+
+    def test_Unpack(self, case_name):
+        shape = [1, 4, 32, 32]
+        out_shape = [1, 1, 32, 32]
+
+        inp_info = helper.make_tensor_value_info('input', TensorProto.FLOAT, shape)
+        o = [helper.make_tensor_value_info(f'o{i}', TensorProto.FLOAT, out_shape) for i in range(4)]
+
+        split_node = helper.make_node("Split", inputs=["input", "split_init"],
+                                      outputs=[f'o{i}' for i in range(4)], axis=1)
+        graph_def = helper.make_graph([split_node], case_name, [inp_info], o)
+        graph_def.initializer.extend([
+            helper.make_tensor('split_init', TensorProto.INT64, [4], [1, 1, 1, 1]),
+        ])
+        self.onnx_and_test(graph_def)
+
+    def test_MLP(self, case_name, model_name=None):
+
+        class Model(nn.Module):
+            pass
+
     def test_Mod(self, case_name):
         shape = [1, 5, 15, 15]
         input1_info = helper.make_tensor_value_info('input1', TensorProto.INT64, shape)
@@ -6131,6 +7080,8 @@ class ONNX_IR_TESTER(object):
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
+
+   
     def test_TopK(self, case_name):
         shape = [10, 1000]
         const = 500

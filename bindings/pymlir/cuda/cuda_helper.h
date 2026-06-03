@@ -411,5 +411,147 @@ void interp(void *input, void *output, int n, int c, int h, int w, int out_h, in
             interp_platform_t platform);
 void GQA(void *Q, void *K, void *V, void *mask, void *output, int batch, int M_q, int M_k,
          int q_head, int kv_head, int dim, float scale, bool is_bf16);
+
+void bmMin(void *a, void *b, void *output, int num);
+void bmMinConst(void *input, void *output, float const_val, int num);
+void bmMish(void *input, void *output, int num);
+
+void meshGrid(void *input, void *output, int total_elems, int stride, int dim);
+void bmMod(void *a, void *b, void *output, int num);
+void bmSwish(void *input, void *output, float beta, int num);
+void swapChannel(void *input, void *output, void *order, int n, int c, int frame_size);
+void scatterElements(void *output, void *updates, void *flat_indices,
+                     int upd_num, bool add);
+void scatterND(void *output, void *updates, void *flat_indices,
+               int upd_num, bool add);
+void scaleLut(void *input, void *output, void *scale, void *bias,
+              int n, int c, int hw);
+void bmSign(void *input, void *output, int num);
+void bmShuffleChannel(void *input, void *output, int n, int c, int frame_size, int group);
+void bmSin(void *input, void *output, int num);
+void bmSinh(void *input, void *output, int num);
+void selectiveScan(void *c_ptr, void *deltaA, void *deltaB_u, void *u_ptr,
+                   void *D_ptr, void *output, int Kcdim, int L, int Batch, int has_uD);
+void bmSoftplus(void *input, void *output, int num);
+void bmSoftsign(void *input, void *output, int num);
+void bmTan(void *input, void *output, int num);
+void bmLn(void *input, void *output, int num);
+void trilu(void *input, void *output, int batch, int H, int W,
+           int row_stride, int diagonal, bool upper);
+void bmSqrt(void *input, void *output, int num);
+void stridedSlice(void *input, void *output, void *flat_indices, int out_num);
+
+int onnxNms(void *boxes, void *scores, void *output, int batch, int num_classes,
+            int spatial_dim, int max_output_per_class, float iou_threshold,
+            float score_threshold);
+
+void bmELU(void *input, void *output, float alpha, int num);
+void bmERF(void *input, void *output, int num);
+void bmEXP(void *input, void *output, int num);
+
+
+void clip4DF32(void *input, void *output, float min_val, float max_val,
+               int n, int c, int h, int w);
+
+void addConst4DF32(void *input, void *output, float const_val, bool do_relu,
+                   int n, int c, int h, int w);
+
+void divConst4DF32(void *input, void *output, float const_val, bool is_reverse,
+                   bool do_relu, int n, int c, int h, int w);
+
+void einsumF32(void *lhs, void *rhs, void *out,
+               int *lhs_shape, int *rhs_shape, int *out_shape,
+               int lhs_rank, int rhs_rank, int out_rank, int num_contract,
+               int *lhs_out_dim, int *rhs_out_dim,
+               int *lhs_contract_dim, int *rhs_contract_dim,
+               int *contract_shapes, int total_out_elems, int total_contract_elems);
+
+void maskRCNNBboxPoolerF32(
+    void *feat0, void *feat1, void *feat2, void *feat3,
+    void *rois, void *output, void *output_rois,
+    int feat0_h, int feat0_w, int feat1_h, int feat1_w,
+    int feat2_h, int feat2_w, int feat3_h, int feat3_w,
+    int batch_size, int C, int roi_slice, int roi_len,
+    int PH, int PW, int num_levels);
+
+void getBboxBDecode(void *rois, void *bbox, void *scores, void *max_val,
+                    void *cand_boxes, void *cand_scores, void *cand_indices,
+                    void *cand_count, int total_rois, int num_classes,
+                    int num_indexes, float delta2bbox_means,
+                    float delta2bbox_stds_0, float delta2bbox_stds_1,
+                    float threshold_score, float max_scalar_c, int max_candidates);
+
+void getBboxBCollect(void *cand_boxes, void *cand_scores, void *cand_indices,
+                     int num_candidates, void *out_bboxes, void *out_labels,
+                     int max_per_img, float nms_iou_thr, void *processed);
+
+void maskRCNNMaskPoolerF32(
+    void *feat0, void *feat1, void *feat2, void *feat3,
+    void *bboxes, void *output,
+    int feat0_h, int feat0_w, int feat1_h, int feat1_w,
+    int feat2_h, int feat2_w, int feat3_h, int feat3_w,
+    int batch_size, int C, int total_dets, int roi_len,
+    int PH, int PW, int num_levels, float scale_factor);
+
+void maskedFill(void *cond, void *brn, void *output, float const_val,
+               bool inversed, int num_elems);
+
+void matchTemplate(void *input, void *templ, void *output,
+                   int iH, int iW, int tH, int tW, int oH, int oW, int mode);
+
+void bmMax(void *a, void *b, void *output, int num);
+void bmMaxConst(void *input, void *output, float const_val, int num);
+
+void maxPoolWithMask(void *input, void *output, void *mask,
+                     int n, int c, int ih, int iw, int oh, int ow,
+                     int kh, int kw, int sh, int sw, int pad_h, int pad_w);
+
+void maxUnpool(void *input, void *mask, void *output, int n, int c, int oh, int ow,
+               int scale_h, int scale_w, int out_h, int out_w);
+void meanStdScale(void *input, void *output, void *mean, void *std,
+                  void *scale, void *zero_point, int n, int c, int h, int w);
+void maxPoolingIndicesBwd(void *grad_output, void *indices, void *grad_input,
+                          int num_elems);
+void meanRstd(void *input, void *mean_out, void *rstd_out,
+              void *running_mean, void *running_var, void *weight, void *bias,
+              int n, int c, int hw, float eps, float momentum);
+
+void bmMin(void *a, void *b, void *output, int num);
+void bmMinConst(void *input, void *output, float const_val, int num);
+void bmMish(void *input, void *output, int num);
+
+void meshGrid(void *input, void *output, int total_elems, int stride, int dim);
+void bmMod(void *a, void *b, void *output, int num);
+void bmSwish(void *input, void *output, float beta, int num);
+void swapChannel(void *input, void *output, void *order, int n, int c, int frame_size);
+void scatterElements(void *output, void *updates, void *flat_indices,
+                     int upd_num, bool add);
+void scatterND(void *output, void *updates, void *flat_indices,
+               int upd_num, bool add);
+void scaleLut(void *input, void *output, void *scale, void *bias,
+              int n, int c, int hw);
+void bmSign(void *input, void *output, int num);
+void bmShuffleChannel(void *input, void *output, int n, int c, int frame_size, int group);
+void bmSin(void *input, void *output, int num);
+void bmSinh(void *input, void *output, int num);
+void selectiveScan(void *c_ptr, void *deltaA, void *deltaB_u, void *u_ptr,
+                   void *D_ptr, void *output, int Kcdim, int L, int Batch, int has_uD);
+void bmSoftplus(void *input, void *output, int num);
+void bmSoftsign(void *input, void *output, int num);
+void bmTan(void *input, void *output, int num);
+void bmLn(void *input, void *output, int num);
+void trilu(void *input, void *output, int batch, int H, int W,
+           int row_stride, int diagonal, bool upper);
+void bmSqrt(void *input, void *output, int num);
+void stridedSlice(void *input, void *output, void *flat_indices, int out_num);
+
+int onnxNms(void *boxes, void *scores, void *output, int batch, int num_classes,
+            int spatial_dim, int max_output_per_class, float iou_threshold,
+            float score_threshold);
+
+void bmELU(void *input, void *output, float alpha, int num);
+void bmERF(void *input, void *output, int num);
+void bmEXP(void *input, void *output, int num);
+
 } // namespace cuda
 } // namespace tpu_mlir
