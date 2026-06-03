@@ -1149,7 +1149,9 @@ def origin_mlir_txt_to_bmodel(*,
                               quant_output_bf16: bool = False,
                               lgcache=True,
                               enable_lghash=False,
-                              lghash_dir: str = ""):
+                              lghash_dir: str = "",
+                              disable_topo_sort: bool = False,
+                              enable_affine: bool = False):
 
     options = []
     new_options = top_opt_options(add_postprocess)
@@ -1171,7 +1173,9 @@ def origin_mlir_txt_to_bmodel(*,
                                   compress_mode=compress_mode,
                                   lgcache=lgcache,
                                   enable_lghash=enable_lghash,
-                                  lghash_dir=lghash_dir)
+                                  lghash_dir=lghash_dir,
+                                  disable_topo_sort=disable_topo_sort,
+                                  enable_affine=enable_affine)
     options.extend(new_options)
     new_options = codegen_options(f"{model_name}_{mode}.bmodel", embed_debug_info, model_version,
                                   True)

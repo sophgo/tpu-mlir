@@ -95,10 +95,8 @@ class TpuLang:
         caller_args = inspect.getargvalues(caller_frame)
         args_info = {
             'args': caller_args.args,
-            'values': {
-                k: simplify_value(caller_args.locals[k])
-                for k in caller_args.args
-            }
+            'values': {k: simplify_value(caller_args.locals[k])
+                       for k in caller_args.args}
         }
 
         op = Operator(op_name,
@@ -186,7 +184,8 @@ def compile(
         enable_lghash=False,
         lghash_dir="",
         debug_dump_mode='normal',
-        disable_topo_sort=False):
+        disable_topo_sort=False,
+        enable_affine=False):
     if debug_dump_mode not in ['normal', 'dump', 'load']:
         raise ValueError(
             f"Invalid debug_dump_mode: '{debug_dump_mode}'. Supported values are ['normal', 'dump', 'load']."
@@ -252,7 +251,8 @@ def compile(
                                       layer_group_config=layer_group_config,
                                       enable_lghash=enable_lghash,
                                       lghash_dir=lghash_dir,
-                                      disable_topo_sort=disable_topo_sort)
+                                      disable_topo_sort=disable_topo_sort,
+                                      enable_affine=enable_affine)
     else:
         origin_mlir_txt_to_bmodel(converter=converter,
                                   model_name=name,
@@ -269,7 +269,9 @@ def compile(
                                   lgcache=False,
                                   enable_lghash=enable_lghash,
                                   lghash_dir=lghash_dir,
-                                  num_core=num_core)
+                                  num_core=num_core,
+                                  disable_topo_sort=disable_topo_sort,
+                                  enable_affine=enable_affine)
 
 
 def mlir_compile(name: str,
@@ -287,7 +289,8 @@ def mlir_compile(name: str,
                  gdma_check=False,
                  layer_group_config="",
                  disable_topo_sort=False,
-                 num_core=1):
+                 num_core=1,
+                 enable_affine=False):
     supported_log_levels = ["normal", "simple", "only-layer-group", "quiet"]
     if log_level not in supported_log_levels:
         raise ValueError(
@@ -323,7 +326,8 @@ def mlir_compile(name: str,
                                   embed_debug_info=embed_debug_info,
                                   gdma_check=gdma_check,
                                   layer_group_config=layer_group_config,
-                                  disable_topo_sort=disable_topo_sort)
+                                  disable_topo_sort=disable_topo_sort,
+                                  enable_affine=enable_affine)
 
 
 def compile_f32(name: str,
@@ -349,7 +353,8 @@ def compile_f32(name: str,
                 enable_lghash=False,
                 lghash_dir="",
                 debug_dump_mode='normal',
-                disable_topo_sort=False):
+                disable_topo_sort=False,
+                enable_affine=False):
     if debug_dump_mode not in ['normal', 'dump', 'load']:
         raise ValueError(
             f"Invalid debug_dump_mode: '{debug_dump_mode}'. Supported values are ['normal', 'dump', 'load']."
@@ -433,7 +438,8 @@ def compile_f32(name: str,
                                           layer_group_config=layer_group_config,
                                           enable_lghash=enable_lghash,
                                           lghash_dir=lghash_dir,
-                                          disable_topo_sort=disable_topo_sort)
+                                          disable_topo_sort=disable_topo_sort,
+                                          enable_affine=enable_affine)
     else:
         for m in mode_list:
             origin_mlir_txt_to_bmodel(converter=converter,
@@ -449,7 +455,9 @@ def compile_f32(name: str,
                                       lgcache=False,
                                       enable_lghash=enable_lghash,
                                       lghash_dir=lghash_dir,
-                                      num_core=num_core)
+                                      num_core=num_core,
+                                      disable_topo_sort=disable_topo_sort,
+                                      enable_affine=enable_affine)
 
 
 def mlir_compile_f32(name: str,
@@ -468,9 +476,10 @@ def mlir_compile_f32(name: str,
                      addr_mode='auto',
                      gdma_check=False,
                      layer_group_config="",
-                     spec_op_mode: dict = {"mean_std_scale": "f16"},
+                     spec_op_mode: dict = None,
                      disable_topo_sort=False,
-                     num_core=1):
+                     num_core=1,
+                     enable_affine=False):
     support_quant_mode = ['f32', 'f16', 'bf16']
     assert mode in support_quant_mode + ['all']
     assert addr_mode in ['auto', 'io_reloc']
@@ -529,7 +538,8 @@ def mlir_compile_f32(name: str,
                                       embed_debug_info=embed_debug_info,
                                       gdma_check=gdma_check,
                                       layer_group_config=layer_group_config,
-                                      disable_topo_sort=disable_topo_sort)
+                                      disable_topo_sort=disable_topo_sort,
+                                      enable_affine=enable_affine)
 
 
 def model_transform(model_name, converter: TpuLangConverter, log_level: str = 'normal'):
@@ -612,7 +622,8 @@ def bmodel_generate_and_inference(model_name: str,
                                   layer_group_config: str = "",
                                   enable_lghash: bool = False,
                                   lghash_dir: str = "",
-                                  disable_topo_sort: bool = False):
+                                  disable_topo_sort: bool = False,
+                                  enable_affine: bool = False):
     # generate bmodel
     tpu_mlir = "{}_{}".format(model_name, quant_mode)
     tpu_final = tpu_mlir + "_final.mlir"
@@ -631,7 +642,8 @@ def bmodel_generate_and_inference(model_name: str,
                   layer_group_config=layer_group_config,
                   enable_lghash=enable_lghash,
                   lghash_dir=lghash_dir,
-                  disable_topo_sort=disable_topo_sort)
+                  disable_topo_sort=disable_topo_sort,
+                  enable_affine=enable_affine)
 
     if False:
         bmodel_file = tpu_mlir + ".bmodel"
