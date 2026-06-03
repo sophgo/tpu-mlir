@@ -33,17 +33,7 @@ else()  # soc pcie
   set(NAME_SUFFIX _${CHIP})
   # try download cross toolchain
   if(NOT DEFINED ENV{CROSS_TOOLCHAINS})
-      message("CROSS_TOOLCHAINS was not defined, try source download_toolchain.sh")
-      execute_process(
-          COMMAND bash -c "CHIP=${CHIP} DEV_MODE=${DEV_MODE} source  ${CMAKE_CURRENT_LIST_DIR}/download_toolchain.sh && env"
-          RESULT_VARIABLE result
-          OUTPUT_VARIABLE output
-      )
-      if(NOT result EQUAL "0")
-          message(FATAL_ERROR "Not able to source download_toolchain.sh: ${output}")
-      endif()
-      string(REGEX MATCH "CROSS_TOOLCHAINS=([^\n]*)" _ ${output})
-      set(ENV{CROSS_TOOLCHAINS} "${CMAKE_MATCH_1}")
+      message(FATAL_ERROR "CROSS_TOOLCHAINS is not set. Source envsetup.sh first, or set the env var manually.")
   endif()
   set(RISCV_FAMLIY bm1688 bm1690 bm1690e sg2260e sg2260erv bm1684x2)
   if(${CHIP} IN_LIST RISCV_FAMLIY)
@@ -54,17 +44,7 @@ else()  # soc pcie
     set(CMAKE_STRIP $ENV{CROSS_TOOLCHAINS}/gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-strip)
   endif()
   if(NOT EXISTS ${CMAKE_C_COMPILER})
-    message("CROSS_TOOLCHAINS was not defined, try source download_toolchain.sh")
-    execute_process(
-        COMMAND bash -c "CHIP=${CHIP} DEV_MODE=${DEV_MODE} source  ${CMAKE_CURRENT_LIST_DIR}/download_toolchain.sh && env"
-        RESULT_VARIABLE result
-        OUTPUT_VARIABLE output
-    )
-    if(NOT result EQUAL "0")
-        message(FATAL_ERROR "Not able to source download_toolchain.sh: ${output}")
-    endif()
-    string(REGEX MATCH "CROSS_TOOLCHAINS=([^\n]*)" _ ${output})
-    set(ENV{CROSS_TOOLCHAINS} "${CMAKE_MATCH_1}")
+    message(FATAL_ERROR "Cross compiler not found at ${CMAKE_C_COMPILER}. Source envsetup.sh to download toolchains, or set CROSS_TOOLCHAINS manually.")
   endif()
 endif()
 
@@ -183,4 +163,3 @@ if(NOT DEBUG)
     COMMENT "Stripping symbols from $<TARGET_FILE:${SHARED_LIBRARY_OUTPUT_FILE}>"
   )
 endif()
-install(FILES  $<TARGET_FILE:${SHARED_LIBRARY_OUTPUT_FILE}> DESTINATION ${NNTOOLCHAIN_DIRECTORY}/ppl)

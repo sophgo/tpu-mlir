@@ -83,7 +83,7 @@ docker load -i tpuc_dev_v3.4.tar.gz
 docker run --privileged --name tpu-mlir -v $PWD:/workspace -it sophgo/tpuc_dev:latest
 ```
 
-### 2a. 安装预编译 wheel（推荐）
+### 2a. 安装预编译 wheel
 
 > 要求 Python ≥ 3.10，Ubuntu 22.04（推荐直接使用上述 Docker 镜像）。
 
@@ -91,9 +91,10 @@ docker run --privileged --name tpu-mlir -v $PWD:/workspace -it sophgo/tpuc_dev:l
 pip install tpu_mlir
 ```
 
-### 2b. 从源码编译
+### 2b. 从源码编译 （推荐）
 
 ```shell
+# git clone with --depth 1
 cd /workspace/tpu-mlir
 pip install -r requirements.txt
 source ./envsetup.sh

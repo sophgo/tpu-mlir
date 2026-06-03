@@ -287,14 +287,14 @@ done
 
 # ---------------------------------------------------------------------------
 # Build PplBackend once after all backends are ready
-echo ""
-echo ">>> [PplBackend] building ..."
-if [[ "${BUILD_TYPE}" == "DEBUG" ]]; then
-    "${TPUMLIR_PATH}/lib/PplBackend/build.sh" DEBUG
-else
-    "${TPUMLIR_PATH}/lib/PplBackend/build.sh" RELEASE
-fi
-echo ">>> [PplBackend] done."
+# echo ""
+# echo ">>> [PplBackend] building ..."
+# if [[ "${BUILD_TYPE}" == "DEBUG" ]]; then
+#     "${TPUMLIR_PATH}/lib/PplBackend/build.sh" DEBUG
+# else
+#     "${TPUMLIR_PATH}/lib/PplBackend/build.sh" RELEASE
+# fi
+# echo ">>> [PplBackend] done."
 
 echo ""
 echo "========================================"

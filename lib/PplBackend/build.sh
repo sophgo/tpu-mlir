@@ -37,6 +37,9 @@ clean_up() {
   mkdir -p "$build_dir"
 }
 
+# Ensure the target lib directory exists
+mkdir -p "${INSTALL_PATH}/lib"
+
 # Parallel ppl-compile over all *.pl files in ../src
 # Args: chip [extra ppl-compile flags...]
 ppl_compile_all() {
@@ -76,9 +79,6 @@ file_changed=false
 # headers, the CMake build description, and the build script itself.
 mapfile -t md5_list < <(generate_md5_list \
   src src_dyn include CMakeLists.txt Dynkernel.cmake)
-# RELEASE vs DEBUG produces different artifacts, so treat the build mode as
-# an input by embedding it as a sentinel line in the md5 list.
-md5_list=("__BUILD_MODE__ $BUILD_MODE" "${md5_list[@]}")
 if [ ! -f "$MD5FILE" ] || has_md5_changes "$MD5FILE" "${md5_list[@]}"; then
   file_changed=true
 fi
@@ -86,7 +86,6 @@ fi
 lib_changed=false
 NNTC_LIB_PATH=${PROJECT_ROOT}/third_party/nntoolchain/lib
 PPL_VER_PATH=${PROJECT_ROOT}/third_party/ppl/version
-VER_FILE=${PROJECT_ROOT}/third_party/nntoolchain/ppl/version
 LIBS=("libcmodel_bm1684x.a"  "libbm1684x_kernel_module.a"
       "libcmodel_bm1688.a"   "libbmtpulv60_kernel_module.a"
       "libcmodel_bm1690.a"   "libbm1690_kernel_module.a"
@@ -101,13 +100,17 @@ mapfile -t libs_md5_list < <(
   done
 )
 # check whether the third_party/nntoolchain/lib or ppl is updated
-if [ ! -f "$VER_FILE" ] || has_md5_changes "$VER_FILE" "${libs_md5_list[@]}" || ! grep -Fxq -f "$PPL_VER_PATH" "$VER_FILE"; then
+# use a version file under the install path for cache tracking
+VER_DIR="${INSTALL_PATH}/share/ppl"
+mkdir -p "$VER_DIR"
+VER_FILE="${VER_DIR}/.version"
+if [ ! -f "$VER_FILE" ] || [ "$(head -n1 "$VER_FILE")" != "$BUILD_MODE" ] || has_md5_changes "$VER_FILE" "${libs_md5_list[@]}" || ! grep -Fxq -f "$PPL_VER_PATH" "$VER_FILE"; then
   lib_changed=true
 fi
 if [ "$lib_changed" = false ] && [ "$file_changed" = false ]; then
   exit 0
 fi
-# build third_party/nntoolchain/ppl lib
+# build ppl libs and install directly to INSTALL_PATH
 echo "rebuilding ppl..."
 pushd "$DIR"
 # wipe ppl compile cache ONCE for the whole rebuild (not per-chip)
@@ -176,8 +179,8 @@ fi
 if [ "$file_changed" = true ]; then
   printf '%s\n' "${md5_list[@]}" > "$MD5FILE"
 fi
-# VER_FILE records the nntoolchain/ppl versions that the installed RELEASE
-# artifacts were built against, so only update it on RELEASE builds.
+# VER_FILE records the nntoolchain lib versions that the installed artifacts
+# were built against, so only update it on RELEASE builds.
 if [ "$lib_changed" = true ]; then
   printf '%s\n' "$BUILD_MODE" > "$VER_FILE"
   cat "$PPL_VER_PATH" >> "$VER_FILE"

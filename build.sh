@@ -28,11 +28,13 @@ BUILD_TYPE=""
 CXX_FLAGS="-O2"
 USE_CUDA="OFF"
 ENABLE_COVERAGE_FLAG="OFF"
+PPL_BUILD_TYPE="RELEASE"
 
 if [ -n "$1" ]; then
     if [ "$1" = "DEBUG" ]; then
         BUILD_TYPE="Debug"
         CXX_FLAGS="-ggdb"
+        PPL_BUILD_TYPE="DEBUG"
     elif [ "$1" != "RELEASE" ]; then
         echo "Invalid build mode: $1"
         usage
@@ -58,7 +60,6 @@ if [ "${ENABLE_COVERAGE}" = "True" ]; then
 fi
 
 # prepare install/build dir
-rm -rf "${INSTALL_PATH}"
 cmake -G Ninja \
   -B "${BUILD_PATH}" \
   -DCMAKE_C_COMPILER=clang \
@@ -77,9 +78,8 @@ cmake --build "$BUILD_PATH" --target install -j${cpu_num}
 
 cmake --build "$BUILD_PATH" --target passes_json_files builder_python install_passes_files
 
-# build ppl code
-# bash lib/PplBackend/build.sh DEBUG
-bash lib/PplBackend/build.sh
+# build ppl code (after main install so INSTALL_PATH/lib/ is ready)
+bash lib/PplBackend/build.sh ${PPL_BUILD_TYPE}
 
 # Clean up some files for release build
 if [ "$1" != "DEBUG" ]; then

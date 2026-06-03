@@ -40,36 +40,12 @@ function download_loong() {
   download_toolchain $tool_name $tool_addr $tool_file
 }
 
-CROSS_TOOLCHAINS=${1:-$PROJECT_ROOT/../bm_prebuilt_toolchains}
-loongarch_host_toolchain=${2}
-
-CURRENT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
-
-if [ -z "$CROSS_TOOLCHAINS" ]; then
-  export CROSS_TOOLCHAINS=$CROSS_TOOLCHAINS
-fi
-echo "export CROSS_TOOLCHAINS=$CROSS_TOOLCHAINS"
+CROSS_TOOLCHAINS=${1:-$PROJECT_ROOT/cross_toolchains}
 
 mkdir -p $CROSS_TOOLCHAINS
-pushd $CROSS_TOOLCHAINS >>/dev/null
-
-if [ x${CHIP} == "xbm1688" ]; then
-  download_riscv_xuantie900
-  if [ x${DEV_MODE} == "xsoc" ]; then
-    download_gcc_arm
-  fi
-elif [ x${CHIP} == "xbm1684x" ]; then
-  if [ "x${loongarch_host_toolchain}" == "xloongarch64" ]; then
-    download_loong
-  else
-    download_gcc_arm
-  fi
-  if [ x${DEV_MODE} == "xsoc" ]; then
-    download_gcc_linaro
-  fi
-elif [ x${CHIP} == "xbm1690" ]; then
-    download_riscv_xuantie900
-else
-  return 1
-fi
-popd >>/dev/null
+pushd $CROSS_TOOLCHAINS
+download_loong
+download_gcc_arm
+download_gcc_linaro
+download_riscv_xuantie900
+popd

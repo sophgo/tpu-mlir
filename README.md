@@ -83,7 +83,7 @@ Create and enter the container:
 docker run --privileged --name tpu-mlir -v $PWD:/workspace -it sophgo/tpuc_dev:latest
 ```
 
-### 2a. Install the prebuilt wheel (recommended)
+### 2a. Install the prebuilt wheel
 
 > Requires Python ≥ 3.10 on Ubuntu 22.04 (already satisfied inside the Docker image).
 
@@ -91,9 +91,10 @@ docker run --privileged --name tpu-mlir -v $PWD:/workspace -it sophgo/tpuc_dev:l
 pip install tpu_mlir
 ```
 
-### 2b. Build from source
+### 2b. Build from source (recommended)
 
 ```shell
+# git clone with --depth 1
 cd /workspace/tpu-mlir
 pip install -r requirements.txt
 source ./envsetup.sh

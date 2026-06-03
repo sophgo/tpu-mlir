@@ -32,7 +32,7 @@ export PATH=$PROJECT_ROOT/third_party/customlayer/python:$PATH
 export PATH=$PROJECT_ROOT/python/tools/train/test:$PATH
 
 # ppl compiler path
-export PPL_PROJECT_ROOT=$INSTALL_PATH/ppl
+export PPL_PROJECT_ROOT=$PROJECT_ROOT/third_party/ppl
 export PPL_BUILD_PATH=$PPL_PROJECT_ROOT/build
 export PPL_INSTALL_PATH=$PPL_PROJECT_ROOT/install
 export PPL_RUNTIME_PATH=$PPL_PROJECT_ROOT/deps
@@ -91,8 +91,17 @@ function use_chip_cmodel() {
 }
 
 # only used to build libatomic_exec_aarch64.so for soc_infer
-export CROSS_TOOLCHAINS=$PROJECT_ROOT/../bm_prebuilt_toolchains
+# fallback to local cross_toolchains if bm_prebuilt_toolchains is not available
+if [ -d "$PROJECT_ROOT/../bm_prebuilt_toolchains" ]; then
+  export CROSS_TOOLCHAINS=$PROJECT_ROOT/../bm_prebuilt_toolchains
+elif [ -d "$PROJECT_ROOT/cross_toolchains" ]; then
+  export CROSS_TOOLCHAINS=$PROJECT_ROOT/cross_toolchains
+else
+  export CROSS_TOOLCHAINS=$PROJECT_ROOT/cross_toolchains
+  $PROJECT_ROOT/download_toolchains.sh $CROSS_TOOLCHAINS
+fi
 export LIBSOPHON_ROOT=$PROJECT_ROOT/../libsophon
+
 function rebuild_atomic_exec_alone() {
     export ATOMIC_EXEC_ALONE=1
     if [ -z "$USE_CROSS_TOOLCHAINS" ]; then

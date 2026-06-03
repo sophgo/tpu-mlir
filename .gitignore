@@ -25,6 +25,7 @@ tpulang_test_*/
 bmodel_fbs.py
 .ipynb_checkpoints/
 cross_toolchains/
+third_party/nntoolchain/ppl/
 dist/
 !/python/tools/soc_infer/debugger/bmodel_fbs.py
 
