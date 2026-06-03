@@ -59,6 +59,22 @@ def main():
                         choices=[1, 2],
                         default=1,
                         help='core num for currnet model, default is 1')
+    parser.add_argument('--disable_topo_sort',
+                        action='store_true',
+                        default=False,
+                        help='disable topological sort')
+    parser.add_argument('--enable_affine',
+                        action='store_true',
+                        default=False,
+                        help='enable affine optimization')
+    parser.add_argument('--embed_debug_info',
+                        action='store_true',
+                        default=False,
+                        help='embed debug info in bmodel')
+    parser.add_argument('--spec_op_mode',
+                        type=json.loads,
+                        default=None,
+                        help='specific op mode in JSON format, e.g. \'{"mean_std_scale": "f16"}\'')
     args = parser.parse_args()
 
     print(f"Model path: {args.model_path}")
@@ -67,26 +83,37 @@ def main():
     if args.tag:
         name = f"tmp_model_{args.tag}_{args.chip}"
     else:
-        name = "tmp_model_{args.chip}"
+        name = f"tmp_model_{args.chip}"
     if args.mode == "f32":
         tpul.mlir_compile_f32(name,
                               args.model_path,
                               layer_group_config=args.layer_group_config,
                               dynamic=args.dynamic,
-                              num_core=args.num_core)
+                              num_core=args.num_core,
+                              disable_topo_sort=args.disable_topo_sort,
+                              enable_affine=args.enable_affine,
+                              embed_debug_info=args.embed_debug_info,
+                              spec_op_mode=args.spec_op_mode)
     elif args.mode == "f16":
         tpul.mlir_compile_f32(name,
                               args.model_path,
                               mode='f16',
                               layer_group_config=args.layer_group_config,
                               dynamic=args.dynamic,
-                              num_core=args.num_core)
+                              num_core=args.num_core,
+                              disable_topo_sort=args.disable_topo_sort,
+                              enable_affine=args.enable_affine,
+                              embed_debug_info=args.embed_debug_info,
+                              spec_op_mode=args.spec_op_mode)
     elif args.mode == "int8":
         tpul.mlir_compile(name,
                           args.model_path,
                           layer_group_config=args.layer_group_config,
                           dynamic=args.dynamic,
-                          num_core=args.num_core)
+                          num_core=args.num_core,
+                          disable_topo_sort=args.disable_topo_sort,
+                          enable_affine=args.enable_affine,
+                          embed_debug_info=args.embed_debug_info)
     tpul.deinit()
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
@@ -97,6 +124,10 @@ def main():
     print(f"layer_group_config: {args.layer_group_config}")
     print(f"dynamic: {args.dynamic}")
     print(f"num_core: {args.num_core}")
+    print(f"disable_topo_sort: {args.disable_topo_sort}")
+    print(f"enable_affine: {args.enable_affine}")
+    print(f"embed_debug_info: {args.embed_debug_info}")
+    print(f"spec_op_mode: {args.spec_op_mode}")
     print(f" Processing completed!")
     print(f" Total time: {elapsed_time:.4f} seconds")
 
