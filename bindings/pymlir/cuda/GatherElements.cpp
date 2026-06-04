@@ -12,19 +12,11 @@ void py_cuda::cudaGatherElementsOp(tpu::GatherElementsOp op) {
   if (axis < 0) {
     axis += input_shape.size();
   }
-  int outer_dims = 1;
-  for (int i = 0; i < axis; i++) {
-    outer_dims *= input_shape[i];
-  }
-  int inner_dims = 1;
-  for (int i = axis + 1; i < input_shape.size(); i++) {
-    inner_dims *= input_shape[i];
-  }
   auto input_type = getCudaType(op.getInput());
   auto index_type = getCudaType(op.getIndices());
   cuda::gatherElements(indices, input, output,
-             indices_shape[axis], input_shape[axis],
-             outer_dims, inner_dims, index_type, input_type);
+             input_shape.data(), indices_shape.data(),
+             input_shape.size(), axis, index_type, input_type);
 }
 
 
@@ -38,17 +30,9 @@ void py_cuda::cudaGatherElementsOp(top::GatherElementsOp op) {
   if (axis < 0) {
     axis += input_shape.size();
   }
-  int outer_dims = 1;
-  for (int i = 0; i < axis; i++) {
-    outer_dims *= input_shape[i];
-  }
-  int inner_dims = 1;
-  for (int i = axis + 1; i < input_shape.size(); i++) {
-    inner_dims *= input_shape[i];
-  }
   auto input_type = getCudaType(op.getInput());
   auto index_type = getCudaType(op.getIndices());
   cuda::gatherElements(indices, input, output,
-             indices_shape[axis], input_shape[axis],
-             outer_dims, inner_dims, index_type, input_type);
+             input_shape.data(), indices_shape.data(),
+             input_shape.size(), axis, index_type, input_type);
 }

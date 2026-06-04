@@ -183,6 +183,7 @@ class OnnxConverter(BaseConverter):
             "ArgMax": lambda node: self.convert_arg_op(node),
             "ArgMin": lambda node: self.convert_arg_op(node),
             "And": lambda node: self.convert_cmp_op(node),
+            "AdaptiveAvgPool": lambda node: self.convert_adaptive_avgpool_op(node),
             "AveragePool": lambda node: self.convert_avgpool_op(node),
             "BatchNormalization": lambda node: self.convert_batchnorm_op(node),
             "Cast": lambda node: self.convert_cast_op(node),
@@ -191,15 +192,18 @@ class OnnxConverter(BaseConverter):
             "Constant": lambda node: self.convert_constant_op(node),
             "ConstantOfShape": lambda node: self.convert_constantofshape_op(node),
             "Conv": lambda node: self.convert_conv_op(node),
+            "ConvBwd_Weight": lambda node: self.convert_conv_bwd_weight_op(node),
             "Correlation": lambda node: self.convert_correlation_op(node),
             "ConcatVolume": lambda node: self.convert_concat_volume_op(node),
             "Cos": lambda node: self.convert_cos_op(node),
+            "Cosh": lambda node: self.convert_cosh_op(node),
             "Clip": lambda node: self.convert_clip_op(node),
             "ConvTranspose": lambda node: self.convert_conv_transpose_op(node),
             "CumSum": lambda node: self.convert_cumsum_op(node),
             "DepthToSpace": lambda node: self.convert_depth2space_op(node),
             "DequantizeLinear": lambda node: self.convert_deqlinear_op(node),
             "Div": lambda node: self.convert_div_op(node),
+            "DivConst": lambda node: self.convert_div_const_op(node),
             "Dropout": lambda node: self.convert_skip_op(node),
             "Einsum": lambda node: self.convert_einsum_op(node),
             "Elu": lambda node: self.convert_elu_op(node),
@@ -240,6 +244,7 @@ class OnnxConverter(BaseConverter):
             "Mod": lambda node: self.convert_mod_op(node),
             "Mul": lambda node: self.convert_mul_op(node),
             "Neg": lambda node: self.convert_neg_op(node),
+            "Nms": lambda node: self.convert_nms_op(node),
             "NonMaxSuppression": lambda node: self.convert_nms_op(node),
             "Not": lambda node: self.convert_not_op(node),
             "NonZero": lambda node: self.convert_nonzero_op(node),
@@ -267,6 +272,7 @@ class OnnxConverter(BaseConverter):
             "ReverseSequence": lambda node: self.convert_reverse_sequence_op(node),
             "RoiAlign": lambda node: self.convert_roi_align_op(node),
             "Round": lambda node: self.convert_round_op(node),
+            "Rsqrt": lambda node: self.convert_rsqrt_op(node),
             "ScatterElements": lambda node: self.convert_scatter_elements_op(node),
             "ScatterND": lambda node: self.convert_scatternd_op(node),
             "SelectiveScan": lambda node: self.convert_selective_scan(node),
@@ -864,7 +870,8 @@ class OnnxConverter(BaseConverter):
     def convert_cast_op(self, onnx_node):
         assert (onnx_node.op_type == "Cast")
         # breakpoint()
-        if onnx_node.attrs['to'] in [np.int64, np.int32]:
+        to_dtype = onnx_node.attrs['to']
+        if to_dtype in [np.int64, np.int32, onnx.TensorProto.INT64, onnx.TensorProto.INT32]:
             # cast to int32
             op = self.getOp(onnx_node.inputs[0])
             new_op = top.CastOp(self.unranked_type,
@@ -874,7 +881,7 @@ class OnnxConverter(BaseConverter):
                                 loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                                 ip=self.mlir.insert_point).output
             self.addOperand(onnx_node.name, new_op)
-        elif onnx_node.attrs['to'] == np.float32:
+        elif to_dtype in [np.float32, onnx.TensorProto.FLOAT]:
             # cast to float32
             op = self.getOp(onnx_node.inputs[0])
             new_op = top.CastOp(self.unranked_type,
@@ -882,6 +889,14 @@ class OnnxConverter(BaseConverter):
                                 to="F32",
                                 loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                                 ip=self.mlir.insert_point).output
+            self.addOperand(onnx_node.name, new_op)
+        elif to_dtype in [np.float16, onnx.TensorProto.FLOAT16]:
+            op = self.getOp(onnx_node.inputs[0])
+            new_op = top.DtypeCastOp(self.unranked_type,
+                                     op,
+                                     loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                     onnx_node.op_type)),
+                                     ip=self.mlir.insert_point).output
             self.addOperand(onnx_node.name, new_op)
         else:
             if self.isWeight(onnx_node.inputs[0]):
@@ -1018,6 +1033,84 @@ class OnnxConverter(BaseConverter):
                             do_relu=False,
                             loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                             ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_conv_bwd_weight_op(self, onnx_node):
+        assert (onnx_node.op_type == "ConvBwd_Weight")
+        input_op = self.getOperand(onnx_node.inputs[0])
+        gradout_op = self.getOperand(onnx_node.inputs[1])
+        # The top op requires a tensor for gradout_transpose even when the
+        # current top/cuda implementation does not consume it.
+        gradout_transpose_op = gradout_op
+        if len(onnx_node.inputs) > 2:
+            gradout_transpose_op = self.getOperand(onnx_node.inputs[2])
+
+        groups = onnx_node.attrs.get("groups", onnx_node.attrs.get("group", 1))
+        if "input_shape" in onnx_node.attrs:
+            input_shape = onnx_node.attrs["input_shape"]
+        else:
+            input_shape = [
+                onnx_node.attrs["input_n"], onnx_node.attrs["input_c"], onnx_node.attrs["input_h"],
+                onnx_node.attrs["input_w"]
+            ]
+        if "grad_out_shape" in onnx_node.attrs:
+            grad_out_shape = onnx_node.attrs["grad_out_shape"]
+        else:
+            grad_out_shape = [
+                onnx_node.attrs["grad_out_n"], onnx_node.attrs["grad_out_c"],
+                onnx_node.attrs["grad_out_h"], onnx_node.attrs["grad_out_w"]
+            ]
+        if "kernel_shape" in onnx_node.attrs:
+            kernel_shape = onnx_node.attrs["kernel_shape"]
+        else:
+            kernel_shape = [onnx_node.attrs["kernel_h"], onnx_node.attrs["kernel_w"]]
+        if "stride" in onnx_node.attrs:
+            stride = onnx_node.attrs["stride"]
+        elif "strides" in onnx_node.attrs:
+            stride = onnx_node.attrs["strides"]
+        else:
+            stride = [onnx_node.attrs.get("stride_h", 1), onnx_node.attrs.get("stride_w", 1)]
+        if "dilations" in onnx_node.attrs:
+            dilations = onnx_node.attrs["dilations"]
+        else:
+            dilations = [
+                onnx_node.attrs.get("dilation_h", 1),
+                onnx_node.attrs.get("dilation_w", 1),
+            ]
+        if "padding" in onnx_node.attrs:
+            padding = onnx_node.attrs["padding"]
+        elif "pads" in onnx_node.attrs:
+            padding = onnx_node.attrs["pads"]
+        else:
+            padding = [
+                onnx_node.attrs.get("pad_top", 0),
+                onnx_node.attrs.get("pad_left", 0),
+                onnx_node.attrs.get("pad_bottom", 0),
+                onnx_node.attrs.get("pad_right", 0),
+            ]
+        grad_bias_enable = bool(onnx_node.attrs.get("grad_bias_enable", False))
+
+        output_shape = [
+            grad_out_shape[1],
+            input_shape[1] // groups,
+            kernel_shape[0],
+            kernel_shape[1],
+        ]
+        new_op = top.ConvBwdWeightOp(self.mlir.get_tensor_type(output_shape),
+                                     input_op,
+                                     gradout_op,
+                                     gradout_transpose_op,
+                                     groups=groups,
+                                     input_shape=input_shape,
+                                     grad_out_shape=grad_out_shape,
+                                     kernel_shape=kernel_shape,
+                                     stride=stride,
+                                     dilations=dilations,
+                                     padding=padding,
+                                     grad_bias_enable=grad_bias_enable,
+                                     loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                     onnx_node.op_type)),
+                                     ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
     def convert_correlation_op(self, onnx_node):
@@ -1214,6 +1307,20 @@ class OnnxConverter(BaseConverter):
                                keepdims=True,
                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                                ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_adaptive_avgpool_op(self, onnx_node):
+        assert (onnx_node.op_type == "AdaptiveAvgPool")
+        op = self.getOperand(onnx_node.inputs[0])
+        output_h = onnx_node.attrs.get('output_h')
+        output_w = onnx_node.attrs.get('output_w')
+        assert output_h is not None and output_w is not None
+        new_op = top.AdaptiveAvgPoolOp(self.unranked_type,
+                                       op,
+                                       output_size=[output_h, output_w],
+                                       loc=self.get_loc("{}_{}".format(
+                                           onnx_node.name, onnx_node.op_type)),
+                                       ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
     def convert_maxpool_op(self, onnx_node):
@@ -1644,6 +1751,15 @@ class OnnxConverter(BaseConverter):
                            ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
+    def convert_cosh_op(self, onnx_node):
+        assert (onnx_node.op_type == "Cosh")
+        op = self.getOperand(onnx_node.inputs[0])
+        new_op = top.CoshOp(self.unranked_type,
+                            op,
+                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
     def convert_slice_op(self, onnx_node):
 
         def try_get_slice_input(node, i, attr):
@@ -1972,6 +2088,17 @@ class OnnxConverter(BaseConverter):
             new_op = top.DivOp(self.unranked_type, [lhs_op, rhs_op],
                                loc=self.get_loc(name),
                                ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_div_const_op(self, onnx_node):
+        assert (onnx_node.op_type == "DivConst")
+        assert (len(onnx_node.inputs) == 1)
+        op = self.getOp(onnx_node.inputs[0])
+        new_op = top.DivConstOp(self.unranked_type,
+                                op,
+                                const_val=onnx_node.attrs["const_val"],
+                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
     def convert_reciprocal_op(self, onnx_node):
@@ -2563,7 +2690,7 @@ class OnnxConverter(BaseConverter):
         self.addOperand(onnx_node.name, mul_const_op)
 
     def convert_nms_op(self, onnx_node):
-        assert (onnx_node.op_type == "NonMaxSuppression")
+        assert (onnx_node.op_type in ["NonMaxSuppression", "Nms"])
         name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
         operands = []
         optional_weight_name = ['max_output_boxes_per_class', 'iou_threshold', 'score_threshold']
@@ -3452,6 +3579,15 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "Round")
         operand = self.getOperand(onnx_node.inputs[0])
         new_op = top.RoundOp(self.unranked_type,
+                             operand,
+                             loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                             ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_rsqrt_op(self, onnx_node):
+        assert (onnx_node.op_type == "Rsqrt")
+        operand = self.getOperand(onnx_node.inputs[0])
+        new_op = top.RsqrtOp(self.unranked_type,
                              operand,
                              loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                              ip=self.mlir.insert_point).output

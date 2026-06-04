@@ -74,17 +74,11 @@ void py_cuda::cudaGenericCpuOp(tpu::GenericCpuOp op) {
     if (axis < 0) {
       axis += input_shape.size();
     }
-    int outer_dim = 1, inner_dim = 1;
-    for (size_t i = 0; i < input_shape.size(); ++i) {
-      if (i < axis) {
-        outer_dim *= input_shape[i];
-      } else if (i > axis) {
-        inner_dim *= input_shape[i];
-      }
-    }
     auto input_type = getCudaType(op.getInputs()[0]);
     auto index_type = getCudaType(op.getInputs()[1]);
-    cuda::gatherElements(indices, input, output, indices_shape[axis], input_shape[axis], outer_dim, inner_dim, index_type, input_type);
+    cuda::gatherElements(indices, input, output, input_shape.data(),
+                         indices_shape.data(), input_shape.size(), axis,
+                         index_type, input_type);
   } else if (func_name == "grid_sampler") {
     auto param = op.getParam().value();
     auto mode = param.get("mode").cast<IntegerAttr>().getInt();

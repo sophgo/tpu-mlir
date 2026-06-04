@@ -332,6 +332,73 @@ __device__ void d_copyElement(void *src, int sidx, void *dst, int didx,
   }
 }
 
+
+__device__ void d_setZero(void *dst, int didx, int tbytes) {
+  switch (tbytes) {
+  case 1:
+    static_cast<uint8_t *>(dst)[didx] = 0;
+    break;
+  case 2:
+    static_cast<uint16_t *>(dst)[didx] = 0;
+    break;
+  case 4:
+    static_cast<uint32_t *>(dst)[didx] = 0;
+    break;
+  default:
+    break;
+  }
+}
+
+
+// -------------------------------------------------------------------------
+// ----- dequant math helpers
+
+__device__ float d_applyMultiplierAndRShift(int32_t val, int64_t multiplier,
+                                            int64_t rshift, bool qdm,
+                                            rounding_mode_t rmode) {
+  if (qdm) {
+    int64_t data = (int64_t)val * multiplier;
+    data = (data + (1ll << 30)) >> 31;
+    int32_t v = (int32_t)data;
+    int64_t result = v;
+    if (rshift > 0) {
+      int64_t lo_mask = (1ull << rshift) - 1;
+      int64_t mant = result & lo_mask;
+      int64_t mant_0d5 = 1ull << (rshift - 1);
+      result = result >> rshift;
+      if (mant > mant_0d5 ||
+          (mant == mant_0d5 && rmode != RD_HALF_DOWN)) {
+        if (rmode == RD_HALF_AWAY_FROM_ZERO && result >= 0) {
+          result += 1;
+        } else if (rmode != RD_HALF_DOWN) {
+          result += 1;
+        }
+      }
+    }
+    return (float)result;
+  } else {
+    int64_t data = (int64_t)val * multiplier;
+    int64_t result;
+    if (rmode == RD_HALF_UP) {
+      result = (data + (1ll << (rshift - 1))) >> rshift;
+    } else if (rmode == RD_HALF_AWAY_FROM_ZERO) {
+      bool neg = data < 0;
+      if (neg) {
+        data = -data;
+      }
+      result = (data + (1ll << (rshift - 1))) >> rshift;
+      if (neg) {
+        result = -result;
+      }
+    } else if (rmode == RD_TOWARDS_ZERO) {
+      result = data >> rshift;
+    } else {
+      result = (data + (1ll << (rshift - 1))) >> rshift;
+    }
+    return (float)result;
+  }
+}
+
 __device__ void d_setValue(void *dst, int didx, int tbytes, float value) {
   switch (tbytes) {
   case 1:
