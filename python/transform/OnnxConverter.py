@@ -235,6 +235,12 @@ class OnnxConverter(BaseConverter):
             "LessOrEqual": lambda node: self.convert_cmp_op(node),
             "MatMul": lambda node: self.convert_gemm_op(node),
             "Max": lambda node: self.convert_max_op(node),
+            "MaxPoolWithMask": lambda node: self.convert_maxpool_with_mask_op(node),
+            "MaxUnpool": lambda node: self.convert_max_unpool_op(node),
+            "MaxPoolingIndicesBwd": lambda node: self.convert_maxpooling_indices_bwd_op(node),
+            "MeanRstd": lambda node: self.convert_mean_rstd_op(node),
+            "MeanStdScale": lambda node: self.convert_mean_std_scale_op(node),
+            "MeshGrid": lambda node: self.convert_mesh_grid_op(node),
             "MaxPool": lambda node: self.convert_maxpool_op(node),
             "Min": lambda node: self.convert_min_op(node),
             "Mod": lambda node: self.convert_mod_op(node),
@@ -294,6 +300,23 @@ class OnnxConverter(BaseConverter):
             "Xor": lambda node: self.convert_cmp_op(node),
             "If": lambda node: self.convert_if_op(node),
             "Loop": lambda node: self.convert_loop_op(node),
+            "Mish": lambda node: self.convert_mish_op(node),
+            "ScaleLut": lambda node: self.convert_scale_lut_op(node),
+            "ShuffleChannel": lambda node: self.convert_shuffle_channel_op(node),
+            "SliceAxis": lambda node: self.convert_slice_axis_op(node),
+            "Sort": lambda node: self.convert_sort_op(node),
+            "StridedSlice": lambda node: self.convert_strided_slice_op(node),
+            "SwapChannel": lambda node: self.convert_swap_channel_op(node),
+            "Sinh": lambda node: self.convert_sinh_op(node),
+            "Tan": lambda node: self.convert_tan_op(node),
+            "Softsign": lambda node: self.convert_softsign_op(node),
+            "Swish": lambda node: self.convert_swish_op(node),
+            "Pack": lambda node: self.convert_pack_op(node),
+            "Unpack": lambda node: self.convert_unpack_op(node),
+            "MaskRCNN_BboxPooler": lambda node: self.convert_maskrcnn_bbox_pooler_op(node),
+            "MaskRCNN_GetBboxB": lambda node: self.convert_maskrcnn_get_bbox_b_op(node),
+            "MaskRCNN_MaskPooler": lambda node: self.convert_maskrcnn_mask_pooler_op(node),
+            "MatchTemplate": lambda node: self.convert_match_template_op(node),
         }
 
     def __del__(self):
@@ -3456,3 +3479,506 @@ class OnnxConverter(BaseConverter):
                              loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                              ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
+    def convert_maskrcnn_bbox_pooler_op(self, onnx_node):
+        assert (onnx_node.op_type == "MaskRCNN_BboxPooler")
+        feat0 = self.getOperand(onnx_node.inputs[0])
+        feat1 = self.getOperand(onnx_node.inputs[1])
+        feat2 = self.getOperand(onnx_node.inputs[2])
+        feat3 = self.getOperand(onnx_node.inputs[3])
+        rois = self.getOperand(onnx_node.inputs[4])
+        out_needs = [len(out) > 0 and self.check_need(out) for out in onnx_node.outputs]
+        loc_names = [
+            "{}_{}".format(onnx_node.outputs[0], onnx_node.op_type) if out_needs[0] else "result_res",
+            "{}_{}".format(onnx_node.outputs[1], onnx_node.op_type) if out_needs[1] else "result_rois",
+        ]
+        out_op = top.MaskRCNNBboxPoolerOp(
+            self.unranked_type, self.unranked_type,
+            feat0, feat1, feat2, feat3, rois,
+            ROI_NUM_LEVELS=onnx_node.attrs['ROI_NUM_LEVELS'],
+            ROI_H=onnx_node.attrs.get('ROI_H', 0),
+            ROI_W=onnx_node.attrs.get('ROI_W', 0),
+            CHANNEL_ROI=onnx_node.attrs['CHANNEL_ROI'],
+            ROI_SLICE=onnx_node.attrs['ROI_SLICE'],
+            ROI_PH=onnx_node.attrs['ROI_PH'],
+            ROI_PW=onnx_node.attrs['ROI_PW'],
+            ROI_LEN=onnx_node.attrs['ROI_LEN'],
+            loc=self.get_loc(loc_names),
+            ip=self.mlir.insert_point)
+        out_ops = [out_op.result_res, out_op.result_rois]
+        for idx, need in enumerate(out_needs):
+            if need:
+                self.addOperand(onnx_node.outputs[idx], out_ops[idx])
+
+    def convert_maskrcnn_get_bbox_b_op(self, onnx_node):
+        assert (onnx_node.op_type == "MaskRCNN_GetBboxB")
+        rois = self.getOperand(onnx_node.inputs[0])
+        bbox = self.getOperand(onnx_node.inputs[1])
+        score = self.getOperand(onnx_node.inputs[2])
+        max_val = self.getOperand(onnx_node.inputs[3])
+        scale_factor = self.getOperand(onnx_node.inputs[4])
+        out_needs = [len(out) > 0 and self.check_need(out) for out in onnx_node.outputs]
+        loc_names = [
+            "{}_{}".format(onnx_node.outputs[0], onnx_node.op_type) if out_needs[0] else "det_bboxes",
+            "{}_{}".format(onnx_node.outputs[1], onnx_node.op_type) if out_needs[1] else "det_labels",
+        ]
+        out_op = top.MaskRCNNGetBboxBOp(
+            self.unranked_type, self.unranked_type,
+            rois, bbox, score, max_val, scale_factor,
+            threshold_score_eq=onnx_node.attrs['threshold_score_eq'],
+            wh_ratio_log=onnx_node.attrs['wh_ratio_log'],
+            nms_iou_thr=onnx_node.attrs['nms_iou_thr'],
+            delta2bbox_means=onnx_node.attrs['delta2bbox_means'],
+            delta2bbox_stds_0=onnx_node.attrs['delta2bbox_stds_0'],
+            delta2bbox_stds_1=onnx_node.attrs['delta2bbox_stds_1'],
+            NUM_INDEXES=onnx_node.attrs['NUM_INDEXES'],
+            NUM_CLASSES=onnx_node.attrs['NUM_CLASSES'],
+            TOPK_ONNX_NMS=onnx_node.attrs['TOPK_ONNX_NMS'],
+            NUM_CLASSES_getBboxB=onnx_node.attrs['NUM_CLASSES_getBboxB'],
+            MAX_NMS_LENGTH_GetBboxB=onnx_node.attrs['MAX_NMS_LENGTH_GetBboxB'],
+            MAX_PER_IMG=onnx_node.attrs['MAX_PER_IMG'],
+            MAX_PER_IMG_GetBboxB=onnx_node.attrs['MAX_PER_IMG_GetBboxB'],
+            loc=self.get_loc(loc_names),
+            ip=self.mlir.insert_point)
+        out_ops = [out_op.result_det_bboxes, out_op.result_det_labels]
+        for idx, need in enumerate(out_needs):
+            if need:
+                self.addOperand(onnx_node.outputs[idx], out_ops[idx])
+
+    def convert_maskrcnn_mask_pooler_op(self, onnx_node):
+        assert (onnx_node.op_type == "MaskRCNN_MaskPooler")
+        feat0 = self.getOperand(onnx_node.inputs[0])
+        feat1 = self.getOperand(onnx_node.inputs[1])
+        feat2 = self.getOperand(onnx_node.inputs[2])
+        feat3 = self.getOperand(onnx_node.inputs[3])
+        bboxes = self.getOperand(onnx_node.inputs[4])
+        labels = self.getOperand(onnx_node.inputs[5])
+        scale = self.getOperand(onnx_node.inputs[6])
+        out_needs = [len(out) > 0 and self.check_need(out) for out in onnx_node.outputs]
+        loc_names = [
+            "{}_{}".format(onnx_node.outputs[0], onnx_node.op_type) if out_needs[0] else "result_res",
+        ]
+        out_op = top.MaskRCNNMaskPoolerOp(
+            self.unranked_type,
+            feat0, feat1, feat2, feat3, bboxes, labels, scale,
+            ROI_NUM_LEVELS=onnx_node.attrs['ROI_NUM_LEVELS'],
+            ROI_H=onnx_node.attrs.get('ROI_H', 0),
+            ROI_W=onnx_node.attrs.get('ROI_W', 0),
+            CHANNEL_ROI=onnx_node.attrs['CHANNEL_ROI'],
+            ROI_SLICE=onnx_node.attrs['ROI_SLICE'],
+            ROI_PH=onnx_node.attrs['ROI_PH'],
+            ROI_PW=onnx_node.attrs['ROI_PW'],
+            ROI_LEN=onnx_node.attrs['ROI_LEN'],
+            loc=self.get_loc(loc_names),
+            ip=self.mlir.insert_point)
+        out_ops = [out_op.result_res]
+        for idx, need in enumerate(out_needs):
+            if need:
+                self.addOperand(onnx_node.outputs[idx], out_ops[idx])
+
+    def convert_maskrcnn_bbox_pooler_op(self, onnx_node):
+        assert (onnx_node.op_type == "MaskRCNN_BboxPooler")
+        feat0 = self.getOperand(onnx_node.inputs[0])
+        feat1 = self.getOperand(onnx_node.inputs[1])
+        feat2 = self.getOperand(onnx_node.inputs[2])
+        feat3 = self.getOperand(onnx_node.inputs[3])
+        rois = self.getOperand(onnx_node.inputs[4])
+        out_needs = [len(out) > 0 and self.check_need(out) for out in onnx_node.outputs]
+        loc_names = [
+            "{}_{}".format(onnx_node.outputs[0], onnx_node.op_type) if out_needs[0] else "result_res",
+            "{}_{}".format(onnx_node.outputs[1], onnx_node.op_type) if out_needs[1] else "result_rois",
+        ]
+        out_op = top.MaskRCNNBboxPoolerOp(
+            self.unranked_type, self.unranked_type,
+            feat0, feat1, feat2, feat3, rois,
+            ROI_NUM_LEVELS=onnx_node.attrs['ROI_NUM_LEVELS'],
+            ROI_H=onnx_node.attrs.get('ROI_H', 0),
+            ROI_W=onnx_node.attrs.get('ROI_W', 0),
+            CHANNEL_ROI=onnx_node.attrs['CHANNEL_ROI'],
+            ROI_SLICE=onnx_node.attrs['ROI_SLICE'],
+            ROI_PH=onnx_node.attrs['ROI_PH'],
+            ROI_PW=onnx_node.attrs['ROI_PW'],
+            ROI_LEN=onnx_node.attrs['ROI_LEN'],
+            loc=self.get_loc(loc_names),
+            ip=self.mlir.insert_point)
+        out_ops = [out_op.result_res, out_op.result_rois]
+        for idx, need in enumerate(out_needs):
+            if need:
+                self.addOperand(onnx_node.outputs[idx], out_ops[idx])
+
+    def convert_maskrcnn_get_bbox_b_op(self, onnx_node):
+        assert (onnx_node.op_type == "MaskRCNN_GetBboxB")
+        rois = self.getOperand(onnx_node.inputs[0])
+        bbox = self.getOperand(onnx_node.inputs[1])
+        score = self.getOperand(onnx_node.inputs[2])
+        max_val = self.getOperand(onnx_node.inputs[3])
+        scale_factor = self.getOperand(onnx_node.inputs[4])
+        out_needs = [len(out) > 0 and self.check_need(out) for out in onnx_node.outputs]
+        loc_names = [
+            "{}_{}".format(onnx_node.outputs[0], onnx_node.op_type) if out_needs[0] else "det_bboxes",
+            "{}_{}".format(onnx_node.outputs[1], onnx_node.op_type) if out_needs[1] else "det_labels",
+        ]
+        out_op = top.MaskRCNNGetBboxBOp(
+            self.unranked_type, self.unranked_type,
+            rois, bbox, score, max_val, scale_factor,
+            threshold_score_eq=onnx_node.attrs['threshold_score_eq'],
+            wh_ratio_log=onnx_node.attrs['wh_ratio_log'],
+            nms_iou_thr=onnx_node.attrs['nms_iou_thr'],
+            delta2bbox_means=onnx_node.attrs['delta2bbox_means'],
+            delta2bbox_stds_0=onnx_node.attrs['delta2bbox_stds_0'],
+            delta2bbox_stds_1=onnx_node.attrs['delta2bbox_stds_1'],
+            NUM_INDEXES=onnx_node.attrs['NUM_INDEXES'],
+            NUM_CLASSES=onnx_node.attrs['NUM_CLASSES'],
+            TOPK_ONNX_NMS=onnx_node.attrs['TOPK_ONNX_NMS'],
+            NUM_CLASSES_getBboxB=onnx_node.attrs['NUM_CLASSES_getBboxB'],
+            MAX_NMS_LENGTH_GetBboxB=onnx_node.attrs['MAX_NMS_LENGTH_GetBboxB'],
+            MAX_PER_IMG=onnx_node.attrs['MAX_PER_IMG'],
+            MAX_PER_IMG_GetBboxB=onnx_node.attrs['MAX_PER_IMG_GetBboxB'],
+            loc=self.get_loc(loc_names),
+            ip=self.mlir.insert_point)
+        out_ops = [out_op.result_det_bboxes, out_op.result_det_labels]
+        for idx, need in enumerate(out_needs):
+            if need:
+                self.addOperand(onnx_node.outputs[idx], out_ops[idx])
+
+    def convert_maskrcnn_mask_pooler_op(self, onnx_node):
+        assert (onnx_node.op_type == "MaskRCNN_MaskPooler")
+        feat0 = self.getOperand(onnx_node.inputs[0])
+        feat1 = self.getOperand(onnx_node.inputs[1])
+        feat2 = self.getOperand(onnx_node.inputs[2])
+        feat3 = self.getOperand(onnx_node.inputs[3])
+        bboxes = self.getOperand(onnx_node.inputs[4])
+        labels = self.getOperand(onnx_node.inputs[5])
+        scale = self.getOperand(onnx_node.inputs[6])
+        out_needs = [len(out) > 0 and self.check_need(out) for out in onnx_node.outputs]
+        loc_names = [
+            "{}_{}".format(onnx_node.outputs[0], onnx_node.op_type) if out_needs[0] else "result_res",
+        ]
+        out_op = top.MaskRCNNMaskPoolerOp(
+            self.unranked_type,
+            feat0, feat1, feat2, feat3, bboxes, labels, scale,
+            ROI_NUM_LEVELS=onnx_node.attrs['ROI_NUM_LEVELS'],
+            ROI_H=onnx_node.attrs.get('ROI_H', 0),
+            ROI_W=onnx_node.attrs.get('ROI_W', 0),
+            CHANNEL_ROI=onnx_node.attrs['CHANNEL_ROI'],
+            ROI_SLICE=onnx_node.attrs['ROI_SLICE'],
+            ROI_PH=onnx_node.attrs['ROI_PH'],
+            ROI_PW=onnx_node.attrs['ROI_PW'],
+            ROI_LEN=onnx_node.attrs['ROI_LEN'],
+            loc=self.get_loc(loc_names),
+            ip=self.mlir.insert_point)
+        out_ops = [out_op.result_res]
+        for idx, need in enumerate(out_needs):
+            if need:
+                self.addOperand(onnx_node.outputs[idx], out_ops[idx])
+
+    def convert_match_template_op(self, onnx_node):
+        assert (onnx_node.op_type == "MatchTemplate")
+        inp = self.getOperand(onnx_node.inputs[0])
+        match = self.getOperand(onnx_node.inputs[1])
+        mode = onnx_node.attrs.get('mode', b'TM_CCOEFF_NORMED')
+        if isinstance(mode, bytes):
+            mode = mode.decode()
+        new_op = top.MatchTemplateOp(
+            self.unranked_type, inp, match,
+            mode=StringAttr.get(mode),
+            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_maxpool_with_mask_op(self, onnx_node):
+        assert (onnx_node.op_type == "MaxPoolWithMask")
+        inp = self.getOperand(onnx_node.inputs[0])
+        out_needs = [len(out) > 0 and self.check_need(out) for out in onnx_node.outputs]
+        loc_names = [
+            "{}_{}".format(onnx_node.outputs[0], onnx_node.op_type) if out_needs[0] else "pool_out",
+            "{}_{}".format(onnx_node.outputs[1], onnx_node.op_type) if out_needs[1] else "mask",
+        ]
+        out_op = top.MaxPoolWithMaskOp(
+            self.unranked_type, self.unranked_type,
+            inp,
+            kernel_shape=onnx_node.attrs.get('kernel_shape', [3, 3]),
+            strides=onnx_node.attrs.get('strides', [2, 2]),
+            pads=onnx_node.attrs.get('pads', [1, 1, 1, 1]),
+            do_relu=onnx_node.attrs.get('do_relu', False),
+            relu_limit=onnx_node.attrs.get('relu_limit', -1.0),
+            count_include_pad=onnx_node.attrs.get('count_include_pad', False),
+            loc=self.get_loc(loc_names),
+            ip=self.mlir.insert_point)
+        out_ops = [out_op.output, out_op.mask]
+        for idx, need in enumerate(out_needs):
+            if need:
+                self.addOperand(onnx_node.outputs[idx], out_ops[idx])
+
+
+    def convert_max_unpool_op(self, onnx_node):
+        assert (onnx_node.op_type == "MaxUnpool")
+        inp = self.getOperand(onnx_node.inputs[0])
+        mask = self.getOperand(onnx_node.inputs[1])
+        new_op = top.MaxUnpoolOp(
+            self.unranked_type,
+            inp, mask,
+            scale_h=onnx_node.attrs.get('scale_h', 2),
+            scale_w=onnx_node.attrs.get('scale_w', 2),
+            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+
+    def convert_maxpooling_indices_bwd_op(self, onnx_node):
+        assert (onnx_node.op_type == "MaxPoolingIndicesBwd")
+        grad_out = self.getOperand(onnx_node.inputs[0])
+        indices = self.getOperand(onnx_node.inputs[1])
+        kernel = onnx_node.attrs.get('kernel_shape', [3, 3])
+        stride = onnx_node.attrs.get('strides', [2, 2])
+        pads = onnx_node.attrs.get('pads', [1, 1, 1, 1])
+        dilations = onnx_node.attrs.get('dilations', [1, 1])
+        inp_shape = onnx_node.attrs.get('input_shape', [1, 3, 32, 32])
+        new_op = top.MaxPoolingIndicesBwdOp(
+            self.unranked_type,
+            grad_out, indices,
+            kernel_shape=kernel,
+            strides=stride,
+            pads=pads,
+            dilations=dilations,
+            input_shape=inp_shape,
+            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+            ip=self.mlir.insert_point).grad_input
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_mean_rstd_op(self, onnx_node):
+        assert (onnx_node.op_type == "MeanRstd")
+        inp = self.getOperand(onnx_node.inputs[0])
+        rm = self.getWeightOp(onnx_node.inputs[1])
+        rv = self.getWeightOp(onnx_node.inputs[2])
+        weight = self.getWeightOp(onnx_node.inputs[3])
+        bias = self.getWeightOp(onnx_node.inputs[4])
+        out_names = ["mean", "rstd", "rm_upd", "rv_upd", "scale", "bias_new"]
+        out_needs = [i < len(onnx_node.outputs) and len(onnx_node.outputs[i]) > 0 and
+                     self.check_need(onnx_node.outputs[i]) for i in range(6)]
+        loc_names = [
+            "{}_{}".format(onnx_node.outputs[i], onnx_node.op_type)
+            if i < len(onnx_node.outputs) and out_needs[i] else out_names[i]
+            for i in range(6)
+        ]
+        out_op = top.MeanRstdOp(
+            *(self.unranked_type for _ in range(6)),
+            inp, rm, rv, weight, bias,
+            eps=onnx_node.attrs.get('eps', 1e-5),
+            momentum=onnx_node.attrs.get('momentum', 0.1),
+            loc=self.get_loc(loc_names),
+            ip=self.mlir.insert_point)
+        out_ops = [out_op.mean, out_op.rstd, out_op.running_mean_update,
+                   out_op.running_var_update, out_op.scale, out_op.bias_new]
+        for idx, need in enumerate(out_needs):
+            if need and idx < len(onnx_node.outputs):
+                self.addOperand(onnx_node.outputs[idx], out_ops[idx])
+
+
+    def convert_mean_std_scale_op(self, onnx_node):
+        assert (onnx_node.op_type == "MeanStdScale")
+        inp = self.getOperand(onnx_node.inputs[0])
+        new_op = top.MeanStdScaleOp(
+            self.unranked_type, inp,
+            quant_mode=StringAttr.get(onnx_node.attrs.get('quant_mode', 'NORMALIZED')),
+            customization_format=StringAttr.get(
+                onnx_node.attrs.get('customization_format', 'NCHW')),
+            channel_order=StringAttr.get(
+                onnx_node.attrs.get('channel_order', 'RGB')),
+            sign=onnx_node.attrs.get('sign', False),
+            scale=onnx_node.attrs['scale'],
+            std=onnx_node.attrs['std'],
+            mean=onnx_node.attrs['mean'],
+            zero_points=onnx_node.attrs['zero_points'],
+            resize_dims=onnx_node.attrs.get('resize_dims', [0]),
+            rounding_mode=StringAttr.get(
+                onnx_node.attrs.get('rounding_mode', 'ROUND_HALF_AWAY_FROM_ZERO')),
+            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+
+    def convert_mesh_grid_op(self, onnx_node):
+        assert (onnx_node.op_type == "MeshGrid")
+        num = len(onnx_node.inputs)
+        ops = [self.getOperand(onnx_node.inputs[i]) for i in range(num)]
+        is_rev = onnx_node.attrs.get('is_reverse', False)
+        out_types = [self.unranked_type for _ in range(num)]
+        out_op = top.MeshGridOp(
+            out_types, ops, is_rev,
+            loc=self.get_loc(["{}_{}".format(out, onnx_node.op_type)
+                              for out in onnx_node.outputs]),
+            ip=self.mlir.insert_point)
+        for i in range(num):
+            self.addOperand(onnx_node.outputs[i], out_op.outputs[i])
+
+
+    def convert_sinh_op(self, onnx_node):
+        assert (onnx_node.op_type == "Sinh")
+        op = self.getOperand(onnx_node.inputs[0])
+        new_op = top.SinhOp(self.unranked_type,
+                            op,
+                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+
+    def convert_tan_op(self, onnx_node):
+        assert (onnx_node.op_type == "Tan")
+        op = self.getOperand(onnx_node.inputs[0])
+        new_op = top.TanOp(self.unranked_type,
+                            op,
+                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_cos_op(self, onnx_node):
+        pass
+
+    def convert_softsign_op(self, onnx_node):
+        assert (onnx_node.op_type == "Softsign")
+        op = self.getOperand(onnx_node.inputs[0])
+        new_op = top.SoftsignOp(self.unranked_type,
+                                op,
+                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_log_op(self, onnx_node):
+        pass
+
+    def convert_pack_op(self, onnx_node):
+        assert (onnx_node.op_type == "Pack")
+        ops = [self.getOperand(inp) for inp in onnx_node.inputs]
+        axis = onnx_node.attrs.get('axis', 0)
+        out_op = top.PackOp(
+            self.unranked_type,
+            ops,
+            axis,
+            len(ops),
+            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, out_op)
+
+
+    def convert_unpack_op(self, onnx_node):
+        assert (onnx_node.op_type == "Unpack")
+        op = self.getOperand(onnx_node.inputs[0])
+        axis = onnx_node.attrs.get('axis', 0)
+        num_outputs = len(onnx_node.outputs)
+        out_op = top.UnpackOp(
+            [self.unranked_type] * num_outputs,
+            op,
+            axis,
+            loc=self.get_loc(["{}_{}".format(out, onnx_node.op_type)
+                              for out in onnx_node.outputs]),
+            ip=self.mlir.insert_point)
+        for i in range(num_outputs):
+            self.addOperand(onnx_node.outputs[i], out_op.outputs[i])
+
+    def convert_swish_op(self, onnx_node):
+        assert (onnx_node.op_type == "Swish")
+        inp = self.getOperand(onnx_node.inputs[0])
+        beta = onnx_node.attrs.get('beta', 1.0)
+        new_op = top.SwishOp(
+            self.unranked_type, inp,
+            beta=beta,
+            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_mish_op(self, onnx_node):
+        assert (onnx_node.op_type == "Mish")
+        inp = self.getOperand(onnx_node.inputs[0])
+        new_op = top.MishOp(
+            self.unranked_type, inp,
+            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+
+    def convert_scale_lut_op(self, onnx_node):
+        assert (onnx_node.op_type == "ScaleLut")
+        inp = self.getOperand(onnx_node.inputs[0])
+        new_op = top.ScaleLutOp(
+            self.unranked_type, inp,
+            scale=onnx_node.attrs['scale'],
+            bias=onnx_node.attrs['bias'],
+            sign=onnx_node.attrs.get('sign', True),
+            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+
+    def convert_shuffle_channel_op(self, onnx_node):
+        assert (onnx_node.op_type == "ShuffleChannel")
+        inp = self.getOperand(onnx_node.inputs[0])
+        new_op = top.ShuffleChannelOp(
+            self.unranked_type, inp,
+            group=onnx_node.attrs['group'],
+            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+
+    def convert_slice_axis_op(self, onnx_node):
+        assert (onnx_node.op_type == "SliceAxis")
+        inp = self.getOperand(onnx_node.inputs[0])
+        axis_op = self.getWeightOp(onnx_node.inputs[1])
+        start_op = self.getWeightOp(onnx_node.inputs[2])
+        end_op = self.getWeightOp(onnx_node.inputs[3])
+        step_op = self.getWeightOp(onnx_node.inputs[4])
+        new_op = top.SliceAxisOp(
+            self.unranked_type,
+            inp, axis_op, start_op, end_op, step_op,
+            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+
+    def convert_sort_op(self, onnx_node):
+        assert (onnx_node.op_type == "Sort")
+        inp = self.getOperand(onnx_node.inputs[0])
+        axis = onnx_node.attrs.get('axis', -1)
+        desc = onnx_node.attrs.get('descending', False)
+        loc_names = [
+            "{}_{}".format(onnx_node.outputs[0], onnx_node.op_type),
+            "{}_{}".format(onnx_node.outputs[1], onnx_node.op_type),
+        ]
+        sort_op = top.SortOp(
+            self.unranked_type, self.unranked_type,
+            inp, axis=axis, descending=desc,
+            loc=self.get_loc(loc_names),
+            ip=self.mlir.insert_point)
+        self.addOperand(onnx_node.outputs[0], sort_op.values)
+        self.addOperand(onnx_node.outputs[1], sort_op.indices)
+
+
+    def convert_strided_slice_op(self, onnx_node):
+        assert (onnx_node.op_type == "StridedSlice")
+        inp = self.getOperand(onnx_node.inputs[0])
+        starts = self.getWeightOp(onnx_node.inputs[1])
+        ends = self.getWeightOp(onnx_node.inputs[2])
+        strides = self.getWeightOp(onnx_node.inputs[3])
+        bm = onnx_node.attrs.get('begin_mask', 0)
+        em = onnx_node.attrs.get('end_mask', 0)
+        new_op = top.StridedSliceOp(
+            self.unranked_type,
+            inp, starts, ends, strides,
+            begin_mask=bm, end_mask=em,
+            ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,
+            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+
+    def convert_swap_channel_op(self, onnx_node):
+        assert (onnx_node.op_type == "SwapChannel")
+        inp = self.getOperand(onnx_node.inputs[0])
+        order = onnx_node.attrs.get('channel_order', [2, 1, 0])
+        new_op = top.SwapChannelOp(
+            self.unranked_type, inp,
+            channel_order=order,
+            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+

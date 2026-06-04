@@ -890,6 +890,190 @@ void py_cuda::mix_invoke(bool dump_all, const std::vector<std::string>& extra_ou
           cudaUnsqueezeOp(topOp);
         } else if (auto tpuOp = dyn_cast<tpu::UnsqueezeOp>(op)) {
           cudaUnsqueezeOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::EinsumOp>(op)) {
+          cudaEinsumOp(topOp);
+        } else if (auto topOp = dyn_cast<top::DivConstOp>(op)) {
+          cudaDivConstOp(topOp);
+        } else if (auto topOp = dyn_cast<top::MaskedFillOp>(op)) {
+          cudaMaskedFillOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::MaskedFillOp>(op)) {
+          cudaMaskedFillOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::MaskRCNNBboxPoolerOp>(op)) {
+          cudaMaskRCNNBboxPoolerOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::MaskRCNNBboxPoolerOp>(op)) {
+          cudaMaskRCNNBboxPoolerOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::MaskRCNNGetBboxBOp>(op)) {
+          cudaMaskRCNNGetBboxBOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::MaskRCNNGetBboxBOp>(op)) {
+          cudaMaskRCNNGetBboxBOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::MaskRCNNMaskPoolerOp>(op)) {
+          cudaMaskRCNNMaskPoolerOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::MaskRCNNMaskPoolerOp>(op)) {
+          cudaMaskRCNNMaskPoolerOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::MatchTemplateOp>(op)) {
+          cudaMatchTemplateOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::MatchTemplateOp>(op)) {
+          cudaMatchTemplateOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::ClipOp>(op)) {
+          cudaClipOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::ClipOp>(op)) {
+          cudaClipOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::MaxOp>(op)) {
+          cudaMaxOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::MaxOp>(op)) {
+          cudaMaxOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::MaxConstOp>(op)) {
+          cudaMaxConstOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::MaxConstOp>(op)) {
+          cudaMaxConstOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::MaxPoolWithMaskOp>(op)) {
+          cudaMaxPoolWithMaskOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::MaxPoolWithMaskOp>(op)) {
+          cudaMaxPoolWithMaskOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::MaxPoolingIndicesBwdOp>(op)) {
+          cudaMaxPoolingIndicesBwdOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::MaxPoolingIndicesBwdOp>(op)) {
+          cudaMaxPoolingIndicesBwdOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::MaxUnpoolOp>(op)) {
+          cudaMaxUnpoolOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::MaxUnpoolOp>(op)) {
+          cudaMaxUnpoolOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::MeanRstdOp>(op)) {
+          cudaMeanRstdOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::MeanRstdOp>(op)) {
+          cudaMeanRstdOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::MeanStdScaleOp>(op)) {
+          cudaMeanStdScaleOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::MeanStdScaleOp>(op)) {
+          cudaMeanStdScaleOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::MeshGridOp>(op)) {
+          cudaMeshGridOp(topOp);
+        } else if (auto topOp = dyn_cast<top::MinOp>(op)) {
+          cudaMinOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::MinOp>(op)) {
+          cudaMinOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::MinConstOp>(op)) {
+          cudaMinConstOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::MinConstOp>(op)) {
+          cudaMinConstOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::MishOp>(op)) {
+          cudaMishOp(topOp);
+        } else if (auto topOp = dyn_cast<top::ModOp>(op)) {
+          cudaModOp(topOp);
+        } else if (auto topOp = dyn_cast<top::ScaleLutOp>(op)) {
+          cudaScaleLutOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::ScaleLutOp>(op)) {
+          cudaScaleLutOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::ScatterElementsOp>(op)) {
+          cudaScatterElementsOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::ScatterElementsOp>(op)) {
+          cudaScatterElementsOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::ScatterNDOp>(op)) {
+          cudaScatterNDOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::ScatterNDOp>(op)) {
+          cudaScatterNDOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::SelectiveScanOp>(op)) {
+          cudaSelectiveScanOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::SelectiveScanOp>(op)) {
+          cudaSelectiveScanOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::ShapeOp>(op)) {
+          cudaShapeOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::ShapeOp>(op)) {
+          cudaShapeOp(tpuOp);
+        } else if (auto tpuOp = dyn_cast<tpu::ShapeSliceOp>(op)) {
+          cudaShapeSliceOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::ShuffleChannelOp>(op)) {
+          cudaShuffleChannelOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::ShuffleChannelOp>(op)) {
+          cudaShuffleChannelOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::SignOp>(op)) {
+          cudaSignOp(topOp);
+        } else if (auto topOp = dyn_cast<top::SinOp>(op)) {
+          cudaSinOp(topOp);
+        } else if (auto topOp = dyn_cast<top::SinhOp>(op)) {
+          cudaSinhOp(topOp);
+        } else if (auto topOp = dyn_cast<top::TanOp>(op)) {
+          cudaTanOp(topOp);
+        } else if (auto topOp = dyn_cast<top::TanhOp>(op)) {
+          cudaTanhOp(topOp);
+        } else if (auto topOp = dyn_cast<top::TopKOp>(op)) {
+          cudaTopKOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::TopKOp>(op)) {
+          cudaTopKOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::TriluOp>(op)) {
+          cudaTriluOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::TriluOp>(op)) {
+          cudaTriluOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::SliceAxisOp>(op)) {
+          cudaSliceAxisOp(topOp);
+        } else if (auto topOp = dyn_cast<top::SoftplusOp>(op)) {
+          cudaSoftplusOp(topOp);
+        } else if (auto topOp = dyn_cast<top::SoftsignOp>(op)) {
+          cudaSoftsignOp(topOp);
+        } else if (auto topOp = dyn_cast<top::SortOp>(op)) {
+          cudaSortOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::SortOp>(op)) {
+          cudaSortOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::SplitOp>(op)) {
+          cudaSplitOp(topOp);
+        } else if (auto topOp = dyn_cast<top::SqrtOp>(op)) {
+          cudaSqrtOp(topOp);
+        } else if (auto topOp = dyn_cast<top::StridedSliceOp>(op)) {
+          cudaStridedSliceOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::StridedSliceOp>(op)) {
+          cudaStridedSliceOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::SwapChannelOp>(op)) {
+          cudaSwapChannelOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::SwapChannelOp>(op)) {
+          cudaSwapChannelOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::SwishOp>(op)) {
+        } else if (auto topOp = dyn_cast<top::PackOp>(op)) {
+          cudaPackOp(topOp);
+        } else if (auto topOp = dyn_cast<top::PadOp>(op)) {
+          cudaPadOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::PadOp>(op)) {
+          cudaPadOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::PowOp>(op)) {
+          cudaPowOp(topOp);
+        } else if (auto topOp = dyn_cast<top::Pow2Op>(op)) {
+          cudaPow2Op(topOp);
+        } else if (auto topOp = dyn_cast<top::Pow3Op>(op)) {
+          cudaPow3Op(topOp);
+        } else if (auto topOp = dyn_cast<top::PReluOp>(op)) {
+          cudaPReluOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::PReluOp>(op)) {
+          cudaPReluOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::QuantizeLinearOp>(op)) {
+          cudaQuantizeLinearOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::PermuteOp>(op)) {
+          cudaPermuteOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::PermuteOp>(op)) {
+          cudaPermuteOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::SliceOp>(op)) {
+          cudaSliceOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::SliceOp>(op)) {
+          cudaSliceOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::SoftmaxOp>(op)) {
+          cudaSoftmaxOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::SoftmaxOp>(op)) {
+          cudaSoftmaxOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::SqueezeOp>(op)) {
+          cudaSqueezeOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::SqueezeOp>(op)) {
+          cudaSqueezeOp(topOp);
+        } else if (auto topOp = dyn_cast<top::TileOp>(op)) {
+          cudaTileOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::TileOp>(op)) {
+          cudaTileOp(tpuOp);
+        } else if (auto tpuOp = dyn_cast<tpu::UpsampleOp>(op)) {
+          cudaUpsampleOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::UpsampleOp>(op)) {
+          cudaUpsampleOp(topOp);
+        } else if (auto topOp = dyn_cast<top::WhereOp>(op)) {
+          cudaWhereOp(topOp);
+        } else if (auto tpuOp = dyn_cast<tpu::WhereOp>(op)) {
+          cudaWhereOp(tpuOp);
+        } else if (auto topOp = dyn_cast<top::UnpackOp>(op)) {
         } else {
           op->dump();
           __asm__("int3");
