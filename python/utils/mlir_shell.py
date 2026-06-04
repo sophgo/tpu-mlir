@@ -895,7 +895,7 @@ def codegen_options(model: str,
                     embed_debug_info: bool = False,
                     model_version: str = "",
                     bmodel_only: bool = False,
-                    gdma_check: bool = True,
+                    gdma_check: bool = False,
                     rvti: bool = False):
     options = [
         '--codegen="model_file={} embed_debug_info={} model_version={} bmodel_only={} gdma_check={} rvti={}"'.format(
@@ -983,7 +983,7 @@ def mlir_to_model(
     quant_output_int8: bool = False,
     opt_post_processor: bool = False,
     weight_deduplicate: bool = False,
-    gdma_check: bool = True,
+    gdma_check: bool = False,
     lg_debugger: int = 0,
     time_fixed_subnet: str = None,
     subnet_params: str = None,
