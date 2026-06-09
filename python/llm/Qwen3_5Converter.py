@@ -8,6 +8,7 @@
 import math
 from .LlmConverter import *
 from typing_extensions import override
+from .LlmInfo import *
 
 
 class Qwen3_5Converter(LlmConverter):
@@ -24,6 +25,8 @@ class Qwen3_5Converter(LlmConverter):
         # vision config
         self.init_vconfig()
         self.vit_path = "model.visual"
+        if self.use_block_with_kv:
+            self.share_prompt = True  # share prompt and kv are the same
 
         # extern compiles
         self.extern_block_weights = {"mrope_interleave_idx": self.get_mrope_index()}
@@ -749,7 +752,7 @@ class Qwen3_5Converter(LlmConverter):
             return new_op
 
         # create block mlir
-        def gen_block_by_length(name: str, input_len: int):
+        def gen_block_by_length(name: str, input_len: int, with_history: bool = False):
             input_shape = [1, input_len, self.hidden_size]
             id_shape = list(self.position_shape)
             id_shape[-1] = input_len
@@ -757,10 +760,19 @@ class Qwen3_5Converter(LlmConverter):
 
             q_shape = [1, input_len, self.num_attention_heads, self.head_dim]
             kv_shape = [1, input_len, self.num_key_value_heads, self.head_dim]
-            mask_shape = [1, 1, input_len, input_len]
+            max_kv_len = input_len if not with_history else self.max_prefill_kv_length + input_len
+            mask_shape = [1, 1, input_len, max_kv_len]
             input_shapes = [input_shape, id_shape
                             ] if self.use_small_mask() else [input_shape, id_shape, mask_shape]
             input_types = ["F32", "INT32"] if self.use_small_mask() else ["F32", "INT32", "F32"]
+            if with_history:
+                history_shape = [
+                    1, self.max_prefill_kv_length, self.num_key_value_heads, self.head_dim
+                ]
+                input_shapes.append(history_shape)  # k cache
+                input_shapes.append(history_shape)  # v cache
+                input_types.append("F32")
+                input_types.append("F32")
             block_mlir = MLIRImporter(input_shapes, [input_shape, kv_shape, kv_shape],
                                       name,
                                       self.platform,
@@ -777,6 +789,10 @@ class Qwen3_5Converter(LlmConverter):
             in1_op = block_mlir.create_input_op(L("position_ids"), 1)
             in2_op = block_mlir.create_input_op(L("attention_mask"), 2) if not self.use_small_mask() \
                 else None
+            if with_history:
+                index = 3 if not self.use_small_mask() else 2
+                in3_op = block_mlir.create_input_op(L("k_cache"), index)
+                in4_op = block_mlir.create_input_op(L("v_cache"), index + 1)
             return_ops = []
             ln_op = self.rms_norm(block_mlir, in0_op, input_ln)
 
@@ -851,6 +867,19 @@ class Qwen3_5Converter(LlmConverter):
             return_ops.append(k_op)
             return_ops.append(v_op)
             # ======= fattention =========
+            if with_history:
+                k_op = top.ConcatOp(T([1, max_kv_len, self.num_key_value_heads, self.head_dim]),
+                                    [in3_op, k_op],
+                                    axis=1,
+                                    only_merge=True,
+                                    loc=L(k_proj + ".concat"),
+                                    ip=ip).output
+                v_op = top.ConcatOp(T([1, max_kv_len, self.num_key_value_heads, self.head_dim]),
+                                    [in4_op, v_op],
+                                    axis=1,
+                                    only_merge=True,
+                                    loc=L(v_proj + ".concat"),
+                                    ip=ip).output
             mask_op, mask_size = self.get_fattention_mask_op(block_mlir, in2_op)
             fa_op = top.FAttentionOp(T([1, input_len, q_dim]),
                                      q_op,
@@ -888,14 +917,13 @@ class Qwen3_5Converter(LlmConverter):
             block_mlir.create_return_op([new_op] + return_ops)
             self.save_mlir_module(block_mlir, name)
 
-        def gen_block():
-            name = f"block_{idx}"
-            if self.share_prompt:
-                name = f"block_prompt_{idx}"
-                gen_block_by_length(name, self.max_prefill_kv_length)
-                return
-
-            gen_block_by_length(name, self.max_input_length)
+        def gen_block(pt: PrefillType = PrefillType.NORMAL):
+            if pt == PrefillType.NORMAL:
+                gen_block_by_length(f"block_{idx}", self.max_input_length)
+            elif pt == PrefillType.SHARE_PROMPT:
+                gen_block_by_length(f"block_prompt_{idx}", self.max_prefill_kv_length)
+            elif pt == PrefillType.WITH_HISTORY:
+                gen_block_by_length(f"block_{idx}", self.max_input_length, with_history=True)
             return
 
         def gen_block_cache():
@@ -1061,154 +1089,11 @@ class Qwen3_5Converter(LlmConverter):
             block_mlir.create_return_op([new_op] + return_ops)
             self.save_mlir_module(block_mlir, name)
 
-        def gen_block_with_kv():
-            # Generate block with kv cache related operations
-            name = f"block_{idx}"
-            input_len = self.max_input_length
-            input_shape = [1, input_len, self.hidden_size]
-            id_shape = list(self.position_shape)
-            max_kv_len = self.max_prefill_kv_length + input_len
-            mask_shape = [1, 1, input_len, max_kv_len]
-            history_shape = [1, self.max_prefill_kv_length, self.num_key_value_heads, self.head_dim]
-
-            q_shape = [1, input_len, self.num_attention_heads, self.head_dim]
-            kv_shape = [1, input_len, self.num_key_value_heads, self.head_dim]
-
-            block_mlir = MLIRImporter(
-                [input_shape, id_shape, mask_shape, history_shape, history_shape],
-                [input_shape, kv_shape, kv_shape],
-                name,
-                self.platform, ["F32", "INT32", "F32", "F32", "F32"],
-                lora_rank=self.lora_rank,
-                weight_file=f"../{weight_file}")
-
-            T = block_mlir.get_tensor_type
-            L = lambda name: self.get_loc(name, block_mlir)
-
-            ip = block_mlir.insert_point
-
-            in0_op = block_mlir.create_input_op(L("input_states"), 0)
-            in1_op = block_mlir.create_input_op(L("position_ids"), 1)
-            in2_op = block_mlir.create_input_op(L("attention_mask"), 2)
-            in3_op = block_mlir.create_input_op(L("history_k"), 3)
-            in4_op = block_mlir.create_input_op(L("history_v"), 4)
-            return_ops = []
-            ln_op = self.rms_norm(block_mlir, in0_op, input_ln)
-
-            # q_proj
-            q_dim = self.num_attention_heads * self.head_dim
-            q_gate_op = self.linear(block_mlir,
-                                    q_proj,
-                                    ln_op, [self.hidden_size, q_dim * 2], [1, input_len, q_dim * 2],
-                                    do_lora=self.do_lora)
-            q_op = top.SliceOp(T([1, input_len, q_dim]),
-                               q_gate_op,
-                               block_mlir.none_op,
-                               block_mlir.none_op,
-                               block_mlir.none_op,
-                               offset=[0, 0, 0],
-                               steps=[1, 1, 1],
-                               ends=[1, input_len, q_dim],
-                               loc=self.get_loc(q_proj + ".q_slice", block_mlir),
-                               ip=ip).output
-            gate_op = top.SliceOp(T([1, input_len, q_dim]),
-                                  q_gate_op,
-                                  block_mlir.none_op,
-                                  block_mlir.none_op,
-                                  block_mlir.none_op,
-                                  offset=[0, 0, q_dim],
-                                  steps=[1, 1, 1],
-                                  ends=[1, input_len, q_dim * 2],
-                                  loc=self.get_loc(q_proj + ".gate_slice", block_mlir),
-                                  ip=ip).output
-
-            gate_op = top.SigmoidOp(T([1, input_len, q_dim]),
-                                    gate_op,
-                                    loc=L(mlp_gate + ".gate_sigmoid"),
-                                    ip=ip).output
-            # k_proj
-            k_op = self.linear(block_mlir,
-                               k_proj,
-                               ln_op, [self.hidden_size, self.kv_dim], [1, input_len, self.kv_dim],
-                               do_lora=self.do_lora)
-            # v_proj
-            v_op = self.linear(block_mlir,
-                               v_proj,
-                               ln_op, [self.hidden_size, self.kv_dim], [1, input_len, self.kv_dim],
-                               do_lora=self.do_lora)
-            # reshape q,k,v
-            q_op = top.ReshapeOp(T(q_shape),
-                                 q_op,
-                                 shape=[1, -1, self.num_attention_heads, self.head_dim],
-                                 loc=L(q_proj + ".reshape"),
-                                 ip=ip).output
-            k_op = top.ReshapeOp(T(kv_shape),
-                                 k_op,
-                                 shape=[1, -1, self.num_key_value_heads, self.head_dim],
-                                 loc=L(k_proj + ".reshape"),
-                                 ip=ip).output
-            v_op = top.ReshapeOp(T(kv_shape),
-                                 v_op,
-                                 shape=[1, -1, self.num_key_value_heads, self.head_dim],
-                                 loc=L("v_cache"),
-                                 ip=ip).output
-            q_op = self.rms_norm(block_mlir, q_op, q_norm)
-            k_op = self.rms_norm(block_mlir, k_op, k_norm)
-            # rotary cos/sin
-            q_op, k_op = self.apply_rotary_pos(block_mlir, in1_op, q_op, k_op, rotary_cos,
-                                               rotary_sin)
-            return_ops.append(k_op)
-            return_ops.append(v_op)
-            # ====== kv concat ========
-            k_op = top.ConcatOp(T([1, max_kv_len, self.num_key_value_heads, self.head_dim]),
-                                [in3_op, k_op],
-                                axis=1,
-                                only_merge=True,
-                                loc=L(k_proj + ".concat"),
-                                ip=ip).output
-            v_op = top.ConcatOp(T([1, max_kv_len, self.num_key_value_heads, self.head_dim]),
-                                [in4_op, v_op],
-                                axis=1,
-                                only_merge=True,
-                                loc=L(v_proj + ".concat"),
-                                ip=ip).output
-            # ======= fattention =========
-            fa_op = top.FAttentionOp(T([1, input_len, q_dim]),
-                                     q_op,
-                                     k_op,
-                                     v_op,
-                                     in2_op,
-                                     block_mlir.none_op,
-                                     scale=self.head_dim**-0.5,
-                                     batch=1,
-                                     q_head=self.num_attention_heads,
-                                     kv_head=self.num_key_value_heads,
-                                     dim=self.head_dim,
-                                     mq=input_len,
-                                     mk=max_kv_len,
-                                     keep_dims=False,
-                                     loc=L(TOP_PATH + "fattention"),
-                                     ip=ip).output
-            fa_op = top.MulOp(T([self.batch, 1, q_dim]), [fa_op, gate_op],
-                              loc=L(mlp_gate + ".gate_mul"),
-                              ip=ip).output
-            o_op = self.linear(block_mlir,
-                               o_proj,
-                               fa_op, [q_dim, self.hidden_size],
-                               input_shape,
-                               do_lora=self.do_lora)
-            o_op = top.AddOp(T(input_shape), [in0_op, o_op], loc=L(o_proj + ".add"), ip=ip).output
-            # ========== mlp =============
-            new_op = gen_mlp(block_mlir, input_shape, o_op)
-            block_mlir.create_return_op([new_op] + return_ops)
-            self.save_mlir_module(block_mlir, name)
-
         if self.use_block_with_kv:
-            gen_block_with_kv()
+            gen_block(PrefillType.WITH_HISTORY)
+            gen_block(PrefillType.SHARE_PROMPT)
         else:
-            gen_block()
-        if self.share_prompt:
-            gen_block()
+            gen_block(PrefillType.NORMAL)
         gen_block_cache()
 
     def gen_block_linear_attn_mlir(self, idx: int):
@@ -1475,13 +1360,17 @@ class Qwen3_5Converter(LlmConverter):
 
             return new_op
 
-        def gen_block_by_length(name: str, input_len: int):
+        def gen_block_by_length(name: str, input_len: int, with_history: bool = False):
             input_shape = [1, input_len, self.hidden_size]
             conv_shape = [1, conv_dim, conv_kernel_size]
             recurrent_shape = [1, num_v_heads, head_v_dim, head_v_dim]
-            block_mlir = MLIRImporter([input_shape, recurrent_shape], [input_shape, conv_shape],
+            input_shapes = [input_shape, recurrent_shape
+                            ] if not with_history else [input_shape, recurrent_shape, conv_shape]
+            input_types = ["F32", "F32"] if not with_history else ["F32", "F32", "F32"]
+            block_mlir = MLIRImporter(input_shapes, [input_shape, conv_shape],
                                       name,
-                                      self.platform, ["F32", "F32"],
+                                      self.platform,
+                                      input_types,
                                       lora_rank=self.lora_rank,
                                       weight_file=f"../{weight_file}")
 
@@ -1492,6 +1381,8 @@ class Qwen3_5Converter(LlmConverter):
 
             in0_op = block_mlir.create_input_op(L("input_states"), 0)
             in1_op = block_mlir.create_input_op(L("recurrent_states"), 1)
+            in2_op = block_mlir.create_input_op(L("conv_states"),
+                                                2) if with_history else block_mlir.none_op
             in0_norm_op = self.rms_norm(block_mlir, in0_op, input_ln)
             mixed_qkv_op = self.linear(block_mlir,
                                        in_proj_qkv,
@@ -1515,11 +1406,18 @@ class Qwen3_5Converter(LlmConverter):
                                [1, input_len, num_v_heads],
                                force_bias=True,
                                do_lora=self.do_lora)
-            mixed_qkv_op = top.PermuteOp(T([1, conv_dim, input_len]),
+            qkv_dim = input_len
+            mixed_qkv_op = top.PermuteOp(T([1, conv_dim, qkv_dim]),
                                          mixed_qkv_op,
                                          order=[0, 2, 1],
                                          loc=L(in_proj_qkv + ".permute"),
                                          ip=ip).output
+            if with_history:
+                qkv_dim = conv_kernel_size + input_len
+                mixed_qkv_op = top.ConcatOp(T([1, conv_dim, qkv_dim]), [in2_op, mixed_qkv_op],
+                                            axis=2,
+                                            loc=L("concat_conv_states"),
+                                            ip=ip).output
             conv_state = top.SliceOp(T([1, conv_dim, conv_kernel_size]),
                                      mixed_qkv_op,
                                      block_mlir.none_op,
@@ -1527,19 +1425,19 @@ class Qwen3_5Converter(LlmConverter):
                                      block_mlir.none_op,
                                      offset=[0, 0, -conv_kernel_size],
                                      steps=[1, 1, 1],
-                                     ends=[1, conv_dim, input_len],
+                                     ends=[1, conv_dim, qkv_dim],
                                      loc=L("conv_states"),
                                      ip=ip).output
             return_ops = [conv_state]
             # conv1d to conv2d
-            mixed_qkv_op = top.ReshapeOp(T([1, conv_dim, 1, input_len]),
+            mixed_qkv_op = top.ReshapeOp(T([1, conv_dim, 1, qkv_dim]),
                                          mixed_qkv_op,
                                          shape=[1, conv_dim, 1, -1],
                                          loc=L(in_proj_qkv + ".reshape_to_conv2d"),
                                          ip=ip).output
             weight_op = block_mlir.create_weight_op(conv1d + ".weight",
                                                     [conv_dim, 1, 1, conv_kernel_size])
-            conv_op = top.ConvOp(T([1, conv_dim, 1, input_len]),
+            conv_op = top.ConvOp(T([1, conv_dim, 1, qkv_dim]),
                                  mixed_qkv_op,
                                  weight_op,
                                  block_mlir.none_op,
@@ -1549,6 +1447,17 @@ class Qwen3_5Converter(LlmConverter):
                                  pads=[0, conv_kernel_size - 1, 0, 0],
                                  loc=L(conv1d),
                                  ip=ip).output
+            if with_history:
+                conv_op = top.SliceOp(T([1, conv_dim, 1, input_len]),
+                                      conv_op,
+                                      block_mlir.none_op,
+                                      block_mlir.none_op,
+                                      block_mlir.none_op,
+                                      offset=[0, 0, 0, conv_kernel_size],
+                                      steps=[1, 1, 1, 1],
+                                      ends=[1, conv_dim, 1, qkv_dim],
+                                      loc=L("conv_output_slice"),
+                                      ip=ip).output
             conv_op = self.activate(block_mlir, conv_op, ActType.SILU, conv1d)
             conv_op = top.ReshapeOp(T([1, num_k_heads * 2 + num_v_heads, head_v_dim, input_len]),
                                     conv_op,
@@ -1665,7 +1574,7 @@ class Qwen3_5Converter(LlmConverter):
 
         def gen_block():
             name = f"block_{idx}"
-            gen_block_by_length(name, self.max_input_length)
+            gen_block_by_length(name, self.max_input_length, self.use_block_with_kv)
             return
 
         def gen_block_cache():
@@ -1861,3 +1770,9 @@ class Qwen3_5Converter(LlmConverter):
             symmetric=True,
             addr_mode='io_alone',
         )
+
+    @override
+    def compile_block_prompt(self, layer_id):
+        if self.llm_config.layer_types[layer_id] != "full_attention":
+            return
+        super().compile_block_prompt(layer_id)

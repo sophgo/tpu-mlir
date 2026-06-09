@@ -65,6 +65,12 @@ class WeightType:
     LAYERNORM = "LayerNorm"
 
 
+class PrefillType:
+    NORMAL = "Normal"
+    SHARE_PROMPT = "SharePrompt"
+    WITH_HISTORY = "WithHistory"
+
+
 class LlmList:
     LAYERS = "LAYERS"
     EMBEDING = "EMBEDING"
