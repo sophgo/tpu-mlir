@@ -95,8 +95,10 @@ class TpuLang:
         caller_args = inspect.getargvalues(caller_frame)
         args_info = {
             'args': caller_args.args,
-            'values': {k: simplify_value(caller_args.locals[k])
-                       for k in caller_args.args}
+            'values': {
+                k: simplify_value(caller_args.locals[k])
+                for k in caller_args.args
+            }
         }
 
         op = Operator(op_name,
@@ -363,7 +365,7 @@ def compile_f32(name: str,
         TpuLang.graph.inputs = inputs
         TpuLang.graph.outputs = outputs
     if debug_dump_mode == 'dump':
-        params = list(inspect.signature(compile).parameters.keys())
+        params = list(inspect.signature(compile_f32).parameters.keys())
         all_locals = locals()
         exclude_params = [
             'inputs', 'outputs', 'cmp', 'refs', 'mode', 'mlir_inference', 'bmodel_inference',

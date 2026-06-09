@@ -812,6 +812,10 @@ if __name__ == '__main__':
                         help="remote server password for ssh/scp")
     # yapf: enable
     args = parser.parse_args()
+    if not os.path.exists(args.model):
+        raise FileNotFoundError("model file not found: {}".format(args.model))
+    if not os.path.exists(args.input):
+        raise FileNotFoundError("input file not found: {}".format(args.input))
     if args.ip and (args.model.endswith(".bmodel") or args.model.endswith(".cvimodel")):
         remote_inference(args.ip, args.pwd, args.input, args.model, args.output)
     else:

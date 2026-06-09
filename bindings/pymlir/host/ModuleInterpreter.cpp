@@ -1330,6 +1330,11 @@ void ModuleInterpreter::setTensor(const std::string &name, const void *data,
       (mem_mode == mem_mode_t::ALL_TENSOR_IN_REUSED_MEM && is_activation)
           ? activation_offset[name].first
           : 0;
+  if (size > tensor_size) {
+    llvm::errs() << "Input tensor " << name << " data size " << size
+                 << " exceeds model tensor size " << tensor_size << "\n";
+    llvm_unreachable("Error, setTensor failed");
+  }
   if (tensor_size > size) {
     tensor_size = size;
     it->second->resize(size);

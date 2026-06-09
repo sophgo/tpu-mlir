@@ -31,7 +31,9 @@ void py_module::load(std::string filename) {
   context_ = std::make_unique<MLIRContext>(registry);
 
   module_ = parseSourceFile<ModuleOp>(filename, context_.get());
-  assert(module_);
+  if (!module_) {
+    throw std::runtime_error("failed to load mlir file: " + filename);
+  }
   if (interpreter_) {
     interpreter_.reset();
   }
