@@ -17,7 +17,16 @@ void py_cuda::cudaDivOp(tpu::DivOp op) {
   auto shape1 = std::vector<int64_t>(module::getShape(in1));
   auto shape2 = std::vector<int64_t>(module::getShape(out));
   auto is_reverse = op.getIsReverse();
-  auto num_dims = shape0.size();
+  auto num_dims = std::max(shape0.size(), shape1.size());
+  while (shape0.size() < num_dims) {
+    shape0.emplace(shape0.begin(), 1);
+  }
+  while (shape1.size() < num_dims) {
+    shape1.emplace(shape1.begin(), 1);
+  }
+  while (shape2.size() < num_dims) {
+    shape2.emplace(shape2.begin(), 1);
+  }
   auto do_relu = op.getDoRelu();
   if (module::isUniformQuantized(op.getOutput())) {
     llvm_unreachable("Not Implemented");
@@ -71,7 +80,16 @@ void py_cuda::cudaDivOp(top::DivOp op) {
   auto shape1 = std::vector<int64_t>(module::getShape(in1));
   auto shape2 = std::vector<int64_t>(module::getShape(out));
   auto is_reverse = op.getIsReverse();
-  auto num_dims = shape0.size();
+  auto num_dims = std::max(shape0.size(), shape1.size());
+  while (shape0.size() < num_dims) {
+    shape0.emplace(shape0.begin(), 1);
+  }
+  while (shape1.size() < num_dims) {
+    shape1.emplace(shape1.begin(), 1);
+  }
+  while (shape2.size() < num_dims) {
+    shape2.emplace(shape2.begin(), 1);
+  }
   auto do_relu = op.getDoRelu();
   if (is_reverse) {
     cuda::divMDF32(input1, input0, output, shape1.data(), shape0.data(), shape2.data(), num_dims);

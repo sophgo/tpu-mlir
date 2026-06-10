@@ -1733,7 +1733,7 @@ class OnnxConverter(BaseConverter):
                 tensor_data = tensor_data[(slice(None), ) * axis + (s, )]
             self.addWeight(onnx_node.name, tensor_data)
             return
-        if axes != []:
+        if len(axes) != 0:
 
             def is_sorted(arr):
                 for i in range(len(arr) - 1):
@@ -2931,8 +2931,9 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "QuantizeLinear")
         assert (len(onnx_node.inputs) == 3)
         operand = self.getOperand(onnx_node.inputs[0])
-        y_scale = self.getWeight(onnx_node.inputs[1]).tolist()
-        y_zero_point = self.getWeight(onnx_node.inputs[2]).tolist()
+        y_scale = np.array(self.getWeight(onnx_node.inputs[1])).reshape([-1]).tolist()
+        y_zero_point = np.array(self.getWeight(onnx_node.inputs[2])).astype(np.int32).reshape([-1]).tolist()
+        axis = None
         if hasattr(onnx_node, 'attrs'):
             axis = onnx_node.attrs.get('axis', None)
 
@@ -2953,8 +2954,9 @@ class OnnxConverter(BaseConverter):
             operand = self.getOperand(onnx_node.inputs[0])
         except:
             operand = self.getWeightOp(onnx_node.inputs[0])
-        x_scale = self.getWeight(onnx_node.inputs[1])
-        x_zero_point = self.getWeight(onnx_node.inputs[2])
+        x_scale = np.array(self.getWeight(onnx_node.inputs[1])).reshape([-1]).tolist()
+        x_zero_point = np.array(self.getWeight(onnx_node.inputs[2])).astype(np.int32).reshape([-1]).tolist()
+        axis = None
         if hasattr(onnx_node, 'attrs'):
             axis = onnx_node.attrs.get('axis', None)
         new_op = top.DequantizeLinearOp(self.unranked_type,

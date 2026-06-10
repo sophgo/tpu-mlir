@@ -81,7 +81,39 @@ void ScaleLutLowering::LoweringINT8(PatternRewriter &rewriter,
 
 void ScaleLutLowering::LoweringF32(PatternRewriter &rewriter,
                                    top::ScaleLutOp op) const {
-  lowering_common_f32<tpu::ScaleLutOp>(rewriter, op);
+  Value input_val = op.getInput();
+  int64_t n, c, h, w;
+  module::getNCHW(input_val, n, c, h, w);
+  std::string name = module::getName(op.getOutput()).str();
+  auto scale = module::getF64Array(op.getScale());
+  auto bias = module::getF64Array(op.getBias());
+  int table_h = 16;
+  int table_w = 16;
+  int table_hw = table_h * table_w;
+  int table_size = c * table_hw;
+  auto table_shape = std::vector<int64_t>{1, c, table_h, table_w};
+  auto table_type = RankedTensorType::get(table_shape, rewriter.getF32Type());
+
+  std::vector<float> table(table_size, 0.f);
+  for (int i = 0; i < c; i++) {
+    for (int idx = 0; idx < table_hw; ++idx) {
+      table[i * table_hw + idx] =
+          static_cast<float>(idx * scale->at(i) + bias->at(i));
+    }
+  }
+  auto table_op =
+      top::WeightOp::create(op, name + "_table", table, table_type);
+
+  std::vector<Value> operands;
+  operands.emplace_back(input_val);
+  operands.emplace_back(table_op);
+  std::vector<NamedAttribute> attrs;
+  attrs.emplace_back(rewriter.getNamedAttr("scale", op.getScaleAttr()));
+  attrs.emplace_back(rewriter.getNamedAttr("bias", op.getBiasAttr()));
+  attrs.emplace_back(rewriter.getNamedAttr("sign", op.getSignAttr()));
+
+  auto newType = getQuantFloatType<Float32Type>(op.getOutput());
+  rewriter.replaceOpWithNewOp<tpu::ScaleLutOp>(op, newType, operands, attrs);
 }
 
 void ScaleLutLowering::LoweringINT4(PatternRewriter &rewriter,
@@ -91,12 +123,80 @@ void ScaleLutLowering::LoweringINT4(PatternRewriter &rewriter,
 
 void ScaleLutLowering::LoweringF16(PatternRewriter &rewriter,
                                    top::ScaleLutOp op) const {
-  LoweringF32(rewriter, op);
+  Value input_val = op.getInput();
+  int64_t n, c, h, w;
+  module::getNCHW(input_val, n, c, h, w);
+  std::string name = module::getName(op.getOutput()).str();
+  auto scale = module::getF64Array(op.getScale());
+  auto bias = module::getF64Array(op.getBias());
+  int table_h = 16;
+  int table_w = 16;
+  int table_hw = table_h * table_w;
+  int table_size = c * table_hw;
+  auto table_shape = std::vector<int64_t>{1, c, table_h, table_w};
+  auto table_type = RankedTensorType::get(table_shape, rewriter.getF32Type());
+
+  std::vector<float> table(table_size, 0.f);
+  for (int i = 0; i < c; i++) {
+    for (int idx = 0; idx < table_hw; ++idx) {
+      table[i * table_hw + idx] =
+          static_cast<float>(idx * scale->at(i) + bias->at(i));
+    }
+  }
+  auto table_op =
+      top::WeightOp::create(op, name + "_table", table, table_type);
+  auto table_f16 =
+      dyn_cast<top::WeightOp>(table_op.getDefiningOp()).clone_f16(op);
+
+  std::vector<Value> operands;
+  operands.emplace_back(input_val);
+  operands.emplace_back(table_f16);
+  std::vector<NamedAttribute> attrs;
+  attrs.emplace_back(rewriter.getNamedAttr("scale", op.getScaleAttr()));
+  attrs.emplace_back(rewriter.getNamedAttr("bias", op.getBiasAttr()));
+  attrs.emplace_back(rewriter.getNamedAttr("sign", op.getSignAttr()));
+
+  auto newType = getQuantFloatType<Float16Type>(op.getOutput());
+  rewriter.replaceOpWithNewOp<tpu::ScaleLutOp>(op, newType, operands, attrs);
 }
 
 void ScaleLutLowering::LoweringBF16(PatternRewriter &rewriter,
                                     top::ScaleLutOp op) const {
-  LoweringF32(rewriter, op);
+  Value input_val = op.getInput();
+  int64_t n, c, h, w;
+  module::getNCHW(input_val, n, c, h, w);
+  std::string name = module::getName(op.getOutput()).str();
+  auto scale = module::getF64Array(op.getScale());
+  auto bias = module::getF64Array(op.getBias());
+  int table_h = 16;
+  int table_w = 16;
+  int table_hw = table_h * table_w;
+  int table_size = c * table_hw;
+  auto table_shape = std::vector<int64_t>{1, c, table_h, table_w};
+  auto table_type = RankedTensorType::get(table_shape, rewriter.getF32Type());
+
+  std::vector<float> table(table_size, 0.f);
+  for (int i = 0; i < c; i++) {
+    for (int idx = 0; idx < table_hw; ++idx) {
+      table[i * table_hw + idx] =
+          static_cast<float>(idx * scale->at(i) + bias->at(i));
+    }
+  }
+  auto table_op =
+      top::WeightOp::create(op, name + "_table", table, table_type);
+  auto table_bf16 =
+      dyn_cast<top::WeightOp>(table_op.getDefiningOp()).clone_bf16(op);
+
+  std::vector<Value> operands;
+  operands.emplace_back(input_val);
+  operands.emplace_back(table_bf16);
+  std::vector<NamedAttribute> attrs;
+  attrs.emplace_back(rewriter.getNamedAttr("scale", op.getScaleAttr()));
+  attrs.emplace_back(rewriter.getNamedAttr("bias", op.getBiasAttr()));
+  attrs.emplace_back(rewriter.getNamedAttr("sign", op.getSignAttr()));
+
+  auto newType = getQuantFloatType<BFloat16Type>(op.getOutput());
+  rewriter.replaceOpWithNewOp<tpu::ScaleLutOp>(op, newType, operands, attrs);
 }
 
 void ScaleLutLowering::LoweringF8(PatternRewriter &rewriter,
@@ -106,7 +206,7 @@ void ScaleLutLowering::LoweringF8(PatternRewriter &rewriter,
 
 void ScaleLutLowering::LoweringQuantized(PatternRewriter &rewriter,
                                          top::ScaleLutOp op) const {
-  lowering_common<tpu::ScaleLutOp>(rewriter, op, op.getOutput().getType());
+  lowering_common<tpu::ScaleLutOp>(rewriter, op, op.getOutput().getType());	
 }
 
 } // namespace bm1684x
