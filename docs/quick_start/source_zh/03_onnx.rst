@@ -1,7 +1,7 @@
 编译ONNX模型
 ============
 
-本章以 ``yolov5s.onnx`` 为例，介绍如何编译迁移一个onnx模型至深度学习处理器平台运行。
+本章以 ``yolov5s.onnx`` 为例，介绍如何编译转换一个onnx模型至深度学习处理器平台运行。
 
 该模型来自yolov5的官网: https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
 
@@ -207,7 +207,7 @@ MLIR转F16模型
      - 指定需要排除验证的网络层的名称, 多个用,隔开
    * - op_divide
      - 否
-     - cv183x/cv182x/cv181x/cv180x only, 尝试将较大的op拆分为多个小op以达到节省ion内存的目的, 适用少数特定模型
+     - cv183x/cv182x/cv181x/cv180x only, 尝试将较大的op拆分为多个小op以达到节省ION内存的目的, 适用少数特定模型
    * - model
      - 是
      - 指定输出的model文件名称和路径
@@ -251,7 +251,7 @@ MLIR转INT8模型
 然后用校准表，生成对称或非对称bmodel。如果对称符合需求，一般不建议用非对称，因为
 非对称的性能会略差于对称模型。
 
-这里用现有的100张来自COCO2017的图片举例，执行calibration:
+这里使用100张来自COCO2017的图片进行校准。对于yolov5s模型，percentile9999校准方法优于KL和MSE方法，尤其是本测试中dog的置信度:
 
 
 .. code-block:: shell
@@ -259,9 +259,10 @@ MLIR转INT8模型
    $ run_calibration yolov5s.mlir \
        --dataset ../COCO2017 \
        --input_num 100 \
+       --cali_method percentile9999 \
        -o yolov5s_cali_table
 
-运行完成后会生成名为 ``yolov5s_cali_table`` 的文件，该文件用于后续编译INT8模型的输入文件。
+运行完成后会生成名为 ``yolov5s_cali_table`` 的文件，该文件用于后续编译INT8模型。还会生成一个shape_pattern_qtable量化表，用于将最后一个Conv及其后面的算子设置为float类型以获得更好的精度。
 
 
 编译为INT8对称量化模型
@@ -275,6 +276,7 @@ MLIR转INT8模型
        --mlir yolov5s.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
+       --quantize_table shape_pattern_qtable \
        --processor bm1684x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
@@ -339,7 +341,7 @@ int8对称bmodel的执行方式如下，得到 ``dog_int8_sym.jpg`` :
 模型性能测试
 ------------
 
-以下操作需要在Docker外执行，
+以下操作需要在Docker外执行：
 
 安装驱动环境
 ~~~~~~~~~~~~~~~~~~~~~~~

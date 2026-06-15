@@ -2,7 +2,7 @@ Compile the ONNX model
 ======================
 
 This chapter takes ``yolov5s.onnx`` as an example to introduce how to compile
-and transfer an onnx model to run on the BM1684X platform.
+and transform an onnx model to run on the BM1684X platform.
 
 The model is from the official website of yolov5: https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
 
@@ -59,7 +59,7 @@ The operation is as follows:
 ONNX to MLIR
 ------------------
 
-If the input is image, we need to know the preprocessing of the model before transferring it. If the model uses preprocessed npz files as input, no preprocessing needs to be considered.
+If the input is an image, we need to know the preprocessing of the model before transforming it. If the model uses preprocessed npz files as input, no preprocessing needs to be considered.
 The preprocessing process is formulated as follows ( :math:`x` represents the input):
 
 .. math::
@@ -67,8 +67,8 @@ The preprocessing process is formulated as follows ( :math:`x` represents the in
    y = (x - mean) \times scale
 
 
-The image of the official yolov5 is rgb. Each value will be multiplied by ``1/255``, respectively corresponding to
-``0.0,0.0,0.0`` and ``0.0039216,0.0039216,0.0039216`` when it is converted into mean and scale.
+The official yolov5 model uses RGB images. Each pixel value is multiplied by ``1/255``, which corresponds to
+a mean of ``0.0,0.0,0.0`` and a scale of ``0.0039216,0.0039216,0.0039216``.
 
 The model conversion command is as follows:
 
@@ -112,7 +112,7 @@ The main parameters of ``model_transform`` are described as follows (for a compl
      - Shape of the inputs, such as ``[[1,3,640,640]]`` (a two-dimensional array), which can support multiple inputs
    * - input_types
      - N
-     - Type of the inputs, such int32; separate by ',' for multi inputs; float32 as default
+     - Type of the inputs, such as int32; separated by ',' for multiple inputs; float32 is the default
    * - resize_dims
      - N
      - The size of the original image to be adjusted to. If not specified, it will be resized to the input size of the model
@@ -136,7 +136,7 @@ The main parameters of ``model_transform`` are described as follows (for a compl
      - The names of the output. Use the output of the model if not specified, otherwise use the specified names as the output
    * - test_input
      - N
-     - The input file for validation, which can be an jpg, npy or npz file. No validation will be carried out if it is not specified
+     - The input file for validation, which can be a jpg, npy or npz file. No validation will be carried out if it is not specified
    * - test_result
      - N
      - Output file to save verification result with suffix ``.npz``
@@ -196,7 +196,7 @@ The main parameters of ``model_deploy`` are as follows (for a complete introduct
      - Tolerance for the minimum similarity between MLIR quantized and MLIR fp32 inference results
    * - test_input
      - N
-     - The input file for validation, which can be an jpg, npy or npz file. No validation will be carried out if it is not specified
+     - The input file for validation, which can be a jpg, npy or npz file. No validation will be carried out if it is not specified
    * - test_reference
      - N
      - Reference data for validating mlir tolerance (in npz format). It is the result of each operator
@@ -208,7 +208,7 @@ The main parameters of ``model_deploy`` are as follows (for a complete introduct
      - Names of network layers that need to be excluded from validation. Separated by comma
    * - op_divide
      - N
-     - cv183x/cv182x/cv181x/cv180x only, Try to split the larger op into multiple smaller op to achieve the purpose of ion memory saving, suitable for a few specific models
+     - cv183x/cv182x/cv181x/cv180x only. Tries to split the larger op into multiple smaller ops to save ION memory, suitable for a few specific models
    * - model
      - Y
      - Name of output model file (including path)
@@ -245,12 +245,12 @@ MLIR to INT8 bmodel
 Calibration table generation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Before converting to the INT8 model, you need to run calibration to get the calibration table. The number of input data is about 100 to 1000 according to the situation.
+Before converting to the INT8 model, you need to run calibration to get the calibration table. The number of input samples is about 100 to 1000 depending on the situation.
 
 Then use the calibration table to generate a symmetric or asymmetric bmodel. It is generally not recommended to use the asymmetric one if the symmetric one already meets the requirements, because
 the performance of the asymmetric model will be slightly worse than the symmetric model.
 
-Here is an example of the existing 100 images from COCO2017 to perform calibration:
+Here is an example using 100 images from COCO2017 to perform calibration. For the yolov5s model, the percentile9999 calibration method is better than the KL and MSE methods, especially for the confidence coefficient of the dog in this test:
 
 
 .. code-block:: shell
@@ -258,9 +258,10 @@ Here is an example of the existing 100 images from COCO2017 to perform calibrati
    $ run_calibration yolov5s.mlir \
        --dataset ../COCO2017 \
        --input_num 100 \
+       --cali_method percentile9999 \
        -o yolov5s_cali_table
 
-After running the command above, a file named ``yolov5s_cali_table`` will be generated, which is used as the input file for subsequent compilation of the INT8 model.
+After running the command above, a file named ``yolov5s_cali_table`` will be generated, which is used as the input file for subsequent compilation of the INT8 model. A shape_pattern_qtable quantize table is also generated to set the last Conv and ops after it to float for better accuracy.
 
 
 Compile to INT8 symmetric quantized model
@@ -274,6 +275,7 @@ Execute the following command to convert to the INT8 symmetric quantized model:
        --mlir yolov5s.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
+       --quantize_table shape_pattern_qtable \
        --processor bm1684x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
@@ -290,7 +292,7 @@ In tpu_mlir package, there are yolov5 use cases written in python, using the ``d
 
 This command corresponds to the source code path ``{package/path/to/tpu_mlir}/python/samples/detect_yolov5.py``.
 
-It can be learned how the model is used by reading the code. Firstly, preprocess to get the model's input, then do inference to get the output, and finally do post-processing.
+You can learn how the model is used by reading the code. First, preprocess to get the model's input, then do inference to get the output, and finally do post-processing.
 
 Use the following codes to validate the inference results of onnx/f16/int8 respectively.
 
@@ -341,7 +343,7 @@ Due to different operating environments, the final performance will be somewhat 
 Model performance test
 ----------------------
 
-The following operations need to be performed outside of Docker,
+The following operations need to be performed outside of Docker:
 
 Install the driver
 ~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -471,6 +471,8 @@ class MatchPattern:
                     nn_op_types = [self.parser.get_op_type_by_op_name(_) for _ in next_next_ops]
                     if any(_ == 'top.Conv' for _ in nn_op_types):
                         continue
+                    # add the last conv to fp_layer_list
+                    append_unduplicated(fp_layer_list, op_name)
                     # recursively find all the ops after the last conv
                     ops_after_last_conv = next_ops
                     while ops_after_last_conv:
