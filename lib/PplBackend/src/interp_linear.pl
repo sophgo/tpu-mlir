@@ -417,27 +417,27 @@ void interp_(T *ptr_output, T *ptr_input, const int core_num, const int N, const
 #else
           tiu::gather_hw(output1_tensor.view(output_real_shape), cur_in_tensor.view(real_input_real_shape), index1_uint16.view<uint16>(real_index_shape));
 #endif
-          tiu::fmul(output1_tensor.view(output_real_shape), output1_tensor.view(output_real_shape), cur_weight4_tensor_T);
+          tiu::fmul(output1_tensor.view(output_real_shape), output1_tensor.view(output_real_shape), cur_weight4_tensor_T.view(real_weight_real_shape));
 #ifdef __bm1684x2__
           tiu::gather_hw(output2_tensor.view(output_real_shape), cur_in_tensor.view(real_input_real_shape), index2_u32);
 #else
           tiu::gather_hw(output2_tensor.view(output_real_shape), cur_in_tensor.view(real_input_real_shape), index2_uint16.view<uint16>(real_index_shape));
 #endif
-          tiu::fmul(output2_tensor.view(output_real_shape), output2_tensor.view(output_real_shape), cur_weight3_tensor_T);
+          tiu::fmul(output2_tensor.view(output_real_shape), output2_tensor.view(output_real_shape), cur_weight3_tensor_T.view(real_weight_real_shape));
           tiu::fadd(output1_tensor.view(output_real_shape), output1_tensor.view(output_real_shape), output2_tensor.view(output_real_shape));
 #ifdef __bm1684x2__
           tiu::gather_hw(output2_tensor.view(output_real_shape), cur_in_tensor.view(real_input_real_shape), index3_u32);
 #else
           tiu::gather_hw(output2_tensor.view(output_real_shape), cur_in_tensor.view(real_input_real_shape), index3_uint16.view<uint16>(real_index_shape));
 #endif
-          tiu::fmul(output2_tensor.view(output_real_shape), output2_tensor.view(output_real_shape), cur_weight2_tensor_T);
+          tiu::fmul(output2_tensor.view(output_real_shape), output2_tensor.view(output_real_shape), cur_weight2_tensor_T.view(real_weight_real_shape));
           tiu::fadd(output1_tensor.view(output_real_shape), output1_tensor.view(output_real_shape), output2_tensor.view(output_real_shape));
 #ifdef __bm1684x2__
           tiu::gather_hw(output2_tensor.view(output_real_shape), cur_in_tensor.view(real_input_real_shape), index4_u32);
 #else
           tiu::gather_hw(output2_tensor.view(output_real_shape), cur_in_tensor.view(real_input_real_shape), index4_uint16.view<uint16>(real_index_shape));
 #endif
-          tiu::fmul(output2_tensor.view(output_real_shape), output2_tensor.view(output_real_shape), cur_weight1_tensor_T);
+          tiu::fmul(output2_tensor.view(output_real_shape), output2_tensor.view(output_real_shape), cur_weight1_tensor_T.view(real_weight_real_shape));
           tiu::fadd(output1_tensor.view(output_real_shape), output1_tensor.view(output_real_shape), output2_tensor.view(output_real_shape));
           dma::store(res_gtensor.sub_view(output_real_shape, out_offset), output1_tensor.view(output_real_shape));
         } else {
@@ -446,27 +446,27 @@ void interp_(T *ptr_output, T *ptr_input, const int core_num, const int N, const
 #else
           tiu::gather_hw(output1_tensor.view(output_real_shape), cur_in_tensor.view(real_input_real_shape), index1_uint16.view<uint16>(real_index_shape));
 #endif
-          tiu::fmul(output1_tensor.view(output_real_shape), output1_tensor.view(output_real_shape), cur_weight4_tensor);
+          tiu::fmul(output1_tensor.view(output_real_shape), output1_tensor.view(output_real_shape), cur_weight4_tensor.view(real_weight_real_shape));
 #ifdef __bm1684x2__
           tiu::gather_hw(output2_tensor.view(output_real_shape), cur_in_tensor.view(real_input_real_shape), index2_u32);
 #else
           tiu::gather_hw(output2_tensor.view(output_real_shape), cur_in_tensor.view(real_input_real_shape), index2_uint16.view<uint16>(real_index_shape));
 #endif
-          tiu::fmul(output2_tensor.view(output_real_shape), output2_tensor.view(output_real_shape), cur_weight3_tensor);
+          tiu::fmul(output2_tensor.view(output_real_shape), output2_tensor.view(output_real_shape), cur_weight3_tensor.view(real_weight_real_shape));
           tiu::fadd(output1_tensor.view(output_real_shape), output1_tensor.view(output_real_shape), output2_tensor.view(output_real_shape));
 #ifdef __bm1684x2__
           tiu::gather_hw(output2_tensor.view(output_real_shape), cur_in_tensor.view(real_input_real_shape), index3_u32);
 #else
           tiu::gather_hw(output2_tensor.view(output_real_shape), cur_in_tensor.view(real_input_real_shape), index3_uint16.view<uint16>(real_index_shape));
 #endif
-          tiu::fmul(output2_tensor.view(output_real_shape), output2_tensor.view(output_real_shape), cur_weight2_tensor);
+          tiu::fmul(output2_tensor.view(output_real_shape), output2_tensor.view(output_real_shape), cur_weight2_tensor.view(real_weight_real_shape));
           tiu::fadd(output1_tensor.view(output_real_shape), output1_tensor.view(output_real_shape), output2_tensor.view(output_real_shape));
 #ifdef __bm1684x2__
           tiu::gather_hw(output2_tensor.view(output_real_shape), cur_in_tensor.view(real_input_real_shape), index4_u32);
 #else
           tiu::gather_hw(output2_tensor.view(output_real_shape), cur_in_tensor.view(real_input_real_shape), index4_uint16.view<uint16>(real_index_shape));
 #endif
-          tiu::fmul(output2_tensor.view(output_real_shape), output2_tensor.view(output_real_shape), cur_weight1_tensor);
+          tiu::fmul(output2_tensor.view(output_real_shape), output2_tensor.view(output_real_shape), cur_weight1_tensor.view(real_weight_real_shape));
           tiu::fadd(output1_tensor.view(output_real_shape), output1_tensor.view(output_real_shape), output2_tensor.view(output_real_shape));
           dma::store(res_gtensor.sub_view(output_real_shape, out_offset), output1_tensor.view(output_real_shape));
         }
