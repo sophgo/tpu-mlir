@@ -41,7 +41,7 @@ void api_add_const_fp_global(void *param, size_t param_size, void *input_spec,
 
 // dynamic interface (option)
 using fill_buffer_func = int (*)(gaddr_t, gaddr_t, float, int, int, int, int,
-                                 int, bool, void *buffer);
+                                 int, int, void *buffer);
 int api_dyn_add_const_fp_global(void *param, void *input_spec,
                                 void *output_spec, void *buffer) {
   constbinary_global_spec_t *_param = (constbinary_global_spec_t *)param;
@@ -75,7 +75,7 @@ int api_dyn_add_const_fp_global(void *param, void *input_spec,
 // ======================================
 
 // static interface
-using local_func = int (*)(uint32_t, uint32_t, float, int, int, int, int, bool);
+using local_func = int (*)(uint32_t, uint32_t, float, int, int, int, int, int);
 int api_add_const_fp_local(void *param, size_t param_size, void *slice_info,
                            void *input_spec, void *output_spec) {
   constbinary_local_param_t *_param = (constbinary_local_param_t *)param;
@@ -102,7 +102,7 @@ int api_add_const_fp_local(void *param, size_t param_size, void *slice_info,
 }
 // dynamic interface (option)
 using fill_buffer_local_func = int (*)(uint32_t, uint32_t, float, int, int, int,
-                                       int, bool, void *);
+                                       int, int, void *);
 int api_dyn_add_const_fp_local(void *param, void *input_spec, void *output_spec,
                                void *buffer) {
   constbinary_local_param_t *_param = (constbinary_local_param_t *)param;

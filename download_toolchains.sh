@@ -3,9 +3,8 @@ set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 # PPL compiler version and download URL
 # Update these when a new PPL release is needed
-PPL_VERSION="v1.7.17-gad6b3a3a-20260210"
-PPL_URL="https://github.com/sophgo/tpu-mlir/releases/download/v1.28.1/ppl_v1.7.17-gad6b3a3a-20260210.tar.gz"
-PPL_PACKAGE="ppl_v1.7.17-gad6b3a3a-20260210.tar.gz"
+PPL_URL="https://github.com/sophgo/tpu-mlir/releases/download/v1.28.1/ppl_v1.7.111-g23cf8831-20260616.tar.gz"
+
 
 function usage() {
   echo "Usage: $0 [ppl|cross-gcc|all] [--dir PATH]"
@@ -36,6 +35,9 @@ function download_toolchain() {
 }
 
 function download_ppl() {
+  PPL_PACKAGE="${PPL_URL##*/}"
+  PPL_VERSION="${PPL_PACKAGE#ppl_}"
+  PPL_VERSION="${PPL_VERSION%.tar.gz}"
   local ppl_dir="ppl_compile"
   if [ -d "${ppl_dir}" ]; then
     local current_version=""

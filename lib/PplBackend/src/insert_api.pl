@@ -13,7 +13,7 @@ using namespace ppl;
 
 template <typename T>
 void insert_tensor_data(T *ptr_dst, T *ptr_src, int axis, int offset, int N,
-                        int C, int H, int W, int D) {
+                        int C, int H, int W, const int D) {
   if (axis < 0 || axis > 3)
     return;
   if (offset < 0)
@@ -43,8 +43,8 @@ void insert_tensor_data(T *ptr_dst, T *ptr_src, int axis, int offset, int N,
 }
 
 __KERNEL__ void insert_tensor(void *ptr_dst, void *ptr_src, int axis,
-                              int offset, int N, int C, int H, int W, int D,
-                              int dbytes) {
+                              int offset, int N, int C, int H, int W,
+                              const int D, const int dbytes) {
   if (dbytes == 1) {
     insert_tensor_data((int8 *)ptr_dst, (int8 *)ptr_src, axis, offset, N, C, H,
                        W, D);

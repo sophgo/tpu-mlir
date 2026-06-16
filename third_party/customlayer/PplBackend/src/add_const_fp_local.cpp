@@ -3,7 +3,7 @@
 #include "helper.h"
 
 extern "C" {
-using KernelFunc = int (*)(local_addr_t, local_addr_t, float, int, int, int, int, bool);
+using KernelFunc = int (*)(local_addr_t, local_addr_t, float, int, int, int, int, int);
 int addconst_local(local_addr_t ptr_dst, local_addr_t ptr_src, float rhs, int N, int C,
                    int H, int W, bool relu, int dtype) {
   KernelFunc func;

@@ -13,7 +13,7 @@ int get_max_common_div(int v, int max_v) {
 
 template <typename T>
 void add_const_fp(T *ptr_dst, T *ptr_src, float rhs, int N, int C, int H, int W,
-                  const int block_w, bool relu) {
+                  const int block_w, const int relu) {
   // reshape src [N, C, H, W] -> [1, c_slice, 1, w_slice]
   // c_slice <= LANE_NUM
   int total_length = N * C * H * W;
@@ -48,22 +48,26 @@ void add_const_fp(T *ptr_dst, T *ptr_src, float rhs, int N, int C, int H, int W,
     }
   }
 }
-__KERNEL__ void add_const_f32(float *ptr_dst, float *ptr_src, float rhs, int N, int C,
-                   int H, int W, const int block_w, bool relu) {
+__KERNEL__ void add_const_f32(float *ptr_dst, float *ptr_src, float rhs, int N,
+                              int C, int H, int W, const int block_w,
+                              const int relu) {
   add_const_fp(ptr_dst, ptr_src, rhs, N, C, H, W, block_w, relu);
 }
-__KERNEL__ void add_const_f16(fp16 *ptr_dst, fp16 *ptr_src, float rhs, int N, int C, int H,
-                   int W, const int block_w, bool relu) {
+__KERNEL__ void add_const_f16(fp16 *ptr_dst, fp16 *ptr_src, float rhs, int N,
+                              int C, int H, int W, const int block_w,
+                              const int relu) {
   add_const_fp(ptr_dst, ptr_src, rhs, N, C, H, W, block_w, relu);
 }
-__KERNEL__ void add_const_bf16(bf16 *ptr_dst, bf16 *ptr_src, float rhs, int N, int C,
-                    int H, int W, const int block_w, bool relu) {
+__KERNEL__ void add_const_bf16(bf16 *ptr_dst, bf16 *ptr_src, float rhs, int N,
+                               int C, int H, int W, const int block_w,
+                               const int relu) {
   add_const_fp(ptr_dst, ptr_src, rhs, N, C, H, W, block_w, relu);
 }
 
 template <typename T>
 void add_const_mc_fp(T *ptr_dst, T *ptr_src, float rhs, int N, int C, int H,
-                     int W, const int block_w, const int core_num, bool relu) {
+                     int W, const int block_w, const int core_num,
+                     const int relu) {
   set_group_num(1);
   set_block_num(core_num);
 
@@ -114,19 +118,19 @@ void add_const_mc_fp(T *ptr_dst, T *ptr_src, float rhs, int N, int C, int H,
     }
   }
 }
-__KERNEL__ void add_const_mc_f32(float *ptr_dst, float *ptr_src, float rhs, int N, int C,
-                       int H, int W, const int block_w, const int core_num,
-                       bool relu) {
+__KERNEL__ void add_const_mc_f32(float *ptr_dst, float *ptr_src, float rhs,
+                                 int N, int C, int H, int W, const int block_w,
+                                 const int core_num, const int relu) {
   add_const_mc_fp(ptr_dst, ptr_src, rhs, N, C, H, W, block_w, core_num, relu);
 }
-__KERNEL__ void add_const_mc_fp16(fp16 *ptr_dst, fp16 *ptr_src, float rhs, int N, int C,
-                       int H, int W, const int block_w, const int core_num,
-                       bool relu) {
+__KERNEL__ void add_const_mc_fp16(fp16 *ptr_dst, fp16 *ptr_src, float rhs,
+                                  int N, int C, int H, int W, const int block_w,
+                                  const int core_num, const int relu) {
   add_const_mc_fp(ptr_dst, ptr_src, rhs, N, C, H, W, block_w, core_num, relu);
 }
-__KERNEL__ void add_const_mc_bf16(bf16 *ptr_dst, bf16 *ptr_src, float rhs, int N, int C,
-                       int H, int W, const int block_w, const int core_num,
-                       bool relu) {
+__KERNEL__ void add_const_mc_bf16(bf16 *ptr_dst, bf16 *ptr_src, float rhs,
+                                  int N, int C, int H, int W, const int block_w,
+                                  const int core_num, const int relu) {
   add_const_mc_fp(ptr_dst, ptr_src, rhs, N, C, H, W, block_w, core_num, relu);
 }
 

@@ -12,7 +12,7 @@
 
 extern "C" {
 using KernelFunc = int (*)(gaddr_t, gaddr_t, float, int, int, int, int, int,
-                           bool);
+                           int);
 int add_tiling(gaddr_t ptr_dst, gaddr_t ptr_src, float rhs, int N, int C, int H,
                int W, bool relu, int dtype, int &block_w) {
   KernelFunc func;

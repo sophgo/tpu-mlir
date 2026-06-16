@@ -3,7 +3,8 @@
 using namespace ppl;
 
 template <typename T>
-void add_const_fp_local(uint32 o_local_ddr, uint32 i_local_ddr, float rhs, int N, int C, int H, int W, bool relu) {
+void add_const_fp_local(uint32 o_local_ddr, uint32 i_local_ddr, float rhs,
+                        int N, int C, int H, int W, const int relu) {
   dim4 src_shape = {N, C, H, W};
   auto in_tensor = tensor<T>(src_shape, TPU_ALIGN, i_local_ddr);
   auto out_tensor = tensor<T>(src_shape, TPU_ALIGN, o_local_ddr);
@@ -12,21 +13,25 @@ void add_const_fp_local(uint32 o_local_ddr, uint32 i_local_ddr, float rhs, int N
     tiu::max(out_tensor, out_tensor, 0.0f);
   }
 }
-__KERNEL__ void add_const_f32_local(uint32 o_local_ddr, uint32 i_local_ddr, float rhs, int N, int C,
-                              int H, int W, bool relu) {
+__KERNEL__ void add_const_f32_local(uint32 o_local_ddr, uint32 i_local_ddr,
+                                    float rhs, int N, int C, int H, int W,
+                                    const int relu) {
   add_const_fp_local<float>(o_local_ddr, i_local_ddr, rhs, N, C, H, W, relu);
 }
-__KERNEL__ void add_const_f16_local(uint32 o_local_ddr, uint32 i_local_ddr, float rhs, int N, int C, int H,
-                              int W, bool relu) {
+__KERNEL__ void add_const_f16_local(uint32 o_local_ddr, uint32 i_local_ddr,
+                                    float rhs, int N, int C, int H, int W,
+                                    const int relu) {
   add_const_fp_local<fp16>(o_local_ddr, i_local_ddr, rhs, N, C, H, W, relu);
 }
-__KERNEL__ void add_const_bf16_local(uint32 o_local_ddr, uint32 i_local_ddr, float rhs, int N, int C,
-                               int H, int W, bool relu) {
+__KERNEL__ void add_const_bf16_local(uint32 o_local_ddr, uint32 i_local_ddr,
+                                     float rhs, int N, int C, int H, int W,
+                                     const int relu) {
   add_const_fp_local<bf16>(o_local_ddr, i_local_ddr, rhs, N, C, H, W, relu);
 }
 
-// __KERNEL__ void add_const_f32_test(float *ptr_dst, float *ptr_src, uint32 o_local_ddr, uint32 i_local_ddr, float rhs, int N, int C,
-//                    int H, int W, bool relu) {
+// __KERNEL__ void add_const_f32_test(float *ptr_dst, float *ptr_src, uint32
+// o_local_ddr, uint32 i_local_ddr, float rhs, int N, int C,
+//                    int H, int W, const bool relu) {
 //   dim4 src_shape = {N, C, H, W};
 //   auto dst_gtensor = gtensor<float>(src_shape, GLOBAL, ptr_dst);
 //   auto src_gtensor = gtensor<float>(src_shape, GLOBAL, ptr_src);
