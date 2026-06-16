@@ -136,10 +136,10 @@ class ONNX_IR_TESTER(object):
             "DeconvDF":     (self.test_DeconvDynW,    N, Y, N, N, Y, Y, N),
             "Deconv2":      (self.test_Deconv2,       Y, N, N, Y, N, N, N),
             "Deconv3d":     (self.test_Deconv3d,      Y, Y, Y, N, Y, Y, Y),
-            "DivConst":     (self.test_DivConst,      N, Y, Y, Y, Y, Y, N),
             "Div":          (self.test_Div,           Y, Y, Y, Y, Y, Y, Y),
             "DivBcast":     (self.test_DivBcast,      Y, Y, Y, N, Y, Y, Y),
             "DivBcast2":    (self.test_DivBcast2,     Y, Y, Y, N, Y, Y, Y),
+            "DivConst":     (self.test_DivConst,      N, Y, Y, Y, Y, Y, N),
             "Einsum":       (self.test_Einsum,        Y, Y, Y, Y, Y, Y, Y),
             "Einsum2":      (self.test_Einsum2,       Y, Y, Y, Y, Y, Y, Y),
             "Einsum3":      (self.test_Einsum3,       Y, Y, Y, Y, Y, Y, Y),
@@ -191,10 +191,10 @@ class ONNX_IR_TESTER(object):
             "MatMul":       (self.test_MatMul,        Y, Y, Y, Y, Y, Y, Y),
             "MatMul2":      (self.test_MatMul2,       Y, Y, Y, Y, Y, Y, Y),
             "MatMul2PC":    (self.test_MatMul2PC,     N, Y, Y, N, N, N, Y),
-            "MeanRstd":     (self.test_MeanRstd,  N, Y, Y, N, Y, N, N),
-            "MeanStdScale": (self.test_MeanStdScale,  N, Y, Y, N, Y, N, N),
             "Max":          (self.test_Max,           Y, Y, Y, Y, Y, Y, Y),
             "MaxBcast":     (self.test_MaxBcast,      Y, Y, Y, N, Y, Y, Y),
+            "MeanRstd":     (self.test_MeanRstd,  N, Y, Y, N, Y, N, N),
+            "MeanStdScale": (self.test_MeanStdScale,  N, Y, Y, N, Y, N, N),
             "Not":          (self.test_Not,           N, Y, Y, N, Y, Y, Y),
             # "MLP1":         (self.test_MLP1,          N, Y, Y, N, N, N, N),
             # "MLP2":         (self.test_MLP2,          N, Y, Y, N, N, N, N),
@@ -204,9 +204,9 @@ class ONNX_IR_TESTER(object):
             "MulMerge":     (self.test_MulMerge,      Y, Y, Y, N, Y, Y, Y),
             "MulBcast":     (self.test_MulBcast,      Y, Y, Y, N, Y, Y, Y),
             "MulBcast2":    (self.test_MulBcast2,     Y, Y, Y, N, Y, Y, Y),
-            "Mish":         (self.test_Mish,  N, Y, Y, N, Y, N, N),
             "Min":          (self.test_Min,           Y, Y, Y, Y, Y, Y, Y),
             "MinBcast":     (self.test_MinBcast,      Y, Y, Y, N, Y, Y, Y),
+            "Mish":         (self.test_Mish,  N, Y, Y, N, Y, N, N),
             "MulConst":     (self.test_MulConst,      Y, Y, Y, Y, Y, Y, Y),
             "Neg":          (self.test_Neg,           Y, Y, Y, Y, Y, Y, Y),
             "Pack":         (self.test_Pack,          Y, Y, Y, N, Y, Y, N),
@@ -238,23 +238,22 @@ class ONNX_IR_TESTER(object):
             "Round":        (self.test_Round,         N, Y, N, N, Y, Y, Y),
             "ScatterElements": (self.test_ScatterElements, N, Y, N, N, Y, Y, N),
             "ScatterND":    (self.test_ScatterND,     N, Y, Y, N, Y, Y, N),
-            "ShuffleChannel": (self.test_ShuffleChannel,  N, Y, Y, N, Y, N, N),
-            "SelectiveScan":   (self.test_SelectiveScan,    N, Y, N, N, N, N, N),
             "Shape":        (self.test_Shape,         Y, Y, Y, N, Y, Y, N),
+            "ShuffleChannel": (self.test_ShuffleChannel,  N, Y, Y, N, Y, N, N),
             "ShapeCast":    (self.test_ShapeCast,     N, N, N, N, N, N, N),
             "ShapeSlice":   (self.test_ShapeSlice,    Y, N, N, N, N, N, N),
             "SiLU":         (self.test_SiLU,          Y, Y, Y, Y, Y, Y, Y),
             "Softmax":      (self.test_Softmax,       Y, Y, Y, Y, Y, Y, Y),
-            "Softsign":     (self.test_Softsign,     N, Y, Y, N, Y, N, N),
             "Softplus":     (self.test_Softplus,      Y, Y, Y, Y, Y, Y, Y),
+            "Softsign":     (self.test_Softsign,     N, Y, Y, N, Y, N, N),
             "Space2Depth":  (self.test_Space2Depth,   Y, Y, Y, N, Y, Y, Y),
-            "StridedSlice": (self.test_StridedSlice, N, Y, Y, N, Y, N, N),
             "Squeeze":      (self.test_Squeeze,       Y, Y, Y, Y, Y, Y, Y),
+            "StridedSlice": (self.test_StridedSlice, N, Y, Y, N, Y, N, N),
             "Sigmoid":      (self.test_Sigmoid,       Y, Y, Y, Y, Y, Y, Y),
+            "Sign":         (self.test_Sign,          N, Y, Y, N, Y, Y, Y),
             "Sin":          (self.test_Sin,          N, Y, Y, N, Y, N, N),
             "Sinh":         (self.test_Sinh,         N, Y, Y, N, Y, N, N),
             "SliceAxis":    (self.test_SliceAxis,    N, Y, Y, N, Y, N, N),
-            "Sign":         (self.test_Sign,          N, Y, Y, N, Y, Y, Y),
             "Slice":        (self.test_Slice,         Y, Y, Y, Y, Y, Y, Y),
             "Slice2":       (self.test_Slice2,        Y, Y, Y, Y, Y, Y, Y),
             "Slice3":       (self.test_Slice3,        Y, Y, Y, Y, Y, Y, Y),
@@ -263,8 +262,8 @@ class ONNX_IR_TESTER(object):
             "Split2":        (self.test_Split2,       Y, Y, Y, Y, Y, Y, Y),
             "Scale":        (self.test_Scale,         Y, Y, Y, Y, Y, Y, Y),
             "Sqrt":         (self.test_Sqrt,          Y, Y, Y, Y, Y, Y, Y),
-            "SwapChannel":  (self.test_SwapChannel,   N, Y, Y, N, Y, N, N),
             "Sub":          (self.test_Sub,           Y, Y, Y, Y, Y, Y, Y),
+            "SwapChannel":  (self.test_SwapChannel,   N, Y, Y, N, Y, N, N),
             "Sub2":         (self.test_Sub2,          Y, Y, Y, Y, Y, Y, Y),
             "SubBcast":     (self.test_SubBcast,      Y, Y, Y, N, Y, Y, Y),
             "SubBcast2":    (self.test_SubBcast2,     Y, Y, Y, N, Y, Y, Y),
@@ -284,8 +283,8 @@ class ONNX_IR_TESTER(object):
             "TopKSlice":    (self.test_TopKSlice,     N, Y, N, N, N, N, N),
             "TopKTrans":    (self.test_TopKTrans,     N, Y, N, N, N, N, N),
             "Upsample":     (self.test_Upsample,      Y, Y, Y, N, Y, Y, Y),
-            "Unpack":       (self.test_Unpack,        Y, Y, Y, N, Y, Y, N),
             "Unsqueeze":    (self.test_Unsqueeze,     Y, Y, Y, N, Y, Y, Y),
+            "Unpack":       (self.test_Unpack,        Y, Y, Y, N, Y, Y, N),
             # Only 1D shape is supported currently
             # "ShapeUnsqueeze":  (self.test_ShapeUnsqueeze,  N, Y, Y, N),
             # "ShapeSqueeze":    (self.test_ShapeSqueeze,    N, Y, Y, N),
@@ -442,6 +441,7 @@ class ONNX_IR_TESTER(object):
             # Correlation always fail in regression. Comment out to prevent affecting regression.
             "ConcatVolume":  (self.test_ConcatVolume,   N, Y, Y, N, N, N, N),
             "Correlation":   (self.test_Correlation,    N, N, N, N, N, N, N),
+            "SelectiveScan":   (self.test_SelectiveScan,    N, Y, N, N, N, N, N),
         }
         # yapf: enable
         self.cases_int4 = ["Conv2d", "MatMul", "MatMul2"]  # only bm1688
@@ -7310,71 +7310,6 @@ class ONNX_IR_TESTER(object):
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def, support_modes=["f32", "f16", "bf16"])
 
-    def test_SelectiveScan(self, case_name):
-
-        class custom(torch.autograd.Function):
-
-            @staticmethod
-            def forward(ctx, c, deltaA, deltaB_u, u, D):
-
-                N, Kcdim, L, Batch = map(int, deltaA.shape)
-                Cdim_plus_2 = Kcdim // 2
-
-                deltaA_up = deltaA[:, :Cdim_plus_2, :, :]
-                deltaA_down = deltaA[:, Cdim_plus_2:, :, :]
-                deltaB_u_up = deltaB_u[:, :Cdim_plus_2, :, :]
-                deltaB_u_down = deltaB_u[:, Cdim_plus_2:, :, :]
-
-                c_up = c[:, :Cdim_plus_2, :, :]
-                c_down = c[:, Cdim_plus_2:, :, :]
-
-                x_up = c.new_zeros((N, Cdim_plus_2, Batch))  # [N, Cdim_plus_2, Batch]
-                x_down = c.new_zeros((N, Cdim_plus_2, Batch))  # [N, Cdim_plus_2, Batch]
-                y_up = c.new_zeros((L, Cdim_plus_2, Batch))  # [L, Cdim_plus_2, Batch]
-                y_down = c.new_zeros((L, Cdim_plus_2, Batch))  # [L, Cdim_plus_2, Batch]
-
-                for i in range(L):
-                    x_up = deltaA_up[:, :, i, :] * x_up + deltaB_u_up[:, :, i, :]
-                    x_down = deltaA_down[:, :, L - 1 - i, :] * x_down + deltaB_u_down[:, :,
-                                                                                      L - 1 - i, :]
-
-                    y_up[i, :, :] = torch.mul(x_up[0, :, :], c_up[i, :, 0, :])
-                    y_down[L - 1 - i, :, :] = torch.mul(x_down[0, :, :], c_down[L - 1 - i, :, 0, :])
-
-                y = torch.cat((y_up, y_down), dim=1)
-
-                out = y if D is None else y + u * D.unsqueeze(-1)
-
-                return out
-
-            @staticmethod
-            def symbolic(g, Cs, deltaA, deltaB_u, us, Ds):
-                return g.op("tpu_mlir::SelectiveScan", Cs, deltaA, deltaB_u, us, Ds)
-
-        class Model(nn.Module):
-
-            def __init__(self):
-                super(Model, self).__init__()
-
-            def forward(self, Cs, deltaA, deltaB_u, us, Ds):
-                out = custom.apply(Cs, deltaA, deltaB_u, us, Ds)
-                return out
-
-        L = 49 * 4
-        Batch = 16
-        N = 1
-        KCdim = 64 * 4
-        us = torch.randn([L, KCdim, Batch]).float()
-        Cs = torch.randn([L, KCdim, N, Batch]).float()
-        Ds = torch.randn([KCdim]).float()
-        deltaA = torch.randn([N, KCdim, L, Batch]).float()
-        deltaB_u = torch.randn([N, KCdim, L, Batch]).float()
-
-        self.torch_and_test((Cs, deltaA, deltaB_u, us, Ds),
-                            Model(),
-                            case_name,
-                            support_modes=["f16", "bf16"])
-
     def test_Shape(self, case_name):
         input_shape = [2, 3, 4]
         output_shape = [1]
@@ -8526,7 +8461,70 @@ class ONNX_IR_TESTER(object):
                             case_name,
                             support_modes=["f16", "bf16"])
 
+    def test_SelectiveScan(self, case_name):
 
+        class custom(torch.autograd.Function):
+
+            @staticmethod
+            def forward(ctx, c, deltaA, deltaB_u, u, D):
+
+                N, Kcdim, L, Batch = map(int, deltaA.shape)
+                Cdim_plus_2 = Kcdim // 2
+
+                deltaA_up = deltaA[:, :Cdim_plus_2, :, :]
+                deltaA_down = deltaA[:, Cdim_plus_2:, :, :]
+                deltaB_u_up = deltaB_u[:, :Cdim_plus_2, :, :]
+                deltaB_u_down = deltaB_u[:, Cdim_plus_2:, :, :]
+
+                c_up = c[:, :Cdim_plus_2, :, :]
+                c_down = c[:, Cdim_plus_2:, :, :]
+
+                x_up = c.new_zeros((N, Cdim_plus_2, Batch))  # [N, Cdim_plus_2, Batch]
+                x_down = c.new_zeros((N, Cdim_plus_2, Batch))  # [N, Cdim_plus_2, Batch]
+                y_up = c.new_zeros((L, Cdim_plus_2, Batch))  # [L, Cdim_plus_2, Batch]
+                y_down = c.new_zeros((L, Cdim_plus_2, Batch))  # [L, Cdim_plus_2, Batch]
+
+                for i in range(L):
+                    x_up = deltaA_up[:, :, i, :] * x_up + deltaB_u_up[:, :, i, :]
+                    x_down = deltaA_down[:, :, L - 1 - i, :] * x_down + deltaB_u_down[:, :,
+                                                                                      L - 1 - i, :]
+
+                    y_up[i, :, :] = torch.mul(x_up[0, :, :], c_up[i, :, 0, :])
+                    y_down[L - 1 - i, :, :] = torch.mul(x_down[0, :, :], c_down[L - 1 - i, :, 0, :])
+
+                y = torch.cat((y_up, y_down), dim=1)
+
+                out = y if D is None else y + u * D.unsqueeze(-1)
+
+                return out
+
+            @staticmethod
+            def symbolic(g, Cs, deltaA, deltaB_u, us, Ds):
+                return g.op("tpu_mlir::SelectiveScan", Cs, deltaA, deltaB_u, us, Ds)
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, Cs, deltaA, deltaB_u, us, Ds):
+                out = custom.apply(Cs, deltaA, deltaB_u, us, Ds)
+                return out
+
+        L = 49 * 4
+        Batch = 16
+        N = 1
+        KCdim = 64 * 4
+        us = torch.randn([L, KCdim, Batch]).float()
+        Cs = torch.randn([L, KCdim, N, Batch]).float()
+        Ds = torch.randn([KCdim]).float()
+        deltaA = torch.randn([N, KCdim, L, Batch]).float()
+        deltaB_u = torch.randn([N, KCdim, L, Batch]).float()
+
+        self.torch_and_test((Cs, deltaA, deltaB_u, us, Ds),
+                            Model(),
+                            case_name,
+                            support_modes=["f16", "bf16"])
 
 
 def test_all(tester: ONNX_IR_TESTER):
