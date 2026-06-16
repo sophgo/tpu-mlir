@@ -1484,6 +1484,8 @@ void bmExp(void *input, void *output, int outer_dim, int axis_dim, int inner_dim
            void *exp_table) {
   int num_blocks = CUDA_NUM_BLOCKS(outer_dim*axis_dim*inner_dim);
   int block_size = CUDA_BLOCK_SIZE;
+  g_bmExp<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, outer_dim, axis_dim, inner_dim, (float *)exp_table);
 }
 
 void bmReciprocal(void *input, void *output, int outer_dim, int inner_dim, data_type_t type) {

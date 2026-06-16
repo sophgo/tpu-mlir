@@ -2456,6 +2456,24 @@ __global__ void g_cvLutSlope(uint16_t *input, uint16_t *output,
 }
 
 
+__global__ void g_bmExp(float *input, float *output, int outer_dim, int axis_dim, int inner_dim, float *exp_table) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int out_idx = idx / (axis_dim * inner_dim);
+  int axis_idx = idx % (axis_dim * inner_dim) / inner_dim;
+  int inner_idx = idx % inner_dim;
+  if (out_idx < outer_dim && axis_idx < axis_dim && inner_idx < inner_dim) {
+    if (exp_table != nullptr) {
+      int32_t table_idx = static_cast<int32_t>(-input[idx]);
+      table_idx = max(0, min(255, table_idx));
+      float value = exp_table[table_idx];
+      output[idx] = value;
+    } else {
+      float value = __expf(input[idx]);
+      output[idx] = value;
+    }
+  }
+}
+
 __global__ void g_bmReciprocal(float *input, float *output, int outer_dim, int inner_dim) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   int out_idx = idx / inner_dim;
