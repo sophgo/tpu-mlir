@@ -240,7 +240,7 @@ class ONNX_IR_TESTER(object):
             "ScatterND":    (self.test_ScatterND,     N, Y, Y, N, Y, Y, N),
             "ShuffleChannel": (self.test_ShuffleChannel,  N, Y, Y, N, Y, N, N),
             "SelectiveScan":   (self.test_SelectiveScan,    N, Y, N, N, N, N, N),
-"Shape":        (self.test_Shape,         Y, Y, Y, N, Y, Y, N),
+            "Shape":        (self.test_Shape,         Y, Y, Y, N, Y, Y, N),
             "ShapeCast":    (self.test_ShapeCast,     N, N, N, N, N, N, N),
             "ShapeSlice":   (self.test_ShapeSlice,    Y, N, N, N, N, N, N),
             "SiLU":         (self.test_SiLU,          Y, Y, Y, Y, Y, Y, Y),
