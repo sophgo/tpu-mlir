@@ -13,10 +13,10 @@ using namespace ppl;
 
 template <typename T>
 void selective_scan(T *ptr_res, T *ptr_C, T *ptr_deltaA, T *ptr_deltaB_u,
-                    T *ptr_u, T *ptr_D, int Batch, int KC_dim, int L) {
+                    T *ptr_u, T *ptr_D, int Batch, int KC_dim, int L,
+                    const int block_l) {
 
   const int block_c = 64;
-  const int block_l = 49;
   const int block_batch = 32;
 
   dim4 shape_res = {L, KC_dim * 2, 1, Batch};
@@ -237,23 +237,23 @@ void selective_scan(T *ptr_res, T *ptr_C, T *ptr_deltaA, T *ptr_deltaB_u,
 __KERNEL__ void selective_scan_f32(float *ptr_res, float *ptr_C,
                                    float *ptr_deltaA, float *ptr_deltaB_u,
                                    float *ptr_u, float *ptr_D, int Batch,
-                                   int KC_dim, int L) {
+                                   int KC_dim, int L, const int block_l) {
   selective_scan(ptr_res, ptr_C, ptr_deltaA, ptr_deltaB_u, ptr_u, ptr_D, Batch,
-                 KC_dim, L);
+                 KC_dim, L, block_l);
 }
 __KERNEL__ void selective_scan_fp16(fp16 *ptr_res, fp16 *ptr_C,
                                     fp16 *ptr_deltaA, fp16 *ptr_deltaB_u,
                                     fp16 *ptr_u, fp16 *ptr_D, int Batch,
-                                    int KC_dim, int L) {
+                                    int KC_dim, int L, const int block_l) {
   selective_scan(ptr_res, ptr_C, ptr_deltaA, ptr_deltaB_u, ptr_u, ptr_D, Batch,
-                 KC_dim, L);
+                 KC_dim, L, block_l);
 }
 __KERNEL__ void selective_scan_bf16(bf16 *ptr_res, bf16 *ptr_C,
                                     bf16 *ptr_deltaA, bf16 *ptr_deltaB_u,
                                     bf16 *ptr_u, bf16 *ptr_D, int Batch,
-                                    int KC_dim, int L) {
+                                    int KC_dim, int L, const int block_l) {
   selective_scan(ptr_res, ptr_C, ptr_deltaA, ptr_deltaB_u, ptr_u, ptr_D, Batch,
-                 KC_dim, L);
+                 KC_dim, L, block_l);
 }
 
 __TEST__ void test_selective_scan() {
@@ -261,6 +261,7 @@ __TEST__ void test_selective_scan() {
   int Batch = 16;
   int KC_dim = 1536;
   int L = 3136;
+  const int block_l = 49;
 
   dim4 shape_res = {L, KC_dim * 2, 1, Batch};
   dim4 shape_C = {L, KC_dim * 2, 1, Batch};
@@ -278,5 +279,5 @@ __TEST__ void test_selective_scan() {
   auto ptr_D = rand<fp16>(&shape_Ds, -1.0, 1.5);
 
   selective_scan_fp16(ptr_res, ptr_C, ptr_deltaA, ptr_deltaB_u, ptr_u, ptr_D,
-                      Batch, KC_dim, L);
+                      Batch, KC_dim, L, block_l);
 }

@@ -31,20 +31,21 @@ int type_call(int dtype, uint64_t output_addr, uint64_t Cs_addr,
               uint64_t deltaA_addr, uint64_t deltaB_u_addr, uint64_t us_addr,
               uint64_t Ds_addr, int Batch, int KC_dim, int L) {
   int ret = -1;
+  const int block_l = 49;
   switch (dtype) {
   case DTYPE_FP32:
     ret = selective_scan_f32(output_addr, Cs_addr, deltaA_addr, deltaB_u_addr,
-                             us_addr, Ds_addr, Batch, KC_dim, L);
+                             us_addr, Ds_addr, Batch, KC_dim, L, block_l);
     CHECK_PPL_RET(ret);
     break;
   case DTYPE_FP16:
     ret = selective_scan_fp16(output_addr, Cs_addr, deltaA_addr, deltaB_u_addr,
-                              us_addr, Ds_addr, Batch, KC_dim, L);
+                              us_addr, Ds_addr, Batch, KC_dim, L, block_l);
     CHECK_PPL_RET(ret);
     break;
   case DTYPE_BFP16:
     ret = selective_scan_bf16(output_addr, Cs_addr, deltaA_addr, deltaB_u_addr,
-                              us_addr, Ds_addr, Batch, KC_dim, L);
+                              us_addr, Ds_addr, Batch, KC_dim, L, block_l);
     CHECK_PPL_RET(ret);
     break;
   default:

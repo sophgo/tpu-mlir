@@ -283,7 +283,7 @@ class LlmConverter(BaseConverter):
             ]
         deploy_args += list(extra_args)
         deploy_args.append('--high_precision')
-        if symmetric and self.symmetric:
+        if symmetric:
             deploy_args.append('--q_symmetric')
         if dynamic and self.dynamic:
             deploy_args.append('--dynamic')
@@ -2317,7 +2317,7 @@ class LlmConverter(BaseConverter):
                 '--quant_input',
                 '--quant_output',
             ],
-            symmetric=True,
+            symmetric=self._get_block_symmetric(layer_id),
             dynamic=True,
         )
 

@@ -71,8 +71,6 @@ class Qwen3_5Converter(LlmConverter):
             sin = sin[:, :, :end_dim]
             return cos.numpy(), sin.numpy()  #[seq, 1, 64]
         except (ImportError, ModuleNotFoundError):
-            import pdb
-            pdb.set_trace()
             return self._compute_mrope_manually()
 
     def _get_mrope_params(self):
@@ -259,17 +257,11 @@ class Qwen3_5Converter(LlmConverter):
         return q_op, k_op
 
     def vision_rotary(self):
+        from transformers.models.qwen2_vl.modeling_qwen2_vl import VisionRotaryEmbedding
         head_dim = self.vconfig.hidden_size // self.vnum_heads
-        dim = head_dim // 2
-        inv_freq = 1.0 / (10000.0**(np.arange(0, dim, 2, dtype=np.float32) / dim))
-        h = int(math.sqrt(self.num_patches))
-        pos = np.arange(h, dtype=np.float32)
-        freqs = np.outer(pos, inv_freq)
-        cos = np.zeros((self.num_patches, inv_freq.shape[0]), dtype=np.float32)
-        sin = np.zeros((self.num_patches, inv_freq.shape[0]), dtype=np.float32)
-        cos[:h] = np.cos(freqs)
-        sin[:h] = np.sin(freqs)
-        return cos, sin
+        rotary_embed = VisionRotaryEmbedding(head_dim // 2)
+        freqs = rotary_embed(self.num_patches)
+        return freqs.cos().numpy(), freqs.sin().numpy()
 
     def gen_vit_mlir(self):
         tqdm.write(f"generate vit  mlir ...")
@@ -1208,6 +1200,7 @@ class Qwen3_5Converter(LlmConverter):
         out_proj = TOP_PATH + "linear_attn.out_proj"
         weight_file = f"block_{idx}_top_weights.npz"
         A_log_data = self.model.read(A_log)
+        A_log_data = -np.exp(A_log_data)
         chunk_size = 64
 
         weight_dict = {A_log + ".weight": A_log_data}
@@ -1847,7 +1840,7 @@ class Qwen3_5Converter(LlmConverter):
                 '--quant_output',
                 '--same_addr 0:0,1:1',
             ],
-            symmetric=True,
+            symmetric=self._get_block_symmetric(layer_id),
             addr_mode='io_alone',
         )
 
