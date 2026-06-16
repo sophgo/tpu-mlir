@@ -236,6 +236,7 @@ class OnnxConverter(BaseConverter):
             "MatMul": lambda node: self.convert_gemm_op(node),
             "Max": lambda node: self.convert_max_op(node),
             "MaxPool": lambda node: self.convert_maxpool_op(node),
+            "MeanStdScale": lambda node: self.convert_mean_std_scale_op(node),
             "Min": lambda node: self.convert_min_op(node),
             "Mod": lambda node: self.convert_mod_op(node),
             "Mul": lambda node: self.convert_mul_op(node),
@@ -274,15 +275,18 @@ class OnnxConverter(BaseConverter):
             "Sigmoid": lambda node: self.convert_sigmoid_op(node),
             "Sign": lambda node: self.convert_sign_op(node),
             "Sin": lambda node: self.convert_sin_op(node),
+            "Sinh": lambda node: self.convert_sinh_op(node),
             "Slice": lambda node: self.convert_slice_op(node),
             "Softmax": lambda node: self.convert_softmax_op(node),
             "Softplus": lambda node: self.convert_softplus_op(node),
+            "Softsign": lambda node: self.convert_softsign_op(node),
             "SpaceToDepth": lambda node: self.convert_space2depth_op(node),
             "Squeeze": lambda node: self.convert_squeeze_op(node),
             "Split": lambda node: self.convert_split_op(node),
             "Sub": lambda node: self.convert_sub_op(node),
             "Sum": lambda node: self.convert_sum_op(node),
             "Sqrt": lambda node: self.convert_sqrt_op(node),
+            "Tan": lambda node: self.convert_tan_op(node),
             "Tanh": lambda node: self.convert_tanh_op(node),
             "Tile": lambda node: self.convert_tile_op(node),
             "TopK": lambda node: self.convert_topk_op(node),
@@ -1644,6 +1648,15 @@ class OnnxConverter(BaseConverter):
                            ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
+    def convert_sinh_op(self, onnx_node):
+        assert (onnx_node.op_type == "Sinh")
+        op = self.getOperand(onnx_node.inputs[0])
+        new_op = top.SinhOp(self.unranked_type,
+                            op,
+                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
     def convert_slice_op(self, onnx_node):
 
         def try_get_slice_input(node, i, attr):
@@ -1794,6 +1807,15 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "Softplus")
         op = self.getOperand(onnx_node.inputs[0])
         new_op = top.SoftplusOp(self.unranked_type,
+                                op,
+                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_softsign_op(self, onnx_node):
+        assert (onnx_node.op_type == "Softsign")
+        op = self.getOperand(onnx_node.inputs[0])
+        new_op = top.SoftsignOp(self.unranked_type,
                                 op,
                                 loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                                 ip=self.mlir.insert_point).output
@@ -2504,6 +2526,28 @@ class OnnxConverter(BaseConverter):
                              ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
+    def convert_mean_std_scale_op(self, onnx_node):
+        assert (onnx_node.op_type == "MeanStdScale")
+        inp = self.getOperand(onnx_node.inputs[0])
+        new_op = top.MeanStdScaleOp(
+            self.unranked_type, inp,
+            quant_mode=StringAttr.get(onnx_node.attrs.get('quant_mode', 'NORMALIZED')),
+            customization_format=StringAttr.get(
+                onnx_node.attrs.get('customization_format', 'NCHW')),
+            channel_order=StringAttr.get(
+                onnx_node.attrs.get('channel_order', 'RGB')),
+            sign=onnx_node.attrs.get('sign', False),
+            scale=onnx_node.attrs['scale'],
+            std=onnx_node.attrs['std'],
+            mean=onnx_node.attrs['mean'],
+            zero_points=onnx_node.attrs['zero_points'],
+            resize_dims=onnx_node.attrs.get('resize_dims', [0]),
+            rounding_mode=StringAttr.get(
+                onnx_node.attrs.get('rounding_mode', 'ROUND_HALF_AWAY_FROM_ZERO')),
+            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
     def convert_min_op(self, onnx_node):
         assert (onnx_node.op_type == "Min")
         assert (len(onnx_node.inputs) == 2)
@@ -2648,6 +2692,15 @@ class OnnxConverter(BaseConverter):
         operand = self.getOperand(onnx_node.inputs[0])
         new_op = top.SqrtOp(self.unranked_type,
                             operand,
+                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_tan_op(self, onnx_node):
+        assert (onnx_node.op_type == "Tan")
+        op = self.getOperand(onnx_node.inputs[0])
+        new_op = top.TanOp(self.unranked_type,
+                            op,
                             loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                             ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)

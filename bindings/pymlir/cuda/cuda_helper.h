@@ -437,5 +437,43 @@ void interp(void *input, void *output, int n, int c, int h, int w, int out_h, in
             interp_platform_t platform);
 void GQA(void *Q, void *K, void *V, void *mask, void *output, int batch, int M_q, int M_k,
          int q_head, int kv_head, int dim, float scale, bool is_bf16);
+// 35-op host function declarations
+void bmSin(void *input, void *output, int num);
+void bmSinh(void *input, void *output, int num);
+void bmSign(void *input, void *output, int num);
+void bmSqrt(void *input, void *output, int num);
+void bmTan(void *input, void *output, int num);
+void clip4DF32(void *input, void *output, float min_val, float max_val,
+               int n, int c, int h, int w);
+void bmMax(void *a, void *b, void *output, int num);
+void bmMaxConst(void *input, void *output, float const_val, int num);
+void bmMin(void *a, void *b, void *output, int num);
+void bmMinConst(void *input, void *output, float const_val, int num);
+void bmMish(void *input, void *output, int num);
+void bmSwish(void *input, void *output, float beta, int num);
+void bmSoftplus(void *input, void *output, int num);
+void bmSoftsign(void *input, void *output, int num);
+void trilu(void *input, void *output, int batch, int H, int W,
+           int row_stride, int diagonal, bool upper);
+void einsumF32(void *lhs, void *rhs, void *out,
+               int *lhs_shape, int *rhs_shape, int *out_shape,
+               int lhs_rank, int rhs_rank, int out_rank, int num_contract,
+               int *lhs_out_dim, int *rhs_out_dim,
+               int *lhs_contract_dim, int *rhs_contract_dim,
+               int *contract_shapes, int total_out_elems, int total_contract_elems);
+void meanStdScale(void *input, void *output, void *mean, void *std,
+                  void *scale, void *zero_point, int n, int c, int h, int w);
+void scatterElements(void *output, void *updates, void *flat_indices,
+                     int upd_num, bool add);
+void scatterND(void *output, void *updates, void *flat_indices,
+               int upd_num, bool add);
+void bmShuffleChannel(void *input, void *output, int n, int c, int frame_size, int group);
+void swapChannel(void *input, void *output, void *order, int n, int c, int frame_size);
+void meanRstd(void *input, void *mean_out, void *rstd_out,
+              void *running_mean, void *running_var, void *weight, void *bias,
+              int n, int c, int hw, float eps, float momentum);
+void selectiveScan(void *c_ptr, void *deltaA, void *deltaB_u, void *u_ptr,
+                   void *D_ptr, void *output, int Kcdim, int L, int Batch, int has_uD);
+void stridedSlice(void *input, void *output, void *flat_indices, int out_num);
 } // namespace cuda
 } // namespace tpu_mlir
