@@ -1337,6 +1337,12 @@ typedef struct a16_matmul_spec {
   int use_multi_core;
 } a16_matmul_spec_t;
 
+typedef struct a16_gather_spec {
+  int axis;
+  int weight_bits;
+  int q_group_size;
+} a16_gather_spec_t;
+
 typedef struct mlp_spec {
   bool R_trans_gate;
   bool has_zp_gate;

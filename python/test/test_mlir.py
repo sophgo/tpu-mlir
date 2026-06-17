@@ -133,6 +133,7 @@ class MLIR_IR_TESTER(object):
             "fp8matmul": (self.test_fp8matmul, Y, Y),
             "slice": (self.test_slice, Y, Y),
             "a16matmul": (self.test_a16matmul, Y, Y),
+            "a16gather": (self.test_a16gather, Y, Y),
             "chunk_gated_delta_rule": (self.test_chunk_gated_delta_rule, Y, Y),
             "recurrent_gated_delta_rule": (self.test_recurrent_gated_delta_rule, Y, Y),
             "concat_slice": (self.test_concat_slice, Y, Y),
@@ -1085,6 +1086,97 @@ class MLIR_IR_TESTER(object):
         saved_modes = self.quant_modes
         self.quant_modes = [m for m in self.quant_modes if m in ["f16", "bf16"]]
         self._deploy_test_case(case_name)
+        self.quant_modes = saved_modes
+
+    def test_a16gather(self, case_name):
+        """Test case A16Gather: Simple A16Gather operation for embedding lookup."""
+        vocab_size = 262144
+        dim = 256
+        batch = 1
+        seq_len = 512
+        q_group_size = 32
+        weight_bits = 8
+        keepdims = False
+
+        # For weight_bits=4, weight is packed: [vocab_size, dim // (8 // weight_bits)] = [vocab_size, dim // 2]
+        weight_packed_dim = dim // (8 // weight_bits)
+        # Scale/zp shape: [vocab_size, dim // q_group_size]
+        n_groups = dim // q_group_size
+
+        # Output shape depends on keepdims:
+        #   keepdims=False: [batch, seq_len, dim]
+        #   keepdims=True:  [batch, seq_len, 1, dim]
+        if keepdims:
+            gather_out_shape = [batch, seq_len, 1, dim]
+        else:
+            gather_out_shape = [batch, seq_len, dim]
+
+        input_shapes = [
+            [batch, seq_len],  # indices
+        ]
+        output_shapes = [
+            gather_out_shape,
+        ]
+
+        weight_shape = [vocab_size, weight_packed_dim]
+        scale_shape = [vocab_size, n_groups]
+        zp_shape = [vocab_size, n_groups]
+
+        input_types = ["F32"]
+        block_mlir = MLIRImporter(input_shapes, output_shapes, case_name, Platform.LLM, input_types)
+        input_ops = self._create_input_ops(block_mlir, input_shapes)
+        ip = block_mlir.insert_point
+
+        indices_op = input_ops[0]
+
+        # Create weight ops with appropriate types
+        qweight_op = block_mlir.create_weight_op("qweight", weight_shape, "UINT8")
+        scale_op = block_mlir.create_weight_op("scales", scale_shape, "F32")
+        zp_op = block_mlir.create_weight_op("qzeros", zp_shape, "UINT8")
+
+        # A16Gather operation
+        out = top.A16GatherOp(self._T(block_mlir, gather_out_shape),
+                              qweight_op,
+                              indices_op,
+                              scale_op,
+                              zp_op,
+                              axis=0,
+                              keepdims=keepdims,
+                              q_group_size=q_group_size,
+                              weight_bits=weight_bits,
+                              loc=self._L(block_mlir, "a16gather0"),
+                              ip=ip).output
+
+        # Create return operation
+        block_mlir.create_return_op([out])
+
+        # Generate data
+        # Indices should be in range [0, vocab_size)
+        indices_data = np.random.randint(0, vocab_size, size=input_shapes[0], dtype=np.int32)
+        inputs = {
+            "in0": indices_data,
+        }
+        weights = {
+            "qweight": rand_data(weight_shape, 'uint8', 0, 255, int_satu=True),
+            "scales": rand_data(scale_shape, 'float32', 0.5, 2.0),
+            "qzeros": rand_data(zp_shape, 'uint8', 0, 15,
+                                int_satu=True),  # For 4-bit, zeros should be in [0, 15]
+        }
+
+        # Save MLIR text
+        mlir_txt = block_mlir.print_module()
+        with open(f"{case_name}.mlir", "w") as f:
+            f.write(mlir_txt)
+
+        # Save weights and inputs
+        np.savez(f"{case_name}_top_f32_all_origin_weight.npz", **weights)
+        if not self.no_check:
+            np.savez(f"{case_name}_input.npz", **inputs)
+
+        # Deploy for each quantization mode (A16Gather only supports F16/BF16 lowering)
+        saved_modes = self.quant_modes
+        self.quant_modes = [m for m in self.quant_modes if m in ["f16", "bf16"]]
+        self._deploy_test_case(case_name, tolerance=(0.95, 0.90))
         self.quant_modes = saved_modes
 
     def test_chunk_gated_delta_rule(self, case_name):

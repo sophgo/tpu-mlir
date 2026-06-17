@@ -422,6 +422,35 @@ def Top_Fp8MatMulOp : Top_Op<"Fp8MatMul"> {
   }];
 }
 
+def Top_A16GatherOp : Top_Op<"A16Gather"> {
+  let summary = "Quantized gather operator for embedding lookup";
+  let description = [{
+    Gather operation with quantized weights, designed for embedding lookup in LLMs.
+    Performs: output[..., dim] = dequant(weight[indices[...], :])
+
+    The weight tensor is stored in quantized format (INT8 or packed INT4),
+    with per-group scale and zero-point for dequantization.
+    Similar to Gather, but with quantized weight table instead of float input.
+
+    Currently only axis=0 is supported (runtime assertion).
+    keepdims controls whether the gathered axis dimension is retained (as size 1)
+    in the output. Default is false (axis dimension replaced by indices shape).
+  }];
+
+  let arguments = (ins
+    AnyTensor:$weight,
+    AnyTensor:$indices,
+    AnyTensor:$scale,
+    AnyTensor:$zp,
+    DefaultValuedAttr<SI32Attr, "0">:$axis,
+    DefaultValuedAttr<BoolAttr, "false">:$keepdims,
+    DefaultValuedAttr<I64Attr, "32">:$q_group_size,
+    DefaultValuedAttr<I64Attr, "8">:$weight_bits
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_AbsOp : Top_Op<"Abs"> {
   let summary = " Abs operator";
   let description = [{

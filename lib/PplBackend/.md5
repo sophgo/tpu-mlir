@@ -4,6 +4,8 @@ include/helper.h cad814a6c86baa99b65e622ffbe306b8
 include/local_base.h 61192f8ca0ab0f5bd7f71d69e481dd15
 include/ppl_dyn_fw.h 647f289254aa004b48d047cfdd0499b4
 include/ppl_static_host.h b9b696f10ebd5f0623efab39628d2770
+src/a16_gather.cpp 7120940994a06e64a157207e00645db3
+src/a16_gather.pl 8accdc11cb3b1aabed9c1492c4b28c37
 src/add_const_fp.pl 5ddb4c3bd09efd399806c557cf3fd0bd
 src/add_const_fp_api.cpp 621f962a8b68fe3aaf14a5898232d998
 src/add_const_fp_local.pl 0e785cae7052cccfdbb204690f8fc356
