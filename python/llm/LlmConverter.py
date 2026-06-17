@@ -1011,8 +1011,8 @@ class LlmConverter(BaseConverter):
                 if i in [2]:
                     if is_expert:
                         qweight_op = mlir_gen.create_weight_op(proj + ".qweight", [
-                            weight_shape[0], weight_shape[1] //
-                            (8 // self.quant_bits), weight_shape[2]
+                            weight_shape[0], weight_shape[2], weight_shape[1] //
+                            (8 // self.quant_bits)
                         ], 'UINT8')
                         scale_shape = [
                             weight_shape[0], weight_shape[1] // self.q_group_size, weight_shape[2]
@@ -1044,12 +1044,16 @@ class LlmConverter(BaseConverter):
                             (8 // self.quant_bits)
                         ], 'UINT8')
                         scale_shape = [
-                            weight_shape[0], weight_shape[2], weight_shape[1] // self.q_group_size
+                            weight_shape[0], self.tpu_info.npu_num, weight_shape[2] //
+                            self.tpu_info.npu_num * (weight_shape[1] // self.q_group_size)
                         ]
+                        assert weight_shape[2] % self.tpu_info.npu_num == 0, \
+                            f"intermediate_size={weight_shape[2]} must be divisible by npu_num={self.tpu_info.npu_num}"
                         scale_op = mlir_gen.create_weight_op(proj + ".scales", scale_shape)
                         zero_shape = [
-                            weight_shape[0], weight_shape[2],
-                            weight_shape[1] // self.q_group_size // (8 // self.quant_bits)
+                            weight_shape[0], self.tpu_info.npu_num,
+                            weight_shape[2] // self.tpu_info.npu_num *
+                            (weight_shape[1] // self.q_group_size) // (8 // self.quant_bits)
                         ]
                         zp_op = mlir_gen.create_weight_op(proj + ".qzeros", zero_shape, 'UINT8')
                     else:

@@ -711,8 +711,7 @@ class Qwen3_5Converter(LlmConverter):
                     self.moe_intermediate_size // (8 // self.quant_bits))
                 weight_dict[experts_gate + ".qweight"] = np.ascontiguousarray(experts_gate_qweight)
                 weight_dict[experts_up + ".qweight"] = np.ascontiguousarray(experts_up_qweight)
-                weight_dict[experts_down + ".qweight"] = np.ascontiguousarray(
-                    np.transpose(experts_down_qweight, (0, 2, 1)))
+                weight_dict[experts_down + ".qweight"] = np.ascontiguousarray(experts_down_qweight)
                 del experts_gate_qweight_list, experts_up_qweight_list, experts_down_qweight_list
                 experts_gate_scales = (np.concatenate(experts_gate_scales_list, axis=0)).reshape(
                     self.num_experts, self.moe_intermediate_size,
@@ -723,8 +722,21 @@ class Qwen3_5Converter(LlmConverter):
                 experts_down_scales = (np.concatenate(experts_down_scales_list, axis=0)).reshape(
                     self.num_experts, self.hidden_size,
                     self.moe_intermediate_size // self.q_group_size)
-                weight_dict[experts_gate + ".scales"] = np.ascontiguousarray(experts_gate_scales)
-                weight_dict[experts_up + ".scales"] = np.ascontiguousarray(experts_up_scales)
+                assert self.moe_intermediate_size % 64 == 0, \
+                    f"moe_intermediate_size={self.moe_intermediate_size} must be divisible by npu_num=64"
+                weight_dict[experts_gate + ".scales"] = np.ascontiguousarray(
+                    experts_gate_scales.reshape(self.num_experts, self.moe_intermediate_size // 64,
+                                                64, self.hidden_size //
+                                                self.q_group_size).transpose(0, 2, 1, 3).reshape(
+                                                    self.num_experts, self.moe_intermediate_size,
+                                                    self.hidden_size // self.q_group_size))
+                weight_dict[experts_up + ".scales"] = np.ascontiguousarray(
+                    experts_up_scales.reshape(self.num_experts, self.moe_intermediate_size // 64,
+                                              64, self.hidden_size // self.q_group_size).transpose(
+                                                  0, 2, 1,
+                                                  3).reshape(self.num_experts,
+                                                             self.moe_intermediate_size,
+                                                             self.hidden_size // self.q_group_size))
                 weight_dict[experts_down + ".scales"] = np.ascontiguousarray(
                     np.transpose(experts_down_scales, (0, 2, 1)))
                 del experts_gate_scales_list, experts_up_scales_list, experts_down_scales_list
@@ -737,8 +749,20 @@ class Qwen3_5Converter(LlmConverter):
                 experts_down_qzeros = (np.concatenate(experts_down_qzeros_list, axis=0)).reshape(
                     self.num_experts, self.hidden_size,
                     self.moe_intermediate_size // self.q_group_size // (8 // self.quant_bits))
-                weight_dict[experts_gate + ".qzeros"] = np.ascontiguousarray(experts_gate_qzeros)
-                weight_dict[experts_up + ".qzeros"] = np.ascontiguousarray(experts_up_qzeros)
+                weight_dict[experts_gate + ".qzeros"] = np.ascontiguousarray(
+                    experts_gate_qzeros.reshape(
+                        self.num_experts, self.moe_intermediate_size // 64, 64,
+                        self.hidden_size // self.q_group_size // (8 // self.quant_bits)).transpose(
+                            0, 2, 1, 3).reshape(
+                                self.num_experts, self.moe_intermediate_size,
+                                self.hidden_size // self.q_group_size // (8 // self.quant_bits)))
+                weight_dict[experts_up + ".qzeros"] = np.ascontiguousarray(
+                    experts_up_qzeros.reshape(
+                        self.num_experts, self.moe_intermediate_size // 64, 64,
+                        self.hidden_size // self.q_group_size // (8 // self.quant_bits)).transpose(
+                            0, 2, 1, 3).reshape(
+                                self.num_experts, self.moe_intermediate_size,
+                                self.hidden_size // self.q_group_size // (8 // self.quant_bits)))
                 weight_dict[experts_down + ".qzeros"] = np.ascontiguousarray(
                     np.transpose(experts_down_qzeros, (0, 2, 1)))
                 del experts_gate_qzeros_list, experts_up_qzeros_list, experts_down_qzeros_list
@@ -1292,8 +1316,7 @@ class Qwen3_5Converter(LlmConverter):
                     self.moe_intermediate_size // (8 // self.quant_bits))
                 weight_dict[experts_gate + ".qweight"] = np.ascontiguousarray(experts_gate_qweight)
                 weight_dict[experts_up + ".qweight"] = np.ascontiguousarray(experts_up_qweight)
-                weight_dict[experts_down + ".qweight"] = np.ascontiguousarray(
-                    np.transpose(experts_down_qweight, (0, 2, 1)))
+                weight_dict[experts_down + ".qweight"] = np.ascontiguousarray(experts_down_qweight)
                 del experts_gate_qweight_list, experts_up_qweight_list, experts_down_qweight_list
                 experts_gate_scales = (np.concatenate(experts_gate_scales_list, axis=0)).reshape(
                     self.num_experts, self.moe_intermediate_size,
@@ -1304,8 +1327,21 @@ class Qwen3_5Converter(LlmConverter):
                 experts_down_scales = (np.concatenate(experts_down_scales_list, axis=0)).reshape(
                     self.num_experts, self.hidden_size,
                     self.moe_intermediate_size // self.q_group_size)
-                weight_dict[experts_gate + ".scales"] = np.ascontiguousarray(experts_gate_scales)
-                weight_dict[experts_up + ".scales"] = np.ascontiguousarray(experts_up_scales)
+                assert self.moe_intermediate_size % 64 == 0, \
+                    f"moe_intermediate_size={self.moe_intermediate_size} must be divisible by npu_num=64"
+                weight_dict[experts_gate + ".scales"] = np.ascontiguousarray(
+                    experts_gate_scales.reshape(self.num_experts, self.moe_intermediate_size // 64,
+                                                64, self.hidden_size //
+                                                self.q_group_size).transpose(0, 2, 1, 3).reshape(
+                                                    self.num_experts, self.moe_intermediate_size,
+                                                    self.hidden_size // self.q_group_size))
+                weight_dict[experts_up + ".scales"] = np.ascontiguousarray(
+                    experts_up_scales.reshape(self.num_experts, self.moe_intermediate_size // 64,
+                                              64, self.hidden_size // self.q_group_size).transpose(
+                                                  0, 2, 1,
+                                                  3).reshape(self.num_experts,
+                                                             self.moe_intermediate_size,
+                                                             self.hidden_size // self.q_group_size))
                 weight_dict[experts_down + ".scales"] = np.ascontiguousarray(
                     np.transpose(experts_down_scales, (0, 2, 1)))
                 del experts_gate_scales_list, experts_up_scales_list, experts_down_scales_list
@@ -1318,8 +1354,20 @@ class Qwen3_5Converter(LlmConverter):
                 experts_down_qzeros = (np.concatenate(experts_down_qzeros_list, axis=0)).reshape(
                     self.num_experts, self.hidden_size,
                     self.moe_intermediate_size // self.q_group_size // (8 // self.quant_bits))
-                weight_dict[experts_gate + ".qzeros"] = np.ascontiguousarray(experts_gate_qzeros)
-                weight_dict[experts_up + ".qzeros"] = np.ascontiguousarray(experts_up_qzeros)
+                weight_dict[experts_gate + ".qzeros"] = np.ascontiguousarray(
+                    experts_gate_qzeros.reshape(
+                        self.num_experts, self.moe_intermediate_size // 64, 64,
+                        self.hidden_size // self.q_group_size // (8 // self.quant_bits)).transpose(
+                            0, 2, 1, 3).reshape(
+                                self.num_experts, self.moe_intermediate_size,
+                                self.hidden_size // self.q_group_size // (8 // self.quant_bits)))
+                weight_dict[experts_up + ".qzeros"] = np.ascontiguousarray(
+                    experts_up_qzeros.reshape(
+                        self.num_experts, self.moe_intermediate_size // 64, 64,
+                        self.hidden_size // self.q_group_size // (8 // self.quant_bits)).transpose(
+                            0, 2, 1, 3).reshape(
+                                self.num_experts, self.moe_intermediate_size,
+                                self.hidden_size // self.q_group_size // (8 // self.quant_bits)))
                 weight_dict[experts_down + ".qzeros"] = np.ascontiguousarray(
                     np.transpose(experts_down_qzeros, (0, 2, 1)))
                 del experts_gate_qzeros_list, experts_up_qzeros_list, experts_down_qzeros_list

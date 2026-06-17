@@ -135,6 +135,7 @@ class MLIR_IR_TESTER(object):
             "recurrent_gated_delta_rule": (self.test_recurrent_gated_delta_rule, Y, Y),
             "concat_slice": (self.test_concat_slice, Y, Y),
             "softplus_mul": (self.test_softplus_mul, Y, Y),
+            "softmax_topk": (self.test_softmax_topk, Y, Y),
         }
         # currently test_mlir.py only supports fp quant mode
         self.support_quant_modes = ["f32", "f16"]  # no need "bf16" for now
@@ -393,6 +394,7 @@ class MLIR_IR_TESTER(object):
                                    chip=self.chip,
                                    mode=mode,
                                    tolerance=tolerance,
+                                   test_reference=test_reference,
                                    debug=self.debug,
                                    dynamic=self.dynamic,
                                    num_core=self.num_core,
@@ -1157,6 +1159,53 @@ class MLIR_IR_TESTER(object):
 
         # Save MLIR text, weights, and inputs
         self._save_mlir_and_data(case_name, block_mlir, input_shapes, weight_shapes)
+
+        # Deploy for each quantization mode
+        self._deploy_test_case(case_name)
+
+    def test_softmax_topk(self, case_name):
+        """Test case: SoftMax followed by TopK with use_hau=False."""
+        input_shapes = [
+            [1, 1, 256],
+        ]
+        weight_shapes = []
+        output_shapes = [
+            [1, 1, 8],  # TopK values
+            [1, 1, 8],  # TopK indices
+        ]
+
+        # Create MLIR importer
+        block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
+            case_name, input_shapes, weight_shapes, output_shapes, ["F32"])
+
+        in0_op = input_ops[0]
+
+        # SoftMax
+        softmax_out = top.SoftmaxOp(self._T(block_mlir, input_shapes[0]),
+                                    in0_op,
+                                    axis=2,
+                                    loc=self._L(block_mlir, "softmax"),
+                                    ip=ip).output
+
+        # TopK with use_hau=False
+        topk_op = top.TopKOp(self._T(block_mlir, output_shapes[0]),
+                             self._T(block_mlir, output_shapes[0]),
+                             softmax_out,
+                             axis=2,
+                             K=8,
+                             use_hau=False,
+                             loc=self._L(block_mlir, ["topk_values", "topk_indices"]),
+                             ip=ip)
+
+        # Create return operation
+        block_mlir.create_return_op([topk_op.values, topk_op.indices])
+
+        # Save MLIR text and inputs
+        self._save_mlir_and_data(case_name,
+                                 block_mlir,
+                                 input_shapes,
+                                 weight_shapes,
+                                 input_descs=[self.Desc('float32', -5, 5)])
 
         # Deploy for each quantization mode
         self._deploy_test_case(case_name)

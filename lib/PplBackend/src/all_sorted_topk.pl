@@ -18,16 +18,14 @@ void argSort(gtensor<DataType> &input_g, gtensor<int32_t> &seq_index_g,
              gtensor<DataType> &output_g, gtensor<int32_t> &out_index_g,
              gtensor<uint32_t> &scatter_index_g,
              int n, const int tile_n) {
-  float eps = 1e-9; // eps must be small enough
+  float eps = 1e-7; // safe for fp32 computation at softmax scale
   dim4 input_lshape = {1, 1, 1, tile_n};
   dim4 mask_shape = {1, 1, tile_n, tile_n};
   auto input1_local = tensor<DataType>(input_lshape);
-  auto index1_local = tensor<int32_t>(input_lshape);
   auto seq1_local = tensor<int32_t>(input_lshape);
   auto bias1_fp32 = tensor<fp32>(input_lshape);
   auto input1_fp32 = tensor<fp32>(input_lshape);
   auto input2_local = tensor<DataType>(input_lshape);
-  auto index2_local = tensor<int32_t>(input_lshape);
   auto seq2_local = tensor<int32_t>(input_lshape);
   auto bias2_fp32 = tensor<fp32>(input_lshape);
   auto input2_fp32 = tensor<fp32>(input_lshape);
