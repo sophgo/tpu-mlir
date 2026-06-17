@@ -1224,7 +1224,8 @@ class Qwen3_5Converter(LlmConverter):
         out_proj = TOP_PATH + "linear_attn.out_proj"
         weight_file = f"block_{idx}_top_weights.npz"
         A_log_data = self.model.read(A_log)
-        A_log_data = -np.exp(A_log_data)
+        if not isinstance(self.loader, GGUFModelHandle):
+            A_log_data = -np.exp(A_log_data)
         chunk_size = 64
 
         weight_dict = {A_log + ".weight": A_log_data}
