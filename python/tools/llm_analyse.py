@@ -23,8 +23,8 @@ Directory structure expected:
     e.g. qwen3.5-0.8b_bf16_seq2048_bm1684x_1dev_static/block_0/block_0.mlir
 
 Usage:
-    python llm_analyse.py <model_dir> -t 32 -b 64
-    python llm_analyse.py <model_dir> -t 32 -b 64 -d w4f16 -o result.xlsx
+    python llm_analyse.py -m <model> -c bm1684x -s 2048 -t 16 -b 64 -o <out_dir>
+    # -t: FP16 TOPS; INT8/FP8 TOPS default to 2*t
 """
 
 import os
@@ -128,6 +128,24 @@ def discover_modules(model_dir: str,
 # Single-module analysis
 # ---------------------------------------------------------------------------
 
+COMPUTE_FP16 = "fp16"
+COMPUTE_INT8 = "int8"
+COMPUTE_FP8 = "fp8"
+COMPUTE_VECTOR = "vector"
+
+
+def _compute_type(base_opn: str) -> str:
+    """Pick compute-power bucket for roofline estimate.
+
+    Fp8MatMul computes in FP8; weight-only quant (w8/w4 f16/bf16) still
+    computes in FP16, so all other key ops use FP16 TOPS.
+    """
+    if base_opn == "Fp8MatMul":
+        return COMPUTE_FP8
+    if base_opn in KEY_OPS:
+        return COMPUTE_FP16
+    return COMPUTE_VECTOR
+
 
 def analyse_module(filepath: str, dtype_mode: str = "f16"):
     """Parse and analyse a single MLIR file.
@@ -145,6 +163,8 @@ def analyse_module(filepath: str, dtype_mode: str = "f16"):
         if opn == "MatMul" and ssa_op_map and len(op.operands) > 1:
             if ssa_op_map.get(op.operands[1], "") == "top.Weight":
                 opn = f"MatMul ({dtype_mode})"
+        elif opn == "Fp8MatMul":
+            opn = f"Fp8MatMul ({dtype_mode})"
         flops = calc_flops(op)
         rb, wb = calc_data_volume(op, dtype_mode, ssa_op_map)
         inp_shapes = ", ".join(t.shape_str() if t else "none" for t in op.input_types)
@@ -162,6 +182,7 @@ def analyse_module(filepath: str, dtype_mode: str = "f16"):
                 wb=wb,
                 total_io=rb + wb,
                 is_key=base_opn in KEY_OPS,
+                compute_type=_compute_type(base_opn),
             ))
         total_flops += flops
         total_read += rb
@@ -180,11 +201,13 @@ def analyse_module(filepath: str, dtype_mode: str = "f16"):
 
 
 def export_llm_excel(modules_data,
-                     chip_tops,
+                     fp16_tops,
                      bw_gbps,
                      out_dir,
                      llm_path,
                      dtype_mode="f16",
+                     int8_tops=None,
+                     fp8_tops=None,
                      vector_tops=None,
                      uarch_rate=0.8,
                      bw_util=0.7,
@@ -211,8 +234,12 @@ def export_llm_excel(modules_data,
         from openpyxl.formatting.rule import CellIsRule
         from openpyxl.utils import get_column_letter
 
+    if int8_tops is None:
+        int8_tops = fp16_tops * 2.0
+    if fp8_tops is None:
+        fp8_tops = fp16_tops * 2.0
     if vector_tops is None:
-        vector_tops = chip_tops / 8.0
+        vector_tops = fp16_tops / 8.0
 
     # ---------- Color palette ----------
     C_TITLE = "1F4E79"  # deep blue - main title
@@ -322,13 +349,15 @@ def export_llm_excel(modules_data,
 
     # params start at row 9
     params = [
-        ("Chip Compute Power", chip_tops, "TOPS", "#,##0.##"),
+        ("FP16 Compute Power", fp16_tops, "TOPS", "#,##0.##"),
+        ("INT8 Compute Power", int8_tops, "TOPS", "#,##0.##"),
+        ("FP8 Compute Power", fp8_tops, "TOPS", "#,##0.##"),
         ("Vector Compute Power", vector_tops, "TOPS", "#,##0.##"),
         ("Chip Bandwidth", bw_gbps, "GB/s", "#,##0.##"),
         ("uArch Rate", uarch_rate, "", "0%"),
         ("Bandwidth Utilization", bw_util, "", "0%"),
         ("Parallelism", parallelism, "", "0%"),
-        ("Serialism", "=1-B14", "", "0%"),
+        ("Serialism", "=1-B16", "", "0%"),
         ("CPU Call", 100, "us", "#,##0"),
         ("Preprocess Time", 0.1, "s", "#,##0.000"),
     ]
@@ -351,14 +380,26 @@ def export_llm_excel(modules_data,
         uc.alignment = center
 
     # Formula references (must match absolute positions above)
-    TOPS_REF = "Overview!$B$9"
-    VECTOR_TOPS_REF = "Overview!$B$10"
-    BW_REF = "Overview!$B$11"
-    CU_REF = "Overview!$B$12"
-    BU_REF = "Overview!$B$13"
-    PAR_REF = "Overview!$B$14"
-    CPU_CALL_REF = "Overview!$B$16"
-    PREPROCESS_TIME_REF = "Overview!$B$17"
+    FP16_TOPS_REF = "Overview!$B$9"
+    INT8_TOPS_REF = "Overview!$B$10"
+    FP8_TOPS_REF = "Overview!$B$11"
+    VECTOR_TOPS_REF = "Overview!$B$12"
+    BW_REF = "Overview!$B$13"
+    CU_REF = "Overview!$B$14"
+    BU_REF = "Overview!$B$15"
+    PAR_REF = "Overview!$B$16"
+    CPU_CALL_REF = "Overview!$B$18"
+    PREPROCESS_TIME_REF = "Overview!$B$19"
+
+    def _tops_ref_for_op(d):
+        ctype = d.get("compute_type", COMPUTE_VECTOR)
+        if ctype == COMPUTE_INT8:
+            return INT8_TOPS_REF
+        if ctype == COMPUTE_FP8:
+            return FP8_TOPS_REF
+        if ctype == COMPUTE_FP16:
+            return FP16_TOPS_REF
+        return VECTOR_TOPS_REF
 
     # --- Special Ratios (rows 19+) ---
     RATIO_BANNER = PARAM_START + len(params) + 1  # 19
@@ -409,7 +450,7 @@ def export_llm_excel(modules_data,
         cell.alignment = center
         cell.border = thin
 
-    def _compute_formula(gops_cell, tops_ref=TOPS_REF):
+    def _compute_formula(gops_cell, tops_ref=FP16_TOPS_REF):
         return f"=IF({tops_ref}=0,0,{gops_cell}/({tops_ref}*{CU_REF})*1000)"
 
     def _memory_formula(io_cell):
@@ -473,7 +514,7 @@ def export_llm_excel(modules_data,
                 elif c in (5, 6, 7):
                     cell.number_format = "#,##0.000"
 
-            tops_ref = TOPS_REF if d["is_key"] else VECTOR_TOPS_REF
+            tops_ref = _tops_ref_for_op(d)
             # H: Compute(us) - from GOPs column D
             cell_h = ws.cell(row=r, column=8)
             cell_h.value = _compute_formula(f"D{r}", tops_ref)
@@ -629,14 +670,16 @@ def export_llm_excel(modules_data,
     # ============ Back-fill TTFT / Tokens/s at top (rows 4, 5) ============
     # TTFT row (4)
     ws0.cell(row=4, column=2, value=f"=F{phase_r}").number_format = "#,##0.000000"
-    ws0.cell(row=4, column=4, value=f"=IF(F{phase_r}=0,0,C{phase_r}/{TOPS_REF}/1000/F{phase_r})")
+    ws0.cell(row=4,
+             column=4,
+             value=f"=IF(F{phase_r}=0,0,C{phase_r}/{FP16_TOPS_REF}/1000/F{phase_r})")
     ws0.cell(row=4, column=6, value=f"=IF(F{phase_r}=0,0,D{phase_r}/{BW_REF}/1000/F{phase_r})")
     # Tokens/s row (5)
     ws0.cell(row=5, column=2,
              value=f"=IF(F{phase_r+1}=0,0,1/F{phase_r+1})").number_format = "#,##0.00"
     ws0.cell(row=5,
              column=4,
-             value=f"=IF(F{phase_r+1}=0,0,C{phase_r+1}/{TOPS_REF}/1000/F{phase_r+1})")
+             value=f"=IF(F{phase_r+1}=0,0,C{phase_r+1}/{FP16_TOPS_REF}/1000/F{phase_r+1})")
     ws0.cell(row=5,
              column=6,
              value=f"=IF(F{phase_r+1}=0,0,D{phase_r+1}/{BW_REF}/1000/F{phase_r+1})")
@@ -694,7 +737,7 @@ def export_llm_excel(modules_data,
         "Green cells (parameters, ratios, block counts) are editable; all estimates auto-update.",
         "Est.Time = max(Compute, Memory) + Serialism * min(Compute, Memory).",
         "block / block_cache use the first block as representative, multiplied by Count.",
-        "Key operators are highlighted in yellow; use chip TOPS (else vector TOPS) for compute.",
+        "Key operators: Fp8MatMul uses FP8 TOPS; others (incl. w8/w4 MatMul) use FP16 TOPS; non-key ops use vector TOPS.",
     ]
     for i, txt in enumerate(notes, 1):
         ws0.merge_cells(start_row=info_banner + i,
@@ -728,12 +771,19 @@ def main():
     parser.add_argument('-s', '--seq_length', type=int, required=True,
                         help="sequence length")
     parser.add_argument("-t", "--tops", type=float, required=True,
-                        help="Chip compute power in TOPS")
+                        help="FP16 compute power in TOPS")
+    parser.add_argument("--int8_tops", type=float, default=None,
+                        help="INT8 compute power in TOPS (default: 2 * tops)")
+    parser.add_argument("--fp8_tops", type=float, default=None,
+                        help="FP8 compute power in TOPS (default: 2 * tops)")
     parser.add_argument("-b", "--bandwidth", type=float, required=True,
                         help="Chip memory bandwidth in GB/s")
     parser.add_argument("-q", "--quantize", default="f16",
                         choices=["f16", "w8f16", "w4f16","bf16", "w8bf16", "w4bf16"],
                         help="Quantization mode (default: f16)")
+    parser.add_argument("-c", "--chip", default="bm1684x",
+                        choices=["bm1684x", "bm1688", "cv186x", "bm1690", "bm1684x2"],
+                        help="Chip type (default: bm1684x)")
     parser.add_argument("-v", "--vector_tops", type=float, default=None,
                         help="Vector compute power in TOPS (default: tops/8)")
     parser.add_argument("-r", "--uarch_rate", type=float, default=0.8,
@@ -768,7 +818,7 @@ def main():
         max_pixels = "768,768"
     cmds = [
         "llm_convert.py", f"-m {args.model_path}", f"-s {args.seq_length}", f"-q {args.quantize}",
-        "-c bm1684x", f"--out_dir {args.out_dir}", "--only_mlir", f"--max_pixels {max_pixels}"
+        f"-c {args.chip}", f"--out_dir {args.out_dir}", "--only_mlir", f"--max_pixels {max_pixels}"
     ]
     if args.max_input_length > 0:
         cmds.append(f"--max_input_length {args.max_input_length}")
@@ -821,15 +871,19 @@ def main():
     modules_data = []
     for name, path, count in modules:
         print(f"  Analysing: {name} ({os.path.basename(path)})")
-        dtype = args.quantize if name.startswith("block") else "f16"
+        dtype = args.quantize if name.startswith("block") else args.quantize.replace("fp8", "")
         rows_data, totals = analyse_module(path, dtype)
         modules_data.append((name, count, rows_data, totals))
 
     # Step 3: Export Excel
     cmdline = "python " + " ".join(sys.argv)
-    export_llm_excel(modules_data, args.tops, args.bandwidth, args.out_dir, args.model_path,
-                     args.quantize, args.vector_tops, args.uarch_rate, args.bw_util,
-                     args.parallelism, model_config, args.seq_length, max_pixels, cmdline)
+    fp16_tops = args.tops
+    int8_tops = args.int8_tops if args.int8_tops is not None else fp16_tops * 2.0
+    fp8_tops = args.fp8_tops if args.fp8_tops is not None else fp16_tops * 2.0
+    export_llm_excel(modules_data, fp16_tops, args.bandwidth, args.out_dir, args.model_path,
+                     args.quantize, int8_tops, fp8_tops, args.vector_tops, args.uarch_rate,
+                     args.bw_util, args.parallelism, model_config, args.seq_length, max_pixels,
+                     cmdline)
 
 
 if __name__ == "__main__":

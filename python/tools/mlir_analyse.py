@@ -43,12 +43,15 @@ class TensorInfo:
         sizes = {
             "f32": 4,
             "f16": 2,
-            "f16": 2,
+            "bf16": 2,
             "f64": 8,
+            "f8E4M3FN": 1,
+            "f8E5M2": 1,
             "i8": 1,
             "i16": 2,
             "i32": 4,
             "i64": 8,
+            "si32": 4,
             "ui8": 1,
             "ui16": 2,
             "ui32": 4,
@@ -284,6 +287,34 @@ def calc_matmul_flops(op: MLIROp) -> int:
     return 2 * batch * M * K * N
 
 
+def calc_fp8matmul_flops(op: MLIROp) -> int:
+    """FP8 block-wise quantized MatMul.
+
+    Computation phases:
+      1. Dynamic quantization per block: 2 * M * K
+      2. MatMul and rescale: 4 * batch * M * K * N
+    """
+    vi = _valid_inputs(op)
+    if len(vi) < 2:
+        return 0
+    lhs = vi[0]
+    out = op.output_types[0] if op.output_types else None
+    if not out:
+        raise ValueError(f"Fp8MatMul op at line {op.line_num} has no output type")
+
+    # Determine effective K, N from lhs shape
+    K = lhs.shape[-1]
+    M = out.shape[-2]
+    N = out.shape[-1]
+    batch = 1
+    for d in out.shape[:-2]:
+        batch *= d
+
+    matmul_flops = 4 * batch * M * K * N
+    dynamic_quantize_flops = 2 * M * K
+    return matmul_flops + dynamic_quantize_flops
+
+
 def calc_conv_flops(op: MLIROp) -> int:
     vi = _valid_inputs(op)
     if len(vi) < 2:
@@ -407,6 +438,10 @@ def calc_flops(op: MLIROp) -> int:
         # calc_matmul_flops uses lhs last dim as K and rhs[-2] as N (right_transpose),
         # which is correct for both w4 and w8.
         return calc_matmul_flops(op)
+    elif name == "Fp8MatMul":
+        # FP8 block-wise quantized MatMul.
+        # Includes matmul FLOPs + weight dequantization overhead.
+        return calc_fp8matmul_flops(op)
     elif name == "Conv":
         return calc_conv_flops(op)
     elif name == "FAttention":
@@ -545,6 +580,10 @@ def calc_flops(op: MLIROp) -> int:
 # Bytes per element for each quantization type
 DTYPE_BYTES = {
     "f16": 2,
+    "bf16": 2,
+    "f32": 4,
+    "f8E4M3FN": 1,
+    "f8E5M2": 1,
     "w4": 0.5,
     "w8": 1,
 }
@@ -561,8 +600,10 @@ def _get_weight_bytes(dtype_mode: str) -> float:
         return DTYPE_BYTES["w4"]
     elif dtype_mode in ["w8f16", "w8bf16"]:
         return DTYPE_BYTES["w8"]
-    else:  # f16
-        return DTYPE_BYTES["f16"]
+    elif dtype_mode in ["f8E4M3FN", "f8E5M2", "bf16", "f16"]:
+        return DTYPE_BYTES[dtype_mode]
+    else:
+        raise ValueError(f"Unsupported dtype mode: {dtype_mode}")
 
 
 def calc_data_volume(op: MLIROp,
@@ -609,6 +650,31 @@ def calc_data_volume(op: MLIROp,
                 rb += _tensor_bytes(t, act_bytes)
             else:
                 rb += t.size_bytes
+    elif opn == "Fp8MatMul":
+        # Inputs: [activation, fp8_weight, scale_inv, none]
+        # - activation: use f16/bf16/f32 (activation bytes).
+        # - fp8_weight: f8E4M3FN, 1 byte per element (from top.Weight).
+        # - scale_inv: typically f32, 4 bytes per element (from top.Weight).
+        # - none: skip.
+        for idx, t in enumerate(op.input_types):
+            if not isinstance(t, TensorInfo):
+                continue
+            if idx == 0:
+                rb += _tensor_bytes(t, act_bytes)
+            elif idx == 1:
+                # fp8 weight - use actual storage size (f8E4M3FN = 1 byte/elem)
+                is_weight = False
+                if ssa_op_map and len(op.operands) > 1:
+                    is_weight = ssa_op_map.get(op.operands[1], "") == "top.Weight"
+                if is_weight:
+                    rb += t.size_bytes
+                else:
+                    rb += _tensor_bytes(t, act_bytes)
+            elif idx == 2:
+                # scale_inv - use actual dtype size (typically f32)
+                rb += t.size_bytes
+            else:
+                rb += _tensor_bytes(t, act_bytes)
     else:
         for idx, t in enumerate(op.input_types):
             if not isinstance(t, TensorInfo):
@@ -663,7 +729,7 @@ def fmt_time(us: float) -> str:
 # Excel export
 # ---------------------------------------------------------------------------
 
-KEY_OPS = {"MatMul", "Conv", "FAttention", "ChunkGatedDeltaRule", "A16MatMul"}
+KEY_OPS = {"MatMul", "Conv", "FAttention", "ChunkGatedDeltaRule", "A16MatMul", "Fp8MatMul"}
 SKIP_OPS = {"top.Weight", "top.None", "top.Input"}
 
 
@@ -706,6 +772,8 @@ def export_excel(ops: List[MLIROp],
         elif opn == "A16MatMul":
             wbits = _parse_int_attr(op.attributes.get("weight_bits", "4"), 4)
             opn = f"A16MatMul (w{wbits}a16)"
+        elif opn == "Fp8MatMul":
+            opn = f"Fp8MatMul ({dtype_mode})"
         flops = calc_flops(op)
         rb, wb = calc_data_volume(op, dtype_mode, ssa_op_map)
         total_io = rb + wb
@@ -799,7 +867,7 @@ def export_excel(ops: List[MLIROp],
     info_row = 9
     static_items = [
         ("MLIR File", os.path.basename(output_path).replace("_analysis.xlsx", ".mlir")),
-        ("Dtye Mode", dtype_mode),
+        ("Dtype Mode", dtype_mode),
         ("Activation", "f16 (2 bytes)"),
         ("", ""),
         ("Total GOPs", total_flops / 1e9),
