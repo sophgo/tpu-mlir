@@ -341,10 +341,12 @@ class LlmConverter(BaseConverter):
                     # This will raise exceptions if any occurred during thread execution
                     future.result()
                 except Exception as e:
+                    import traceback
                     for future in futures:
                         if not future.done():
                             future.cancel()
                     logger.error("gen mlir failed: %s", e)
+                    traceback.print_exc()
                     sys.exit(1)
 
     def load_pretrained(self, config):

@@ -14,15 +14,15 @@ class Gemma4Converter(LlmConverter):
 
     def __init__(self, args, config, loader=None):
         self.rmsnorm_type = WeightType.RMSNORM
-        super().__init__(args, config, loader=None)
+        super().__init__(args, config, loader=loader)
         # Override values set by base class __init__
         self.do_vit = True
         self.vit_f16_out_bf16 = True  # Gemma4 vit is f16, but we force output to bf16
         self.do_audio = True
         if self.do_audio:
             if args.audio_length <= 0:
-                self.audio_length = 200
-                print("audio_length not specified, using default 200")
+                self.audio_length = 750
+                print("audio_length not specified, using default 750")
             elif args.audio_length > 750:
                 self.audio_length = 750
                 print(f"audio_length {args.audio_length} exceeds max 750, capped to 750")
@@ -34,6 +34,10 @@ class Gemma4Converter(LlmConverter):
         # which already set self.cos_sliding, self.sin_sliding, self.cos_full, self.sin_full
         # and self.cos, self.sin
 
+        # Export per_layer_token_embd as external bin file to avoid 35x duplicate storage in bmodel
+        if self.hidden_size_per_layer_input > 0:
+            self.all_gen_mlirs.append(self.gen_per_layer_embedding_bin)
+
     @override
     def load_pretrained(self, config):
         super().load_pretrained(config)
@@ -44,7 +48,7 @@ class Gemma4Converter(LlmConverter):
     @override
     def init_config(self):
         super().init_config()
-        self.tie_word_embeddings = True
+        self.tie_word_embeddings = getattr(self.llm_config, 'tie_word_embeddings', True)
         self.do_lmhead_merge = self.tie_word_embeddings and not self.embedding_disk and self.num_device < 2
         # Gemma4 specific config
         self.layer_types = getattr(self.llm_config, 'layer_types', None)
@@ -118,6 +122,41 @@ class Gemma4Converter(LlmConverter):
 
         # Return sliding cos/sin for base class compatibility
         return cos_sliding, sin_sliding
+
+    def gen_per_layer_embedding_bin(self):
+        """Export per_layer_token_embd weights as external bin file.
+
+        The full [vocab, N*D] weight matrix is pre-multiplied by per_layer_embed_scale
+        and saved as raw BF16/F16 bytes. At runtime, the CPU loads this file, does a
+        single gather on the full matrix, then slices per-layer results for each block.
+        This avoids storing 35 separate [vocab, D] slices inside the bmodel (~4.7 GB saved).
+        """
+        bin_file = os.path.join(self.config_dir, 'per_layer_token_embd.bin')
+        if os.path.exists(bin_file):
+            logger.info("%s already exists. Skipping export.", bin_file)
+            return
+
+        embed_per_layer = self.model_info.weights[LlmList.EMBEDING_PER_LAYER]
+        full_emb = self.model.read(embed_per_layer + ".weight")  # [vocab, N*D]
+
+        # Pre-multiply scale so runtime doesn't need MulConstOp
+        per_layer_embed_scale = self.hidden_size_per_layer_input**0.5
+        full_emb_scaled = full_emb * per_layer_embed_scale
+
+        import ctypes
+        weight = torch.from_numpy(full_emb_scaled)
+        if self.half_precision_quantize == 'bf16':
+            tensor_data = weight.to(torch.bfloat16)
+        elif self.half_precision_quantize == 'f16':
+            tensor_data = weight.to(torch.float16)
+        else:
+            raise NotImplementedError(
+                f"per_layer_embedding_bin not supported for quantize={self.quantize}")
+        data_ptr = tensor_data.untyped_storage().data_ptr()
+        buffer = (ctypes.c_byte * (tensor_data.numel() * 2)).from_address(data_ptr)
+        with open(bin_file, 'wb') as f:
+            f.write(buffer)
+        tqdm.write(f"exported {bin_file} ({os.path.getsize(bin_file) / (1024**2):.1f} MB)")
 
     def _compute_layer_params(self, idx):
         """Compute layer-specific parameters based on layer type and KV sharing."""
@@ -456,10 +495,7 @@ class Gemma4Converter(LlmConverter):
             model_projection = self.model_info.weights[LlmList.PER_LAYER_MODEL_PROJECTION]
             projection_norm = self.model_info.weights[LlmList.PER_LAYER_PROJECTION_NORM]
             per_layer_dim = self.hidden_size_per_layer_input
-            # Slice embed_tokens_per_layer.weight: [vocab, N*D] → [vocab, D] for layer idx
-            full_emb = self.model.read(embed_per_layer + ".weight")
-            emb_slice = full_emb[:, idx * per_layer_dim:(idx + 1) * per_layer_dim]
-            weight_dict[embed_per_layer + f".weight.{idx}"] = emb_slice.copy()
+            # per_layer_token_embd is stored externally as bin file (see gen_per_layer_embedding_bin)
             # Slice per_layer_model_projection.weight: [N*D, hidden] → transpose → [hidden, N*D]
             # then slice columns → [hidden, D] for layer idx
             full_proj = self.model.read(model_projection + ".weight")
@@ -505,8 +541,8 @@ class Gemma4Converter(LlmConverter):
                                ip=ip).output
             return new_op
 
-        def gen_per_layer_input(mlir_gen, input_shape, hidden_states, residual_op, ids_op,
-                                embeds_op):
+        def gen_per_layer_input(mlir_gen, input_shape, hidden_states, residual_op, embeds_op,
+                                per_layer_embeds_op):
             """Generate per_layer_input subgraph with per-layer sliced weights.
             Each block uses its own slice of embed_tokens_per_layer and per_layer_model_projection,
             avoiding the need to compute the full N*D tensor and then slice."""
@@ -516,27 +552,13 @@ class Gemma4Converter(LlmConverter):
             len = input_shape[1]
 
             # Scale constants from HF source
-            per_layer_embed_scale = per_layer_dim**0.5
             model_projection_scale = self.hidden_size**-0.5
             per_layer_input_scale = 2.0**-0.5
-
-            # Path A: embed_tokens_per_layer(ids) * per_layer_embed_scale (sliced for layer idx)
             per_layer_slice_shape = [batch, len, per_layer_dim]
-            emb_per_layer_weight = mlir_gen.create_weight_op(
-                embed_per_layer + f".weight.{idx}",
-                [self.vocab_size_per_layer_input, per_layer_dim])
-            gather_op = top.GatherOp(mlir_gen.get_tensor_type(per_layer_slice_shape),
-                                     emb_per_layer_weight,
-                                     ids_op,
-                                     axis=0,
-                                     loc=self.get_loc("embed_tokens_per_layer.gather", mlir_gen),
-                                     ip=ip).output
-            per_layer_inputs_op = top.MulConstOp(mlir_gen.get_tensor_type(per_layer_slice_shape),
-                                                 gather_op,
-                                                 const_val=per_layer_embed_scale,
-                                                 loc=self.get_loc("embed_tokens_per_layer.scale",
-                                                                  mlir_gen),
-                                                 ip=ip).output
+
+            # Path A: per_layer_embeds (pre-computed by CPU from external bin file)
+            # The bin file already has scale pre-multiplied, so no MulConstOp needed here.
+            per_layer_inputs_op = per_layer_embeds_op
 
             # Path B: per_layer_model_projection(embeds) * model_projection_scale (sliced for layer idx)
             proj_op = self.linear(mlir_gen, model_projection + f".{idx}", embeds_op,
@@ -591,8 +613,10 @@ class Gemma4Converter(LlmConverter):
             return_ops_list = []
 
             if has_per_layer_input:
-                input_shapes.extend([id_shape, input_shape])
-                input_types.extend(["INT32", "F32"])
+                embed_dtype = self.half_precision_quantize.upper()
+                per_layer_embeds_shape = [1, input_len, self.hidden_size_per_layer_input]
+                input_shapes.extend([per_layer_embeds_shape, input_shape])
+                input_types.extend([embed_dtype, "F32"])
 
             if is_shared:
                 # Shared layer: receives shared_k and shared_v as inputs, outputs only hidden_states
@@ -624,10 +648,10 @@ class Gemma4Converter(LlmConverter):
             in1_op = block_mlir.create_input_op(L("position_ids"), 1)
             in2_op = block_mlir.create_input_op(L("attention_mask"), 2)
             input_idx = 3
-            ids_op = None
             embeds_op = None
+            per_layer_embeds_op = None
             if has_per_layer_input:
-                ids_op = block_mlir.create_input_op(L("input_ids"), input_idx)
+                per_layer_embeds_op = block_mlir.create_input_op(L("per_layer_embeds"), input_idx)
                 embeds_op = block_mlir.create_input_op(L("inputs_embeds"), input_idx + 1)
                 input_idx += 2
 
@@ -715,8 +739,8 @@ class Gemma4Converter(LlmConverter):
 
             # per_layer_input
             if has_per_layer_input:
-                new_op = gen_per_layer_input(block_mlir, input_shape, new_op, residual_mlp, ids_op,
-                                             embeds_op)
+                new_op = gen_per_layer_input(block_mlir, input_shape, new_op, residual_mlp,
+                                             embeds_op, per_layer_embeds_op)
 
             # layer_scalar
             layer_scalar_loc = "layer_scalar" if do_norm else "output_states"
@@ -753,9 +777,10 @@ class Gemma4Converter(LlmConverter):
             input_shapes = [input_shape, id_shape, mask_shape]
 
             if has_per_layer_input:
-                input_ids_shape = [self.batch, 1]
-                input_shapes.extend([input_ids_shape, input_shape])
-                input_types.extend(["INT32", "F32"])
+                embed_dtype = self.half_precision_quantize.upper()
+                per_layer_embeds_shape = [self.batch, 1, self.hidden_size_per_layer_input]
+                input_shapes.extend([per_layer_embeds_shape, input_shape])
+                input_types.extend([embed_dtype, "F32"])
 
             if is_shared:
                 # Shared KV layer in decode mode
@@ -789,10 +814,10 @@ class Gemma4Converter(LlmConverter):
             in1_op = block_mlir.create_input_op(L("position_ids"), 1)
             in2_op = block_mlir.create_input_op(L("attention_mask"), 2)
             input_idx = 3
-            ids_op = None
             embeds_op = None
+            per_layer_embeds_op = None
             if has_per_layer_input:
-                ids_op = block_mlir.create_input_op(L("input_ids"), input_idx)
+                per_layer_embeds_op = block_mlir.create_input_op(L("per_layer_embeds"), input_idx)
                 embeds_op = block_mlir.create_input_op(L("inputs_embeds"), input_idx + 1)
                 input_idx += 2
 
@@ -908,8 +933,8 @@ class Gemma4Converter(LlmConverter):
 
             # per_layer_input
             if has_per_layer_input:
-                new_op = gen_per_layer_input(block_mlir, input_shape, new_op, residual_mlp, ids_op,
-                                             embeds_op)
+                new_op = gen_per_layer_input(block_mlir, input_shape, new_op, residual_mlp,
+                                             embeds_op, per_layer_embeds_op)
 
             # layer_scalar
             layer_scalar_loc = "layer_scalar" if do_norm else "output_states"
@@ -947,8 +972,10 @@ class Gemma4Converter(LlmConverter):
             input_shapes = [input_shape, id_shape, mask_shape]
 
             if has_per_layer_input:
-                input_shapes.extend([id_shape, input_shape])
-                input_types.extend(["INT32", "F32"])
+                embed_dtype = self.half_precision_quantize.upper()
+                per_layer_embeds_shape = [1, input_len, self.hidden_size_per_layer_input]
+                input_shapes.extend([per_layer_embeds_shape, input_shape])
+                input_types.extend([embed_dtype, "F32"])
 
             if is_shared:
                 # Shared KV layer: receives shared_k (full length), shared_v (full length)
@@ -981,10 +1008,10 @@ class Gemma4Converter(LlmConverter):
             in1_op = block_mlir.create_input_op(L("position_ids"), 1)
             in2_op = block_mlir.create_input_op(L("attention_mask"), 2)
             input_idx = 3
-            ids_op = None
             embeds_op = None
+            per_layer_embeds_op = None
             if has_per_layer_input:
-                ids_op = block_mlir.create_input_op(L("input_ids"), input_idx)
+                per_layer_embeds_op = block_mlir.create_input_op(L("per_layer_embeds"), input_idx)
                 embeds_op = block_mlir.create_input_op(L("inputs_embeds"), input_idx + 1)
                 input_idx += 2
 
@@ -1104,8 +1131,8 @@ class Gemma4Converter(LlmConverter):
 
             # per_layer_input
             if has_per_layer_input:
-                new_op = gen_per_layer_input(block_mlir, input_shape, new_op, residual_mlp, ids_op,
-                                             embeds_op)
+                new_op = gen_per_layer_input(block_mlir, input_shape, new_op, residual_mlp,
+                                             embeds_op, per_layer_embeds_op)
 
             # layer_scalar
             layer_scalar_loc = "layer_scalar" if do_norm else "output_states"
