@@ -4,7 +4,6 @@ include/helper.h cad814a6c86baa99b65e622ffbe306b8
 include/local_base.h 61192f8ca0ab0f5bd7f71d69e481dd15
 include/ppl_dyn_fw.h 647f289254aa004b48d047cfdd0499b4
 include/ppl_static_host.h b9b696f10ebd5f0623efab39628d2770
-include/w8a8_block_matmul.h 71e5f24c483a23692f50b5f1ff8e9ebd
 src/add_const_fp.pl 5ddb4c3bd09efd399806c557cf3fd0bd
 src/add_const_fp_api.cpp 621f962a8b68fe3aaf14a5898232d998
 src/add_const_fp_local.pl 0e785cae7052cccfdbb204690f8fc356
@@ -33,7 +32,7 @@ src/recurrent_gated_delta_rule.pl 29cad477003c7b04b491528b7d40ccae
 src/selective_scan.cpp e75d5918456a2758e8b7bbe714124acd
 src/selective_scan.pl 72d6a1d47e254edc40275cdcd0bbbb28
 src/w8a8_block_matmul.cpp 7fb550e99990dd946b7cbb99e73c0978
-src/w8a8_block_matmul.pl d8c9ed5175caacca01c3a4d88e3841c7
+src/w8a8_block_matmul.pl 423096aa0a48f83bdd965766e0d9f4dc
 src_dyn/add_const_ctrl.c ed8b5e66d38130e507d5386335b11bae
 src_dyn/chunk_gated_delta_rule_ctrl.c dec1c7428b2552664c59b00a8ce63a98
 src_dyn/concat_slice_ctrl.c 7c64b1ee6411fd0dc3b27ce459a6a82a

@@ -1018,7 +1018,7 @@ class Qwen3_5Converter(LlmConverter):
             if pt == PrefillType.NORMAL:
                 gen_block_by_length(f"block_{idx}", self.max_input_length)
             elif pt == PrefillType.SHARE_PROMPT:
-                gen_block_by_length(f"block_prompt_{idx}", self.max_prefill_kv_length)
+                gen_block_by_length(f"block_prompt_{idx}", self.max_input_length)
             elif pt == PrefillType.WITH_HISTORY:
                 gen_block_by_length(f"block_{idx}", self.max_input_length, with_history=True)
             return

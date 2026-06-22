@@ -125,18 +125,6 @@ class LlmConverter(BaseConverter):
         # TODO: other chip support small mask in future
         return self.dynamic and self.chip in ["bm1684x"]
 
-    def get_core_num(self, chip):
-        core_map = {
-            "bm1684x": 1,
-            "bm1688": 2,
-            "cv186x": 1,
-            "bm1690": 8,
-            "bm1684x2": 1,
-        }
-        if chip in core_map:
-            return core_map[chip]
-        return 1
-
     def run(self):
         os.makedirs(self.bmodel_dir, exist_ok=True)
         self.gen_config()
@@ -920,17 +908,11 @@ class LlmConverter(BaseConverter):
             self.save_mlir_module(lmhead_mlir, name)
 
         if not self.embedding_disk:
-            input_len = self.max_input_length
-            if self.share_prompt:
-                input_len = max(self.max_prefill_kv_length, self.max_input_length)
-            gen_embedding_by_length("embedding", input_len)
+            gen_embedding_by_length("embedding", self.max_input_length)
             gen_embedding_by_length("embedding_cache", 1)
         gen_lm_head()
         if self.do_lora:
-            input_len = self.max_input_length
-            if self.share_prompt:
-                input_len = max(self.max_prefill_kv_length, self.max_input_length)
-            gen_embedding_lora_by_length("embedding_lora", input_len)
+            gen_embedding_lora_by_length("embedding_lora", self.max_input_length)
             gen_embedding_lora_by_length("embedding_cache_lora", 1)
             gen_lm_head_lora()
 

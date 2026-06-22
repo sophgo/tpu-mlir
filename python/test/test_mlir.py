@@ -397,7 +397,6 @@ class MLIR_IR_TESTER(object):
                                    chip=self.chip,
                                    mode=mode,
                                    tolerance=tolerance,
-                                   test_reference=test_reference,
                                    debug=self.debug,
                                    dynamic=self.dynamic,
                                    num_core=self.num_core,
