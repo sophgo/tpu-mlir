@@ -16,6 +16,7 @@
 #include "tpu_mlir/Backend/CV18xx/CV184X.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include <dlfcn.h>
 #include <filesystem>
 
 namespace fs = std::filesystem;
@@ -204,13 +205,13 @@ void Arch::load_library() {
 void Arch::load_ppl(bool is_dyn) {
   llvm::sys::DynamicLibrary &DLRef = is_dyn ? PPL_DYN_DL : PPL_DL;
   if (!DLRef.isValid()) {
-    std::string Err;
     std::string ppl_so_name =
         is_dyn ? LIB_PPL_DYN_HOST_NAME.data() : "libppl_host.so";
-    DLRef = llvm::sys::DynamicLibrary::getPermanentLibrary(ppl_so_name.c_str(),
-                                                           &Err);
-    if (DLRef.isValid() == false) {
-      llvm_unreachable(Err.c_str());
+    void *handle = dlopen(ppl_so_name.c_str(), RTLD_LAZY | RTLD_LOCAL);
+    if (handle == nullptr) {
+      auto err = dlerror();
+      llvm_unreachable(err ? err : ppl_so_name.c_str());
     }
+    DLRef = llvm::sys::DynamicLibrary(handle);
   }
 }

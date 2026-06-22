@@ -54,8 +54,24 @@ void tpu::AttentionOp::codegen_global_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::AttentionOp::dyn_codegen_global_bm1684x(void *buffer) {
-  UNREACHABLE_THIS("Not Implemented");
-  return 0;
+  if (!buffer) {
+    return sizeof(attention_global_spec_t);
+  }
+  attention_global_spec_t param = {0};
+  auto &common = param.common;
+  common.hasbias = getHasBias();
+  common.head = getHead();
+  common.dim = getDim();
+  common.weight_reshape = true;
+  common.scale = getScale().convertToDouble();
+  common.hasmask = !module::isNone(getMask());
+  common.input_num =
+      module::isNone(getKeys()) ? 1 : (module::isNone(getValues()) ? 2 : 3);
+  auto quant_param = module::getI64Array(getQuantParam());
+  for (int i = 0; i < quant_param->size(); ++i) {
+    common.quant_param[i] = quant_param->at(i);
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 // =========================================
@@ -157,8 +173,26 @@ void tpu::AttentionOp::codegen_local_bm1684x_kernel(
 }
 
 int64_t tpu::AttentionOp::dyn_codegen_local_bm1684x(void *buffer) {
-  UNREACHABLE_THIS("Not Implemented");
-  return 0;
+  if (!buffer) {
+    return sizeof(attention_local_spec_t);
+  }
+  attention_local_spec_t param = {0};
+  auto &common = param.common;
+  common.hasbias = getHasBias();
+  common.head = getHead();
+  common.dim = getDim();
+  common.weight_reshape = true;
+  common.scale = getScale().convertToDouble();
+  common.hasmask = !module::isNone(getMask());
+  common.input_num =
+      module::isNone(getKeys()) ? 1 : (module::isNone(getValues()) ? 2 : 3);
+  auto quant_param = module::getI64Array(getQuantParam());
+  for (int i = 0; i < quant_param->size(); ++i) {
+    common.quant_param[i] = quant_param->at(i);
+  }
+  const auto &gi = getGroupInfo(0, 0, 0, 0, 0);
+  param.buffer_addr = gi.buffer_addr;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
-int64_t tpu::AttentionOp::get_fw_type_bm1684x() { return -1; }
+int64_t tpu::AttentionOp::get_fw_type_bm1684x() { return FW_BMNET_ATTENTION; }

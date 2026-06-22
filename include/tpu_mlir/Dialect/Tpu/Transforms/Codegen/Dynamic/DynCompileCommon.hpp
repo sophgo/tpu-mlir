@@ -222,6 +222,7 @@ typedef enum fw_layer_type {
   FW_BMNET_CORE_JOIN = 174,
   FW_BMNET_MLP = 175,
   FW_BMNET_FP8_MATMUL = 176,
+  FW_BMNET_ATTENTION = 177,
   // global_dynamic step -2: declare FW_BMNET_XXXX
   FW_LAYER_UNKNOWN,
   // ppl declare
