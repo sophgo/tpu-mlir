@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
 """
-MLIR Top-level operator analysis tool.
+MLIR operator analysis tool (TPU-lowered IR only).
 
-Parses a top-level MLIR file and exports an Excel spreadsheet with:
+Parses a TPU-lowered MLIR file (``module.state = "TPU_LOWERED"``) and exports an
+Excel spreadsheet with:
 - FLOPs and data volume for each operator
 - Estimated runtime based on chip compute power and bandwidth (Roofline model)
 - Focus on MatMul/Conv/FAttention/ChunkGatedDeltaRule operators
 
+Only the TPU dialect is supported (``tpu.*`` ops). The three data-supplying
+``top.*`` ops ``top.Weight`` / ``top.Input`` / ``top.None`` are tolerated as
+they only carry constants/inputs and produce no compute or I/O. Every other
+``top.*`` op is rejected as unsupported.
+
+Because the lowered IR already carries the real per-tensor storage dtypes
+(bf16, ui8 for packed w4/w8 weights, f8E4M3FN, ...), data volumes are computed
+from each tensor's own storage size — no external dtype substitution is needed.
+
 Usage:
-    python mlir_op_analyzer.py block_0.mlir --tops 32 --bandwidth 64
-    python mlir_op_analyzer.py block_0.mlir --tops 32 --bandwidth 64 --dtype w4f16
-    python mlir_op_analyzer.py block_0.mlir --tops 32 --bandwidth 64 --dtype w8f16 -o result.xlsx
+    python mlir_analyse.py block_0_bm1684x_w4bf16_tpu.mlir --tops 32 --bandwidth 64
+    python mlir_analyse.py block_0_bm1684x_w4bf16_tpu.mlir --tops 32 --bandwidth 64 -o result.xlsx
 """
 
 import re
@@ -19,6 +28,53 @@ import os
 import argparse
 from dataclasses import dataclass
 from typing import List, Tuple, Optional, Dict
+
+# ---------------------------------------------------------------------------
+# Module-state contract
+# ---------------------------------------------------------------------------
+
+# The only module state this tool understands: the IR must already be lowered
+# to the TPU dialect so that every tensor carries its real storage dtype.
+REQUIRED_STATE = "TPU_LOWERED"
+
+KEY_OPS = {
+    "MatMul", "Conv", "Conv2D", "FAttention", "ChunkGatedDeltaRule", "A16MatMul", "Fp8MatMul", "Mlp"
+}
+SKIP_OPS = {"top.Weight", "top.None", "top.Input"}
+
+
+def parse_module_state(filepath: str) -> Optional[str]:
+    """Return the ``module.state`` attribute value (without quotes), or None."""
+    with open(filepath, "r") as f:
+        # The state lives on the ``module`` line, which is always near the top.
+        for line in f:
+            m = re.search(r'module\.state\s*=\s*"([^"]+)"', line)
+            if m:
+                return m.group(1)
+            if "{" in line and "module" in line:
+                # module attribute block may span multiple lines; keep reading
+                # a bounded window.
+                continue
+    return None
+
+
+def require_tpu_lowered(filepath: str) -> str:
+    """Validate that ``filepath`` is a TPU-lowered MLIR module.
+
+    Returns the resolved state on success; raises ``ValueError`` otherwise so
+    callers can surface a clear message instead of silently mis-analysing a
+    TOP_F32 / TPU_ADDRESSED file.
+    """
+    state = parse_module_state(filepath)
+    if state is None:
+        raise ValueError(f"{filepath}: could not find 'module.state' attribute. "
+                         f"This tool only supports {REQUIRED_STATE} MLIR.")
+    if state != REQUIRED_STATE:
+        raise ValueError(f"{filepath}: module.state is '{state}', but this tool only "
+                         f"supports '{REQUIRED_STATE}'. Lower the module first "
+                         f"(e.g. via model_deploy.py).")
+    return state
+
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -162,10 +218,17 @@ def parse_mlir_file(filepath: str) -> Tuple[List[MLIROp], Dict[str, str], Dict[s
                 "}") or stripped.startswith("return"):
             continue
 
-        op_match = re.search(r'"(top\.\w+)"', stripped)
+        op_match = re.search(r'"((?:top|tpu)\.\w+)"', stripped)
         if not op_match:
             continue
         op_type = op_match.group(1)
+
+        # Enforce TPU-lowered contract: only tpu.* ops are supported, except for
+        # the three data-supplying top.* ops (Weight/Input/None).
+        if op_type.startswith("top.") and op_type not in SKIP_OPS:
+            raise ValueError(f"{filepath}:{line_num}: unsupported op '{op_type}'. This tool "
+                             f"only supports tpu.* ops (plus {sorted(SKIP_OPS)}). "
+                             f"The module is not fully lowered to the TPU dialect.")
 
         # ---------- results ----------
         eq_pos = stripped.find("=")
@@ -354,33 +417,35 @@ def calc_fattention_flops(op: MLIROp) -> int:
 
 def calc_chunk_gated_delta_rule_flops(op: MLIROp) -> int:
     """
-    Inputs: q[B,H,T,D], k[B,H,T,D], v[B,H,T,D],
-            alpha[B,H,T], beta[B,H,T], state[B,H,D,D], eye
+    Inputs: q[B,H_k,T,D], k[B,H_k,T,D], v[B,H_v,T,D],
+            alpha[B,H_v,T], beta[B,H_v,T], state[B,H_v,D,D], eye
 
     Per chunk (size C) per head per batch:
-      Q @ K^T          : 2*C*D*C   (intra-chunk)
-      Attn @ V         : 2*C*C*D   (weighted values)
-      Q @ State        : 2*C*D*D   (query from state)
-      K^T @ V (update) : 2*D*C*D
-      Gate + update    : ~4*D*D    (element-wise)
+      Q @ K^T          : 2*C*D*C   (intra-chunk, per k-head)
+      Attn @ V         : 2*C*C*D   (weighted values, per v-head)
+      Q @ State        : 2*C*D*D   (query from state, per v-head)
+      K^T @ V (update) : 2*D*C*D   (state update, per v-head)
+      Gate + update    : ~4*D*D    (element-wise, per v-head)
     """
     vi = _valid_inputs(op)
     if len(vi) < 3:
         return 0
-    v = vi[2]  # [B, H, T, D]
+    v = vi[2]  # [B, S, H_v, D] (batch, seq, num_v_heads, head_dim)
     if len(v.shape) < 4:
         return 0
-    B, H, T, D = v.shape[0], v.shape[1], v.shape[2], v.shape[3]
+    B, S, H_v, D = v.shape[0], v.shape[1], v.shape[2], v.shape[3]
     C = _parse_int_attr(op.attributes.get("chunk_size", "64"), 64)
-    num_chunks = (T + C - 1) // C
-    per_chunk = (
-        2 * C * D * C +  # Q @ K^T
+    # Q@K^T runs per k-head; the rest run per v-head (state is [B, H_v, D, D]).
+    H_k = _parse_int_attr(op.attributes.get("num_k_heads", str(H_v)), H_v)
+    num_chunks = (S + C - 1) // C
+    per_chunk_k = 2 * C * D * C  # Q @ K^T (intra-chunk attention)
+    per_chunk_v = (
         2 * C * C * D +  # Attn @ V
         2 * C * D * D +  # Q @ State
-        2 * D * C * D +  # K^T @ V
+        2 * D * C * D +  # K^T @ V (state update)
         4 * D * D  # gating element-wise
     )
-    return B * H * num_chunks * per_chunk
+    return B * num_chunks * (H_k * per_chunk_k + H_v * per_chunk_v)
 
 
 def calc_recurrent_gated_delta_rule_flops(op: MLIROp) -> int:
@@ -390,24 +455,158 @@ def calc_recurrent_gated_delta_rule_flops(op: MLIROp) -> int:
             alpha[B,H,T], beta[B,H,T], state[B,H,D,D]
 
     Per token per head per batch:
-      k @ State        : 2*D*D   (predicted value)
-      delta = v - kS   :   D
-      beta * delta     :   D
-      outer k^T*delta  :   D*D
+      k @ State        : 2*D*D   (predicted value, matmul)
+      delta = v - kS   :   D     (element-wise sub)
+      beta * delta     :   D     (element-wise mul)
+      outer k^T*delta  :   D*D   (rank-1 outer product update)
       gate * State     :   D*D   (alpha gating, element-wise)
       State += update  :   D*D   (element-wise add)
-      q @ State        : 2*D*D   (output projection)
-    Total ~ 6*D*D per step.
+      q @ State        : 2*D*D   (output projection, matmul)
+    Total = 7*D*D + 2*D per step (two 2*D*D matmuls, three D*D element-wise
+    matrix ops, and two D-length element-wise ops).
     """
     vi = _valid_inputs(op)
     if len(vi) < 3:
         return 0
-    v = vi[2]  # [B, H, T, D]
-    if len(v.shape) < 4:
+    v = vi[2]
+    H = _parse_int_attr(op.attributes.get("num_v_heads", "0"), 0)
+    D = _parse_int_attr(op.attributes.get("d", "0"), 0)
+    # Decode path: v is 2D [B, H*D] (one token). Prefer the recurrent_state
+    # tensor vi[5] [B, H, D, D] for B/H/D when available; fall back to attrs.
+    if len(vi) >= 6 and vi[5].shape and len(vi[5].shape) >= 4:
+        st = vi[5]
+        B = st.shape[0]
+        H = st.shape[1] if H == 0 else H
+        D = st.shape[2] if D == 0 else D
+    elif v.shape and len(v.shape) >= 4:
+        B, _, H_v, D_v = v.shape[0], v.shape[1], v.shape[2], v.shape[3]
+        H = H if H else H_v
+        D = D if D else D_v
+    else:
+        # 2D decode value [B, H*D]; T = 1.
+        B = v.shape[0] if v.shape else 0
+    if H == 0 or D == 0:
         return 0
-    B, H, T, D = v.shape[0], v.shape[1], v.shape[2], v.shape[3]
-    per_step = 2 * D * D + D + D + D * D + D * D + D * D + 2 * D * D
+    T = 1
+    # k@State (2D^2) + q@State (2D^2) + outer k^T*delta (D^2) + gate*State (D^2)
+    # + State+=update (D^2) + delta sub (D) + beta*delta (D) = 7*D^2 + 2*D
+    per_step = 7 * D * D + 2 * D
     return B * H * T * per_step
+
+
+def calc_topk_flops(op: MLIROp) -> int:
+    """TopK selection. Operands: [x] -> (values, indices).
+
+    Cost is dominated by the partial sort/scan over the last axis of size N to
+    extract the K largest entries. We approximate it as K comparisons per
+    element of the reduction axis, i.e. K * N * (output volume / N).
+
+    For a 1x10240x256 input with K=8 this yields 8 * 256 * 10240 comparisons,
+    which is a conservative order-of-magnitude estimate.
+    """
+    vi = _valid_inputs(op)
+    if not vi:
+        return 0
+    inp = vi[0]
+    if not inp.shape:
+        return 0
+    K = _parse_int_attr(op.attributes.get("K", "1"), 1)
+    # num_elements excluding the reduced axis
+    axis = _parse_int_attr(op.attributes.get("axis", "-1"), -1)
+    rank = len(inp.shape)
+    if axis < 0:
+        axis += rank
+    if axis < 0 or axis >= rank:
+        return 0
+    N = inp.shape[axis]
+    outer = 1
+    for i, d in enumerate(inp.shape):
+        if i != axis:
+            outer *= d
+    # comparisons ~ K * N per outer element (partial selection cost)
+    return K * N * outer
+
+
+def calc_mlp_flops(op: MLIROp) -> int:
+    """Fused MLP / MoE expert MLP.
+
+    The op folds three GEMMs (gate, up, down) plus a SiLU and a Mul on the
+    gate/up outputs:
+      gate: x[M, K] @ W_gate -> [M, N]   (SiLU-gated)
+      up:   x[M, K] @ W_up   -> [M, N]
+      down: (silu(gate) * up)[M, N] @ W_down -> [M, K]
+
+    For a GEMM x[M,K] @ W[K,N] the FLOPs are 2*M*K*N = 2*M*(K*N), i.e. twice
+    the number of (logical) weight elements times M. We exploit this so we do
+    not have to disambiguate which stored axis is K vs N (which depends on
+    right_transpose_* and on w4 packing of the last axis).
+
+    MoE (is_expert=true): weights carry a leading num_expert axis, but each
+    token is dispatched to only num_expert_per_tok experts, so M already equals
+    (tokens * num_expert_per_tok) taken from the output shape. We therefore
+    drop the expert axis when counting per-GEMM weight elements.
+    """
+    # Operand order: input, weight_gate, scale_gate, zp_gate, bias_gate,
+    # weight_up, scale_up, zp_up, bias_up, weight_down, scale_down, zp_down,
+    # bias_down, expert_id, buffer. Some operands (bias_*, buffer) may be None,
+    # so index op.input_types directly rather than _valid_inputs(), which drops
+    # None entries and shifts indices.
+    n_in = len(op.input_types)
+    if n_in < 10:
+        return 0
+    x = op.input_types[0]
+    gate_w = op.input_types[1]
+    up_w = op.input_types[5]
+    down_w = op.input_types[9]
+    if not (x and gate_w and up_w and down_w and x.shape and gate_w.shape and up_w.shape
+            and down_w.shape):
+        return 0
+    is_expert = op.attributes.get("is_expert", "false") == "true"
+    is_quant = op.attributes.get("quantized", "false") == "true"
+    wbits = _parse_int_attr(op.attributes.get("weight_bits", "4"), 4)
+    # ui8 storage packs 2 w4 weights per byte; w8 is 1:1.
+    pack = 2 if (is_quant and wbits == 4) else 1
+
+    # M = routed token count; K = hidden size (output last dim).
+    # For MoE the output is [tokens, num_expert_per_tok, K], so the leading
+    # dims already encode the per-expert dispatch.
+    out = op.output_types[0] if op.output_types else None
+    if out and out.shape:
+        M = 1
+        for d in out.shape[:-1]:
+            M *= d
+        K_hidden = out.shape[-1]
+    else:
+        M = 1
+        for d in x.shape[:-1]:
+            M *= d
+        K_hidden = x.shape[-1]
+
+    def _logical_elems(w):
+        # Logical weight elements per (expert) unit: drop the leading expert
+        # axis for MoE weights, then unpack w4 (2 weights per stored byte).
+        dims = list(w.shape)
+        if is_expert and len(dims) > 2:
+            dims = dims[1:]
+        n = 1
+        for d in dims:
+            n *= d
+        return n * pack
+
+    gate_elems = _logical_elems(gate_w)
+    up_elems = _logical_elems(up_w)
+    down_elems = _logical_elems(down_w)
+
+    flops = 0
+    flops += 2 * M * gate_elems  # gate GEMM
+    flops += 2 * M * up_elems  # up GEMM
+    flops += 2 * M * down_elems  # down GEMM
+    # Element-wise SiLU on gate output (~6 ops/elem) + Mul with up output
+    # (~1 op/elem), operating on the [M, N_intermediate] intermediate tensor.
+    # N_intermediate = gate weight logical elems / K_hidden.
+    n_inter = gate_elems // K_hidden if K_hidden else 0
+    flops += 7 * M * n_inter
+    return flops
 
 
 def _out_elements(op: MLIROp) -> int:
@@ -442,7 +641,7 @@ def calc_flops(op: MLIROp) -> int:
         # FP8 block-wise quantized MatMul.
         # Includes matmul FLOPs + weight dequantization overhead.
         return calc_fp8matmul_flops(op)
-    elif name == "Conv":
+    elif name in ("Conv", "Conv2D"):
         return calc_conv_flops(op)
     elif name == "FAttention":
         return calc_fattention_flops(op)
@@ -450,6 +649,10 @@ def calc_flops(op: MLIROp) -> int:
         return calc_chunk_gated_delta_rule_flops(op)
     elif name == "RecurrentGatedDeltaRule":
         return calc_recurrent_gated_delta_rule_flops(op)
+    elif name == "Mlp":
+        return calc_mlp_flops(op)
+    elif name == "TopK":
+        return calc_topk_flops(op)
     # ---- Normalization layers ----
     # RMSNorm: 3 * num_elements
     elif name == "RMSNorm":
@@ -470,6 +673,22 @@ def calc_flops(op: MLIROp) -> int:
     elif name == "Softmax":
         log_flag = 1 if op.attributes.get("log", "false") == "true" else 0
         return _in_elements(op) * (5 + log_flag)
+
+    # ---- tpu.Active: fused activation selected by `mode` attr ----
+    # mode = #tpu<active_mode NAME>; map NAME to the same multipliers used
+    # for the corresponding top-dialect activation op below.
+    elif name == "Active":
+        mode = op.attributes.get("mode", "")
+        m = re.search(r"active_mode\s+(\w+)", mode)
+        act = m.group(1) if m else ""
+        if act in ("SILU", "SWISH", "HARDSWISH", "GELU", "TGELU"):
+            return 5 * _out_elements(op)
+        if act in ("SIGMOID", "TANH", "EXP", "LOG", "SIN", "COS", "TAN", "SINH", "COSH", "ARCTANH",
+                   "LOGB", "HARDSIGMOID", "MISH"):
+            return 4 * _out_elements(op)
+        if act == "SOFT_PLUS":
+            return 3 * _out_elements(op)
+        return _out_elements(op)
 
     # ---- Activation functions (multiplier per element) ----
     # 5x: SiLU, Swish, HardSwish, GELU
@@ -565,8 +784,8 @@ def calc_flops(op: MLIROp) -> int:
                   "GatherElements", "GatherND", "ScatterND", "ScatterElements", "Flatten",
                   "Squeeze", "Unsqueeze", "View", "Pad", "Tile", "Shape", "Size", "Range", "Arange",
                   "Depth2Space", "ShuffleChannel", "Pack", "Unpack", "ConstantFill", "RandnLike",
-                  "MeshGrid", "Loop", "If", "List", "Custom", "Mlp", "Correlation", "ConcatSlice",
-                  "TopK", "Nms", "Einsum", "RequantFp", "IndexPut", "MaskRCNNGetBboxB"):
+                  "MeshGrid", "Loop", "If", "List", "Custom", "Correlation", "ConcatSlice", "Nms",
+                  "Einsum", "RequantFp", "IndexPut", "MaskRCNNGetBboxB"):
         return 0
 
     # ---- Fallback: 0 ----
@@ -574,123 +793,62 @@ def calc_flops(op: MLIROp) -> int:
 
 
 # ---------------------------------------------------------------------------
-# Data volume (dtype-aware)
+# Data volume (TPU-lowered, dtype-aware)
 # ---------------------------------------------------------------------------
 
-# Bytes per element for each quantization type
-DTYPE_BYTES = {
-    "f16": 2,
-    "bf16": 2,
-    "f32": 4,
-    "f8E4M3FN": 1,
-    "f8E5M2": 1,
-    "w4": 0.5,
-    "w8": 1,
-}
+# No external dtype map is needed: in a TPU-lowered module every tensor already
+# carries its real storage dtype (bf16, ui8 for packed w4/w8 weights, f8E4M3FN,
+# ...), so each tensor's own ``size_bytes`` is the authoritative storage size.
 
 
-def _tensor_bytes(t: TensorInfo, elem_bytes: float) -> int:
-    """Compute tensor size using the given bytes-per-element."""
-    return int(t.num_elements * elem_bytes)
+def calc_data_volume(op: MLIROp, ssa_op_map: Optional[Dict[str, str]] = None) -> Tuple[int, int]:
+    """Return ``(read_bytes, write_bytes)`` for a TPU-lowered op.
 
-
-def _get_weight_bytes(dtype_mode: str) -> float:
-    """Return bytes-per-element for MatMul weights under the given dtype mode."""
-    if dtype_mode in ["w4f16", "w4bf16"]:
-        return DTYPE_BYTES["w4"]
-    elif dtype_mode in ["w8f16", "w8bf16"]:
-        return DTYPE_BYTES["w8"]
-    elif dtype_mode in ["f8E4M3FN", "f8E5M2", "bf16", "f16"]:
-        return DTYPE_BYTES[dtype_mode]
-    else:
-        raise ValueError(f"Unsupported dtype mode: {dtype_mode}")
-
-
-def calc_data_volume(op: MLIROp,
-                     dtype_mode: str = "f16",
-                     ssa_op_map: Optional[Dict[str, str]] = None) -> Tuple[int, int]:
-    """Return (read_bytes, write_bytes) respecting the quantization dtype.
-
-    Rules:
-      - All activations and outputs use f16 (2 bytes).
-      - MatMul operand[1] uses w4/w8/f16 ONLY if it comes from top.Weight.
-        If the right operand is an activation (not from top.Weight), f16 is used.
-      - Other weights (Conv, RMSNorm, etc.) use f16.
+    The lowered IR carries the real per-tensor storage dtypes, so data volumes
+    are read directly from each tensor's own ``size_bytes`` — no external
+    ``dtype_mode`` substitution is required. ``ssa_op_map`` is retained for
+    API compatibility but is no longer used (weight detection was only needed
+    on the old top-dialect path).
     """
-    act_bytes = DTYPE_BYTES["f16"]  # 2
     opn = op.op_type.split(".")[-1]
 
-    # --- write bytes (always activation / f16) ---
-    wb = sum(_tensor_bytes(t, act_bytes) for t in op.output_types if isinstance(t, TensorInfo))
+    # --- write bytes ---
+    wb = sum(t.size_bytes for t in op.output_types if isinstance(t, TensorInfo))
 
     # --- read bytes ---
-    rb = 0
+    # Shape / data-movement ops that do not re-read their inputs from memory:
     if opn == "Concat":
-        # only_merge=true means pure memory aliasing, no real IO
+        # only_merge=true means pure memory aliasing, no real I/O.
         if op.attributes.get("only_merge", "false") == "true":
             return 0, 0
-        else:
-            # Non-merge concat: only count output bytes
-            return 0, wb
-    elif opn in ['Reshape', 'Slice']:
-        return 0, 0
-    elif opn in ['Permute', 'Gather']:
         return 0, wb
-    elif opn == "A16MatMul":
-        # Inputs: [act, qweight, scales, qzeros, bias]
-        # - act uses f16 (activation).
-        # - qweight: ui8 storage; for w4 each byte packs 2 weights, for w8 one weight
-        #   per byte. Either way, total bytes = qweight.num_elements (its storage size).
-        # - scales / qzeros: use their declared dtype size (typically small overhead).
-        # - bias (if present): use declared dtype size.
-        for idx, t in enumerate(op.input_types):
-            if not isinstance(t, TensorInfo):
-                continue
-            if idx == 0:
-                rb += _tensor_bytes(t, act_bytes)
-            else:
-                rb += t.size_bytes
-    elif opn == "Fp8MatMul":
-        # Inputs: [activation, fp8_weight, scale_inv, none]
-        # - activation: use f16/bf16/f32 (activation bytes).
-        # - fp8_weight: f8E4M3FN, 1 byte per element (from top.Weight).
-        # - scale_inv: typically f32, 4 bytes per element (from top.Weight).
-        # - none: skip.
-        for idx, t in enumerate(op.input_types):
-            if not isinstance(t, TensorInfo):
-                continue
-            if idx == 0:
-                rb += _tensor_bytes(t, act_bytes)
-            elif idx == 1:
-                # fp8 weight - use actual storage size (f8E4M3FN = 1 byte/elem)
-                is_weight = False
-                if ssa_op_map and len(op.operands) > 1:
-                    is_weight = ssa_op_map.get(op.operands[1], "") == "top.Weight"
-                if is_weight:
-                    rb += t.size_bytes
-                else:
-                    rb += _tensor_bytes(t, act_bytes)
-            elif idx == 2:
-                # scale_inv - use actual dtype size (typically f32)
-                rb += t.size_bytes
-            else:
-                rb += _tensor_bytes(t, act_bytes)
-    else:
-        for idx, t in enumerate(op.input_types):
-            if not isinstance(t, TensorInfo):
-                continue
-            if opn == "MatMul" and idx == 1:
-                # Only apply weight quantization if operand[1] is from top.Weight
-                is_weight = False
-                if ssa_op_map and len(op.operands) > 1:
-                    is_weight = ssa_op_map.get(op.operands[1], "") == "top.Weight"
-                if is_weight:
-                    rb += _tensor_bytes(t, _get_weight_bytes(dtype_mode))
-                else:
-                    rb += _tensor_bytes(t, act_bytes)
-            else:
-                rb += _tensor_bytes(t, act_bytes)
+    if opn in ("Reshape", "Slice"):
+        return 0, 0
+    if opn in ("Permute", "Gather"):
+        return 0, wb
 
+    rb = 0
+    # MoE expert MLP: weights and their scales/zp carry a leading num_expert
+    # axis, but each token is dispatched to only num_expert_per_tok of the
+    # num_expert experts, so only that fraction of the weight store is read.
+    # Scale those inputs by the dispatch ratio; the activation and expert_id
+    # (no leading expert axis) are read in full.
+    if opn == "Mlp" and op.attributes.get("is_expert", "false") == "true":
+        num_expert = _parse_int_attr(op.attributes.get("num_expert", "1"), 1)
+        num_expert_per_tok = _parse_int_attr(op.attributes.get("num_expert_per_tok", "1"), 1)
+        ratio = num_expert_per_tok / num_expert if num_expert else 1.0
+        for t in op.input_types:
+            if not isinstance(t, TensorInfo):
+                continue
+            bytes_i = t.size_bytes
+            if t.shape and t.shape[0] == num_expert:
+                bytes_i = bytes_i * ratio
+            rb += bytes_i
+        return int(rb), wb
+
+    for t in op.input_types:
+        if isinstance(t, TensorInfo):
+            rb += t.size_bytes
     return rb, wb
 
 
@@ -729,15 +887,11 @@ def fmt_time(us: float) -> str:
 # Excel export
 # ---------------------------------------------------------------------------
 
-KEY_OPS = {"MatMul", "Conv", "FAttention", "ChunkGatedDeltaRule", "A16MatMul", "Fp8MatMul"}
-SKIP_OPS = {"top.Weight", "top.None", "top.Input"}
-
 
 def export_excel(ops: List[MLIROp],
                  chip_tops: float,
                  bw_gbps: float,
                  output_path: str,
-                 dtype_mode: str = "f16",
                  ssa_op_map: Optional[Dict[str, str]] = None,
                  vector_tops: Optional[float] = None,
                  uarch_rate: float = 0.8,
@@ -766,22 +920,13 @@ def export_excel(ops: List[MLIROp],
 
     for op in compute_ops:
         opn = op.op_type.split(".")[-1]
-        if opn == "MatMul" and ssa_op_map and len(op.operands) > 1:
-            if ssa_op_map.get(op.operands[1], "") == "top.Weight":
-                opn = f"MatMul ({dtype_mode})"
-        elif opn == "A16MatMul":
-            wbits = _parse_int_attr(op.attributes.get("weight_bits", "4"), 4)
-            opn = f"A16MatMul (w{wbits}a16)"
-        elif opn == "Fp8MatMul":
-            opn = f"Fp8MatMul ({dtype_mode})"
         flops = calc_flops(op)
-        rb, wb = calc_data_volume(op, dtype_mode, ssa_op_map)
+        rb, wb = calc_data_volume(op, ssa_op_map)
         total_io = rb + wb
 
         inp_shapes = ", ".join(t.shape_str() if t else "none" for t in op.input_types)
         out_shapes = ", ".join(t.shape_str() if t else "none" for t in op.output_types)
 
-        base_opn = op.op_type.split(".")[-1]
         rows_data.append(
             dict(
                 opn=opn,
@@ -792,7 +937,7 @@ def export_excel(ops: List[MLIROp],
                 rb=rb,
                 wb=wb,
                 total_io=total_io,
-                is_key=base_opn in KEY_OPS,
+                is_key=opn in KEY_OPS,
             ))
         total_flops += flops
         total_read += rb
@@ -867,8 +1012,7 @@ def export_excel(ops: List[MLIROp],
     info_row = 9
     static_items = [
         ("MLIR File", os.path.basename(output_path).replace("_analysis.xlsx", ".mlir")),
-        ("Dtype Mode", dtype_mode),
-        ("Activation", "f16 (2 bytes)"),
+        ("Module State", REQUIRED_STATE),
         ("", ""),
         ("Total GOPs", total_flops / 1e9),
         ("Total Data Read (GB)", total_read / 1e9),
@@ -878,6 +1022,7 @@ def export_excel(ops: List[MLIROp],
         ("Note", "Modify B2-B6 (green cells) to update all performance estimates."),
         ("Note", "Green cells are editable parameters."),
         ("Note", "Roofline model: Est.Time = max(FLOPs/ComputePower, DataVolume/Bandwidth)"),
+        ("Note", "Data volumes read the real per-tensor dtypes from the TPU-lowered IR."),
         ("Note", "ChunkGatedDeltaRule FLOPs are approximate (intra-chunk attn + state update)"),
     ]
     for r_off, (k, v) in enumerate(static_items):
@@ -1149,7 +1294,6 @@ def export_excel(ops: List[MLIROp],
 def print_summary(ops,
                   chip_tops,
                   bw_gbps,
-                  dtype_mode="f16",
                   ssa_op_map=None,
                   vector_tops=None,
                   uarch_rate=0.5,
@@ -1163,7 +1307,7 @@ def print_summary(ops,
 
     print("\n" + "=" * 110)
     print(
-        f"  Chip: {chip_tops} TOPS | Vector: {vector_tops} TOPS | BW: {bw_gbps} GB/s | CU: {uarch_rate:.0%} | BU: {bw_util:.0%} | Dtype: {dtype_mode}"
+        f"  Chip: {chip_tops} TOPS | Vector: {vector_tops} TOPS | BW: {bw_gbps} GB/s | CU: {uarch_rate:.0%} | BU: {bw_util:.0%} | State: {REQUIRED_STATE}"
     )
     print("=" * 110)
 
@@ -1177,14 +1321,10 @@ def print_summary(ops,
 
     for idx, op in enumerate(compute_ops, 1):
         opn = op.op_type.split(".")[-1]
-        if opn == "MatMul" and ssa_op_map and len(op.operands) > 1:
-            if ssa_op_map.get(op.operands[1], "") == "top.Weight":
-                opn = f"MatMul ({dtype_mode})"
         flops = calc_flops(op)
-        rb, wb = calc_data_volume(op, dtype_mode, ssa_op_map)
+        rb, wb = calc_data_volume(op, ssa_op_map)
         tio = rb + wb
-        base_opn = op.op_type.split(".")[-1]
-        use_flops = chip_flops if base_opn in KEY_OPS else vector_flops
+        use_flops = chip_flops if opn in KEY_OPS else vector_flops
         ct = flops / use_flops * 1e6 if use_flops else 0
         mt = tio / bw_bytes * 1e6 if bw_bytes else 0
         et = max(ct, mt)
@@ -1212,9 +1352,10 @@ def print_summary(ops,
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Analyze MLIR operators: FLOPs, data volume, estimated runtime (Roofline model)"
-    )
-    parser.add_argument("mlir_file", help="Path to top-level MLIR file")
+        description="Analyze TPU-lowered MLIR operators: FLOPs, data volume, "
+        "estimated runtime (Roofline model). Only supports "
+        "module.state = \"TPU_LOWERED\".")
+    parser.add_argument("mlir_file", help="Path to a TPU-lowered MLIR file")
     parser.add_argument(
         "-t",
         "--tops",
@@ -1226,12 +1367,6 @@ def main():
                         type=float,
                         required=True,
                         help="Chip memory bandwidth in GB/s (e.g. 64)")
-    parser.add_argument("-d",
-                        "--dtype",
-                        default="f16",
-                        choices=["f16", "w8f16", "w4f16"],
-                        help="Quantization mode: f16 (all f16), w8f16 (MatMul weight INT8), "
-                        "w4f16 (MatMul weight INT4). Activations always f16. (default: f16)")
     parser.add_argument("-v",
                         "--vector_tops",
                         type=float,
@@ -1255,22 +1390,24 @@ def main():
 
     if args.output is None:
         base = os.path.splitext(os.path.basename(args.mlir_file))[0]
-        args.output = f"{base}_{args.dtype}_analysis.xlsx"
+        args.output = f"{base}_analysis.xlsx"
 
     print(f"Parsing: {args.mlir_file}")
+    try:
+        state = require_tpu_lowered(args.mlir_file)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    print(f"Module state: {state}")
     ops, _, ssa_op_map = parse_mlir_file(args.mlir_file)
     print(
         f"Found {len(ops)} operations ({len([o for o in ops if o.op_type not in SKIP_OPS])} compute ops)"
     )
 
-    print(
-        f"Dtype mode: {args.dtype}  (act=f16, MatMul weight={'w4=0.5B' if args.dtype == 'w4f16' else 'w8=1B' if args.dtype == 'w8f16' else 'f16=2B'})"
-    )
-
-    print_summary(ops, args.tops, args.bandwidth, args.dtype, ssa_op_map, args.vector_tops,
-                  args.uarch_rate, args.bw_util)
-    export_excel(ops, args.tops, args.bandwidth, args.output, args.dtype, ssa_op_map,
-                 args.vector_tops, args.uarch_rate, args.bw_util)
+    print_summary(ops, args.tops, args.bandwidth, ssa_op_map, args.vector_tops, args.uarch_rate,
+                  args.bw_util)
+    export_excel(ops, args.tops, args.bandwidth, args.output, ssa_op_map, args.vector_tops,
+                 args.uarch_rate, args.bw_util)
 
 
 if __name__ == "__main__":

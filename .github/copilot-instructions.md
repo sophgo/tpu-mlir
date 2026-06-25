@@ -84,3 +84,9 @@ front-end importer (python/transform/) ──► Top dialect ──lowering─�
 - New ops require: a `.td` entry in the relevant dialect, a shape-inference + lowering pattern, a Python importer hook in `python/transform/`, and a regression case in `python/test/test_onnx.py` (or the matching framework file).
 - Commit messages: short imperative summary; sign commits with a GitHub-registered email (CONTRIBUTING.md). One logical change per PR; CI must pass.
 - Do **not** edit anything under `third_party/` casually — those are vendored or submoduled. The same goes for `install/`, `build/`, `dist/`, `tmp/` (build artefacts).
+
+## Other notes
+
+- **English refinement:** Users are mostly non-native English speakers. When the user's input or a description contains awkward or incorrect English, render the corresponding output (reports, docs, commit messages, skill files) in clear, natural English rather than mirroring the broken phrasing. If the user's English is already correct, preserve it as-is — do not "correct" fluent prose.
+- **No auto-commit:** When making code fixes, do not `git commit` them directly. Leave the changes in the working tree for the user to review and commit themselves.
+- **Test Directory:** Do all test or run command in `./tmp` directory, not in the source tree. This avoids polluting the source tree with generated files and ensures a clean environment for each test run.

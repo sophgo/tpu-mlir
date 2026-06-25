@@ -134,8 +134,7 @@ class LlmConverter(BaseConverter):
             self.gen_all_mlir()
         self.vit_quantize = self._detect_vit_quantize()
         del self.model
-        if not self.only_mlir:
-            self.compile_all()
+        self.compile_all()
         os.chdir(ori_path)
         logger.info("Success: %s has converted to %s", self.model_path, self.out_dir)
 
@@ -307,7 +306,7 @@ class LlmConverter(BaseConverter):
                 self.all_gen_mlirs.append(lambda i=i: self.gen_block_mlir(i))
         else:
             self.all_gen_mlirs.append(lambda i=0: self.gen_block_mlir(i))
-            if self.llm_type == LlmType.QWEN3_5:
+            if self.llm_type in (LlmType.QWEN3_5, LlmType.QWEN3_5_MOE):
                 self.all_gen_mlirs.append(lambda i=3: self.gen_block_mlir(i))
 
         if self.debug:
@@ -2647,19 +2646,26 @@ class LlmConverter(BaseConverter):
             self.all_compiles.append(self.compile_greedy_head)
             self.all_compiles.append(self.compile_sample_head)
 
-        for i in range(self.num_layers):
-            self.all_compiles.append(lambda i=i: self.compile_block(i))
-            self.all_compiles.append(lambda i=i: self.compile_block_cache(i))
-            if self.share_prompt:
-                self.all_compiles.append(lambda i=i: self.compile_block_prompt(i))
-
+        if not self.only_mlir:
+            for i in range(self.num_layers):
+                self.all_compiles.append(lambda i=i: self.compile_block(i))
+                self.all_compiles.append(lambda i=i: self.compile_block_cache(i))
+                if self.share_prompt:
+                    self.all_compiles.append(lambda i=i: self.compile_block_prompt(i))
+        else:
+            self.all_compiles.append(lambda i=0: self.compile_block(i))
+            self.all_compiles.append(lambda i=0: self.compile_block_cache(i))
+            if self.llm_type in (LlmType.QWEN3_5, LlmType.QWEN3_5_MOE):
+                self.all_compiles.append(lambda i=3: self.compile_block(i))
+                self.all_compiles.append(lambda i=3: self.compile_block_cache(i))
         for func in self.all_compiles:
             func()
 
         self.execute_tasks()
 
         # Combine all bmodel files
-        self.combine()
+        if not self.only_mlir:
+            self.combine()
 
         # Remove any .npz files
         if not self.debug:

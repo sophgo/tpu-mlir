@@ -10,17 +10,26 @@
 """
 LLM MLIR analysis tool.
 
-Discovers and analyzes all top-level MLIR files generated for an LLM model,
-producing a single Excel workbook with:
+Discovers and analyzes the TPU-lowered (*_tpu.mlir) files generated for an LLM
+model, producing a single Excel workbook with:
   - Overview sheet: chip parameters, per-module summary, phase totals
   - Per-module sheets: detailed per-operator analysis (Roofline model)
+
+Only TPU-lowered modules (``module.state = "TPU_LOWERED"``) are supported; the
+tool analyses the ``tpu.*`` dialect ops only (the three data-supplying
+``top.*`` ops ``top.Weight`` / ``top.Input`` / ``top.None`` are tolerated as
+they carry no compute or I/O).
+
+The *_tpu.mlir files carry the real per-tensor dtypes (bf16, ui8 for packed
+w4/w8 weights, f8E4M3FN, ...), so data volumes are computed from each tensor's
+own storage size — no external dtype substitution is needed.
 
 Transformer blocks (block_0..N, block_cache_0..N) are grouped; the first
 block is analyzed as representative and multiplied by the block count.
 
 Directory structure expected:
-    <model_dir>/<module_name>/<module_name>.mlir
-    e.g. qwen3.5-0.8b_bf16_seq2048_bm1684x_1dev_static/block_0/block_0.mlir
+    <model_dir>/<module_name>/<module_name>_<chip>_<quant>_tpu.mlir
+    e.g. .../block_0/block_0_bm1684x_w4bf16_tpu.mlir
 
 Usage:
     python llm_analyse.py -m <model> -c bm1684x -s 2048 -t 16 -b 64 -o <out_dir>
@@ -31,12 +40,14 @@ import os
 import re
 import sys
 import argparse
+import glob
 from typing import List, Dict, Tuple, Optional
 import subprocess
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mlir_analyse import (
     parse_mlir_file,
+    require_tpu_lowered,
     calc_flops,
     calc_data_volume,
     KEY_OPS,
@@ -65,18 +76,44 @@ MODULE_ORDER = [
     "block_cache",
 ]
 
+# Qwen3.5 dense and MoE share the same hybrid linear/full-attention layout
+# (3:1 ratio, layer 0 = linear, layer 3 = full), so both are split the same way.
+QWEN3_5_MODEL_TYPES = {"qwen3_5_text", "qwen3_5_moe_text"}
+
 # ---------------------------------------------------------------------------
 # Module discovery
 # ---------------------------------------------------------------------------
 
 
+def _find_tpu_mlir(sub_dir: str, entry: str, chip: str) -> Optional[str]:
+    """Return the TPU-lowered mlir path for ``entry`` under ``sub_dir``.
+
+    The lowered file is named ``{entry}_{chip}_{quant}_tpu.mlir`` (e.g.
+    ``block_0_bm1684x_w4bf16_tpu.mlir``). The ``{quant}`` part differs per
+    module (blocks use the LLM quant like ``w4bf16``; vit/embedding/lm_head are
+    usually ``bf16``/``f16``), so we glob on ``{entry}_{chip}_*_tpu.mlir``.
+    Returns ``None`` if not found.
+    """
+    pattern = f"{entry}_{chip}_*_tpu.mlir"
+    matches = glob.glob(os.path.join(sub_dir, pattern))
+    if len(matches) == 0:
+        return None
+    path = matches[0]
+    new_path = path.replace("_tpu.mlir", "_tpu_fix.mlir")
+    subprocess.run(
+        ["tpuc-opt", f"--strip-io-quant=quant_input=True quant_output=True", path, "-o", new_path],
+        check=True)
+    return new_path
+
+
 def discover_modules(model_dir: str,
                      num_layers: int,
-                     model_type: str = "") -> List[Tuple[str, str, int]]:
-    """Discover and group MLIR files under model_dir.
+                     model_type: str = "",
+                     chip: str = "bm1684x") -> List[Tuple[str, str, int]]:
+    """Discover and group TPU-lowered MLIR files under model_dir.
 
     Returns list of (module_name, mlir_path, count) in logical order.
-    Transformer blocks are grouped: block -> (block_0.mlir, N).
+    Transformer blocks are grouped: block -> (block_0_tpu.mlir, N).
     For qwen3_5_text, block_0/block_3 are kept separate (3:1 ratio).
     """
     block_files: Dict[int, str] = {}
@@ -87,8 +124,8 @@ def discover_modules(model_dir: str,
         sub_dir = os.path.join(model_dir, entry)
         if not os.path.isdir(sub_dir):
             continue
-        mlir_path = os.path.join(sub_dir, f"{entry}.mlir")
-        if not os.path.isfile(mlir_path):
+        mlir_path = _find_tpu_mlir(sub_dir, entry, chip)
+        if not mlir_path:
             continue
         m_block = re.match(r"^block_(\d+)$", entry)
         m_cache = re.match(r"^block_cache_(\d+)$", entry)
@@ -99,7 +136,7 @@ def discover_modules(model_dir: str,
         else:
             other_files[entry] = mlir_path
 
-    is_qwen3_5 = model_type == "qwen3_5_text"
+    is_qwen3_5 = model_type in QWEN3_5_MODEL_TYPES
     modules = []
     for name in MODULE_ORDER:
         if name == "block":
@@ -147,11 +184,16 @@ def _compute_type(base_opn: str) -> str:
     return COMPUTE_VECTOR
 
 
-def analyse_module(filepath: str, dtype_mode: str = "f16"):
-    """Parse and analyse a single MLIR file.
+def analyse_module(filepath: str):
+    """Parse and analyse a single TPU-lowered MLIR file.
+
+    The module must be in the ``TPU_LOWERED`` state (validated up front) and
+    only ``tpu.*`` ops are analysed. The tpu.mlir carries the real per-tensor
+    dtypes, so data volumes use each tensor's own storage size.
 
     Returns (rows_data, totals) where totals has keys: flops, read, write, io.
     """
+    require_tpu_lowered(filepath)
     ops, _, ssa_op_map = parse_mlir_file(filepath)
     compute_ops = [op for op in ops if op.op_type not in SKIP_OPS]
 
@@ -159,21 +201,14 @@ def analyse_module(filepath: str, dtype_mode: str = "f16"):
     total_flops = total_read = total_write = 0
 
     for op in compute_ops:
-        opn = op.op_type.split(".")[-1]
-        if opn == "MatMul" and ssa_op_map and len(op.operands) > 1:
-            if ssa_op_map.get(op.operands[1], "") == "top.Weight":
-                opn = f"MatMul ({dtype_mode})"
-        elif opn == "Fp8MatMul":
-            opn = f"Fp8MatMul ({dtype_mode})"
+        base_opn = op.op_type.split(".")[-1]
         flops = calc_flops(op)
-        rb, wb = calc_data_volume(op, dtype_mode, ssa_op_map)
+        rb, wb = calc_data_volume(op, ssa_op_map=ssa_op_map)
         inp_shapes = ", ".join(t.shape_str() if t else "none" for t in op.input_types)
         out_shapes = ", ".join(t.shape_str() if t else "none" for t in op.output_types)
-        base_opn = op.op_type.split(".")[-1]
         rows_data.append(
             dict(
-                opn=opn,
-                base_opn=base_opn,
+                opn=base_opn,
                 loc=op.loc_name,
                 inp_shapes=inp_shapes,
                 out_shapes=out_shapes,
@@ -205,7 +240,6 @@ def export_llm_excel(modules_data,
                      bw_gbps,
                      out_dir,
                      llm_path,
-                     dtype_mode="f16",
                      int8_tops=None,
                      fp8_tops=None,
                      vector_tops=None,
@@ -305,22 +339,37 @@ def export_llm_excel(modules_data,
             font=title_font,
             height=30)
 
-    # --- Performance Summary (rows 3-5) ---
-    _banner(ws0, 3, "Performance Summary", TOTAL_COLS)
+    # --- Overview sheet layout (depends on module count, so precompute rows) ---
+    # Order: Performance Summary -> Module Breakdown -> Hardware & Utilization
+    # -> Special Op Ratios. Hardware & Utilization is pushed below the module
+    # table, whose height depends on len(modules_data), so its absolute row
+    # numbers (which feed cross-sheet formulas) are computed up front.
+    NUM_MODULES = len(modules_data)
+    PERF_BANNER = 3
+    MOD_BANNER = PERF_BANNER + 3 + 1  # blank spacer row 6 -> banner at 7
+    sum_hdr = MOD_BANNER + 1
+    mod_start = sum_hdr + 1
+    # 2 phase-summary rows follow the per-module rows
+    phase_r = mod_start + NUM_MODULES + 1
+    HW_BANNER = phase_r + 3  # blank spacer after phase rows
+    HW_HDR = HW_BANNER + 1
 
-    # We fill rows 4-5 with TTFT/Tokens/s; values reference phase totals below (computed later).
+    # --- Performance Summary (rows 3-5) ---
+    _banner(ws0, PERF_BANNER, "Performance Summary", TOTAL_COLS)
+
+    # We fill rows 4-5 with TTFT/Tokens/s; values reference phase totals below.
     # Placeholder cells styled now, formulas injected after we know phase_r.
-    for r in (4, 5):
+    for r in (PERF_BANNER + 1, PERF_BANNER + 2):
         for c in range(1, TOTAL_COLS + 1):
             ws0.cell(row=r, column=c).border = thin
         ws0.row_dimensions[r].height = 22
-    ws0.cell(row=4, column=1, value="TTFT (s)").font = result_font
-    ws0.cell(row=4, column=1).fill = result_fill
-    ws0.cell(row=4, column=1).alignment = center
-    ws0.cell(row=5, column=1, value="Tokens/s").font = result_font
-    ws0.cell(row=5, column=1).fill = result_fill
-    ws0.cell(row=5, column=1).alignment = center
-    for r in (4, 5):
+    ws0.cell(row=PERF_BANNER + 1, column=1, value="TTFT (s)").font = result_font
+    ws0.cell(row=PERF_BANNER + 1, column=1).fill = result_fill
+    ws0.cell(row=PERF_BANNER + 1, column=1).alignment = center
+    ws0.cell(row=PERF_BANNER + 2, column=1, value="Tokens/s").font = result_font
+    ws0.cell(row=PERF_BANNER + 2, column=1).fill = result_fill
+    ws0.cell(row=PERF_BANNER + 2, column=1).alignment = center
+    for r in (PERF_BANNER + 1, PERF_BANNER + 2):
         vcell = ws0.cell(row=r, column=2)
         vcell.font = result_font
         vcell.fill = result_fill
@@ -338,16 +387,27 @@ def export_llm_excel(modules_data,
             vc.alignment = center
             vc.number_format = "0.00%"
 
-    # --- Hardware & Utilization (rows 7 onward) ---
-    _banner(ws0, 7, "Hardware & Utilization", TOTAL_COLS)
-    for c, h in enumerate(["Parameter", "Value", "Unit"], 1):
-        cell = ws0.cell(row=8, column=c, value=h)
+    # --- Module Breakdown ---
+    _banner(ws0, MOD_BANNER, "Module Breakdown", TOTAL_COLS)
+    sum_headers = [
+        "Module", "Count", "GOPs", "I/O (MB)", "Est. Time (s)", "Total Time (s)", "Phase"
+    ]
+    for c, h in enumerate(sum_headers, 1):
+        cell = ws0.cell(row=sum_hdr, column=c, value=h)
         cell.font = col_hdr_font
         cell.fill = col_hdr_fill
         cell.alignment = center
         cell.border = thin
 
-    # params start at row 9
+    # --- Hardware & Utilization (now below the module table) ---
+    _banner(ws0, HW_BANNER, "Hardware & Utilization", TOTAL_COLS)
+    for c, h in enumerate(["Parameter", "Value", "Unit"], 1):
+        cell = ws0.cell(row=HW_HDR, column=c, value=h)
+        cell.font = col_hdr_font
+        cell.fill = col_hdr_fill
+        cell.alignment = center
+        cell.border = thin
+
     params = [
         ("FP16 Compute Power", fp16_tops, "TOPS", "#,##0.##"),
         ("INT8 Compute Power", int8_tops, "TOPS", "#,##0.##"),
@@ -357,14 +417,17 @@ def export_llm_excel(modules_data,
         ("uArch Rate", uarch_rate, "", "0%"),
         ("Bandwidth Utilization", bw_util, "", "0%"),
         ("Parallelism", parallelism, "", "0%"),
-        ("Serialism", "=1-B16", "", "0%"),
+        ("Serialism", None, "", "0%"),  # filled below as =1-B<parallelism>
         ("CPU Call", 100, "us", "#,##0"),
         ("Preprocess Time", 0.1, "s", "#,##0.000"),
     ]
-    PARAM_START = 9
+    PARAM_START = HW_HDR + 1
     for i, (label, val, unit, fmt) in enumerate(params):
         r = PARAM_START + i
         ws0.cell(row=r, column=1, value=label).border = thin
+        if label == "Serialism":
+            # Parallelism sits 1 row above Serialism; reference that cell.
+            val = f"=1-B{r - 1}"
         c = ws0.cell(row=r, column=2, value=val)
         c.border = thin
         c.number_format = fmt
@@ -380,16 +443,21 @@ def export_llm_excel(modules_data,
         uc.alignment = center
 
     # Formula references (must match absolute positions above)
-    FP16_TOPS_REF = "Overview!$B$9"
-    INT8_TOPS_REF = "Overview!$B$10"
-    FP8_TOPS_REF = "Overview!$B$11"
-    VECTOR_TOPS_REF = "Overview!$B$12"
-    BW_REF = "Overview!$B$13"
-    CU_REF = "Overview!$B$14"
-    BU_REF = "Overview!$B$15"
-    PAR_REF = "Overview!$B$16"
-    CPU_CALL_REF = "Overview!$B$18"
-    PREPROCESS_TIME_REF = "Overview!$B$19"
+    def _param_row(label):
+        return PARAM_START + [p[0] for p in params].index(label)
+
+    FP16_TOPS_REF = f"Overview!$B${_param_row('FP16 Compute Power')}"
+    INT8_TOPS_REF = f"Overview!$B${_param_row('INT8 Compute Power')}"
+    FP8_TOPS_REF = f"Overview!$B${_param_row('FP8 Compute Power')}"
+    VECTOR_TOPS_REF = f"Overview!$B${_param_row('Vector Compute Power')}"
+    BW_REF = f"Overview!$B${_param_row('Chip Bandwidth')}"
+    CU_REF = f"Overview!$B${_param_row('uArch Rate')}"
+    BU_REF = f"Overview!$B${_param_row('Bandwidth Utilization')}"
+    # Parallelism feeds Serialism (= 1 - Parallelism); the Est.Time overlap
+    # model uses Serialism as the non-overlapping fraction.
+    SER_REF = f"Overview!$B${_param_row('Serialism')}"
+    CPU_CALL_REF = f"Overview!$B${_param_row('CPU Call')}"
+    PREPROCESS_TIME_REF = f"Overview!$B${_param_row('Preprocess Time')}"
 
     def _tops_ref_for_op(d):
         ctype = d.get("compute_type", COMPUTE_VECTOR)
@@ -401,8 +469,8 @@ def export_llm_excel(modules_data,
             return FP16_TOPS_REF
         return VECTOR_TOPS_REF
 
-    # --- Special Ratios (rows 19+) ---
-    RATIO_BANNER = PARAM_START + len(params) + 1  # 19
+    # --- Special Op Ratios ---
+    RATIO_BANNER = PARAM_START + len(params) + 1
     _banner(ws0, RATIO_BANNER, "Special Op Ratios", TOTAL_COLS)
     for c, h in enumerate(["Operation", "Ratio"], 1):
         cell = ws0.cell(row=RATIO_BANNER + 1, column=c, value=h)
@@ -413,13 +481,14 @@ def export_llm_excel(modules_data,
 
     special_ratios = [
         ("FAttention (Prefill)", 3.0),
-        ("FAttention (Decode)", 2.0),
+        ("FAttention (Decode)", 2.5),
         ("Gather", 5.0),
         ("Permute/Concat", 2.0),
+        ("Mlp", 1.5),
         ("ChunkGatedDeltaRule", 3.0),
         ("RecurrentGatedDeltaRule", 2.0),
     ]
-    RATIO_START = RATIO_BANNER + 2  # 21
+    RATIO_START = RATIO_BANNER + 2
     for i, (label, val) in enumerate(special_ratios):
         r = RATIO_START + i
         ws0.cell(row=r, column=1, value=label).border = thin
@@ -433,22 +502,9 @@ def export_llm_excel(modules_data,
     FATTENTION_DECODE_RATIO_REF = f"Overview!$B${RATIO_START+1}"
     GATHER_RATIO_REF = f"Overview!$B${RATIO_START+2}"
     PERMUTE_CONCAT_RATIO_REF = f"Overview!$B${RATIO_START+3}"
-    CHUNKGATEDDELTARULE_RATIO_REF = f"Overview!$B${RATIO_START+4}"
-    RECURRENTGATEDDELTARULE_RATIO_REF = f"Overview!$B${RATIO_START+5}"
-
-    # --- Module Breakdown ---
-    MOD_BANNER = RATIO_START + len(special_ratios) + 1  # 28
-    _banner(ws0, MOD_BANNER, "Module Breakdown", TOTAL_COLS)
-    sum_hdr = MOD_BANNER + 1
-    sum_headers = [
-        "Module", "Count", "GOPs", "I/O (MB)", "Est. Time (s)", "Total Time (s)", "Phase"
-    ]
-    for c, h in enumerate(sum_headers, 1):
-        cell = ws0.cell(row=sum_hdr, column=c, value=h)
-        cell.font = col_hdr_font
-        cell.fill = col_hdr_fill
-        cell.alignment = center
-        cell.border = thin
+    MLP_RATIO_REF = f"Overview!$B${RATIO_START+4}"
+    CHUNKGATEDDELTARULE_RATIO_REF = f"Overview!$B${RATIO_START+5}"
+    RECURRENTGATEDDELTARULE_RATIO_REF = f"Overview!$B${RATIO_START+6}"
 
     def _compute_formula(gops_cell, tops_ref=FP16_TOPS_REF):
         return f"=IF({tops_ref}=0,0,{gops_cell}/({tops_ref}*{CU_REF})*1000)"
@@ -525,19 +581,21 @@ def export_llm_excel(modules_data,
             cell_i.value = _memory_formula(f"G{r}")
             cell_i.number_format = "#,##0.000"
             cell_i.border = thin
-            # J: Est.Time = MAX(H,I)+PAR*MIN(H,I), with special OP ratio
+            # J: Est.Time = MAX(H,I)+SER*MIN(H,I), with special OP ratio
             cell_j = ws.cell(row=r, column=10)
-            base_time = f"MAX(H{r},I{r})+{PAR_REF}*MIN(H{r},I{r})"
-            if d["base_opn"] == "FAttention":
+            base_time = f"MAX(H{r},I{r})+{SER_REF}*MIN(H{r},I{r})"
+            if d["opn"] == "FAttention":
                 fa_ref = FATTENTION_DECODE_RATIO_REF if is_decode_mod else FATTENTION_RATIO_REF
                 cell_j.value = f"=({base_time})*{fa_ref}"
-            elif d["base_opn"] == "Gather":
+            elif d["opn"] == "Gather":
                 cell_j.value = f"=({base_time})*{GATHER_RATIO_REF}"
-            elif d["base_opn"] in ("Permute", "Concat"):
+            elif d["opn"] in ("Permute", "Concat"):
                 cell_j.value = f"=({base_time})*{PERMUTE_CONCAT_RATIO_REF}"
-            elif d["base_opn"] == "ChunkGatedDeltaRule":
+            elif d["opn"] == "Mlp":
+                cell_j.value = f"=({base_time})*{MLP_RATIO_REF}"
+            elif d["opn"] == "ChunkGatedDeltaRule":
                 cell_j.value = f"=({base_time})*{CHUNKGATEDDELTARULE_RATIO_REF}"
-            elif d["base_opn"] == "RecurrentGatedDeltaRule":
+            elif d["opn"] == "RecurrentGatedDeltaRule":
                 cell_j.value = f"=({base_time})*{RECURRENTGATEDDELTARULE_RATIO_REF}"
             else:
                 cell_j.value = f"={base_time}"
@@ -695,7 +753,8 @@ def export_llm_excel(modules_data,
         ws0.cell(row=r, column=2).alignment = center
 
     # ============ Model Architecture ============
-    arch_banner = phase_r + 3
+    # Placed after Special Op Ratios (which now sit below the module table).
+    arch_banner = RATIO_START + len(special_ratios) + 1
     if model_config:
         _banner(ws0, arch_banner, "Model Architecture", TOTAL_COLS)
         arch_fields = [
@@ -734,10 +793,12 @@ def export_llm_excel(modules_data,
     # ============ Notes ============
     _banner(ws0, info_banner, "Notes", TOTAL_COLS)
     notes = [
+        "Only TPU-lowered modules (module.state = \"TPU_LOWERED\") are analysed; tpu.* ops only.",
         "Green cells (parameters, ratios, block counts) are editable; all estimates auto-update.",
         "Est.Time = max(Compute, Memory) + Serialism * min(Compute, Memory).",
         "block / block_cache use the first block as representative, multiplied by Count.",
-        "Key operators: Fp8MatMul uses FP8 TOPS; others (incl. w8/w4 MatMul) use FP16 TOPS; non-key ops use vector TOPS.",
+        "Data volumes read the real dtypes from the TPU-lowered *_tpu.mlir (bf16, ui8 for packed w4/w8, ...).",
+        "Key operators: Fp8MatMul uses FP8 TOPS; others (incl. w4/w8 A16MatMul) use FP16 TOPS; non-key ops use vector TOPS.",
     ]
     for i, txt in enumerate(notes, 1):
         ws0.merge_cells(start_row=info_banner + i,
@@ -778,9 +839,9 @@ def main():
                         help="FP8 compute power in TOPS (default: 2 * tops)")
     parser.add_argument("-b", "--bandwidth", type=float, required=True,
                         help="Chip memory bandwidth in GB/s")
-    parser.add_argument("-q", "--quantize", default="f16",
-                        choices=["f16", "w8f16", "w4f16","bf16", "w8bf16", "w4bf16"],
-                        help="Quantization mode (default: f16)")
+    parser.add_argument("-q", "--quantize", default="auto",
+                        choices=["auto", "f16", "w8f16", "w4f16", "bf16", "w8bf16", "w4bf16"],
+                        help="Quantization mode (default: auto, inferred from model config)")
     parser.add_argument("-c", "--chip", default="bm1684x",
                         choices=["bm1684x", "bm1688", "cv186x", "bm1690", "bm1684x2"],
                         help="Chip type (default: bm1684x)")
@@ -818,7 +879,8 @@ def main():
         max_pixels = "768,768"
     cmds = [
         "llm_convert.py", f"-m {args.model_path}", f"-s {args.seq_length}", f"-q {args.quantize}",
-        f"-c {args.chip}", f"--out_dir {args.out_dir}", "--only_mlir", f"--max_pixels {max_pixels}"
+        f"-c {args.chip}", f"--out_dir {args.out_dir}", "--only_mlir", "--debug",
+        f"--max_pixels {max_pixels}"
     ]
     if args.max_input_length > 0:
         cmds.append(f"--max_input_length {args.max_input_length}")
@@ -849,21 +911,17 @@ def main():
     # Step 1: Discover modules
     mlir_dir = os.path.join(args.out_dir, "tmp_mlir_analyse")
     print(f"Scanning: {mlir_dir}")
-    modules = discover_modules(mlir_dir, llm_config.num_hidden_layers, model_type)
+    modules = discover_modules(mlir_dir, llm_config.num_hidden_layers, model_type, args.chip)
     if not modules:
         print("No MLIR files found.", file=sys.stderr)
         sys.exit(1)
-    # Correct block counts from config if available
-    if num_layers:
-        if model_type == "qwen3_5_text":
-            dense_count = round(num_layers * 3 / 4)
-            sparse_count = num_layers - dense_count
-            modules = [(n, p, dense_count if n in ("block_0", "block_cache_0") else
-                        sparse_count if n in ("block_3", "block_cache_3") else c)
-                       for n, p, c in modules]
-        else:
-            modules = [(n, p, num_layers if n in ("block", "block_cache") and c > 1 else c)
-                       for n, p, c in modules]
+    # Correct block counts from config if available. discover_modules already
+    # applies the right counts (qwen3_5 uses 3:1 linear:full via integer
+    # division, matching the [linear,linear,linear,full] layer-type pattern);
+    # only the non-qwen3_5 path needs the num_layers override here.
+    if num_layers and model_type not in QWEN3_5_MODEL_TYPES:
+        modules = [(n, p, num_layers if n in ("block", "block_cache") and c > 1 else c)
+                   for n, p, c in modules]
     print(f"Found {len(modules)} module(s): "
           f"{', '.join(f'{n}(x{c})' if c > 1 else n for n, _, c in modules)}")
 
@@ -871,8 +929,7 @@ def main():
     modules_data = []
     for name, path, count in modules:
         print(f"  Analysing: {name} ({os.path.basename(path)})")
-        dtype = args.quantize if name.startswith("block") else args.quantize.replace("fp8", "")
-        rows_data, totals = analyse_module(path, dtype)
+        rows_data, totals = analyse_module(path)
         modules_data.append((name, count, rows_data, totals))
 
     # Step 3: Export Excel
@@ -881,9 +938,8 @@ def main():
     int8_tops = args.int8_tops if args.int8_tops is not None else fp16_tops * 2.0
     fp8_tops = args.fp8_tops if args.fp8_tops is not None else fp16_tops * 2.0
     export_llm_excel(modules_data, fp16_tops, args.bandwidth, args.out_dir, args.model_path,
-                     args.quantize, int8_tops, fp8_tops, args.vector_tops, args.uarch_rate,
-                     args.bw_util, args.parallelism, model_config, args.seq_length, max_pixels,
-                     cmdline)
+                     int8_tops, fp8_tops, args.vector_tops, args.uarch_rate, args.bw_util,
+                     args.parallelism, model_config, args.seq_length, max_pixels, cmdline)
 
 
 if __name__ == "__main__":
