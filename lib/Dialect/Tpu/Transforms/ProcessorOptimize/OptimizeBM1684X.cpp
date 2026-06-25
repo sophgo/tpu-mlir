@@ -3865,7 +3865,7 @@ public:
           dyn_cast<top::WeightOp>(requant_op.getQuant().getDefiningOp());
       auto data = requant.read<int32_t>();
       if (module::isBM1688() || module::isSG2380() || module::isCV184X() ||
-          module::isSGTPUV8()) {
+          module::isSGTPUV8() || module::isBM1684X2()) {
         for (int i = 0; i < shape[1]; ++i) {
           multiplier_v.push_back(data->data()[i * 2]);
           rshift_v.push_back(-(data->data()[i * 2 + 1] & 0xffff));
@@ -4698,13 +4698,13 @@ public:
     for (int i = 0; i < channels; ++i) {
       if (module::isBM1684X()) {
         new_multi0[i] = quantData[i * 3]; // multi
-      } else if (module::isBM1688()) {
+      } else if (module::isBM1688() || module::isBM1684X2()) {
         new_multi0[i] = quantData[i * 2]; // multi
       }
     }
 
     int32_t raw_shift_in_quant;
-    if (module::isBM1688()) {
+    if (module::isBM1688() || module::isBM1684X2()) {
       raw_shift_in_quant =
           static_cast<int32_t>(static_cast<int16_t>(quantData[1] & 0xffff));
     } else {
