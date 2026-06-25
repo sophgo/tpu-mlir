@@ -50,6 +50,7 @@ Required
 
 - ``-m``, ``--model_path`` *(string)*
   Path to the original model directory, e.g. ``./Qwen3.5-2B-int4-AutoRound``.
+  For GGUF format models, pass the GGUF file path.
 
 - ``-s``, ``--seq_length`` *(int)*
   Maximum sequence length supported by the compiled bmodel.
@@ -147,6 +148,23 @@ Workflow control
   Recommended before launching a long conversion.
 - ``-V``, ``--version``
   Print the underlying ``pymlir`` version.
+
+GGUF support
+~~~~~~~~~~~~
+
+- ``--mmproj`` *(string)*
+  Path to the VLM projector file for multimodal models (e.g. Qwen3-VL,
+  InternVL3).  ``llm_convert`` supports GGUF format models including
+  Qwen3, Qwen3-VL, Qwen3.5, and InternVL3 in Q8_0 / Q4_0 / Q4_1 format.
+  In Q4_K and other quantized formats, most blocks are automatically
+  promoted to Q8_0 / Q8_1, and some mixed-precision blocks fall back to
+  float inference.  When using ``-m`` with a GGUF file, pass the
+  accompanying VLM projector with this option.  Config files are
+  generated in the output directory from the GGUF metadata, and the
+  model is then converted to bmodel format.
+  |
+  Before converting, install the GGUF package:
+  ``pip3 install gguf==0.19.0``
 
 Examples
 --------

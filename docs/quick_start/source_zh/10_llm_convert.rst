@@ -48,6 +48,7 @@
 
 - ``-m``, ``--model_path`` *(string)*
   原始模型目录，如 ``./Qwen3.5-2B-int4-AutoRound``。
+  对于 GGUF 格式的模型，传入 GGUF 文件路径。
 
 - ``-s``, ``--seq_length`` *(int)*
   bmodel 支持的最大序列长度。
@@ -142,6 +143,21 @@ LoRA / 采样 / 其他
   打印，不进行编译。建议在长时间转换前先跑一次。
 - ``-V``, ``--version``
   打印底层 ``pymlir`` 版本。
+
+GGUF 支持
+~~~~~~~~~
+
+- ``--mmproj`` *(string)*
+  多模态模型（如 Qwen3-VL、InternVL3）的 VLM projector 文件路径。
+  ``llm_convert`` 支持 GGUF 格式模型，包括 Qwen3、Qwen3-VL、Qwen3.5、
+  InternVL3 的 Q8_0 / Q4_0 / Q4_1 格式。Q4_K 及其他量化格式下，大部分
+  block 会自动提升为 Q8_0 / Q8_1，部分混合精度 block 退化为 float 推理。
+  当使用 ``-m`` 指定 GGUF 文件时，通过此选项传入对应的 VLM projector。
+  工具会从 GGUF 元数据中生成配置文件到输出目录，随后将模型转换为
+  bmodel 格式。
+  |
+  转换前，请先安装 GGUF 包：
+  ``pip3 install gguf==0.19.0``
 
 示例
 ----
