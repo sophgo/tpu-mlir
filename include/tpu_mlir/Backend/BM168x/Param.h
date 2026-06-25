@@ -1776,6 +1776,10 @@ typedef struct pooling3d_spec {
   float rq_scale;
   float rq_offset;
   int avg_src_rd_mode;
+  /* rq0-free fallback (bm1684x2/sg2262): rq_scale decomposed into the rq1
+   * (multiplier, right-shift); rq_offset carries the merged zero-point. */
+  int32_t multiplier;
+  int32_t rshiftbits;
 } pooling3d_spec_t;
 
 typedef struct arg_common_spec {
@@ -2031,6 +2035,10 @@ typedef struct {
   float rq_scale;
   float rq_offset;
   int32_t avg_src_rd_mode;
+  /* rq0-free fallback (bm1684x2/sg2262): rq_scale decomposed into the rq1
+   * (multiplier, right-shift); rq_offset carries the merged zero-point. */
+  int32_t multiplier;
+  int32_t rshiftbits;
 } pooling3d_common_param_t;
 
 typedef struct {

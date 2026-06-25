@@ -58,6 +58,15 @@ int64_t tpu::RequantFpOp::getBufferSize_bm1684x(
   int64_t buffer_size = 0;
   if (getQuantMode() != RequantMode::MultiplierShift) {
     buffer_size = in_lmem_bytes;
+  } else if (module::isBM1684X2()) {
+    /* mode==1 on BM1684X2 falls back to fp32 arithmetic when offset is
+     * non-integer; the fallback needs an FP32 buffer (4 bytes/elem). */
+    double offset = getOffset().convertToDouble();
+    bool is_offset_integer = (offset == static_cast<int64_t>(offset));
+    if (!is_offset_integer) {
+      double bottom_dtype_size = module::getDtypeSize(getInput());
+      buffer_size = in_lmem_bytes * 4 / bottom_dtype_size;
+    }
   }
   return buffer_size;
 }
