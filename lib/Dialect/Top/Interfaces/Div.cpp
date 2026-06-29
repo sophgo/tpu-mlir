@@ -79,8 +79,16 @@ void top::DivOp::shape_inference() {
     mlir::Builder builder(context);
     setIsScalarAttr(builder.getBoolAttr(true));
   }
-  if (llvm::find_if(getOperands(), module::isShape) != getOperands().end()) {
-    auto inputs = getInputs();
+  auto inputs = getInputs();
+  // shape value inference can only support shape and weight
+  bool need_shape_val_infer =
+      std::all_of(inputs.begin(), inputs.end(),
+                  [](auto in_op) {
+                    return module::isWeight(in_op) || module::isShape(in_op);
+                  }) &&
+      std::any_of(inputs.begin(), inputs.end(),
+                  [](auto in_op) { return module::isShape(in_op); });
+  if (need_shape_val_infer) {
     std::vector<std::vector<int64_t>> input_shapes_v;
     for (auto in_op : inputs) {
       if (module::isShape(in_op)) {
@@ -90,10 +98,6 @@ void top::DivOp::shape_inference() {
         auto data = in_op.getDefiningOp<top::WeightOp>().read_as_float();
         std::vector<int64_t> data_v(data->begin(), data->end());
         input_shapes_v.push_back(data_v);
-      } else if (out_shape.size() > 1) {
-        break;
-      } else {
-        llvm_unreachable("Dynamic type is illegal");
       }
     }
     if (out_shape.size() == 1 || out_shape.size() == 0) {
