@@ -8,6 +8,12 @@
    * - 版本
      - 发布日期
      - 说明
+   * - v1.29.0
+     - 2026.06.29
+     - MoE模型接入;
+       Qwen3.5适配；
+       BM1684X2 FP8大模型编译支持;
+       LayerGroup支持AffineMap数据读写
    * - v1.28.0
      - 2026.04.14
      - llm_convert 新增 Qwen3.5、Qwen3-ASR、PaddleOCR-VL 与 lfm2-vl 支持;
