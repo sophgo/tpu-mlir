@@ -15,6 +15,8 @@ cp bmcompiler/libbackend/libbackend_bm1684.so /workspace/tpu-mlir/third_party/nn
 
 ## TPU1684X/1688/BM1690/SG2380/CV184X/SGTPUV8
 
+softmax f32 fix: - 1553c4f02a8dc2153c81c2c83091dcad5f472d51
+
 ``` bash
 # update all
 ./build_tpu1686.sh -t /workspace/TPU1686

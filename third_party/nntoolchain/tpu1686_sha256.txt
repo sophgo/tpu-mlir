@@ -7,18 +7,13 @@ Date:   Wed Apr 15 17:22:02 2026 +0800
     
     Change-Id: I3f4d70055d2881fa546e023e19654ba747c2fafa
 === bm1684x ===
-commit 8c4aae66ad4e0a4d8fc68c86c2653986f20e634c
-Author: liang.wang01 <liang.wang01@sophgo.com>
-Date:   Thu May 28 14:32:38 2026 +0800
+commit 877157fbfc38881490b57f64b4d806378c273f29
+Author: zhibin.xin <zhibin.xin@sophgo.com>
+Date:   Mon Jun 29 23:28:04 2026 -0400
 
-    perf: optimize MoE w4a16
+    Revert "fix: softmax_f16 branch"
     
-    - w0:[m,h/2] z0:[64,m/64*h/2/g] s0:[64,m/64*h/g]
-      w2:[h,m/2] z2:[m/2/g,h] s2:[m/g,h]
-      ddrUtil: 72%
-      to do: LlmConverter
-    
-    Change-Id: I8c316c614127901a75127e781fc7328f210400fc
+    This reverts commit 1553c4f02a8dc2153c81c2c83091dcad5f472d51.
 === bm1688 ===
 commit 57fb3b8c0311f7eaeb00ae4fcece71d46693052f
 Author: liang.wang01 <liang.wang01@sophgo.com>
