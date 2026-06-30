@@ -567,12 +567,16 @@ void BMAddressAssign::assignIOByAddrMode(
     module::getInputsOutputs(m, ios, ios);
     // skip multi subnets
     int num_subnets = 0;
+    bool has_dynamic_subnet = false;
     m.walk<WalkOrder::PostOrder>([&](func::FuncOp func) {
       if (auto call = module::getCallOp(func)) {
         num_subnets++;
       }
+      if (tpu::getRunMode(func) == RunMode::TPU_DYNAMIC) {
+        has_dynamic_subnet = true;
+      }
     });
-    if (num_subnets > 1) {
+    if (num_subnets > 1 || has_dynamic_subnet) {
       module::setAddrMode(module::AddrMode::BASIC);
       return;
     }
