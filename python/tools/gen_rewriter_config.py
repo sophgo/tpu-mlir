@@ -241,6 +241,14 @@ def gen_rewriter_config(model_name: str = "",
         tile_len=(64, "int"),
     )
 
+    # SliceAttentionChainPattern (split attention chain along axis to reduce neuron_size)
+    # ------------
+    rule_SliceAttentionChainPattern = generate_rewriter_rules(
+        "SliceAttentionChainPattern",
+        axis=(2, "int"),
+        num_tiles=(4, "int"),
+    )
+
     # Create config with the rewrite rules
     config = create_config(
         # rule_SplitQuantizedMLP2Pattern_template,
@@ -253,7 +261,8 @@ def gen_rewriter_config(model_name: str = "",
         rule_TileTrVPattern,
         # rule_MatmulTileKPattern,
         rule_TileLayerNormPattern_1,
-        rule_TileLayerNormPattern_2)
+        rule_TileLayerNormPattern_2,
+        rule_SliceAttentionChainPattern)
 
     # Save the config to a file
     save_config(config, config_filename, silence=silence)

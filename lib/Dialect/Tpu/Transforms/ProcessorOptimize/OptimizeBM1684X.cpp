@@ -2828,6 +2828,7 @@ struct EliminateCastBeforeGatherElements
     return success();
   }
 };
+
 } // namespace bm1684x
 
 //  reshape + permute + reshape + permute -> reshape + permute
@@ -5199,6 +5200,100 @@ public:
 
 namespace ttp = tpu::tpu_dialect_tiling_primitives;
 
+// Pattern: split full attention chain along an axis into N tiles.
+// Chain: MatMul(QxK^T) -> Cast -> MulConst -> Cast -> Softmax -> MatMul(PxV)
+// Params from RewriterRule: "axis" (default 2), "num_tiles" (default 1)
+class SliceAttentionChainPattern : public OpRewriterPatternEx4<tpu::MatMulOp> {
+public:
+  SliceAttentionChainPattern(mlir::MLIRContext *context, int benefit,
+                             const std::vector<RewriterRule> &rules)
+      : OpRewriterPatternEx4<tpu::MatMulOp>(
+            context, "SliceAttentionChainPattern", rules, benefit) {}
+
+  LogicalResult matchAndRewriteImpl(tpu::MatMulOp pv_matmul,
+                                    PatternRewriter &rewriter) const override {
+    // match: Softmax must be the direct producer of PV MatMul input
+    auto softmax =
+        dyn_cast_or_null<tpu::SoftmaxOp>(pv_matmul.getInput().getDefiningOp());
+    if (!softmax || !softmax.getOutput().hasOneUse())
+      return failure();
+    if (softmax.getLog())
+      return failure();
+
+    // match: QK MatMul before Softmax (skip Cast/MulConst chain)
+    auto qk_matmul = ttp::get_prev_op<tpu::MatMulOp>(
+        softmax.getInput(),
+        {TypeID::get<tpu::CastOp>(), TypeID::get<tpu::MulConstOp>()});
+    if (!qk_matmul || !qk_matmul.getOutput().hasOneUse())
+      return failure();
+
+    // QK MatMul output must be quantized (dequantize Cast follows)
+    auto qk_out_type =
+        qk_matmul.getOutput().getType().dyn_cast<RankedTensorType>();
+    if (!qk_out_type ||
+        !qk_out_type.getElementType().isa<quant::UniformQuantizedType>())
+      return failure();
+
+    // match rules: read axis and num_tiles from config
+    int axis = 2;
+    int num_tiles = 1;
+    for (auto &rule : getPatternRules()) {
+      axis = getParam<int>(rule.params, "axis", 2);
+      num_tiles = getParam<int>(rule.params, "num_tiles", 1);
+      break;
+    }
+    if (num_tiles <= 1)
+      return failure();
+
+    // validate axis and shape
+    Value Q = qk_matmul.getInput();
+    Value K = qk_matmul.getRight();
+    Value V = pv_matmul.getRight();
+    auto q_shape = module::getShape(Q);
+    int ndims = q_shape.size();
+    if (axis < 0)
+      axis += ndims;
+    if (axis < 0 || axis >= ndims)
+      return failure();
+    if (q_shape[axis] % num_tiles != 0 || q_shape[axis] == 0)
+      return failure();
+
+    int sm_axis = softmax.getAxis();
+    if (sm_axis < 0)
+      sm_axis += ndims;
+    if (sm_axis == axis)
+      return failure();
+
+    // rewrite: split Q, K, V along axis
+    int tile_len = q_shape[axis] / num_tiles;
+    auto q_tiles = ttp::split_value(Q, axis, tile_len, "_q", rewriter);
+    auto k_tiles = ttp::split_value(K, axis, tile_len, "_k", rewriter);
+    auto v_tiles = ttp::split_value(V, axis, tile_len, "_v", rewriter);
+    if (q_tiles.size() != k_tiles.size() || q_tiles.size() != v_tiles.size())
+      return failure();
+
+    // rewrite: build each tile's attention chain
+    llvm::SmallVector<Value> tile_outputs;
+    for (size_t i = 0; i < q_tiles.size(); i++) {
+      std::string suffix = "_t" + std::to_string(i);
+      Value new_qk = ttp::clone_matmul(qk_matmul, q_tiles[i], k_tiles[i],
+                                       nullptr, nullptr, rewriter, suffix);
+      Value new_sm = ttp::clone_common_ops_between(qk_matmul, pv_matmul, new_qk,
+                                                   rewriter, suffix);
+      Value new_pv = ttp::clone_matmul(pv_matmul, new_sm, v_tiles[i], nullptr,
+                                       nullptr, rewriter, suffix);
+      tile_outputs.push_back(new_pv);
+    }
+
+    // rewrite: concat all tile outputs along axis
+    Value result = ttp::concat_values(tile_outputs, axis, rewriter);
+    result.setType(pv_matmul.getOutput().getType());
+    module::setLoc(result, module::getLoc(pv_matmul.getOutput()));
+    rewriter.replaceOp(pv_matmul, result);
+    return success();
+  }
+};
+
 class SelfAttnTileHeadPattern : public OpRewriterPatternEx4<tpu::SoftmaxOp> {
 public:
   SelfAttnTileHeadPattern(mlir::MLIRContext *context, int benefit,
@@ -7181,7 +7276,8 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns,
   // patterns->add<SplitQuantizedMLP2Pattern>(ctx, 3);
   patterns->add<SplitQuantizedMLP2Pattern, SelfAttnTileHeadPattern,
                 SelfAttnTileHeadPattern2, TileTrVPattern, MatMulTilePattern,
-                MatmulTileKPattern, TileLayerNormPattern>(ctx, 3, rules);
+                MatmulTileKPattern, TileLayerNormPattern,
+                SliceAttentionChainPattern>(ctx, 3, rules);
   patterns->add<SplitMixedQuantizedMLPPattern>(ctx, 4);
   // patterns->add<MatmulUsePermutePattern>(ctx, 4);
   patterns->add<MultipleSameActivationMatmulMergePattern>(ctx, 3);
