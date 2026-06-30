@@ -97,10 +97,8 @@ class TpuLang:
         caller_args = inspect.getargvalues(caller_frame)
         args_info = {
             'args': caller_args.args,
-            'values': {
-                k: simplify_value(caller_args.locals[k])
-                for k in caller_args.args
-            }
+            'values': {k: simplify_value(caller_args.locals[k])
+                       for k in caller_args.args}
         }
 
         op = Operator(op_name,
@@ -188,7 +186,7 @@ def compile(
         enable_lghash=False,
         lghash_dir="",
         debug_dump_mode='normal',
-        disable_topo_sort=False,
+        disable_topo_sort=True,
         enable_affine=False):
     if debug_dump_mode not in ['normal', 'dump', 'load']:
         raise ValueError(
@@ -292,7 +290,9 @@ def mlir_compile(name: str,
                  addr_mode='auto',
                  gdma_check=False,
                  layer_group_config="",
-                 disable_topo_sort=False,
+                 enable_lghash=False,
+                 lghash_dir="",
+                 disable_topo_sort=True,
                  num_core=1,
                  enable_affine=False):
     supported_log_levels = ["normal", "simple", "only-layer-group", "quiet"]
@@ -330,6 +330,8 @@ def mlir_compile(name: str,
                                   embed_debug_info=embed_debug_info,
                                   gdma_check=gdma_check,
                                   layer_group_config=layer_group_config,
+                                  enable_lghash=enable_lghash,
+                                  lghash_dir=lghash_dir,
                                   disable_topo_sort=disable_topo_sort,
                                   enable_affine=enable_affine)
 
@@ -357,7 +359,7 @@ def compile_f32(name: str,
                 enable_lghash=False,
                 lghash_dir="",
                 debug_dump_mode='normal',
-                disable_topo_sort=False,
+                disable_topo_sort=True,
                 enable_affine=False):
     if debug_dump_mode not in ['normal', 'dump', 'load']:
         raise ValueError(
@@ -482,7 +484,9 @@ def mlir_compile_f32(name: str,
                      gdma_check=False,
                      layer_group_config="",
                      spec_op_mode: dict = None,
-                     disable_topo_sort=False,
+                     enable_lghash=False,
+                     lghash_dir="",
+                     disable_topo_sort=True,
                      num_core=1,
                      enable_affine=False):
     support_quant_mode = ['f32', 'f16', 'bf16']
@@ -543,6 +547,8 @@ def mlir_compile_f32(name: str,
                                       embed_debug_info=embed_debug_info,
                                       gdma_check=gdma_check,
                                       layer_group_config=layer_group_config,
+                                      enable_lghash=enable_lghash,
+                                      lghash_dir=lghash_dir,
                                       disable_topo_sort=disable_topo_sort,
                                       enable_affine=enable_affine)
 
@@ -627,7 +633,7 @@ def bmodel_generate_and_inference(model_name: str,
                                   layer_group_config: str = "",
                                   enable_lghash: bool = False,
                                   lghash_dir: str = "",
-                                  disable_topo_sort: bool = False,
+                                  disable_topo_sort: bool = True,
                                   enable_affine: bool = False):
     # generate bmodel
     tpu_mlir = "{}_{}".format(model_name, quant_mode)

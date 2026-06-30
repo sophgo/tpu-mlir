@@ -59,10 +59,11 @@ def main():
                         choices=[1, 2],
                         default=1,
                         help='core num for currnet model, default is 1')
-    parser.add_argument('--disable_topo_sort',
+    parser.add_argument('--enable_lghash',
                         action='store_true',
                         default=False,
-                        help='disable topological sort')
+                        help='enable layer group hash')
+    parser.add_argument('--lghash_dir', type=str, default="", help='layer group hash dir')
     parser.add_argument('--enable_affine',
                         action='store_true',
                         default=False,
@@ -90,7 +91,8 @@ def main():
                               layer_group_config=args.layer_group_config,
                               dynamic=args.dynamic,
                               num_core=args.num_core,
-                              disable_topo_sort=args.disable_topo_sort,
+                              enable_lghash=args.enable_lghash,
+                              lghash_dir=args.lghash_dir,
                               enable_affine=args.enable_affine,
                               embed_debug_info=args.embed_debug_info,
                               spec_op_mode=args.spec_op_mode)
@@ -101,7 +103,8 @@ def main():
                               layer_group_config=args.layer_group_config,
                               dynamic=args.dynamic,
                               num_core=args.num_core,
-                              disable_topo_sort=args.disable_topo_sort,
+                              enable_lghash=args.enable_lghash,
+                              lghash_dir=args.lghash_dir,
                               enable_affine=args.enable_affine,
                               embed_debug_info=args.embed_debug_info,
                               spec_op_mode=args.spec_op_mode)
@@ -111,7 +114,8 @@ def main():
                           layer_group_config=args.layer_group_config,
                           dynamic=args.dynamic,
                           num_core=args.num_core,
-                          disable_topo_sort=args.disable_topo_sort,
+                          enable_lghash=args.enable_lghash,
+                          lghash_dir=args.lghash_dir,
                           enable_affine=args.enable_affine,
                           embed_debug_info=args.embed_debug_info)
     tpul.deinit()
@@ -124,7 +128,8 @@ def main():
     print(f"layer_group_config: {args.layer_group_config}")
     print(f"dynamic: {args.dynamic}")
     print(f"num_core: {args.num_core}")
-    print(f"disable_topo_sort: {args.disable_topo_sort}")
+    print(f"enable_lghash: {args.enable_lghash}")
+    print(f"lghash_dir: {args.lghash_dir}")
     print(f"enable_affine: {args.enable_affine}")
     print(f"embed_debug_info: {args.embed_debug_info}")
     print(f"spec_op_mode: {args.spec_op_mode}")
