@@ -1707,8 +1707,10 @@ bool get_backward_slice_info(LgInfo &lg_info, slice_info_t &in_si,
   bool support_hw_margin = module::isBM1684XFamily();
   if (auto conv_op = dyn_cast<tpu::Conv2DOp>(op)) {
     auto attr = getConv2DParam(conv_op);
-    bool support_dwconv2d_hw_margin = attr.is_dw;
-    support_hw_margin = support_hw_margin && support_dwconv2d_hw_margin;
+    if (!attr.is_dw &&
+        (module::getCoreNum() > 1 || attr.dh > 1 || attr.dw > 1)) {
+      support_hw_margin = false;
+    }
   }
   if (shape_secs.dsecs == 1) {
     in_si.d.emplace_back(slice_pair_t(0, d));
@@ -2205,11 +2207,14 @@ static bool backward_update_slice(
         // has no backend support.)
         auto tpukernel_support_HWmargins = [&lg_info](Operation *op) -> bool {
           if (auto conv_op = dyn_cast<tpu::Conv2DOp>(op)) {
-            auto attr = getConv2DParam(conv_op);
-            bool support_dwconv2d_hw_margin =
-                module::isBM1684XFamily() && attr.is_dw;
-            if (support_dwconv2d_hw_margin) {
-              return true;
+            if (module::isBM1684XFamily()) {
+              auto attr = getConv2DParam(conv_op);
+              if (attr.is_dw) {
+                return true;
+              }
+              if (module::getCoreNum() == 1 && attr.dh == 1 && attr.dw == 1) {
+                return true;
+              }
             }
             // Note: backend function is incomplete, feel free to complete it
             // Realizing this functionality could lead to significant rewards.
