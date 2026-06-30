@@ -161,6 +161,7 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
 
   auto &p = getConv2DParam(*this);
   int64_t sz = 0;
+  auto input_stype = module::getStorageType(getInput());
   auto in_type = BM168x::getDataType(getInput());
   auto out_type = BM168x::getDataType(getOutput());
   auto in_type_len = BM168x::getFmtBytes(in_type);
@@ -172,11 +173,30 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   int use_3ic_optimize = getUse_3icOptimize();
   int64_t IC_PARALLEL = BM168x::ic_num(1);
   bool is_depthwise = p.groups == p.ic && p.groups == p.oc && p.groups > 1;
-  int64_t int_dw_crop_buffer =
-      is_depthwise && with_hw_margins &&
-              module::getStorageType(getInput()).isIntOrIndex()
-          ? int32_size * 3 + in_lmem_bytes
+  int64_t kh_ext = (p.kh - 1) * p.dh + 1;
+  int64_t kw_ext = (p.kw - 1) * p.dw + 1;
+  int64_t crop_h =
+      std::min<int64_t>(in_hslice, (out_hslice - 1) * p.sh + kh_ext);
+  int64_t crop_w =
+      std::min<int64_t>(in_wslice, (out_wslice - 1) * p.sw + kw_ext);
+  bool has_dw_crop = is_depthwise && (with_hw_margins || crop_h < in_hslice ||
+                                      crop_w < in_wslice);
+  int64_t dw_crop_buffer =
+      has_dw_crop ? in_nslice * ceiling_func(in_cslice, BM168x::NPU_NUM) *
+                        align_up(crop_h * crop_w, eu_num) * in_type_len
+                  : 0;
+  int64_t int_dw_crop_buffer = dw_crop_buffer > 0 && input_stype.isIntOrIndex()
+                                   ? int32_size * 3 + in_lmem_bytes
+                                   : 0;
+  int64_t fp_dw_crop_buffer =
+      dw_crop_buffer > 0 &&
+              (input_stype.isF32() || input_stype.isF16() ||
+               input_stype.isBF16() || input_stype.isFloat8E4M3FN() ||
+               input_stype.isFloat8E5M2())
+          ? dw_crop_buffer
           : 0;
+  int64_t hw_margin_crop_buffer =
+      std::max(int_dw_crop_buffer, fp_dw_crop_buffer);
 
   if (getWeightBits().has_value() && getWeightBits().value() == 4) {
     // unpack_weight to 8bits.
@@ -196,8 +216,8 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
 
   if ((module::isBM1688() || module::isCV184X() || module::isSGTPUV8()) &&
       getCoeffMerged()) {
-    if (module::getStorageType(getInput()).isIntOrIndex() && p.kernel_zp != 0)
-      return std::max<int64_t>(int32_size * 2, int_dw_crop_buffer);
+    if (input_stype.isIntOrIndex() && p.kernel_zp != 0)
+      return std::max<int64_t>(int32_size * 2, hw_margin_crop_buffer);
     if (p.groups > 1) {
       if (module::isCV184X() && !is_depthwise) {
         // inputs
@@ -222,7 +242,7 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
               in_type_len;
         sz += ic_per_npu * 2 * in_type_len;
       }
-      sz = std::max(sz, int_dw_crop_buffer);
+      sz = std::max(sz, hw_margin_crop_buffer);
       return sz;
     }
     if (use_3ic_optimize == 0)
@@ -246,7 +266,7 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   if (p.is_dw) {
     sz += int32_size;               // conv_kzp_buffer_addr
     sz += oc_per_npu * p.kh * p.kw; // kzp_is_const
-    sz = std::max(sz, int_dw_crop_buffer);
+    sz = std::max(sz, hw_margin_crop_buffer);
   }
 
   int use_3ic = (use_3ic_optimize & 0x3);
