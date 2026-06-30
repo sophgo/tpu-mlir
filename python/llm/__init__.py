@@ -62,6 +62,7 @@ from .ModelHandle import ModelHandle, SafetensorsModelHandle, GGUFModelHandle, c
 
 # Other converters (for reference)
 from .Qwen3_5Converter import Qwen3_5Converter
+from .MiniCPMV4_6Converter import MiniCPMV4_6Converter
 from .Qwen2VLConverter import Qwen2VLConverter
 from .Qwen2_5VLConverter import Qwen2_5VLConverter
 from .Qwen3VLConverter import Qwen3VLConverter
@@ -87,6 +88,7 @@ __all__ = [
 
     # Other converters
     'Qwen3_5Converter',
+    'MiniCPMV4_6Converter',
     'Qwen2VLConverter',
     'Qwen2_5VLConverter',
     'Qwen3VLConverter',

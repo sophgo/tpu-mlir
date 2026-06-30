@@ -16,15 +16,15 @@ class Qwen3_5Converter(LlmConverter):
     def __init__(self, args, config, loader=None):
         super().__init__(args, config, loader=loader)
         self.max_pixels = args.max_pixels
-        if self.max_pixels == 0 or self.max_pixels % (32 * 32) != 0:
-            raise RuntimeError(
-                f"max_pixels values must be multiples of 32*32 and non-zero: {args.max_pixels}")
         self.do_vit = True
         self.dynamic = True  # force dynamic
         self.rmsnorm_type = WeightType.ZEROCENTERED_RMSNORM
-        # vision config
+        # vision config (sets self.pixel_multiple among others)
         self.init_vconfig()
-        self.vit_path = "model.visual"
+        pm = self.pixel_multiple
+        if self.max_pixels == 0 or self.max_pixels % (pm * pm) != 0:
+            raise RuntimeError(
+                f"max_pixels values must be multiples of {pm}*{pm} and non-zero: {args.max_pixels}")
         if self.use_block_with_kv:
             self.share_prompt = True  # share prompt and kv are the same
 
@@ -36,6 +36,7 @@ class Qwen3_5Converter(LlmConverter):
         self.patch_size = self.vconfig.patch_size
         self.temporal_patch_size = self.vconfig.temporal_patch_size
         self.spatial_merge_size = self.vconfig.spatial_merge_size
+        self.pixel_multiple = self.patch_size * self.spatial_merge_size
         self.in_channels = self.vconfig.in_channels
         self.depth = self.vconfig.depth
         self.num_patches = self.max_pixels // (self.patch_size * self.patch_size)
@@ -48,6 +49,7 @@ class Qwen3_5Converter(LlmConverter):
                                ] if self.use_insert else [3, self.max_input_length]
         self.num_position_embeddings = self.vconfig.num_position_embeddings
         self.mrope_section = getattr(self.llm_config.rope_parameters, 'mrope_section', [11, 11, 10])
+        self.vit_path = "model.visual"
 
     @override
     def load_pretrained(self, config):
@@ -1489,7 +1491,9 @@ class Qwen3_5Converter(LlmConverter):
             input_shapes = [input_shape, recurrent_shape
                             ] if not with_history else [input_shape, recurrent_shape, conv_shape]
             input_types = ["F32", "F32"] if not with_history else ["F32", "F32", "F32"]
-            block_mlir = MLIRImporter(input_shapes, [input_shape, conv_shape],
+            output_shapes = [input_shape, conv_shape]
+            block_mlir = MLIRImporter(input_shapes,
+                                      output_shapes,
                                       name,
                                       self.platform,
                                       input_types,
@@ -1644,6 +1648,7 @@ class Qwen3_5Converter(LlmConverter):
             g_op = top.MulOp(T([1, input_len, num_v_heads]), [a_op, weight_op],
                              loc=L(in_proj_a + ".mul"),
                              ip=ip).output
+
             # ================= chunk_gated_delta_rule ==================
             triu_mask_op = block_mlir.create_weight_op(triu_mask_key, [chunk_size, chunk_size])
             strict_triu_mask_op = block_mlir.create_weight_op(strict_triu_mask_key,

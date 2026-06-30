@@ -145,6 +145,15 @@ class LlmConverter(BaseConverter):
             dtype = self.llm_config.torch_dtype
         else:
             dtype = None
+        # Convert string dtype to torch dtype
+        if isinstance(dtype, str):
+            import torch
+            _str_to_torch = {
+                "float16": torch.float16,
+                "bfloat16": torch.bfloat16,
+                "float32": torch.float32
+            }
+            dtype = _str_to_torch.get(dtype, dtype)
         return dtype
 
     def is_key_quantized(self, key: str):
@@ -616,6 +625,12 @@ class LlmConverter(BaseConverter):
         self.init_quantization()
 
     def get_qtype(self, dtype, bits):
+        if dtype is None:
+            # Fallback: infer from self.quantize
+            if hasattr(self, 'quantize') and 'bf16' in self.quantize:
+                dtype = torch.bfloat16
+            else:
+                dtype = torch.float16
         if dtype == torch.float16:
             if bits == 4:
                 return "w4f16"

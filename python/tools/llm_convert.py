@@ -77,6 +77,11 @@ LLM_CONVERTERS = [
         "default_max_shape": (980, 980),
         "pixel_multiple": 28
     }),
+    (("minicpmv4_6", ), "llm.MiniCPMV4_6Converter", "MiniCPMV4_6Converter", {
+        "default_max_shape": (448, 448),
+        "pixel_multiple": 56,
+        "force_dynamic": True,
+    }),
     (("janus", ), "llm.JanusConverter", "JanusConverter", {}),
     (("paddleocr_vl", ), "llm.PaddleOCRVLConverter", "PaddleOCRVLConverter", {}),
     (("lfm2_vl", ), "llm.LFM2VLConverter", "LFM2VLConverter", {}),

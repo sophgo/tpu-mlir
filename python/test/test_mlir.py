@@ -139,6 +139,11 @@ class MLIR_IR_TESTER(object):
             "concat_slice": (self.test_concat_slice, Y, Y),
             "softplus_mul": (self.test_softplus_mul, Y, Y),
             "softmax_topk": (self.test_softmax_topk, Y, Y),
+            "conv2d_non_overlapping": (self.test_conv2d_non_overlapping, Y, Y),
+            "matmul_reshape_permute": (self.test_matmul_reshape_permute, Y, Y),
+            "matmul_dynamic": (self.test_matmul_dynamic, Y, Y),
+            "reshape_dynamic": (self.test_reshape_dynamic, Y, Y),
+            "permute_dynamic": (self.test_permute_dynamic, Y, Y),
         }
         # currently test_mlir.py only supports fp quant mode
         self.support_quant_modes = ["f32", "f16"]  # no need "bf16" for now
@@ -398,6 +403,7 @@ class MLIR_IR_TESTER(object):
                                    chip=self.chip,
                                    mode=mode,
                                    tolerance=tolerance,
+                                   test_reference=None,
                                    debug=self.debug,
                                    dynamic=self.dynamic,
                                    num_core=self.num_core,
@@ -1465,6 +1471,282 @@ class MLIR_IR_TESTER(object):
 
         # Deploy for each quantization mode
         self._deploy_test_case(case_name)
+
+    def test_conv2d_non_overlapping(self, case_name):
+        """Test case: Conv2d with kernel_size == stride (non-overlapping patches).
+
+        Reproduces the patch embedding Conv2d:
+          Input:  [1, 3, 14, num_patches*14]  (NaViT pixel values)
+          Weight: [1152, 3, 14, 14]           (Conv2d weight)
+          Bias:   [1152]                       (Conv2d bias)
+          Output: [1, 1152, 1, num_patches]    (patch embeddings)
+
+        kernel=[14,14], stride=[14,14], group=1, pads=[0,0,0,0]
+
+        With --dynamic:
+          - MLIR compiled with max_patches=4624 (max shape)
+          - Test input uses test_patches=1008 (smaller shape)
+          - This tests if dynamic shape kernel handles smaller inputs correctly
+        """
+        in_channels = 3
+        out_channels = 1152
+        patch_size = 14
+
+        if self.dynamic:
+            # Dynamic test: compile with max shape, test with smaller shape
+            max_patches = 4624  # max shape for compilation
+            test_patches = 1008  # smaller shape for testing
+        else:
+            # Static test: compile and test with same shape
+            max_patches = 1008
+            test_patches = 1008
+
+        # MLIR shapes (max shape for compilation)
+        input_shapes = [
+            [1, in_channels, patch_size, max_patches * patch_size],
+        ]
+        weight_shapes = [
+            [out_channels, in_channels, patch_size, patch_size],
+            [out_channels],
+        ]
+        output_shapes = [
+            [1, out_channels, 1, max_patches],
+        ]
+
+        block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
+            case_name, input_shapes, weight_shapes, output_shapes, ["F32"])
+
+        in0_op = input_ops[0]
+
+        # Conv2d patch embedding
+        conv_out = top.ConvOp(self._T(block_mlir, output_shapes[0]),
+                              in0_op,
+                              weight_ops[0],
+                              weight_ops[1],
+                              kernel_shape=[patch_size, patch_size],
+                              strides=[patch_size, patch_size],
+                              pads=[0, 0, 0, 0],
+                              dilations=[1, 1],
+                              loc=self._L(block_mlir, "patch_embedding"),
+                              ip=ip).output
+
+        block_mlir.create_return_op([conv_out])
+
+        # Generate test data with test_patches (may be smaller than max_patches)
+        actual_input_shapes = [
+            [1, in_channels, patch_size, test_patches * patch_size],
+        ]
+        self._save_mlir_and_data(
+            case_name,
+            block_mlir,
+            actual_input_shapes,  # use smaller shape for input data
+            weight_shapes,
+            input_descs=[self.Desc('float32', -1, 1)])
+
+        self._deploy_test_case(case_name, tolerance=(0.99, 0.98))
+
+    def test_matmul_reshape_permute(self, case_name):
+        """Test case: Reshape + Permute + MatMul equivalence to Conv2d (kernel==stride, no padding).
+
+        When kernel==stride and no padding, Conv2d is equivalent to:
+          1. Reshape to extract non-overlapping patches
+          2. Permute patches to first dim
+          3. Flatten each patch to a vector
+          4. MatMul with weight matrix
+          5. Add bias
+
+        This tests if MatMul-based approach supports dynamic num_patches.
+
+        Conv2d params: in=3, out=1152, kernel=14, stride=14, pad=0, group=1
+        """
+        in_channels = 3
+        out_channels = 1152
+        patch_size = 14
+
+        if self.dynamic:
+            max_patches = 4624
+            test_patches = 1008
+        else:
+            max_patches = 1008
+            test_patches = 1008
+
+        patch_flat = in_channels * patch_size * patch_size  # 3*14*14 = 588
+
+        # MLIR shapes (max shape)
+        input_shapes = [
+            [1, in_channels, patch_size, max_patches * patch_size],
+        ]
+        weight_shapes = [
+            [patch_flat, out_channels],  # [588, 1152]
+            [1, out_channels],  # bias [1, 1152]
+        ]
+        output_shapes = [
+            [1, out_channels, 1, max_patches],
+        ]
+
+        block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
+            case_name, input_shapes, weight_shapes, output_shapes, ["F32"])
+
+        in0_op = input_ops[0]
+
+        # 1. Reshape [1,3,14,P*14] -> [1,3,14,P,14]
+        reshape1 = top.ReshapeOp(self._T(block_mlir,
+                                         [1, in_channels, patch_size, max_patches, patch_size]),
+                                 in0_op,
+                                 shape=[1, in_channels, patch_size, -1, patch_size],
+                                 loc=self._L(block_mlir, "reshape_split"),
+                                 ip=ip).output
+
+        # 2. Permute [1,3,14,P,14] -> [1,P,3,14,14]
+        permute1 = top.PermuteOp(self._T(block_mlir,
+                                         [1, max_patches, in_channels, patch_size, patch_size]),
+                                 reshape1,
+                                 order=[0, 3, 1, 2, 4],
+                                 loc=self._L(block_mlir, "permute"),
+                                 ip=ip).output
+
+        # 3. Reshape [1,P,3,14,14] -> [-1,588]
+        reshape2 = top.ReshapeOp(self._T(block_mlir, [max_patches, patch_flat]),
+                                 permute1,
+                                 shape=[-1, patch_flat],
+                                 loc=self._L(block_mlir, "reshape_flatten"),
+                                 ip=ip).output
+
+        # 4. MatMul [P,588] @ [588,1152] + bias [1,1152] -> [P,1152]
+        matmul_out = top.MatMulOp(self._T(block_mlir, [max_patches, out_channels]),
+                                  reshape2,
+                                  weight_ops[0],
+                                  weight_ops[1],
+                                  loc=self._L(block_mlir, "matmul_embed"),
+                                  ip=ip).output
+
+        # 5. Reshape [P,1152] -> [1,1152,1,-1]
+        reshape3 = top.ReshapeOp(self._T(block_mlir, output_shapes[0]),
+                                 matmul_out,
+                                 shape=[1, out_channels, 1, -1],
+                                 loc=self._L(block_mlir, "reshape_output"),
+                                 ip=ip).output
+
+        block_mlir.create_return_op([reshape3])
+
+        # Generate test data with test_patches
+        actual_input_shapes = [
+            [1, in_channels, patch_size, test_patches * patch_size],
+        ]
+        self._save_mlir_and_data(
+            case_name,
+            block_mlir,
+            actual_input_shapes,
+            weight_shapes,
+            input_descs=[self.Desc('float32', -1, 1)],
+            weight_descs=[self.Desc('float32', -0.1, 0.1),
+                          self.Desc('float32', -0.1, 0.1)])
+
+        self._deploy_test_case(case_name, tolerance=(0.99, 0.98))
+
+    def test_matmul_dynamic(self, case_name):
+        """Test: bare MatMul with dynamic batch dim.
+
+        [P, 588] @ [588, 1152] + bias [1, 1152] -> [P, 1152]
+        With --dynamic: compile max_P=4624, test P=1008.
+        """
+        K = 588
+        N = 1152
+        max_P = 4624
+        test_P = 1008 if self.dynamic else max_P
+
+        input_shapes = [[max_P, K]]
+        weight_shapes = [[K, N], [1, N]]
+        output_shapes = [[max_P, N]]
+
+        block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
+            case_name, input_shapes, weight_shapes, output_shapes, ["F32"])
+
+        out = top.MatMulOp(self._T(block_mlir, [max_P, N]),
+                           input_ops[0],
+                           weight_ops[0],
+                           weight_ops[1],
+                           loc=self._L(block_mlir, "matmul"),
+                           ip=ip).output
+
+        block_mlir.create_return_op([out])
+
+        actual_input_shapes = [[test_P, K]]
+        self._save_mlir_and_data(
+            case_name,
+            block_mlir,
+            actual_input_shapes,
+            weight_shapes,
+            input_descs=[self.Desc('float32', -1, 1)],
+            weight_descs=[self.Desc('float32', -0.1, 0.1),
+                          self.Desc('float32', -0.1, 0.1)])
+
+        self._deploy_test_case(case_name, tolerance=(0.99, 0.98))
+
+    def test_reshape_dynamic(self, case_name):
+        """Test: single Reshape with dynamic last dim.
+
+        [1, 3, 14, P*14] -> [1, -1, 588]  (flatten patches)
+        With --dynamic: compile max_P=4624, test P=1008.
+        """
+        C, H, PS = 3, 14, 14
+        max_P = 4624
+        test_P = 1008 if self.dynamic else max_P
+
+        input_shapes = [[1, C, H, max_P * PS]]
+        output_shapes = [[1, max_P, C * H * PS]]
+
+        block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
+            case_name, input_shapes, [], output_shapes, ["F32"])
+
+        # Reshape [1,3,14,P*14] -> [1,-1,588]
+        r1 = top.ReshapeOp(self._T(block_mlir, output_shapes[0]),
+                           input_ops[0],
+                           shape=[1, -1, C * H * PS],
+                           loc=self._L(block_mlir, "reshape"),
+                           ip=ip).output
+
+        block_mlir.create_return_op([r1])
+
+        actual_input_shapes = [[1, C, H, test_P * PS]]
+        self._save_mlir_and_data(case_name,
+                                 block_mlir,
+                                 actual_input_shapes, [],
+                                 input_descs=[self.Desc('float32', -1, 1)])
+
+        self._deploy_test_case(case_name, tolerance=(0.99, 0.98))
+
+    def test_permute_dynamic(self, case_name):
+        """Test: 4D Permute with dynamic dim.
+
+        [1, 16, 128, S] -> [1, S, 16, 128]  order=[0,3,1,2]
+        With --dynamic: compile max_S=2048, test S=512.
+        (Parameters from working model's Permute)
+        """
+        max_S = 10
+        test_S = 5 if self.dynamic else max_S
+
+        input_shapes = [[1, 8, 4, max_S]]
+        output_shapes = [[1, max_S, 8, 4]]
+
+        block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
+            case_name, input_shapes, [], output_shapes, ["F32"])
+
+        p1 = top.PermuteOp(self._T(block_mlir, output_shapes[0]),
+                           input_ops[0],
+                           order=[0, 3, 1, 2],
+                           loc=self._L(block_mlir, "permute"),
+                           ip=ip).output
+
+        block_mlir.create_return_op([p1])
+
+        actual_input_shapes = [[1, 8, 4, test_S]]
+        self._save_mlir_and_data(case_name,
+                                 block_mlir,
+                                 actual_input_shapes, [],
+                                 input_descs=[self.Desc('float32', -1, 1)])
+
+        self._deploy_test_case(case_name, tolerance=(0.99, 0.98))
 
 
 def test_one_case_in_all(tester: MLIR_IR_TESTER, case: str, error_cases: List,
