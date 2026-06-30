@@ -233,6 +233,15 @@ public:
     std::string buffer;
     llvm::raw_string_ostream os(buffer);
 
+    // Include chip type so different processors don't share the same hash.
+    // NOTE: keep this before the loop below, whose induction variable `module`
+    // shadows the `module::` namespace.
+    os << "Chip: " << module::getChipStr()
+       << "; CoreNum: " << module::getCoreNum()
+       << "; Mode: " << module::getModeStr()
+       << "; AddrMode: " << module::stringifyAddrMode(module::getAddrMode())
+       << "; MlirVersion: " << MLIR_VERSION << "\n";
+
     for (auto &module : *modules) {
       module->walk<WalkOrder::PreOrder>([&](Operation *op) {
         // if (!module::isOpInBlock(op))
@@ -253,7 +262,18 @@ public:
 
     os.flush();
     // std::cout << "\n" << buffer << "\n\n";
-    return llvm::xxh3_64bits(llvm::StringRef(buffer.data(), buffer.size()));
+    uint64_t modules_hash =
+        llvm::xxh3_64bits(llvm::StringRef(buffer.data(), buffer.size()));
+    DEBUG_WITH_TYPE("lg_hash", {
+      llvm::dbgs() << "[lg_hash] get_modules_hash: Chip="
+                   << module::getChipStr()
+                   << "; CoreNum=" << module::getCoreNum()
+                   << "; Mode=" << module::getModeStr() << "; AddrMode="
+                   << module::stringifyAddrMode(module::getAddrMode())
+                   << "; MlirVersion=" << MLIR_VERSION
+                   << "; modules_hash=" << modules_hash << "\n";
+    });
+    return modules_hash;
   }
 
   /// gen hash key for single op
