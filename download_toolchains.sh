@@ -3,8 +3,7 @@ set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 # PPL compiler version and download URL
 # Update these when a new PPL release is needed
-PPL_URL="https://github.com/sophgo/tpu-mlir/releases/download/v1.28.1/ppl_v1.7.111-g23cf8831-20260616.tar.gz"
-
+PPL_URL="/toolchains/tpu_mlir/ppl_v1.7.111-g23cf8831-20260616.tar.gz"
 
 function usage() {
   echo "Usage: $0 [ppl|cross-gcc|all] [--dir PATH]"
@@ -19,80 +18,101 @@ function usage() {
   echo "  -h, --help  Show this help message"
 }
 
+# Print the top-level directory name of a tarball, or return 1 if it cannot be
+# determined reliably (e.g. corrupt archive, or first entry is "./"). Strips a
+# leading "./" prefix so archives packaged that way are handled correctly.
+function tar_toplevel() {
+  local tarball="$1"
+  local first top
+  first=$(tar tf "${tarball}" 2>/dev/null | head -1)
+  [ -n "${first}" ] || return 1
+  first="${first#./}"
+  top="${first%%/*}"
+  [ -n "${top}" ] && [ "${top}" != "." ] || return 1
+  printf '%s\n' "${top}"
+}
+
 function download_toolchain() {
-  local toolchain=$1
-  local addr=$2
-  local filename=$3
-  if [ ! -d "${toolchain}" ]; then
-    echo "Downloading ${toolchain}..."
-    if [ ! -e "${filename}" ]; then
-      wget "${addr}"
-    fi
-    tar xvf "${filename}"
-  else
-    echo "${toolchain} already exists, skipping."
+  local addr=$1
+  local filename="${addr##*/}"
+  local toolchain=""
+  if [ -e "${filename}" ]; then
+    toolchain=$(tar_toplevel "${filename}") || true
   fi
+  if [ -n "${toolchain}" ] && [ -d "${toolchain}" ]; then
+    echo "${toolchain} already exists, skipping."
+    return 0
+  fi
+  if [ ! -e "${filename}" ]; then
+    echo "Downloading ${filename}..."
+    python3 -m dfss --url="open@sophgo.com:${addr}"
+  else
+    echo "Extracting ${filename}..."
+  fi
+  tar xvf "${filename}"
 }
 
 function download_ppl() {
-  PPL_PACKAGE="${PPL_URL##*/}"
-  PPL_VERSION="${PPL_PACKAGE#ppl_}"
-  PPL_VERSION="${PPL_VERSION%.tar.gz}"
+  local ppl_package="${PPL_URL##*/}"
+  local ppl_version="${ppl_package#ppl_}"
+  ppl_version="${ppl_version%.tar.gz}"
   local ppl_dir="ppl_compile"
   if [ -d "${ppl_dir}" ]; then
     local current_version=""
     if [ -f "${ppl_dir}/version" ]; then
       current_version=$(cat "${ppl_dir}/version")
     fi
-    if [ "${current_version}" = "${PPL_VERSION}" ]; then
+    if [ "${current_version}" = "${ppl_version}" ]; then
       echo "PPL compiler ${current_version} already exists, skipping."
       return 0
     fi
-    echo "PPL compiler ${current_version} != ${PPL_VERSION}, updating..."
+    echo "PPL compiler ${current_version} != ${ppl_version}, updating..."
     rm -rf "${ppl_dir}"
   fi
   echo "Downloading PPL compiler..."
-  if [ ! -e "${PPL_PACKAGE}" ]; then
-    wget "${PPL_URL}"
+  if [ ! -e "${ppl_package}" ]; then
+    python3 -m dfss --url="open@sophgo.com:${PPL_URL}"
   fi
   # Extract PPL compiler package
-  tar xvf "${PPL_PACKAGE}"
-  local ppl_extracted="ppl_${PPL_VERSION}"
+  tar xvf "${ppl_package}"
+  local ppl_extracted=""
+  ppl_extracted=$(tar_toplevel "${ppl_package}") || {
+    echo "ERROR: cannot determine top-level dir of ${ppl_package}" >&2
+    exit 1
+  }
+  if [ ! -d "${ppl_extracted}" ]; then
+    echo "ERROR: expected extracted dir '${ppl_extracted}' not found" >&2
+    exit 1
+  fi
   mkdir -p "${ppl_dir}"
   mv "${ppl_extracted}"/* "${ppl_dir}/"
   rm -rf "${ppl_extracted}"
-  rm -f "${PPL_PACKAGE}"
-  chmod +x "${ppl_dir}/bin/"*
-  echo "${PPL_VERSION}" > "${ppl_dir}/version"
+  rm -f "${ppl_package}"
+  shopt -s nullglob
+  chmod +x "${ppl_dir}/bin/"* 2>/dev/null || true
+  shopt -u nullglob
+  echo "${ppl_version}" > "${ppl_dir}/version"
   echo "PPL compiler downloaded to ${ppl_dir}"
 }
 
 function download_gcc_arm() {
-  local tool_name="gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu"
-  local tool_addr="https://developer.arm.com/-/media/Files/downloads/gnu-a/10.3-2021.07/binrel/${tool_name}.tar.xz"
-  local tool_file="${tool_name}.tar.xz"
-  download_toolchain "${tool_name}" "${tool_addr}" "${tool_file}"
+  local url="/toolchains/tpu_mlir/gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu-stripped.tar.xz"
+  download_toolchain "${url}"
 }
 
 function download_gcc_linaro() {
-  local tool_name="gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu"
-  local tool_addr="https://releases.linaro.org/components/toolchain/binaries/6.3-2017.05/aarch64-linux-gnu/gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu.tar.xz"
-  local tool_file="${tool_name}.tar.xz"
-  download_toolchain "${tool_name}" "${tool_addr}" "${tool_file}"
+  local url="/toolchains/tpu_mlir/gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu-stripped.tar.xz"
+  download_toolchain "${url}"
 }
 
 function download_riscv_xuantie900() {
-  local tool_name="Xuantie-900-gcc-linux-5.10.4-glibc-x86_64-V2.6.1"
-  local tool_addr="https://occ-oss-prod.oss-cn-hangzhou.aliyuncs.com/resource//1695015316167/Xuantie-900-gcc-linux-5.10.4-glibc-x86_64-V2.6.1-20220906.tar.gz"
-  local tool_file="Xuantie-900-gcc-linux-5.10.4-glibc-x86_64-V2.6.1-20220906.tar.gz"
-  download_toolchain "${tool_name}" "${tool_addr}" "${tool_file}"
+  local url="/toolchains/tpu_mlir/Xuantie-900-gcc-linux-5.10.4-glibc-x86_64-V2.6.1-20220906-stripped.tar.xz"
+  download_toolchain "${url}"
 }
 
 function download_loong() {
-  local tool_name="loongson-gnu-toolchain-8.3-x86_64-loongarch64-linux-gnu-rc1.1"
-  local tool_addr="http://ftp.loongnix.cn/toolchain/gcc/release/loongarch/gcc8/loongson-gnu-toolchain-8.3-x86_64-loongarch64-linux-gnu-rc1.1.tar.xz"
-  local tool_file="loongson-gnu-toolchain-8.3-x86_64-loongarch64-linux-gnu-rc1.1.tar.xz"
-  download_toolchain "${tool_name}" "${tool_addr}" "${tool_file}"
+  local url="/toolchains/tpu_mlir/loongson-gnu-toolchain-8.3-x86_64-loongarch64-linux-gnu-rc1.1.tar.xz"
+  download_toolchain "${url}"
 }
 
 # Parse arguments
@@ -155,8 +175,10 @@ done
 # Set download directory
 CROSS_TOOLCHAINS=${CROSS_TOOLCHAINS:-${DIR}/cross_toolchains}
 
+pip3 install -U dfss
+
 mkdir -p "${CROSS_TOOLCHAINS}"
-pushd "${CROSS_TOOLCHAINS}"
+pushd "${CROSS_TOOLCHAINS}" >/dev/null
 
 for t in "${UNIQUE_TARGETS[@]}"; do
   case "$t" in
@@ -168,4 +190,4 @@ for t in "${UNIQUE_TARGETS[@]}"; do
   esac
 done
 
-popd
+popd >/dev/null

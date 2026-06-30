@@ -3,7 +3,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
 # it will be used in build.sh to remind people source envsetup.sh
 # please keep it the same in both files
-export ENVSETUP_LAST_UPDATED="2025-05-22"
+export ENVSETUP_LAST_UPDATED="2026-06-17"
 
 export PROJECT_ROOT=$DIR
 export BUILD_PATH=${BUILD_PATH:-$PROJECT_ROOT/build}
