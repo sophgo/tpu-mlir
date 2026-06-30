@@ -1710,15 +1710,22 @@ void ConvertTopToTpu::runOnOperation() {
               break;
             }
           } else if (isa<top::SoftmaxOp>(user)) {
-            mlir::Attribute tmp = mlir::BoolAttr::get(op->getContext(), true);
-            if (module::getMode() == module::Mode::INT8 ||
-                module::getMode() == module::Mode::UINT8 ||
-                module::getMode() == module::Mode::W4INT8) {
-              op->setAttr("output_int16", tmp);
-            } else if (module::getMode() == module::Mode::F8E4M3) {
-              op->setAttr("output_f16", tmp);
+            auto name = module::getName(user).str();
+            if (LoweringConfig::quantize_map.find(name) !=
+                    LoweringConfig::quantize_map.end() &&
+                (LoweringConfig::quantize_map[name] == module::Mode::F16 ||
+                 LoweringConfig::quantize_map[name] == module::Mode::BF16 ||
+                 LoweringConfig::quantize_map[name] == module::Mode::F32)) {
+              mlir::Attribute tmp = mlir::BoolAttr::get(op->getContext(), true);
+              if (module::getMode() == module::Mode::INT8 ||
+                  module::getMode() == module::Mode::UINT8 ||
+                  module::getMode() == module::Mode::W4INT8) {
+                op->setAttr("output_int16", tmp);
+              } else if (module::getMode() == module::Mode::F8E4M3) {
+                op->setAttr("output_f16", tmp);
+              }
+              break;
             }
-            break;
           }
         }
       }
