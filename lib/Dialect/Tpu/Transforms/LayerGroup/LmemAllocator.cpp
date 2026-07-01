@@ -550,6 +550,30 @@ void LmemAllocator::update_avail_lmems(
          time_step->is_tensor_hold_in_lmem(recent_buffer_allocated.value));
   }
 
+  if (!ts_overlap) {
+    auto is_3ic_conv_op_buffer = [](const mem_buffer_key_t &key) {
+      if (key.type != LMEM_OPERATION || key.op == nullptr) {
+        return false;
+      }
+      auto attr = key.op->getAttrOfType<mlir::IntegerAttr>("use_3ic_optimize");
+      return attr != nullptr && attr.getInt() != 0;
+    };
+    auto is_multi_ts_activation = [](const mem_buffer_key_t &key,
+                                     const mem_buffer_value_t &val) {
+      // start_ts != end_ts means the buffer is live across more than one
+      // timestep (the start_ts > end_ts case wraps around the circular
+      // timestep table and is multi-timestep as well).
+      return key.type == LMEM_ACTIVATION && val.start_ts != val.end_ts;
+    };
+    if ((is_3ic_conv_op_buffer(buffer_key) &&
+         is_multi_ts_activation(recent_buffer_allocated,
+                                recent_buffer_value)) ||
+        (is_3ic_conv_op_buffer(recent_buffer_allocated) &&
+         is_multi_ts_activation(buffer_key, buffer_value))) {
+      ts_overlap = true;
+    }
+  }
+
   if (ts_overlap) {
     MemBlock used_overlap_buffer;
     used_overlap_buffer.first = recent_buffer_value.addr;
@@ -632,12 +656,28 @@ MemBlock LmemAllocator::find_avail_lmem_location(
 
     // allow bank confict if could not find space not conflict
     if (alloc_lmem.first == -1) {
-      alloc_lmem = avail_space.avail_lmems.front();
-      GROUP_DEBUG_WITH_TYPE("find_avail_lmem", lg_info, [&]() {
-        llvm::dbgs() << LOG_STEP("use_bank_conflict_buffer")
-                     << LOG_KV("lmem", alloc_lmem.first)
-                     << LOG_KV("size", alloc_lmem.second) << "\n";
-      });
+      bool any_region_fits = false;
+      for (auto it = avail_space.avail_lmems.begin();
+           it != avail_space.avail_lmems.end(); ++it) {
+        if (it->second >= buffer_value.size) {
+          any_region_fits = true;
+          break;
+        }
+      }
+      if (any_region_fits) {
+        alloc_lmem = avail_space.avail_lmems.front();
+        GROUP_DEBUG_WITH_TYPE("find_avail_lmem", lg_info, [&]() {
+          llvm::dbgs() << LOG_STEP("use_bank_conflict_buffer")
+                       << LOG_KV("lmem", alloc_lmem.first)
+                       << LOG_KV("size", alloc_lmem.second) << "\n";
+        });
+      } else {
+        alloc_lmem = MemBlock(-1, -1);
+        GROUP_DEBUG_WITH_TYPE("find_avail_lmem", lg_info, [&]() {
+          llvm::dbgs() << LOG_STEP("no_region_fits_buffer")
+                       << LOG_KV("buffer_size", buffer_value.size) << "\n";
+        });
+      }
     }
   }
 
