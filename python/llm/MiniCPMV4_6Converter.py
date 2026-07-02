@@ -196,31 +196,11 @@ class MiniCPMV4_6Converter(Qwen3_5Converter):
             in_shapes.extend([window_idx_shape, reverse_idx_shape])
             in_types.extend(['INT32', 'INT32'])
 
-        # Output shapes: final output + debug intermediates
-        # Order: fc2, embed, layer0, layer6, layer26, post_ln, merger_gather, [post_vit_merger],
-        #        then layer0 internals: norm1, q_2d, q_4d, fa_4d, fa_2d, out_proj, attn_out
+        # Output shape: final merger output
         merged_d = D * 4
         out_shapes = [
-            [merger_N_out, D_text],  # 0: final output
-            [patches, D],  # 1: embed
-            [patches, D],  # 2: layer_0
-            [patches, D],  # 3: layer_6
-            [post_vit_patches if mode == "16x" else patches, D],  # 4: layer_26
-            [post_vit_patches if mode == "16x" else patches, D],  # 5: post_ln
-            [merger_N_out, merged_d],  # 6: merger_gather
+            [merger_N_out, D_text],
         ]
-        if mode == "16x":
-            out_shapes.append([post_vit_patches, D])  # 7: post_vit_merger
-        # Layer 0 debug outputs (indices 8-14 for 4x, 9-15 for 16x)
-        out_shapes.extend([
-            [patches, D],  # norm1
-            [patches, D],  # q_2d (after q_proj linear)
-            [1, patches, n_heads, d_head],  # q_4d (after 2D→4D reshape)
-            [1, patches, n_heads, d_head],  # fa_4d (after FAttention)
-            [patches, D],  # fa_2d (after 4D→2D reshape)
-            [patches, D],  # out_proj (after out_proj linear)
-            [patches, D],  # attn_out (after residual add)
-        ])
 
         vit_mlir = MLIRImporter(in_shapes,
                                 out_shapes,
@@ -290,9 +270,6 @@ class MiniCPMV4_6Converter(Qwen3_5Converter):
 
         # ======================== Vision Block ========================
 
-        # Debug outputs for layer 0 (collected when idx==0)
-        debug_layer0 = {}
-
         def vision_block(idx, in_op, num_p):
             """Single encoder layer. num_p = current number of patches."""
             lp = f"{vp}.encoder.layers.{idx}"
@@ -301,11 +278,8 @@ class MiniCPMV4_6Converter(Qwen3_5Converter):
             hidden_shape = [num_p, D]
             qkv_shape = [1, num_p, n_heads, d_head]
             proj_shape = [D, D]
-            dbg = (idx == 0)  # only collect debug ops for layer 0
-
             # Attention
             norm1_op = self.layer_norm(vit_mlir, in_op, f"{lp}.layer_norm1", eps=self.vit_ln_eps)
-            if dbg: debug_layer0["norm1"] = norm1_op
 
             q_op = self.linear(vit_mlir,
                                f"{attn_p}.q_proj",
@@ -313,7 +287,6 @@ class MiniCPMV4_6Converter(Qwen3_5Converter):
                                proj_shape,
                                hidden_shape,
                                force_bias=True)
-            if dbg: debug_layer0["q_2d"] = q_op
 
             k_op = self.linear(vit_mlir,
                                f"{attn_p}.k_proj",
@@ -334,7 +307,6 @@ class MiniCPMV4_6Converter(Qwen3_5Converter):
                                  shape=[1, -1, n_heads, d_head],
                                  loc=L(f"{attn_p}.q.reshape"),
                                  ip=ip).output
-            if dbg: debug_layer0["q_4d"] = q_op
 
             k_op = top.ReshapeOp(T(qkv_shape),
                                  k_op,
@@ -363,7 +335,6 @@ class MiniCPMV4_6Converter(Qwen3_5Converter):
                                      keep_dims=True,
                                      loc=L(f"{lp}.fattention"),
                                      ip=ip).output
-            if dbg: debug_layer0["fa_4d"] = fa_op
 
             # 4D → 2D
             fa_op = top.ReshapeOp(T(hidden_shape),
@@ -371,7 +342,6 @@ class MiniCPMV4_6Converter(Qwen3_5Converter):
                                   shape=[-1, D],
                                   loc=L(f"{lp}.fattention.reshape"),
                                   ip=ip).output
-            if dbg: debug_layer0["fa_2d"] = fa_op
 
             out_op = self.linear(vit_mlir,
                                  f"{attn_p}.out_proj",
@@ -379,12 +349,10 @@ class MiniCPMV4_6Converter(Qwen3_5Converter):
                                  proj_shape,
                                  hidden_shape,
                                  force_bias=True)
-            if dbg: debug_layer0["out_proj"] = out_op
 
             attn_out = top.AddOp(T(hidden_shape), [in_op, out_op],
                                  loc=L(f"{attn_p}.out.add"),
                                  ip=ip).output
-            if dbg: debug_layer0["attn_out"] = attn_out
 
             # MLP
             norm2_op = self.layer_norm(vit_mlir, attn_out, f"{lp}.layer_norm2", eps=self.vit_ln_eps)
@@ -588,31 +556,19 @@ class MiniCPMV4_6Converter(Qwen3_5Converter):
             reverse_idx_op = vit_mlir.create_input_op(L("vit_merger.reverse_index"), 4)
 
         new_op = vision_embedding(in0, in1)
-        embed_op = new_op  # DEBUG
 
         if mode == "4x":
             for i in range(self.vit_depth):
                 new_op = vision_block(i, new_op, patches)
-                if i == 0:
-                    layer0_op = new_op  # DEBUG
-                elif i == 6:
-                    layer6_op = new_op  # DEBUG
-            layer26_op = new_op  # DEBUG
         else:  # 16x
             for i in range(self.insert_layer_id + 1):  # layers 0-6
                 new_op = vision_block(i, new_op, patches)
-                if i == 0:
-                    layer0_op = new_op  # DEBUG
-            layer6_op = new_op  # DEBUG
             new_op = vit_window_merger(new_op, window_idx_op, reverse_idx_op)
-            post_vit_merger_op = new_op  # DEBUG
             for i in range(self.insert_layer_id + 1, self.vit_depth):  # layers 7-26
                 new_op = vision_block(i, new_op, post_vit_patches)
-            layer26_op = new_op  # DEBUG
 
         # Post-layernorm
         new_op = self.layer_norm(vit_mlir, new_op, f"{vp}.post_layernorm", eps=self.vit_ln_eps)
-        post_ln_op = new_op  # DEBUG
 
         # Merger (DownsampleMLP)
         merged_d = D * 4
@@ -629,8 +585,6 @@ class MiniCPMV4_6Converter(Qwen3_5Converter):
                                  shape=[-1, merged_d],
                                  loc=L("merger.reshape_2x2"),
                                  ip=ip).output
-        merger_gather_op = reshaped  # DEBUG
-
         ln_op = self.layer_norm(vit_mlir, reshaped, f"{mp}.pre_norm", eps=1e-6)
         fc1_op = self.linear(vit_mlir,
                              f"{mp}.linear_1",
@@ -642,14 +596,5 @@ class MiniCPMV4_6Converter(Qwen3_5Converter):
                              act_op, [merged_d, D_text], [merger_N_out, D_text],
                              force_bias=True)
 
-        # Build output list: final output + debug intermediates + layer0 internals
-        out_ops = [fc2_op, embed_op, layer0_op, layer6_op, layer26_op, post_ln_op, merger_gather_op]
-        if mode == "16x":
-            out_ops.append(post_vit_merger_op)
-        # Layer 0 debug: norm1, q_2d, q_4d, fa_4d, fa_2d, out_proj, attn_out
-        l0_keys = ["norm1", "q_2d", "q_4d", "fa_4d", "fa_2d", "out_proj", "attn_out"]
-        for k in l0_keys:
-            out_ops.append(debug_layer0[k])
-
-        vit_mlir.create_return_op(out_ops)
+        vit_mlir.create_return_op([fc2_op])
         self.save_mlir_module(vit_mlir, name)
