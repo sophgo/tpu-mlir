@@ -861,8 +861,8 @@ def main():
                         help="Output directory path (default: <out_dir>/<out_dir>_analysis.xlsx)")
     args = parser.parse_args()
     # yapf: enable
-    from transformers import AutoConfig
-    config = AutoConfig.from_pretrained(args.model_path, trust_remote_code=True)
+    from llm.transformers_compat import load_auto_config
+    config = load_auto_config(args.model_path, trust_remote_code=True)
     if hasattr(config, "text_config"):
         llm_config = config.text_config
     else:

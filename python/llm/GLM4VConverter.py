@@ -299,14 +299,8 @@ class GLM4VConverter(LlmConverter):
 
     @override
     def rotary_embedding(self):
-        from transformers.models.glm4v.modeling_glm4v import Glm4vTextRotaryEmbedding
-        rotary_embed = Glm4vTextRotaryEmbedding(self.config)
-        position_ids = torch.arange(self.seq_length, dtype=torch.long).reshape(
-            1, 1, self.seq_length).expand(3, 1, self.seq_length)
-        x = torch.zeros([1, self.seq_length, self.hidden_size], dtype=torch.float32)
-        cos, sin = rotary_embed(x, position_ids)
-        cos = cos[0].reshape(self.seq_length, 1, -1)
-        sin = sin[0].reshape(self.seq_length, 1, -1)
+        from .transformers_compat import text_rotary_cos_sin
+        cos, sin = text_rotary_cos_sin(self.config, self.seq_length)
         partial_rotary_factor = getattr(self.config, 'partial_rotary_factor', 1)
         assert (cos.shape[-1] == self.head_dim * partial_rotary_factor)
         assert (sin.shape[-1] == self.head_dim * partial_rotary_factor)
@@ -314,9 +308,7 @@ class GLM4VConverter(LlmConverter):
         cos = cos[:, :, :cos.shape[-1] // 2]
         sin = sin[:, :, :sin.shape[-1] // 2]
         self.rot_dim = cos.shape[-1]
-        # cos.repeat_interleave(2, dim=-1)
-        # sin.repeat_interleave(2, dim=-1)
-        return cos.numpy(), sin.numpy()  # [seq, 1, 64]
+        return cos, sin  # [seq, 1, 64]
 
     def mrope(self, mlir_gen, in_op, name: str):
         # in_op weight has been repeat_interleaved
@@ -407,10 +399,8 @@ class GLM4VConverter(LlmConverter):
         return q_op, k_op
 
     def vision_rotary(self):
-        from transformers.models.glm4v.modeling_glm4v import Glm4vVisionRotaryEmbedding
-        rotary_embed = Glm4vVisionRotaryEmbedding(self.vit_head_dim // 2)
-        freqs = rotary_embed(self.num_patches)
-        return freqs.cos().numpy(), freqs.sin().numpy()
+        from .transformers_compat import vision_rotary_cos_sin
+        return vision_rotary_cos_sin(self.vit_head_dim // 2, self.num_patches)
 
     # modeling_glm4v.py:Glm4vVisionBlock
     def vision_block(self, vit_mlir, idx: int, in_op, cos_op, sin_op, mask_op):

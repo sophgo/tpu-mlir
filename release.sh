@@ -22,6 +22,7 @@ rsync -a --exclude='__pycache__' --exclude='*.pyc' \
     ${PROJECT_ROOT}/regression/ ${release_archive}/regression/
 cp -rf ${PROJECT_ROOT}/third_party/customlayer ${release_archive}
 cp -rf ${PROJECT_ROOT}/python/tools/soc_infer ${release_archive}/python/tools/
+cp ${PROJECT_ROOT}/requirements.txt ${release_archive}/
 
 # ------------------------------------------------------------------------------
 

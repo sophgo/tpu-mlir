@@ -257,20 +257,18 @@ if __name__ == '__main__':
         else:
             config = create_gguf_config(reader, args.quantize, args.seq_length)
     else:
-        from transformers import AutoConfig
+        from llm.transformers_compat import load_auto_config
         from llm.ModelHandle import SafetensorsModelHandle
 
         _path_lower = args.model_path.lower()
         if "qwen" in _path_lower and "asr" in _path_lower:
             import qwen_asr  # noqa: F401
         try:
-            config = AutoConfig.from_pretrained(args.model_path, trust_remote_code=True)
+            config = load_auto_config(args.model_path, trust_remote_code=True)
         except Exception as e:
             raise RuntimeError("Failed to load model config from '{}': {}\n"
-                               "Hint: your transformers/torchvision may be outdated. "
-                               "Try updating them and run again:\n"
-                               "    pip3 install transformers torchvision -U".format(
-                                   args.model_path, e)) from e
+                               "Hint: check that the directory contains a valid "
+                               "config.json.".format(args.model_path, e)) from e
         loader = SafetensorsModelHandle(args.model_path)
         model_type = config.model_type
 

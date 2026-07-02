@@ -7,39 +7,6 @@
 
 from .LlmConverter import *
 from typing_extensions import override
-from transformers.models.mllama.configuration_mllama import MllamaTextConfig
-from transformers.modeling_rope_utils import ROPE_INIT_FUNCTIONS
-
-
-class MllamaRotaryEmbedding(torch.nn.Module):
-
-    def __init__(self, config: MllamaTextConfig, device=None):
-        super().__init__()
-        self.rope_type = config.rope_scaling["rope_type"]
-        self.max_seq_len_cached = config.max_position_embeddings
-        self.original_max_seq_len = config.max_position_embeddings
-
-        self.config = config
-        self.rope_init_fn = ROPE_INIT_FUNCTIONS[self.rope_type]
-        inv_freq, self.attention_scaling = self.rope_init_fn(self.config, device)
-        self.register_buffer("inv_freq", inv_freq, persistent=False)
-        self.original_inv_freq = self.inv_freq
-
-    # @torch.no_grad()
-    # @dynamic_rope_update  # power user: used with advanced RoPE types (e.g. dynamic rope)
-    def forward(self, position_ids):
-        inv_freq_expanded = self.inv_freq[None, :,
-                                          None].float().expand(position_ids.shape[0], -1, 1)
-        position_ids_expanded = position_ids[:, None, :].float()
-
-        device_type = "cpu"
-        with torch.autocast(device_type=device_type, enabled=False):  # Force float32
-            freqs = (inv_freq_expanded.float() @ position_ids_expanded.float()).transpose(1, 2)
-            emb = torch.cat((freqs, freqs), dim=-1)
-            cos = emb.cos() * self.attention_scaling
-            sin = emb.sin() * self.attention_scaling
-
-        return cos.to(dtype=torch.float32), sin.to(dtype=torch.float32)
 
 
 class Llama3_2VConverter(LlmConverter):
@@ -73,10 +40,10 @@ class Llama3_2VConverter(LlmConverter):
 
     @override
     def rotary_embedding(self):
-        rotary_embed = MllamaRotaryEmbedding(config=self.llm_config, device="cpu")
-        position_ids = torch.arange(self.seq_length, dtype=torch.long).reshape(1, self.seq_length)
-        cos, sin = rotary_embed(position_ids)
-        return cos.numpy(), sin.numpy()
+        from .transformers_compat import text_rotary_cos_sin
+        cos, sin = text_rotary_cos_sin(self.llm_config, self.seq_length)
+        # Mllama legacy layout: [1, seq, head_dim]
+        return np.swapaxes(cos, 0, 1), np.swapaxes(sin, 0, 1)
 
     @override
     def gen_embedding_lmhead_mlir(self):

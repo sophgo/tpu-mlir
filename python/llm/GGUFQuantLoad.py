@@ -5,19 +5,26 @@
 #
 # ==============================================================================
 
+from __future__ import annotations
+
 import os
 import re
 import threading
 import numpy as np
 import logging
 from collections import namedtuple
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 
 logger = logging.getLogger(__name__)
 
 # Add gguf-py to path
 
-from gguf import GGUFReader, GGMLQuantizationType, ReaderTensor
+from .gguf_compat import GGMLQuantizationType, GGML_QUANT_SIZES
+
+if TYPE_CHECKING:
+    # ReaderTensor is used only in type annotations; ``gguf`` itself is imported
+    # lazily at runtime when a .gguf file is actually read (see ``__init__``).
+    from gguf import ReaderTensor
 
 # ---------------------------------------------------------------------------
 # Per-architecture name mapping declarations
@@ -418,6 +425,8 @@ class GGUFQuantLoad:
     """GGUF loader that preserves quantization information."""
 
     def __init__(self, model_path: str):
+        from gguf import GGUFReader
+
         self.model_path = model_path
         self.reader = GGUFReader(model_path)
         self.mmproj_reader = None
@@ -443,6 +452,8 @@ class GGUFQuantLoad:
         Merges vision/mmproj tensors into the main tensor map and
         extracts vision config metadata for VLM conversion.
         """
+        from gguf import GGUFReader
+
         self.mmproj_reader = GGUFReader(mmproj_path)
         logger.info("Loaded mmproj GGUF: %s", mmproj_path)
 
@@ -879,7 +890,6 @@ class GGUFQuantLoad:
 
     def _get_block_size(self, quant_type: GGMLQuantizationType) -> int:
         """Get block size for quantization type."""
-        from gguf.constants import GGML_QUANT_SIZES
         if quant_type in GGML_QUANT_SIZES:
             return GGML_QUANT_SIZES[quant_type][0]
         return 1

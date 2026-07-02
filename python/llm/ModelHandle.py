@@ -14,6 +14,7 @@ import re
 from .LlmInfo import WeightType
 from transform.MLIRImporter import Platform
 from .LlmInfo import LlmType
+from .transformers_compat import Config, build_rope_parameters
 import logging
 
 logger = logging.getLogger(__name__)
@@ -486,7 +487,7 @@ class SafetensorsModelHandle(ModelHandle):
 
 from .GGUFQuantLoad import GGUFQuantLoad
 from .QuantConverter import QuantConverter, get_quant_type_group_size
-from gguf import GGMLQuantizationType
+from .gguf_compat import GGMLQuantizationType
 
 
 def get_gguf_group_size(gguf_reader):
@@ -639,49 +640,10 @@ def create_gguf_config(gguf_reader,
             }
         }
 
-    try:
-        from transformers import Qwen3Config, Qwen2Config, LlamaConfig, GemmaConfig
-    except ImportError:
-        config = object()
-        config.vocab_size = vocab_size
-        config.hidden_size = hidden_size
-        config.intermediate_size = intermediate_size
-        config.num_hidden_layers = num_hidden_layers
-        config.num_attention_heads = num_attention_heads
-        config.num_key_value_heads = num_key_value_heads
-        config.head_dim = head_dim
-        config.max_position_embeddings = seq_length
-        config.rms_norm_eps = rms_norm_eps
-        config.rope_theta = rope_theta
-        config.hidden_act = "silu"
-        config.dtype = dtype_str
-        config.torch_dtype = None
-        config.tie_word_embeddings = True
-        config.model_type = architecture
-        config.quantization_config = quantization_config
-        return config
-
-    try:
-        from transformers.models.qwen3_5.configuration_qwen3_5 import Qwen3_5Config
-    except ImportError:
-        Qwen3_5Config = None
-
-    config_class_map = {
-        'qwen3': Qwen3Config,
-        'qwen2': Qwen2Config,
-        'llama': LlamaConfig,
-        'llama3': LlamaConfig,
-        'gemma': GemmaConfig,
-        'gemma2': GemmaConfig,
-    }
-    if Qwen3_5Config is not None:
-        config_class_map['qwen35'] = Qwen3_5Config
-
-    if arch_lower not in config_class_map:
-        config_class = Qwen3Config
-    else:
-        config_class = config_class_map[arch_lower]
-
+    # Build the text config as an attribute-access dict (Config). This replaces the
+    # former per-arch transformers config classes (Qwen3Config/Qwen2Config/
+    # LlamaConfig/GemmaConfig/Qwen3_5Config); downstream code only reads attributes,
+    # uses .get() / `in`, and checks isinstance(..., dict), so Config is a drop-in.
     extra_kwargs = {}
     if arch_lower == 'qwen35':
         full_attention_interval = get_val(f"{architecture}.full_attention_interval") or 4
@@ -699,35 +661,33 @@ def create_gguf_config(gguf_reader,
         extra_kwargs["linear_value_head_dim"] = ssm_state_size
         extra_kwargs["linear_num_key_heads"] = ssm_group_count
         extra_kwargs["linear_num_value_heads"] = ssm_group_count
-        if Qwen3_5Config is not None:
-            extra_kwargs["text_config"] = {
-                "vocab_size": vocab_size,
-                "hidden_size": hidden_size,
-                "intermediate_size": intermediate_size,
-                "num_hidden_layers": num_hidden_layers,
-                "num_attention_heads": num_attention_heads,
-                "num_key_value_heads": num_key_value_heads,
-                "head_dim": head_dim,
-                "max_position_embeddings": seq_length,
-                "rms_norm_eps": rms_norm_eps,
-                "hidden_act": "silu",
-                "layer_types": text_layer_types,
-                "full_attention_interval": full_attention_interval,
-                "linear_conv_kernel_dim": ssm_conv_kernel,
-                "linear_key_head_dim": ssm_state_size,
-                "linear_value_head_dim": ssm_state_size,
-                "linear_num_key_heads": ssm_group_count,
-                "linear_num_value_heads": ssm_group_count,
-                "attn_output_gate": True,
-                "mamba_ssm_dtype": "float32",
-                "model_type": "qwen3_5_text",
-                "tie_word_embeddings": not _has_output_weight,
-                "partial_rotary_factor": 0.25,
-            }
-        else:
-            extra_kwargs["layer_types"] = text_layer_types
+        extra_kwargs["layer_types"] = text_layer_types
+        extra_kwargs["text_config"] = Config(
+            vocab_size=vocab_size,
+            hidden_size=hidden_size,
+            intermediate_size=intermediate_size,
+            num_hidden_layers=num_hidden_layers,
+            num_attention_heads=num_attention_heads,
+            num_key_value_heads=num_key_value_heads,
+            head_dim=head_dim,
+            max_position_embeddings=seq_length,
+            rms_norm_eps=rms_norm_eps,
+            hidden_act="silu",
+            layer_types=text_layer_types,
+            full_attention_interval=full_attention_interval,
+            linear_conv_kernel_dim=ssm_conv_kernel,
+            linear_key_head_dim=ssm_state_size,
+            linear_value_head_dim=ssm_state_size,
+            linear_num_key_heads=ssm_group_count,
+            linear_num_value_heads=ssm_group_count,
+            attn_output_gate=True,
+            mamba_ssm_dtype="float32",
+            model_type="qwen3_5_text",
+            tie_word_embeddings=not _has_output_weight,
+            partial_rotary_factor=0.25,
+        )
 
-    config = config_class(
+    config = Config(
         vocab_size=vocab_size,
         hidden_size=hidden_size,
         intermediate_size=intermediate_size,
@@ -740,11 +700,17 @@ def create_gguf_config(gguf_reader,
         rope_theta=rope_theta,
         hidden_act="silu",
         torch_dtype=dtype_str,
+        dtype=dtype_str,
         tie_word_embeddings=(not _has_output_weight if arch_lower == 'qwen35' else True),
         **extra_kwargs,
     )
+    # Mirror transformers' standardize_rope_params so config.rope_parameters exists;
+    # the mrope post-processing below relies on it being present and updatable.
+    config.rope_parameters = Config(build_rope_parameters(config))
     if arch_lower == 'qwen35':
         config.model_type = "qwen3_5"
+        if 'text_config' in config:
+            config.text_config.rope_parameters = Config(build_rope_parameters(config.text_config))
     else:
         config.model_type = architecture
     if quantization_config:
@@ -845,23 +811,9 @@ def _attach_vision_config(config, mmproj_reader, llm_hidden_size):
     mmproj_arch = arch_field.contents() if arch_field else "clip"
     llm_arch = getattr(config, 'model_type', '')
 
-    try:
-        from transformers.models.qwen3_vl.configuration_qwen3_vl import Qwen3VLVisionConfig
-        from transformers.models.qwen2_5_vl.configuration_qwen2_5_vl import Qwen2_5_VLVisionConfig
-        from transformers.models.qwen2_vl.configuration_qwen2_vl import Qwen2VLVisionConfig
-    except ImportError:
-        Qwen3VLVisionConfig = None
-        Qwen2_5_VLVisionConfig = None
-        Qwen2VLVisionConfig = None
-
-    try:
-        from transformers.models.qwen3_5.configuration_qwen3_5 import Qwen3_5VisionConfig
-    except ImportError:
-        Qwen3_5VisionConfig = None
-
     vision_config = None
-    if llm_arch in ('qwen3vl', 'qwen3_vl') and Qwen3VLVisionConfig:
-        vision_config = Qwen3VLVisionConfig(
+    if llm_arch in ('qwen3vl', 'qwen3_vl'):
+        vision_config = Config(
             depth=clip_vision_depth if clip_vision_depth else 24,
             hidden_size=clip_vision_hidden_size if clip_vision_hidden_size else 1024,
             hidden_act="gelu_pytorch_tanh" if clip_use_gelu else "silu",
@@ -877,8 +829,8 @@ def _attach_vision_config(config, mmproj_reader, llm_hidden_size):
             num_position_embeddings=num_position_embeddings,
             deepstack_visual_indexes=deepstack_visual_indexes,
         )
-    elif llm_arch in ('qwen2_5vl', 'qwen2_5_vl') and Qwen2_5_VLVisionConfig:
-        vision_config = Qwen2_5_VLVisionConfig(
+    elif llm_arch in ('qwen2_5vl', 'qwen2_5_vl'):
+        vision_config = Config(
             depth=clip_vision_depth if clip_vision_depth else 24,
             hidden_size=clip_vision_hidden_size if clip_vision_hidden_size else 1024,
             hidden_act="gelu_pytorch_tanh" if clip_use_gelu else "silu",
@@ -893,8 +845,8 @@ def _attach_vision_config(config, mmproj_reader, llm_hidden_size):
             out_hidden_size=llm_hidden_size,
             fullatt_block_indexes=deepstack_visual_indexes,
         )
-    elif llm_arch in ('qwen3_5', 'qwen35') and Qwen3_5VisionConfig:
-        vision_config = Qwen3_5VisionConfig(
+    elif llm_arch in ('qwen3_5', 'qwen35'):
+        vision_config = Config(
             depth=clip_vision_depth if clip_vision_depth else 24,
             hidden_size=clip_vision_hidden_size if clip_vision_hidden_size else 1024,
             hidden_act="gelu_pytorch_tanh" if clip_use_gelu else "silu",
@@ -910,8 +862,8 @@ def _attach_vision_config(config, mmproj_reader, llm_hidden_size):
             num_position_embeddings=num_position_embeddings,
             deepstack_visual_indexes=deepstack_visual_indexes,
         )
-    elif llm_arch in ('qwen2vl', 'qwen2_vl') and Qwen2VLVisionConfig:
-        vision_config = Qwen2VLVisionConfig(
+    elif llm_arch in ('qwen2vl', 'qwen2_vl'):
+        vision_config = Config(
             depth=clip_vision_depth if clip_vision_depth else 32,
             embed_dim=clip_vision_hidden_size if clip_vision_hidden_size else 1280,
             hidden_size=llm_hidden_size,
@@ -966,9 +918,8 @@ def _attach_vision_config(config, mmproj_reader, llm_hidden_size):
             "layer_norm",
         })
     else:
-        logger.warning(
-            "No transformers vision config class for arch '%s'; "
-            "falling back to SimpleConfig", llm_arch)
+        logger.warning("No built-in vision config for arch '%s'; "
+                       "falling back to generic Config", llm_arch)
         vision_config = _dict_to_config({
             "hidden_size":
             clip_vision_hidden_size if clip_vision_hidden_size else 1024,
@@ -1196,17 +1147,12 @@ def _generate_preprocessor_configs(llm_arch, mmproj_reader, config_dir):
 
 
 def _dict_to_config(d):
-    """Convert a dict to a dict-like object that supports both .get() and attribute access."""
+    """Convert a dict to a dict-like object that supports both .get() and attribute access.
 
-    class SimpleConfig(dict):
-
-        def __getattr__(self, key):
-            try:
-                return self[key]
-            except KeyError:
-                raise AttributeError(key)
-
-    return SimpleConfig(d)
+    Uses :class:`transformers_compat.Config`, which recursively wraps nested dicts so
+    that ``cfg.vision_config.patch_size`` works at any depth.
+    """
+    return Config(d)
 
 
 @dataclass
@@ -1275,7 +1221,7 @@ class GGUFModelHandle(ModelHandle):
         return self.model.read_quantized(key)
 
     def init_quantization(self, conv):
-        from gguf import GGMLQuantizationType
+        from .gguf_compat import GGMLQuantizationType
 
         quant_types_found = {}
         for tensor in self.model.reader.tensors:
@@ -1338,7 +1284,7 @@ class GGUFModelHandle(ModelHandle):
 
     @staticmethod
     def _is_quant_type_symmetric(quant_type) -> bool:
-        from gguf import GGMLQuantizationType
+        from .gguf_compat import GGMLQuantizationType
         qn = quant_type.name if hasattr(quant_type, 'name') else str(quant_type)
         if qn in ('Q4_0', 'Q5_0', 'Q8_0'):
             return True
@@ -1348,7 +1294,7 @@ class GGUFModelHandle(ModelHandle):
 
     @staticmethod
     def _quant_type_to_output_bits(quant_type) -> int:
-        from gguf import GGMLQuantizationType
+        from .gguf_compat import GGMLQuantizationType
         if quant_type in (GGMLQuantizationType.Q4_0, GGMLQuantizationType.Q4_1):
             return 4
         if quant_type in (GGMLQuantizationType.Q8_0, GGMLQuantizationType.Q8_1,
@@ -1359,7 +1305,7 @@ class GGUFModelHandle(ModelHandle):
         return 8
 
     def _resolve_layer_quantization(self, conv):
-        from gguf import GGMLQuantizationType
+        from .gguf_compat import GGMLQuantizationType
         from collections import defaultdict
 
         FLOAT_TYPES = {
@@ -1449,7 +1395,7 @@ class GGUFModelHandle(ModelHandle):
     def _detect_block_float_fallbacks(self, conv):
         num_layers = getattr(conv.llm_config, 'num_hidden_layers', 0)
         model_q_group_size = conv.q_group_size
-        from gguf import GGMLQuantizationType
+        from .gguf_compat import GGMLQuantizationType
 
         for idx in range(num_layers):
             layer_info = self.layer_quant_infos.get(f"block.{idx}")

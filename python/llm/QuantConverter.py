@@ -15,8 +15,7 @@ import os
 # Add gguf-py to path
 
 # Import GGUF types
-from gguf import GGMLQuantizationType
-from gguf.constants import GGML_QUANT_SIZES, GGUF_DEFAULT_ALIGNMENT
+from .gguf_compat import GGMLQuantizationType, GGML_QUANT_SIZES, GGUF_DEFAULT_ALIGNMENT
 
 logger = logging.getLogger(__name__)
 

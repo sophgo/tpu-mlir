@@ -58,22 +58,13 @@ class Qwen3_5Converter(LlmConverter):
 
     @override
     def rotary_embedding(self):
-        try:
-            from transformers.models.qwen3_5.modeling_qwen3_5 import Qwen3_5TextRotaryEmbedding
-            rotary_embed = Qwen3_5TextRotaryEmbedding(self.llm_config)
-            position_ids = torch.arange(self.seq_length, dtype=torch.long).reshape(
-                1, 1, self.seq_length).expand(3, 1, self.seq_length)
-            x = torch.zeros([1, self.seq_length, self.hidden_size], dtype=torch.float32)
-            cos, sin = rotary_embed(x, position_ids)
-            cos = cos[0].reshape(self.seq_length, 1, -1)
-            sin = sin[0].reshape(self.seq_length, 1, -1)
-            end_dim = cos.shape[-1] // 2
-            # half
-            cos = cos[:, :, :end_dim]
-            sin = sin[:, :, :end_dim]
-            return cos.numpy(), sin.numpy()  #[seq, 1, 64]
-        except (ImportError, ModuleNotFoundError):
-            return self._compute_mrope_manually()
+        from .transformers_compat import text_rotary_cos_sin
+        cos, sin = text_rotary_cos_sin(self.llm_config, self.seq_length)
+        end_dim = cos.shape[-1] // 2
+        # half
+        cos = cos[:, :, :end_dim]
+        sin = sin[:, :, :end_dim]
+        return cos, sin  #[seq, 1, 64]
 
     def _get_mrope_params(self):
         rope_params = getattr(self.llm_config, 'rope_parameters', None)
@@ -259,11 +250,9 @@ class Qwen3_5Converter(LlmConverter):
         return q_op, k_op
 
     def vision_rotary(self):
-        from transformers.models.qwen2_vl.modeling_qwen2_vl import VisionRotaryEmbedding
+        from .transformers_compat import vision_rotary_cos_sin
         head_dim = self.vconfig.hidden_size // self.vnum_heads
-        rotary_embed = VisionRotaryEmbedding(head_dim // 2)
-        freqs = rotary_embed(self.num_patches)
-        return freqs.cos().numpy(), freqs.sin().numpy()
+        return vision_rotary_cos_sin(head_dim // 2, self.num_patches)
 
     def gen_vit_mlir(self):
         tqdm.write(f"generate vit  mlir ...")

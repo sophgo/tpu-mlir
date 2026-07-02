@@ -21,7 +21,7 @@ from typing import (
     Type,
     Union,
 )
-from transformers import AutoConfig, LlamaConfig
+from .transformers_compat import Config
 
 
 @dataclass
@@ -105,7 +105,7 @@ class JanusConverter(LlmConverter):
     def load_pretrained(self, config):
         super().load_pretrained(config)
         self.model_info = JANUS_INFO
-        self.llm_config = LlamaConfig.from_dict(self.config.language_config)
+        self.llm_config = Config(self.config.language_config)
 
     def vision_block(self, vit_mlir, id: int, in_op, mask_op):
         norm1 = f"{self.vit_path}.blocks.{id}.norm1"

@@ -373,14 +373,8 @@ class LlmConverter(BaseConverter):
             cos = cos.reshape(self.seq_length, 1, self.head_dim)
             sin = sin.reshape(self.seq_length, 1, self.head_dim)
             return cos, sin
-        from transformers.models.llama.modeling_llama import LlamaRotaryEmbedding
-        rotary_embed = LlamaRotaryEmbedding(config=self.llm_config)
-        position_ids = torch.arange(self.seq_length, dtype=torch.long).reshape(1, self.seq_length)
-        x = torch.zeros([1, self.seq_length, self.hidden_size], dtype=torch.float32)
-        cos, sin = rotary_embed(x, position_ids)
-        cos = cos.reshape(self.seq_length, 1, -1)
-        sin = sin.reshape(self.seq_length, 1, -1)
-        return cos.numpy(), sin.numpy()  #[seq, 1, 64]
+        from .transformers_compat import text_rotary_cos_sin
+        return text_rotary_cos_sin(self.llm_config, self.seq_length)  #[seq, 1, 64]
 
     def rms_norm(self, mlir_gen, in_op, norm_path: str, name: str = "", eps=None):
         if not self.model.is_exist(norm_path + ".weight"):
@@ -631,14 +625,14 @@ class LlmConverter(BaseConverter):
                 dtype = torch.bfloat16
             else:
                 dtype = torch.float16
-        if dtype == torch.float16:
+        if dtype in (torch.float16, "float16"):
             if bits == 4:
                 return "w4f16"
             elif bits == 8:
                 return "w8f16"
             elif bits == 16:
                 return "f16"
-        elif dtype == torch.bfloat16:
+        elif dtype in (torch.bfloat16, "bfloat16"):
             if bits == 4:
                 return "w4bf16"
             elif bits == 8:

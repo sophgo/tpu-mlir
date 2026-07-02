@@ -42,20 +42,14 @@ class Qwen2VLConverter(LlmConverter):
 
     @override
     def rotary_embedding(self):
-        from transformers.models.qwen2_vl.modeling_qwen2_vl import Qwen2VLRotaryEmbedding
-        rotary_embed = Qwen2VLRotaryEmbedding(self.llm_config)
-        position_ids = torch.arange(self.seq_length, dtype=torch.long).reshape(
-            1, 1, self.seq_length).expand(3, 1, self.seq_length)
-        x = torch.zeros([1, self.seq_length, self.hidden_size], dtype=torch.float32)
-        cos, sin = rotary_embed(x, position_ids)
-        cos = cos[0].reshape(self.seq_length, 1, -1)
-        sin = sin[0].reshape(self.seq_length, 1, -1)
+        from .transformers_compat import text_rotary_cos_sin
+        cos, sin = text_rotary_cos_sin(self.llm_config, self.seq_length)
         assert (cos.shape[-1] == self.head_dim)
         assert (sin.shape[-1] == self.head_dim)
         # half
         cos = cos[:, :, :self.head_dim // 2]
         sin = sin[:, :, :self.head_dim // 2]
-        return cos.numpy(), sin.numpy()  #[seq, 1, 64]
+        return cos, sin  #[seq, 1, 64]
 
     def mrope(self, mlir_gen, in_op, name: str):
         mrope_section = getattr(self.config.rope_scaling, 'mrope_section', [16, 24, 24])
@@ -137,11 +131,9 @@ class Qwen2VLConverter(LlmConverter):
         return q_op, k_op
 
     def vision_rotary(self):
-        from transformers.models.qwen2_vl.modeling_qwen2_vl import VisionRotaryEmbedding
+        from .transformers_compat import vision_rotary_cos_sin
         head_dim = self.vconfig.embed_dim // self.vnum_heads
-        rotary_embed = VisionRotaryEmbedding(head_dim // 2)
-        freqs = rotary_embed(self.num_patches)
-        return freqs.cos().numpy(), freqs.sin().numpy()
+        return vision_rotary_cos_sin(head_dim // 2, self.num_patches)
 
     def vision_block(self, vit_mlir, id: int, in_op, cos_op, sin_op, mask_op):
         norm1 = f"visual.blocks.{id}.norm1"
