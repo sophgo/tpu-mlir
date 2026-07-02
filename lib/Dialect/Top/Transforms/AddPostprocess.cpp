@@ -944,9 +944,9 @@ void AddPostprocessPass::insertYolosegOp(OpBuilder &builder) {
   operands.push_back(none);
   attrs.clear();
   attrs.push_back(
-      builder.getNamedAttr("offset", builder.getI64ArrayAttr({0, 0, 0})));
+      builder.getNamedAttr("offset", builder.getI64ArrayAttr({0, 0})));
   attrs.push_back(
-      builder.getNamedAttr("steps", builder.getI64ArrayAttr({1, 1, 1})));
+      builder.getNamedAttr("steps", builder.getI64ArrayAttr({1, 1})));
   attrs.push_back(
       builder.getNamedAttr("ends", builder.getI64ArrayAttr({max_boxes, nm})));
   new_type = RankedTensorType::get({max_boxes, nm},
