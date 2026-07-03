@@ -138,7 +138,6 @@ inline void progressbar::update() {
             for (int _ = 0; _ < 50; _++) output << todo_char;
             output << closing_bracket_char << " 0%";
         }
-        else output << "0%";
     }
     update_is_called = true;
 
@@ -148,14 +147,14 @@ inline void progressbar::update() {
     perc = progress*100./(n_cycles-1);
     if (perc < last_perc) return;
 
-    // update percentage each unit
-    if (perc == last_perc + 1) {
-        // erase the correct  number of characters
-        if      (perc <= 10)                output << "\b\b"   << perc << '%';
-        else if (perc  > 10 and perc < 100) output << "\b\b\b" << perc << '%';
-        else if (perc == 100)               output << "\b\b\b" << perc << '%';
-    }
     if (do_show_bar == true) {
+        // update percentage each unit
+        if (perc == last_perc + 1) {
+            // erase the correct  number of characters
+            if      (perc <= 10)                output << "\b\b"   << perc << '%';
+            else if (perc  > 10 and perc < 100) output << "\b\b\b" << perc << '%';
+            else if (perc == 100)               output << "\b\b\b" << perc << '%';
+        }
         // update bar every ten units
         if (perc % 2 == 0) {
             // erase closing bracket
@@ -183,7 +182,9 @@ inline void progressbar::update() {
     }
     last_perc = perc;
     ++progress;
-    output << std::flush;
+    if (do_show_bar == true) {
+        output << std::flush;
+    }
 
     return;
 }

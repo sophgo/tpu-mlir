@@ -87,6 +87,10 @@ void py_module::set_mem_mode(std::string mem_mode) {
   py_module::gmem_mode_str_ = mem_mode;
 }
 
+void py_module::set_progress_silent(bool silent) {
+  interpreter_->set_progress_silent(silent);
+}
+
 void py_module::set_tensor(
     std::string name,
     py::array_t<float, py::array::c_style | py::array::forcecast> data,

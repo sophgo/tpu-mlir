@@ -99,6 +99,7 @@ PYBIND11_MODULE(pymlir, m) {
       .def(py::init<>())
       .def("load", &py_module::load, "load module from IR")
       .def("set_mem_mode", &py_module::set_mem_mode)
+      .def("set_progress_silent", &py_module::set_progress_silent)
       .def("set_tensor", &py_module::set_tensor)
       .def("set_tensor_from_int", &py_module::set_tensor_from_int)
       .def("get_tensor", &py_module::get_tensor, "get one tensor data")

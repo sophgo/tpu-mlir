@@ -25,6 +25,8 @@ public:
 
   static void set_mem_mode(std::string mem_mode);
 
+  void set_progress_silent(bool silent);
+
   void set_tensor(
       std::string name,
       py::array_t<float, py::array::c_style | py::array::forcecast> data,

@@ -630,7 +630,7 @@ void ModuleInterpreter::invoke(bool express_type) {
 
 void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
   module::init(module);
-  progressbar bar(num_infer_op);
+  progressbar bar(num_infer_op, !silent_progress);
   int flag = 0;
   std::string if_name, loop_name;
   for (auto func : module.getOps<FuncOp>()) {
@@ -988,7 +988,7 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
       return WalkResult::advance();
     });
   }
-  llvm::errs() << "\n";
+  if (!silent_progress) llvm::errs() << "\n";
   if (express_type && module::isState(module::State::TPU_LOWERED)) {
     for (auto &name : all_tensor_names) {
       auto value = value_map.at(name);
@@ -1031,7 +1031,7 @@ void ModuleInterpreter::value_to_disk(const std::string &filename,
 void ModuleInterpreter::invoke_to_disk(const std::string &filename,
                                        bool express_type) {
   module::init(module);
-  progressbar bar(num_infer_op);
+  progressbar bar(num_infer_op, !silent_progress);
   std::map<std::string, int> mem_uses;
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](InferenceInterface infer_op) {
@@ -1096,15 +1096,19 @@ void ModuleInterpreter::invoke_to_disk(const std::string &filename,
       infer_op.deinit(p);
     });
   }
-  llvm::errs() << "\n";
+  if (!silent_progress) llvm::errs() << "\n";
   for (auto &m : all_tensor_names) {
     value_to_disk(filename, m, *mem_map[m], express_type);
   }
 }
 
+void ModuleInterpreter::set_progress_silent(bool silent) {
+  silent_progress = silent;
+}
+
 void ModuleInterpreter::invoke_part_in_mem(bool express_type) {
   module::init(module);
-  progressbar bar(num_infer_op);
+  progressbar bar(num_infer_op, !silent_progress);
   std::map<std::string, int> mem_uses;
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](InferenceInterface infer_op) {
@@ -1181,7 +1185,7 @@ void ModuleInterpreter::invoke_part_in_mem(bool express_type) {
       }
     });
   }
-  llvm::errs() << "\n";
+  if (!silent_progress) llvm::errs() << "\n";
   if (express_type && module::isState(module::State::TPU_LOWERED)) {
     for (auto &name : all_tensor_names) {
       if (value_map.find(name) == value_map.end() ||

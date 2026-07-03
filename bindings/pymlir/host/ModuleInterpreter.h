@@ -93,9 +93,11 @@ public:
   std::vector<std::shared_ptr<tpu_mlir::CallBack>> before_hooks;
   std::vector<std::shared_ptr<tpu_mlir::CallBack>> after_hooks;
   void set_mem_mode(std::string mem_mmode);
+  void set_progress_silent(bool silent);
 
 private:
   ModuleOp module;
+  bool silent_progress = false;
   int64_t num_infer_op;
   mem_mode_t mem_mode;
   int64_t total_count;
