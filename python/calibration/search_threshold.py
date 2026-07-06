@@ -89,8 +89,12 @@ class SearchThreshold:
                 outputs = self.mix_prec.run_model(int8_model, False, global_compare_layers,
                                                   layers_rate, predictions_gt)
             elif self.benchmark_method == 'snr':
-                outputs = 1 - self.mix_prec.run_model_loss_snr(
-                    int8_model, False, global_compare_layers, layers_rate, predictions_gt)
+                outputs = 1 - self.mix_prec.run_model(int8_model,
+                                                      False,
+                                                      global_compare_layers,
+                                                      layers_rate,
+                                                      predictions_gt,
+                                                      loss_methods=['snr'])
             result[method] = outputs
 
         optimal_method = max(result.items(), key=lambda item: item[1])

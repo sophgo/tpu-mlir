@@ -907,18 +907,22 @@ class ActivationCalibrator(BaseKldCalibrator):
             if self.args.tune_num > 0:
                 cali_table += ".1"
             _, _ = self.dump_cali_table(cali_table, method_name)
-            if self.args.tune_num <= 0:
-                self.args.calibration_table = cali_table_orig
-                continue
-            else:
-                cali_table = cali_table.rsplit(".1", 1)[0]
-            self.args.calibration_table = cali_table
             thresholds_map_absmax = {}
             for op in self.activations_statistics:
-                if method_name == 'percentile9999':  # hack to use p99 as absmax to keep same with former version
+                if method_name == 'percentile9999':
                     thresholds_map_absmax[op] = self.activations_statistics[op][0].p99
                 else:
                     thresholds_map_absmax[op] = self.activations_statistics[op][0].abs_max
+            if self.args.tune_num <= 0:
+                for op_name in all_op_names:
+                    if op_name in self.activations_statistics:
+                        th = self.activations_statistics[op_name][0].get_threshold(method_name)
+                        tmp_th_dict[op_name] = [thresholds_map_absmax[op_name], th]
+                layer_th_dicts[method_name] = tmp_th_dict
+                self.args.calibration_table = cali_table_orig
+                continue
+            cali_table = cali_table.rsplit(".1", 1)[0]
+            self.args.calibration_table = cali_table
 
             tunner = SimpleTuner(self.args, self.tune_ds, self.ppa_list, thresholds_map_absmax)
             thresholds_map = tunner.run()

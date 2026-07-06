@@ -89,9 +89,11 @@ class MixQuantModel:
             mlir_lowering(self.fp32_mlir, self.quanted_mlir_file, self.mode, self.chip, 1, 1,
                           self.calib_table, False, self.mix_table)
             self.module.load(self.quanted_mlir_file)
+            self.module.set_progress_silent(True)
             self.parser = MlirParser(self.quanted_mlir_file)
         else:
             self.module.load(self.fp32_mlir)
+            self.module.set_progress_silent(True)
             self.parser = MlirParser(self.fp32_mlir)
         self.weight_file = self.parser.module_weight_file
 
@@ -373,8 +375,19 @@ class MixPrecSearcher:
             i += 1
         return snr / sum(layers_rate)
 
+    def _mse_loss(self, preds, gt_preds, layers_rate):
+        mse, i = 0, 0
+        for name1, name2 in zip(gt_preds, preds):
+            a = gt_preds[name1]
+            b = preds[name2]
+            if a.dtype != b.dtype or a.shape != b.shape:
+                raise RuntimeError("Calc loss fail:{} vs {}".format(name1, name2))
+            mse += layers_rate[i] * np.mean((a.reshape(-1) - b.reshape(-1))**2)
+            i += 1
+        return mse / sum(layers_rate)
+
     def _loss(self, preds, gt_preds, layers_rate=None, type='cos'):
-        assert type == 'cos' or type == 'sqnr' or type == 'snr'
+        assert type in ('cos', 'sqnr', 'snr', 'mse')
         if layers_rate is None:
             layers_rate = len(preds) * [1]
         if type == 'cos':
@@ -383,6 +396,8 @@ class MixPrecSearcher:
             return self._sqnr_loss(preds, gt_preds, layers_rate)
         elif type == 'snr':
             return self._snr_loss(preds, gt_preds, layers_rate)
+        elif type == 'mse':
+            return self._mse_loss(preds, gt_preds, layers_rate)
 
     def get_input_fp32_tensor(self, i, op_name):
         if op_name in self.ref_activations[i]:
@@ -625,18 +640,30 @@ class MixPrecSearcher:
                 layers_rate = len(global_compare_layers) * [1]
         return global_compare_layers, layers_rate, all_pre_layers
 
-    def run_model(self, model, float_type, global_compare_layers, layers_rate, predictions_gt):
-        outputs_cos = 0
+    def run_model(self,
+                  model,
+                  float_type,
+                  global_compare_layers,
+                  layers_rate,
+                  predictions_gt,
+                  sample_num=None,
+                  loss_methods=['cos']):
         if float_type:
             self.disable_print()
             self.logger.print_info("run float mode: {}".format(self.fp32_mlir))
         else:
             self.logger.print_info("run int8 mode: {}".format(self.fp32_mlir))
-        for idx in range(self.num_sample):
-            data = []
-            for name in list(self.ref_activations[idx].keys()):
-                data.append(self.ref_activations[idx][name][0])
+
+        num = self.num_sample if sample_num is None else sample_num
+        accum = {m: 0.0 for m in loss_methods}
+
+        for idx in range(num):
+            data = [
+                self.ref_activations[idx][name][0]
+                for name in list(self.ref_activations[idx].keys())
+            ]
             outputs = model.infer(data, global_compare_layers)
+
             if self.post_process_path:
                 module_path = self.post_process_path
                 module_name = self.post_process_name
@@ -644,117 +671,20 @@ class MixPrecSearcher:
                 modulevar = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(modulevar)
                 outputs = modulevar.PostProcess(outputs)
+
             if float_type:
                 predictions_gt.append(outputs)
             else:
-                outputs_cos += self._loss(outputs, predictions_gt[idx], layers_rate)
+                for m in loss_methods:
+                    accum[m] += self._loss(outputs, predictions_gt[idx], layers_rate, type=m)
+
             del outputs
             del data
-        outputs_cos = outputs_cos / self.num_sample
-        return outputs_cos
 
-    def run_model_new(self,
-                      model,
-                      float_type,
-                      global_compare_layers,
-                      layers_rate,
-                      predictions_gt,
-                      sample_num=1,
-                      loss_method=['cos', 'snr']):
-        outputs_cos = 0
-        outputs_snr = 0
-        if float_type:
-            self.disable_print()
-            self.logger.print_info("run float mode: {}".format(self.fp32_mlir))
-        else:
-            self.logger.print_info("run int8 mode: {}".format(self.fp32_mlir))
-        num = 1 if sample_num == -1 else self.num_sample
-        for idx in range(num):
-            data = []
-            for name in list(self.ref_activations[idx].keys()):
-                data.append(self.ref_activations[idx][name][0])
-            outputs = model.infer(data, global_compare_layers)
-            if self.post_process_path:
-                module_path = self.post_process_path
-                module_name = self.post_process_name
-                spec = importlib.util.spec_from_file_location(module_name, module_path)
-                modulevar = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(modulevar)
-                outputs = modulevar.PostProcess(outputs)
-            if float_type:
-                predictions_gt.append(outputs)
-            else:
-                if 'snr' in loss_method:
-                    outputs_snr += self._loss(outputs, predictions_gt[idx], layers_rate, type='snr')
-                if 'cos' in loss_method:
-                    outputs_cos += self._loss(outputs, predictions_gt[idx], layers_rate)
-        outputs_cos = 1 - outputs_cos / num
-        outputs_snr = outputs_snr / num
-        if 'cos' in loss_method and 'snr' in loss_method:
-            return outputs_cos, outputs_snr
-        elif 'cos' in loss_method:
-            return outputs_cos
-        else:
-            return outputs_snr
-
-    def run_model_fast(self, model, float_type, global_compare_layers, layers_rate, predictions_gt,
-                       count):
-        outputs_cos = 0
-        outputs_snr = 0
-        if float_type:
-            self.disable_print()
-            self.logger.print_info("run float mode: {}".format(self.fp32_mlir))
-        else:
-            self.logger.print_info("run int8 mode: {}".format(self.fp32_mlir))
-
-        data = []
-        for name in list(self.ref_activations[count].keys()):
-            data.append(self.ref_activations[count][name][0])
-        outputs = model.infer(data, global_compare_layers)
-        if self.post_process_path:
-            module_path = self.post_process_path
-            module_name = self.post_process_name
-            spec = importlib.util.spec_from_file_location(module_name, module_path)
-            modulevar = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(modulevar)
-            outputs = modulevar.PostProcess(outputs)
-        if float_type:
-            predictions_gt.append(outputs)
-        else:
-            outputs_snr += self._loss(outputs, predictions_gt[count], layers_rate, type='snr')
-            outputs_cos += self._loss(outputs, predictions_gt[count], layers_rate)
-        outputs_cos = 1 - outputs_cos
-        outputs_snr = outputs_snr
-
-        return outputs_cos, outputs_snr
-
-    def run_model_loss_snr(self, model, float_type, global_compare_layers, layers_rate,
-                           predictions_gt):
-        outputs_cos = 0
-        if float_type:
-            self.disable_print()
-            self.logger.print_info("run float mode: {}".format(self.fp32_mlir))
-        else:
-            self.logger.print_info("run int8 mode: {}".format(self.fp32_mlir))
-        for idx in range(self.num_sample):
-            data = []
-            for name in list(self.ref_activations[idx].keys()):
-                data.append(self.ref_activations[idx][name][0])
-            outputs = model.infer(data, global_compare_layers)
-            if self.post_process_path:
-                module_path = self.post_process_path
-                module_name = self.post_process_name
-                spec = importlib.util.spec_from_file_location(module_name, module_path)
-                modulevar = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(modulevar)
-                outputs = modulevar.PostProcess(outputs)
-            if float_type:
-                predictions_gt.append(outputs)
-            else:
-                type = 'snr'
-                outputs_cos += self._loss(outputs, predictions_gt[idx], layers_rate, type)
-        outputs_cos = outputs_cos / self.num_sample
-        return outputs_cos
+        result = {m: accum[m] / num for m in loss_methods}
+        if len(loss_methods) == 1:
+            return result[loss_methods[0]]
+        return result
 
     def get_fixed_float_layers(self, model, global_compare_layers, layers_rate, predictions_gt):
         float_ops = []

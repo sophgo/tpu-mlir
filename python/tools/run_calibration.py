@@ -14,7 +14,7 @@ import pymlir
 from calibration.kld_calibrator import ActivationCalibrator
 from calibration.data_selector import DataSelector
 from calibration.search_threshold import SearchThreshold
-from calibration.search_qtable import SearchQtable
+from calibration.search_qtable import SearchQtable, SearchQtableFast
 from calibration.smoothquant import SmoothQuant
 from calibration.softmax_correction import SoftmaxCorrecter
 from calibration.mix_precision import MixPrecSearcher
@@ -149,7 +149,8 @@ if __name__ == '__main__':
             elif args.search == 'search_qtable' and args.mix_mode == 'wi4ai8_wi8ai8':
                 searcherQ.run_w4a8()
             elif args.search == 'fast_search':
-                searcherQ.run_fast()
+                searcherQ = SearchQtableFast(args, selector, tune_ds, quant_table)
+                searcherQ.run()
             elif args.search == 'search_qtable':
                 searcherQ.run()
     else:
