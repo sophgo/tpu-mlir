@@ -109,6 +109,10 @@ def AddressAssign : Pass<"address-assign", "ModuleOp"> {
            "set special input/output as io memory">,
     Option<"same_addr", "same_addr", "std::string", /*default=*/"",
            "use same address for the specified tensor.">,
+    Option<"save_io_alone_config", "save_io_alone_config", "std::string", /*default=*/"",
+           "save io alone config to the specified json file.">,
+    Option<"use_io_alone_config", "use_io_alone_config", "std::string", /*default=*/"",
+           "use io alone config from the specified json file.">,
   ];
 }
 

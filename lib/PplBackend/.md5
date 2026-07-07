@@ -20,8 +20,8 @@ src/concat_volume.cpp f2df31581e759e9a3d33807c9a15d215
 src/concat_volume_fp.pl 7c19e491a0e3dba8b8fb13fe29cf76e8
 src/correlation.cpp 3f764737c6039cf239d8bff4c967f99d
 src/correlation_fp.pl 965590f31010ac53e612b13b28fbe6f1
-src/fattention_api.cpp 791109b079e20c8cf6078a6e1c186744
-src/fattention_prefill.pl eab462e0467d6fe049a9ceb81f999aa7
+src/fattention_api.cpp ea8da1c3e9643a66abb8dce88874225c
+src/fattention_prefill.pl 648fdac7e114d9272c0b7bf6a1a3e4a7
 src/fattention_v1.pl 57649be203be836a297516e3ce98dce0
 src/fattention_v2.pl 254b0f3eeead62a930680f71b57782e9
 src/insert_api.cpp 0ba6029996fcf4b1430651a5a9193f68
@@ -34,7 +34,7 @@ src/recurrent_gated_delta_rule.pl 29cad477003c7b04b491528b7d40ccae
 src/selective_scan.cpp e75d5918456a2758e8b7bbe714124acd
 src/selective_scan.pl 72d6a1d47e254edc40275cdcd0bbbb28
 src/w8a8_block_matmul.cpp 7fb550e99990dd946b7cbb99e73c0978
-src/w8a8_block_matmul.pl 423096aa0a48f83bdd965766e0d9f4dc
+src/w8a8_block_matmul.pl c46f7ececf87f44f7d482d64d7342787
 src_dyn/add_const_ctrl.c ed8b5e66d38130e507d5386335b11bae
 src_dyn/chunk_gated_delta_rule_ctrl.c dec1c7428b2552664c59b00a8ce63a98
 src_dyn/concat_slice_ctrl.c 7c64b1ee6411fd0dc3b27ce459a6a82a

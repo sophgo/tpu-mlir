@@ -22,6 +22,7 @@ import subprocess
 import sys
 import traceback
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from utils.tpu_info import get_tpu_info
 
 import numpy as np
 
@@ -824,9 +825,9 @@ class MLIR_IR_TESTER(object):
         """Test case fattention prefill: Fused attention with multiple inputs/outputs."""
         QS = 1024
         KS = 1024
-        D = 128
-        MASK_SIZE = 256
-        Q_HEAD = 16
+        D = 256
+        MASK_SIZE = get_tpu_info(self.chip).npu_num * 4
+        Q_HEAD = 32
         KV_HEAD = 8
         input_shapes = [
             [1, QS, Q_HEAD, D],  # Q
@@ -894,7 +895,7 @@ class MLIR_IR_TESTER(object):
             "in0": rand_data(input_shapes[0], 'float32', -1, 1),  # query
             "in1": rand_data(input_shapes[1], 'float32', -1, 1),  # key
             "in2": rand_data(input_shapes[2], 'float32', -1, 1),  # value
-            "in3": tril_mask * (-1.0e10),  # mask
+            "in3": tril_mask * (-1.0e9),  # mask
         }
         weights = {
             "weight0": rand_data(weight_shapes[0], 'float32', -1, 1),
@@ -1080,7 +1081,7 @@ class MLIR_IR_TESTER(object):
 
     @staticmethod
     def _causal_attention_mask(seq_len: int) -> np.ndarray:
-        mask = np.triu(np.full((seq_len, seq_len), -1.0e10, dtype=np.float32), k=1)
+        mask = np.triu(np.full((seq_len, seq_len), -1.0e9, dtype=np.float32), k=1)
         return mask.reshape(1, 1, seq_len, seq_len)
 
     @staticmethod

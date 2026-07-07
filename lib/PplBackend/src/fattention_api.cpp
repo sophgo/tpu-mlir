@@ -130,7 +130,8 @@ void fattention_prefill_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
                                gaddr_t ptr_v, gaddr_t ptr_mask, int b, int qm,
                                int kvm, int d, int q_head, int kv_head,
                                int mask_size, float sqrt_d, int core_num,
-                               int dtype, int &block_m) {
+                               int dtype, int &block_m, int &block_qh,
+                               int &block_kh) {
   int ret = 0;
   int keep_dim = 0;
   auto func =
@@ -138,14 +139,41 @@ void fattention_prefill_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
   int npu_num, npu_size;
   get_chip_info(&npu_num, &npu_size);
 
-  block_m = 2 * npu_num;
-  assert(mask_size == 2 * block_m);
-  ret = func(ptr_dst, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm, sqrt_d,
-             keep_dim, core_num, q_head, kv_head, d, block_m, mask_size);
+  block_m = mask_size / 2;
+  assert(block_m >= npu_num);
+  int head_rep = std::max(1, q_head / kv_head);
+  // Start with all heads in one block (block_qh == q_head, i.e. no head
+  // slicing) so the common case keeps the contiguous store_transpose_nc
+  // destination. Only when that overflows local/L2 memory do we halve the head
+  // block -- the same block_qh/block_kh fallback fattention_tiling uses for
+  // fattention_v1/v2. block_m is fixed by mask_size here, so head slicing is
+  // the only available knob.
+  block_kh = kv_head;
+  block_qh = block_kh * head_rep;
+  while (block_m >= npu_num && block_kh > 0) {
+    printf("fattention_prefill block_m:%d, block_qh:%d, block_kh:%d\n", block_m,
+           block_qh, block_kh);
+    ret = func(ptr_dst, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm, sqrt_d,
+               keep_dim, core_num, q_head, kv_head, d, block_m, block_qh,
+               block_kh, mask_size);
+    CHECK_PPL_RET(ret);
+    if (ret == PplL2AddrAssignErr || ret == PplLocalAddrAssignErr) {
+      printf("block is not suitable, have another try !!!\n");
+      if (block_m > npu_num) {
+        block_m /= 2;
+      } else {
+        block_kh /= 2;
+        block_qh = block_kh * head_rep;
+      }
+      continue;
+    }
+    break;
+  }
   if (ret != 0) {
     printf("Error: fattention_prefill split failed!!!\n");
     exit(-1);
   }
+  printf("fattention_prefill success!!\n");
 }
 
 // static interface
@@ -180,7 +208,7 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
         mask_spec->addr, _param->common.batch, _param->common.mq,
         _param->common.mk, _param->common.dim, _param->common.q_head,
         _param->common.kv_head, _param->common.mask_size, _param->common.scale,
-        core_num, in_spec[0].dtype, block_m);
+        core_num, in_spec[0].dtype, block_m, block_qh, block_kh);
   }
 }
 
@@ -251,14 +279,14 @@ int api_dyn_fattention_global(void *param, void *input_spec, void *output_spec,
     auto q_head = _param->common.q_head;
     auto kv_head = _param->common.kv_head;
     int keep_dim = _param->common.keep_dim ? 1 : 0;
-    int block_m;
+    int block_m, block_qh, block_kh;
     if (buffer) {
-      fattention_prefill_tiling(out_spec->addr, q_spec->addr, k_spec->addr,
-                                v_spec->addr, mask_spec->addr,
-                                _param->common.batch, _param->common.mq,
-                                _param->common.mk, _param->common.dim, q_head,
-                                kv_head, _param->common.mask_size,
-                                _param->common.scale, core_num, dtype, block_m);
+      fattention_prefill_tiling(
+          out_spec->addr, q_spec->addr, k_spec->addr, v_spec->addr,
+          mask_spec->addr, _param->common.batch, _param->common.mq,
+          _param->common.mk, _param->common.dim, q_head, kv_head,
+          _param->common.mask_size, _param->common.scale, core_num, dtype,
+          block_m, block_qh, block_kh);
     }
     // If buffer is not null writre param info to buffer according to tile info,
     // return param struct lens.
@@ -267,8 +295,8 @@ int api_dyn_fattention_global(void *param, void *input_spec, void *output_spec,
     return func(out_spec->addr, q_spec->addr, k_spec->addr, v_spec->addr,
                 mask_spec->addr, _param->common.batch, _param->common.mq,
                 _param->common.mk, _param->common.scale, keep_dim, core_num,
-                q_head, kv_head, _param->common.dim, block_m,
-                _param->common.mask_size, buffer);
+                q_head, kv_head, _param->common.dim, block_m, block_qh,
+                block_kh, _param->common.mask_size, buffer);
   }
 }
 

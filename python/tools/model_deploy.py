@@ -146,6 +146,8 @@ class DeployTool:
         self.model_version = args.model_version
         self.iomem_set = args.iomem_set
         self.addr_mode = args.addr_mode
+        self.save_io_alone_config = args.save_io_alone_config
+        self.use_io_alone_config = args.use_io_alone_config
         self.same_addr = args.same_addr
         self.cuda = args.cuda
         self.ip = getattr(args, "ip", "")
@@ -428,6 +430,8 @@ class DeployTool:
                     model_version=self.model_version,
                     iomem_set=self.iomem_set,
                     same_addr=self.same_addr,
+                    save_io_alone_config=self.save_io_alone_config,
+                    use_io_alone_config=self.use_io_alone_config,
                     count_patterns=True if self.patterns_count else False,
                     compress_mode=self.compress_mode,
                     debug_info=self.debug_cmd,
@@ -604,6 +608,10 @@ if __name__ == '__main__':
                         help="set address assign mode, if not set, auto as default")
     parser.add_argument("--same_addr", default="", type=str,
                         help="use same address for the specified inputs and outputs, like 0:0,1:2,4:4")
+    parser.add_argument("--save_io_alone_config", default="", type=str,
+                        help="save io_alone config to the specified .mlir file")
+    parser.add_argument("--use_io_alone_config", default="", type=str,
+                        help="use io_alone config from the specified .mlir file")
     parser.add_argument("--not_gen_bmodel", action="store_true",
                         help="for qat intergation, only gen tpu.mlir")
     parser.add_argument("--use_rewriter_config", action="store_true",

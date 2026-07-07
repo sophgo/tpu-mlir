@@ -12,6 +12,8 @@
 
 using namespace ppl;
 
+#if defined(__sg2260e__) || defined(__bm1684x2__) || defined(__sg2262__) || defined(__bm1690__)
+
 // Per-tile dynamic activation requantization: bf16/fp16 -> fp8e4m3 with a
 // per-(BLOCK_C, group) scale tensor.
 //   in/out: real shape [1, real_c, 1, real_w], block shape [1, BLOCK_C, 1,
@@ -97,14 +99,18 @@ void w8a8_block_matmul_kernel(ACT_TYPE *ptr_out, ACT_TYPE *ptr_in,
   G_slice = div_up(G, P_G);
   Gs = idx_g * G_slice;
   Ge = Gs + G_slice;
-  if (Ge > G) Ge = G;
-  if (Gs > G) Gs = G;
+  if (Ge > G)
+    Ge = G;
+  if (Gs > G)
+    Gs = G;
 
   M_slice = div_up(M, P_M);
   Ms = idx_m * M_slice;
   Me = Ms + M_slice;
-  if (Me > M) Me = M;
-  if (Ms > M) Ms = M;
+  if (Me > M)
+    Me = M;
+  if (Ms > M)
+    Ms = M;
 
   // N: align to 128 to keep eu-friendly tiles, last shard absorbs the tail.
   int n_base = max((N / P_N) / 128 * 128, 128);
@@ -155,7 +161,7 @@ void w8a8_block_matmul_kernel(ACT_TYPE *ptr_out, ACT_TYPE *ptr_in,
     for (int m_idx = Ms; m_idx < Me; m_idx += TILE_M) {
       int cur_M = min(BLOCK_M, Me - m_idx);
       for (int k_idx = Ks; k_idx < Ke; k_idx += TILE_K) {
-        ppl::enable_pipeline();  // TODO
+        ppl::enable_pipeline(); // TODO
         int cur_K = min(BLOCK_K, Ke - k_idx);
 
         // Load activation tile and dynamically requant to fp8 (per-row, per
@@ -169,7 +175,7 @@ void w8a8_block_matmul_kernel(ACT_TYPE *ptr_out, ACT_TYPE *ptr_in,
             make_tensor<ACT_TYPE>(in_scale_block_shape, in_scale_shape);
         dma::load(in, in_gtensor.sub_view(in_shape, in_offset));
         act_requant<ACT_TYPE>(quant_in, in_scale, in, BLOCK_M, BLOCK_K, cur_M,
-          cur_K, block_size_k);
+                              cur_K, block_size_k);
         // Activation scale is consumed in fp32 to keep the manual scaling
         // numerically tight.
         auto in_scale_fp32 =
@@ -271,7 +277,7 @@ void w8a8_block_matmul_kernel(ACT_TYPE *ptr_out, ACT_TYPE *ptr_in,
           // partial sums need cross-core combine) or plain-store.
           auto cur_out = make_tensor<ACT_TYPE>(out_block_shape, out_shape);
           tiu::cast(cur_out, acc_fp32);
-          if (need_all_reduce) {   // TODO: FIXsME!
+          if (need_all_reduce) { // TODO: FIXsME!
             dma::reduce(out_gtensor.sub_view(out_shape, out_offset), cur_out,
                         all_reduce_psum_t::ALL_REDUCE_PSUM_WR,
                         (all_reduce_opcode_t)ALL_REDUCE_ADD);
@@ -358,3 +364,22 @@ __TEST__ void w8a8_block_matmul_test() {
                          P_M, P_N, P_K, TILE_K, TILE_N, TILE_M, block_size_k,
                          block_size_n);
 }
+#else
+__KERNEL__ void w8a8_block_matmul_bf16(
+    bf16 *ptr_out, bf16 *ptr_in, fp8e4m3 *ptr_weight, bf16 *ptr_weight_scale,
+    const int G, const int M, const int K, const int N, const int core_num,
+    const int P_G, const int P_M, const int P_N, const int P_K,
+    const int TILE_K, const int TILE_N, const int TILE_M,
+    const int block_size_k, const int block_size_n) {
+  return;
+}
+
+__KERNEL__ void w8a8_block_matmul_f16(
+    fp16 *ptr_out, fp16 *ptr_in, fp8e4m3 *ptr_weight, fp16 *ptr_weight_scale,
+    const int G, const int M, const int K, const int N, const int core_num,
+    const int P_G, const int P_M, const int P_N, const int P_K,
+    const int TILE_K, const int TILE_N, const int TILE_M,
+    const int block_size_k, const int block_size_n) {
+  return;
+}
+#endif

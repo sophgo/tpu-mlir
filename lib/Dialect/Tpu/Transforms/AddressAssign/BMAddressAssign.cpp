@@ -14,6 +14,8 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/TPUNnvlcUtil.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/JSON.h"
+#include "llvm/Support/MemoryBuffer.h"
 #define DEBUG_TYPE "addressAssgin"
 
 using namespace llvm;
@@ -559,8 +561,8 @@ static void inplace_addr_update(std::vector<ValueInfo> &inplace_ops,
 void BMAddressAssign::assignIOByAddrMode(
     ModuleOp &m, std::map<ValueInfo, TensorLive> &liveRange,
     std::vector<ValueInfo> &inplace_ops, std::vector<ValueInfo> &common_ops,
-    int64_t &start_addr,
-    const std::vector<std::pair<int, int>> &same_addr_idx) {
+    int64_t &start_addr, const std::vector<std::pair<int, int>> &same_addr_idx,
+    const std::string &use_io_alone_config) {
   if (module::isAddrMode(module::AddrMode::IO_TAG)) {
     std::vector<Value> inputs, outputs, ios;
     module::getInputsOutputs(m, inputs, outputs);
@@ -662,44 +664,128 @@ void BMAddressAssign::assignIOByAddrMode(
     return;
   }
   if (module::isAddrMode(module::AddrMode::IO_ALONE)) {
-    int64_t io_start = start_addr;
-    if (BM168x::SUPPORT_MEM_TAG) {
-      io_start = BM168x::IO_START_ADDR;
-    }
     std::vector<Value> ins;
     std::vector<Value> outs;
     module::getInputsOutputs(m, ins, outs);
-    auto addr = io_start;
-    for (auto &v : ins) {
-      auto v_info =
-          ValueInfo(v.getDefiningOp(), v.cast<OpResult>().getResultNumber());
-      auto bytes = liveRange[v_info].tensor_size;
-      if (bytes == 0) {
-        continue;
+
+    if (use_io_alone_config.empty()) {
+      int64_t io_start = start_addr;
+      if (BM168x::SUPPORT_MEM_TAG) {
+        io_start = BM168x::IO_START_ADDR;
       }
-      module::setAddress(v, addr);
-      addr += bytes;
-    }
-    std::vector<Value> skip;
-    for (auto &pair : same_addr_idx) {
-      auto &in = ins[pair.first];
-      auto &out = outs[pair.second];
-      auto addr_ = module::getAddress(in);
-      module::setAddress(out, addr_);
-      skip.push_back(out);
-    }
-    for (auto &v : outs) {
-      if (std::find(skip.begin(), skip.end(), v) != skip.end()) {
-        continue;
+      auto addr = io_start;
+
+      for (auto &v : ins) {
+        auto v_info =
+            ValueInfo(v.getDefiningOp(), v.cast<OpResult>().getResultNumber());
+        auto bytes = liveRange[v_info].tensor_size;
+        if (bytes == 0) {
+          continue;
+        }
+        module::setAddress(v, addr);
+        addr += bytes;
       }
-      auto v_info =
-          ValueInfo(v.getDefiningOp(), v.cast<OpResult>().getResultNumber());
-      auto bytes = liveRange[v_info].tensor_size;
-      if (bytes == 0) {
-        continue;
+      std::vector<Value> skip;
+      for (auto &pair : same_addr_idx) {
+        auto &in = ins[pair.first];
+        auto &out = outs[pair.second];
+        auto addr_ = module::getAddress(in);
+        module::setAddress(out, addr_);
+        skip.push_back(out);
       }
-      module::setAddress(v, addr);
-      addr += bytes;
+      for (auto &v : outs) {
+        if (std::find(skip.begin(), skip.end(), v) != skip.end()) {
+          continue;
+        }
+        auto v_info =
+            ValueInfo(v.getDefiningOp(), v.cast<OpResult>().getResultNumber());
+        auto bytes = liveRange[v_info].tensor_size;
+        if (bytes == 0) {
+          continue;
+        }
+        module::setAddress(v, addr);
+        addr += bytes;
+      }
+      auto io_size = addr - io_start;
+      module::setIOAddr(m, io_start);
+      module::setIOSize(m, io_size);
+      if (!BM168x::SUPPORT_MEM_TAG) {
+        start_addr = addr;
+      }
+    } else {
+      auto fileOrErr = llvm::MemoryBuffer::getFile(use_io_alone_config);
+      if (auto err = fileOrErr.getError()) {
+        llvm::errs() << "Failed to open file for reading: " << err.message()
+                     << "\n";
+        return;
+      }
+      auto jsonOrErr = llvm::json::parse(fileOrErr.get()->getBuffer());
+      if (auto err = jsonOrErr.takeError()) {
+        llvm::errs() << "JSON parse error: " << llvm::toString(std::move(err))
+                     << "\n";
+        return;
+      }
+      auto *obj = jsonOrErr->getAsObject();
+      if (!obj) {
+        llvm::errs() << "Error: io_alone config root is not a JSON object\n";
+        return;
+      }
+      int64_t io_addr = 0;
+      int64_t io_size = 0;
+      if (auto v = obj->getInteger("io_addr")) {
+        io_addr = *v;
+      }
+      if (auto v = obj->getInteger("io_size")) {
+        io_size = *v;
+      }
+      if (!BM168x::SUPPORT_MEM_TAG) {
+        start_addr = io_addr + io_size;
+      }
+      module::setIOAddr(m, io_addr);
+      module::setIOSize(m, io_size);
+      if (auto *inputs = obj->getArray("inputs")) {
+        for (const auto &input : *inputs) {
+          auto *in_obj = input.getAsObject();
+          if (!in_obj) {
+            continue;
+          }
+          auto name = in_obj->getString("name");
+          auto addr = in_obj->getInteger("address");
+          if (!name || !addr) {
+            continue;
+          }
+          for (auto &in : ins) {
+            if (module::getName(in).str() == name->str()) {
+              module::setAddress(in, *addr);
+              break;
+            }
+          }
+        }
+      }
+      if (auto *outputs = obj->getArray("outputs")) {
+        for (const auto &output : *outputs) {
+          auto *out_obj = output.getAsObject();
+          if (!out_obj) {
+            continue;
+          }
+          auto name = out_obj->getString("name");
+          auto addr = out_obj->getInteger("address");
+          if (!name || !addr) {
+            continue;
+          }
+          for (auto &v : outs) {
+            if (module::getName(v).str() == name->str()) {
+              auto v_info = ValueInfo(v.getDefiningOp(),
+                                      v.cast<OpResult>().getResultNumber());
+              auto bytes = liveRange[v_info].tensor_size;
+              if (bytes != 0) {
+                module::setAddress(v, *addr);
+              }
+              break;
+            }
+          }
+        }
+      }
     }
     assignAfter(m, inplace_ops);
     ins.insert(ins.end(), outs.begin(), outs.end());
@@ -713,18 +799,52 @@ void BMAddressAssign::assignIOByAddrMode(
         UNREACHABLE_OP("IO address assign failed", v_info.op);
       }
     }
-    auto io_size = addr - io_start;
-    module::setIOAddr(m, io_start);
-    module::setIOSize(m, io_size);
-    if (!BM168x::SUPPORT_MEM_TAG) {
-      start_addr = addr;
-    }
     return;
   }
 }
 
+// save to json file
+static void saveIoAloneConfig(mlir::ModuleOp &m,
+                              const std::string &save_io_alone_config) {
+  std::error_code EC;
+  llvm::raw_fd_ostream OS(save_io_alone_config, EC);
+  if (EC) {
+    llvm::errs() << "Failed to open file for writing: " << EC.message() << "\n";
+    return;
+  }
+
+  json::OStream J(OS, 2);
+  std::vector<Value> ins;
+  std::vector<Value> outs;
+  module::getInputsOutputs(m, ins, outs);
+  J.object([&] {
+    J.attribute("io_addr", module::getIOAddr(m));
+    J.attribute("io_size", module::getIOSize(m));
+    J.attributeArray("inputs", [&] {
+      for (auto &v : ins) {
+        J.object([&] {
+          J.attribute("name", module::getName(v).str());
+          J.attribute("address", module::getAddress(v));
+          J.attribute("size", module::getBytes(v));
+        });
+      }
+    });
+    J.attributeArray("outputs", [&] {
+      for (auto &v : outs) {
+        J.object([&] {
+          J.attribute("name", module::getName(v).str());
+          J.attribute("address", module::getAddress(v));
+          J.attribute("size", module::getBytes(v));
+        });
+      }
+    });
+  });
+}
+
 void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr,
-                             std::string same_addr) {
+                             std::string same_addr,
+                             const std::string &save_io_alone_config,
+                             const std::string &use_io_alone_config) {
   int64_t alignment = BM168x::ALIGNMENT;
   int64_t start_addr = BM168x::COEFF_START_ADDR;
   Builder builder(m.getContext());
@@ -861,7 +981,10 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr,
 
   // 0. assign io-tag/io-alone addrs before common_ops.
   assignIOByAddrMode(m, liveRange, inplace_ops, common_ops, start_addr,
-                     same_addr_idx);
+                     same_addr_idx, use_io_alone_config);
+  if (!save_io_alone_config.empty()) {
+    saveIoAloneConfig(m, save_io_alone_config);
+  }
   addr = start_addr;
 
   // 1.assign common_ops

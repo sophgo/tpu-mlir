@@ -65,17 +65,14 @@ int64_t tpu::FAttentionOp::dyn_codegen_global_bm1684x(void *buffer) {
   // writer. Set them unconditionally.
   common.hasmask = !module::isNone(getMask());
   common.mask_size = getMaskSize();
-  if (buffer) {
-    // get_param(op, common);
-    common.batch = getBatch();
-    common.q_head = getQHead();
-    common.kv_head = getKvHead();
-    common.mq = getMq();
-    common.mk = getMk();
-    common.dim = getDim();
-    common.scale = getScale().convertToDouble();
-    common.keep_dim = getKeepDims();
-  }
+  common.batch = getBatch();
+  common.q_head = getQHead();
+  common.kv_head = getKvHead();
+  common.mq = getMq();
+  common.mk = getMk();
+  common.dim = getDim();
+  common.scale = getScale().convertToDouble();
+  common.keep_dim = getKeepDims();
   return BM168x::call_ppl_dyn_func("api_dyn_fattention_global", &param,
                                    input_spec->data(), output_spec->data(),
                                    buffer);

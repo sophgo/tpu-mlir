@@ -686,6 +686,8 @@ def tpu_ada_options(
     layer_group_config: str = "",
     iomem_set: str = "",
     same_addr: str = "",
+    save_io_alone_config: str = "",
+    use_io_alone_config: str = "",
     disable_topo_sort: bool = False,
     enable_affine: bool = False,
 ):
@@ -706,6 +708,10 @@ def tpu_ada_options(
         address_assign_param = '--address-assign="iomem_set={}"'.format(iomem_set)
     if same_addr:
         address_assign_param = '--address-assign="same_addr={}"'.format(same_addr)
+    if save_io_alone_config:
+        address_assign_param = '--address-assign="save_io_alone_config={}"'.format(save_io_alone_config)
+    if use_io_alone_config:
+        address_assign_param = '--address-assign="use_io_alone_config={}"'.format(use_io_alone_config)
 
     trunc_param = ""
     if trunc_final:
@@ -972,6 +978,8 @@ def mlir_to_model(
     model_version: str = "",
     iomem_set: str = "",
     same_addr: str = "",
+    save_io_alone_config: str = "",
+    use_io_alone_config: str = "",
     count_patterns: bool = False,
     compress_mode: str = "none",
     debug_info: str = "",
@@ -1031,6 +1039,8 @@ def mlir_to_model(
                               lghash_dir=lghash_dir,
                               iomem_set=iomem_set,
                               same_addr=same_addr,
+                              save_io_alone_config=save_io_alone_config,
+                              use_io_alone_config=use_io_alone_config,
                               disable_topo_sort=disable_topo_sort,
                               enable_affine=enable_affine)
     cmd.extend(options)

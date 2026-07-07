@@ -21,6 +21,14 @@ function usage() {
 # Print the top-level directory name of a tarball, or return 1 if it cannot be
 # determined reliably (e.g. corrupt archive, or first entry is "./"). Strips a
 # leading "./" prefix so archives packaged that way are handled correctly.
+DFSS_INSTALLED=0
+function ensure_dfss() {
+  if [ "${DFSS_INSTALLED}" -eq 0 ]; then
+    pip3 install -U dfss
+    DFSS_INSTALLED=1
+  fi
+}
+
 function tar_toplevel() {
   local tarball="$1"
   local first top
@@ -45,6 +53,7 @@ function download_toolchain() {
   fi
   if [ ! -e "${filename}" ]; then
     echo "Downloading ${filename}..."
+    ensure_dfss
     python3 -m dfss --url="open@sophgo.com:${addr}"
   else
     echo "Extracting ${filename}..."
@@ -71,6 +80,7 @@ function download_ppl() {
   fi
   echo "Downloading PPL compiler..."
   if [ ! -e "${ppl_package}" ]; then
+    ensure_dfss
     python3 -m dfss --url="open@sophgo.com:${PPL_URL}"
   fi
   # Extract PPL compiler package
@@ -174,8 +184,6 @@ done
 
 # Set download directory
 CROSS_TOOLCHAINS=${CROSS_TOOLCHAINS:-${DIR}/cross_toolchains}
-
-pip3 install -U dfss
 
 mkdir -p "${CROSS_TOOLCHAINS}"
 pushd "${CROSS_TOOLCHAINS}" >/dev/null

@@ -170,7 +170,8 @@ public:
           module::applyPatternOnce<ReorderWeightsByNamePattern>(s);
         }
         BMAddressAssign addr_assign;
-        addr_assign.assign(s, reuse_addr, same_addr);
+        addr_assign.assign(s, reuse_addr, same_addr, save_io_alone_config,
+                           use_io_alone_config);
       }
     }
     module::setState(module::State::TPU_ADDRESSED);

@@ -143,6 +143,8 @@ if __name__ == '__main__':
                         help='share the same prompt for multi dialog, default is False')
     parser.add_argument('--max_input_length','--prefill_chunk_length', type=int, default=0,
                         help='max input length for prefill, default 0 means the same as seq_length')
+    parser.add_argument('--decode_chunk_length', type=int, default=0,
+                        help='whether to compile multi decode commands into one bmodel, default 0 means no, >0 means decode chunk length for one bmodel')
     parser.add_argument('--max_prefill_kv_length', type=int, default=0,
                         help='max prefill kv length, default 0 means the same as seq_length')
     parser.add_argument('--max_pixels', type=parse_max_pixels, default=None,
@@ -197,6 +199,10 @@ if __name__ == '__main__':
         raise ValueError(
             "max_prefill_kv_length should not be larger than seq_length, got: {}".format(
                 args.max_prefill_kv_length))
+    if args.decode_chunk_length > args.seq_length // 2:
+        raise ValueError(
+            "decode_chunk_length should not be larger than seq_length // 2, got: {}".format(
+                args.decode_chunk_length))
 
     # Resolve out_dir before loading the model so --dry_run is fast.
     if args.out_dir is None:

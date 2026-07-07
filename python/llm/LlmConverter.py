@@ -41,6 +41,14 @@ class LlmConverter(BaseConverter):
             args.max_input_length > 0
             and args.max_input_length < self.seq_length) else self.seq_length
         self.max_prefill_kv_length = args.max_prefill_kv_length
+        self.decode_chunk_length = args.decode_chunk_length
+        self.decode_chunk_list = []
+        if self.decode_chunk_length > 0:
+            len = self.decode_chunk_length
+            while len < self.seq_length:
+                self.decode_chunk_list.append(len)
+                len = len * 2
+            self.decode_chunk_list.reverse()
         self.share_prompt = args.share_prompt
         self.quantize = args.quantize
         self.num_device = args.num_device
@@ -123,7 +131,7 @@ class LlmConverter(BaseConverter):
 
     def use_small_mask(self):
         # TODO: other chip support small mask in future
-        return self.dynamic and self.chip in ["bm1684x"]
+        return self.dynamic
 
     def run(self):
         os.makedirs(self.bmodel_dir, exist_ok=True)
@@ -1636,7 +1644,7 @@ class LlmConverter(BaseConverter):
         when dynamic mode is enabled (eliminating the need for a dynamic mask input).
         """
         return np.triu(
-            np.ones((self.MASK_SIZE, self.MASK_SIZE), dtype=np.float32) * (-1.0e10),
+            np.ones((self.MASK_SIZE, self.MASK_SIZE), dtype=np.float32) * (-1.0e9),
             k=1,
         )
 
@@ -2061,16 +2069,16 @@ class LlmConverter(BaseConverter):
             gen_block_by_length(name, self.max_input_length)
             return
 
-        def gen_block_cache():
+        def gen_block_cache_by_length(kv_length: int, stage_idx: int = 0):
             name = f"block_cache_{idx}"
             input_shape = [self.batch, 1, self.hidden_size]
             id_shape = list(self.position_shape)
-            mask_len = self.seq_length if self.use_insert else self.seq_length + 1
+            mask_len = kv_length if self.use_insert else kv_length + 1
             if self.use_insert:
                 id_shape[0] = self.batch
             id_shape[-1] = 1
             mask_shape = [self.batch, 1, 1, mask_len]
-            history_shape = [self.batch, self.seq_length, self.num_key_value_heads, self.head_dim]
+            history_shape = [self.batch, kv_length, self.num_key_value_heads, self.head_dim]
 
             q_shape = [self.batch, 1, self.num_attention_heads, self.head_dim]
             kv_shape = [self.batch, 1, self.num_key_value_heads, self.head_dim]
@@ -2127,15 +2135,13 @@ class LlmConverter(BaseConverter):
                 return_ops.append(v_op)
             # ====== kv concat ========
             if not self.use_insert:
-                k_op = top.ConcatOp(T(
-                    [1, self.seq_length + 1, self.num_key_value_heads, self.head_dim]),
+                k_op = top.ConcatOp(T([1, kv_length + 1, self.num_key_value_heads, self.head_dim]),
                                     [in3_op, k_op],
                                     axis=1,
                                     only_merge=True,
                                     loc=L(k_proj + ".concat"),
                                     ip=ip).output
-                v_op = top.ConcatOp(T(
-                    [1, self.seq_length + 1, self.num_key_value_heads, self.head_dim]),
+                v_op = top.ConcatOp(T([1, kv_length + 1, self.num_key_value_heads, self.head_dim]),
                                     [in4_op, v_op],
                                     axis=1,
                                     only_merge=True,
@@ -2143,19 +2149,19 @@ class LlmConverter(BaseConverter):
                                     ip=ip).output
             else:
                 k_op = top.InsertOp(T(
-                    [self.batch, self.seq_length, self.num_key_value_heads, self.head_dim]),
+                    [self.batch, kv_length, self.num_key_value_heads, self.head_dim]),
                                     in3_op,
                                     rhs=k_op,
                                     axis=1,
-                                    offset=self.seq_length - 1,
+                                    offset=kv_length - 1,
                                     loc=L(k_proj + ".insert"),
                                     ip=ip).output
                 v_op = top.InsertOp(T(
-                    [self.batch, self.seq_length, self.num_key_value_heads, self.head_dim]),
+                    [self.batch, kv_length, self.num_key_value_heads, self.head_dim]),
                                     in4_op,
                                     rhs=v_op,
                                     axis=1,
-                                    offset=self.seq_length - 1,
+                                    offset=kv_length - 1,
                                     loc=L(v_proj + ".insert"),
                                     ip=ip).output
             # ======= fattention =========
@@ -2193,7 +2199,17 @@ class LlmConverter(BaseConverter):
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
-            self.save_mlir_module(block_mlir, name)
+            if stage_idx == 0:
+                self.save_mlir_module(block_mlir, name)
+            else:
+                self.save_mlir_module(block_mlir, f"{name}_{stage_idx}")
+
+        def gen_block_cache():
+            # largest
+            gen_block_cache_by_length(self.seq_length)
+            if len(self.decode_chunk_list) > 0:
+                for stage_idx, kv_length in enumerate(self.decode_chunk_list):
+                    gen_block_cache_by_length(kv_length, stage_idx + 1)
 
         def gen_block_with_kv():
             # Generate block with kv cache related operations
@@ -2413,9 +2429,6 @@ class LlmConverter(BaseConverter):
         )
 
     def compile_block_cache(self, layer_id):
-        name = f"block_cache_{layer_id}"
-        if self.register_bmodel(name):
-            return
         quantize_param = self.quantize
         extra_deploy_args = []
         if isinstance(self.loader, GGUFModelHandle):
@@ -2427,15 +2440,52 @@ class LlmConverter(BaseConverter):
         ]
         if not isinstance(self.loader, GGUFModelHandle):
             base_args.append(f'--q_group_size {self.q_group_size}')
-        self.submit_deploy_task(
-            name,
-            base_args + extra_deploy_args + [
-                '--quant_input',
-                '--quant_output',
-            ],
-            symmetric=self._get_block_symmetric(layer_id),
-            addr_mode='io_alone',
-        )
+
+        if len(self.decode_chunk_list) > 0:
+            base_args.append('--save_io_alone_config io_alone_config.json')
+
+        # compile block cache
+        name = f"block_cache_{layer_id}"
+        if not self.register_bmodel(name):
+            self.submit_deploy_task(
+                name,
+                base_args + extra_deploy_args + [
+                    '--quant_input',
+                    '--quant_output',
+                ],
+                symmetric=self._get_block_symmetric(layer_id),
+                addr_mode='io_alone',
+            )
+
+    def compile_block_cache_chunk(self, layer_id):
+        quantize_param = self.quantize
+        extra_deploy_args = []
+        if isinstance(self.loader, GGUFModelHandle):
+            quantize_param, extra_deploy_args = self.loader.compile_block_args(self,
+                                                                               layer_id,
+                                                                               is_cache=True)
+        # search final mlir in block_cache_{layer_id} folder
+        block_cache_dir = os.path.join(self.bmodel_dir, f"block_cache_{layer_id}")
+        io_alone_config = os.path.join(block_cache_dir, "io_alone_config.json")
+        if not os.path.exists(io_alone_config):
+            raise RuntimeError(f"io_alone_config.json not found in {block_cache_dir}")
+        base_args = [f'--quantize {quantize_param}', f'--use_io_alone_config {io_alone_config}']
+        if not isinstance(self.loader, GGUFModelHandle):
+            base_args.append(f'--q_group_size {self.q_group_size}')
+        # compile block cache chunk
+        if len(self.decode_chunk_list) > 0:
+            for stage_idx, _ in enumerate(self.decode_chunk_list):
+                name = f"block_cache_{layer_id}_{stage_idx+1}"
+                if not self.register_bmodel(name, with_size=False):
+                    self.submit_deploy_task(
+                        name,
+                        base_args + extra_deploy_args + [
+                            '--quant_input',
+                            '--quant_output',
+                        ],
+                        symmetric=self._get_block_symmetric(layer_id),
+                        addr_mode='io_alone',
+                    )
 
     def compile_block_prompt(self, layer_id):
         name = f"block_prompt_{layer_id}"
@@ -2632,7 +2682,7 @@ class LlmConverter(BaseConverter):
                   f"models: {len(group)}, output: {group_out}")
 
     def compile_all(self):
-
+        ## ============= main compile ================
         if self.do_vit:
             self.all_compiles.append(self.compile_vit)
 
@@ -2670,6 +2720,15 @@ class LlmConverter(BaseConverter):
         for func in self.all_compiles:
             func()
 
+        self.execute_tasks()
+
+        # ============ Secondary compile ==============
+        secondary_compiles = []
+        if len(self.decode_chunk_list) > 0:
+            for i in range(self.num_layers):
+                secondary_compiles.append(lambda i=i: self.compile_block_cache_chunk(i))
+        for func in secondary_compiles:
+            func()
         self.execute_tasks()
 
         # Combine all bmodel files

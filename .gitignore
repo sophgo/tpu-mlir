@@ -29,6 +29,7 @@ third_party/ppl
 third_party/nntoolchain/ppl/
 dist/
 !/python/tools/soc_infer/debugger/bmodel_fbs.py
+lib/PplBackend/src/test_*
 
 # Python
 *.egg-info/
