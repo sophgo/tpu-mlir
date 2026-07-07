@@ -16,11 +16,6 @@ release_archive="./tpu-mlir_${mlir_version}"
 rm -rf ${release_archive}*
 cp -rf ${INSTALL_PATH} ${release_archive}
 
-mkdir -p ${release_archive}/regression/
-cp -rf ${PROJECT_ROOT}/regression/dataset ${release_archive}/regression/
-cp -rf ${PROJECT_ROOT}/regression/image ${release_archive}/regression/
-cp -rf ${PROJECT_ROOT}/regression/npz_input ${release_archive}/regression/
-cp -rf ${PROJECT_ROOT}/regression/model ${release_archive}/regression/
 cp -rf ${PROJECT_ROOT}/third_party/customlayer ${release_archive}
 cp -rf ${PROJECT_ROOT}/python/tools/soc_infer ${release_archive}/python/tools/
 cp ${PROJECT_ROOT}/requirements.txt ${release_archive}/
