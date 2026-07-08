@@ -100,6 +100,9 @@ class ONNX_IR_TESTER(object):
             "Arg":          (self.test_Arg,           Y, Y, Y, Y, Y, Y, Y),
             "AddWeight":    (self.test_AddWeight,     Y, Y, Y, Y, Y, Y, Y),
             "AddWeight2":   (self.test_AddWeight2,    Y, Y, Y, Y, Y, Y, Y),
+            "AdaptiveAvgPool": (self.test_AdaptiveAvgPool, N, Y, N, N, N, N, N),
+            "AdaptiveAvgPool1d": (self.test_AdaptiveAvgPool1d, N, Y, N, N, N, N, Y),
+            "AdaptiveAvgPool2d": (self.test_AdaptiveAvgPool2d, N, Y, Y, Y, N, N, N),
             "AvgPool1d":    (self.test_AvgPool1d,     Y, Y, Y, Y, Y, Y, Y),
             "AvgPool2d":    (self.test_AvgPool2d,     Y, Y, Y, Y, Y, Y, Y),
             "AvgPool3d":    (self.test_AvgPool3d,     N, Y, Y, Y, Y, Y, N),
@@ -107,10 +110,12 @@ class ONNX_IR_TESTER(object):
             "AffineMap":    (self.test_AffineMap,     N, Y, Y, N, Y, Y, N),
             "PadAvgPool2d": (self.test_PadAvgPool2d,  Y, Y, Y, Y, Y, Y, Y),
             "BatchMatMul":  (self.test_BatchMatMul,   Y, Y, Y, Y, Y, Y, Y),
+            "BatchNorm2D":  (self.test_BatchNorm2D,   Y, Y, Y, Y, Y, Y, Y),
             "BCastAdd":     (self.test_BCastAdd,      Y, Y, Y, Y, Y, Y, Y),
             "BCastMul":     (self.test_BCastMul,      Y, Y, Y, Y, Y, Y, Y),
             "BCastMulCst":  (self.test_BCastMulCst,   Y, Y, Y, Y, Y, Y, Y),
             "Cast":         (self.test_Cast,          N, Y, Y, N, Y, Y, Y),
+            "Ceil":         (self.test_Ceil,          N, Y, Y, N, Y, Y, Y),
             "CompareCst":   (self.test_CompareCst,    Y, Y, Y, Y, Y, Y, Y),
             "Compare":      (self.test_Compare,       Y, Y, Y, N, Y, Y, Y),
             "Compare2":     (self.test_Compare2,      Y, N, N, N, N, N, N),
@@ -129,6 +134,8 @@ class ONNX_IR_TESTER(object):
             "ConvDw":       (self.test_ConvDw,        Y, Y, Y, Y, Y, Y, Y),
             "ConvTrans":    (self.test_ConvTrans,     N, Y, Y, Y, Y, Y, N),
             "ConvTrans2":   (self.test_ConvTrans2,    N, Y, Y, Y, Y, Y, N), # no pad
+            "Cos":          (self.test_Cos,           Y, Y, Y, N, Y, Y, Y),
+            "Cosh":         (self.test_Cosh,          Y, Y, Y, N, Y, Y, Y),
             "Clip":         (self.test_Clip,          Y, Y, Y, Y, Y, Y, N),
             "CumSum":       (self.test_CumSum,        N, Y, N, N, Y, Y, Y),
             "DepthToSpace":  (self.test_DepthToSpace,  Y, Y, Y, Y, Y, Y, N),
@@ -139,6 +146,8 @@ class ONNX_IR_TESTER(object):
             "Div":          (self.test_Div,           Y, Y, Y, Y, Y, Y, Y),
             "DivBcast":     (self.test_DivBcast,      Y, Y, Y, N, Y, Y, Y),
             "DivBcast2":    (self.test_DivBcast2,     Y, Y, Y, N, Y, Y, Y),
+            "DivConst":     (self.test_DivConst,      Y, Y, Y, N, Y, Y, Y),
+            "DtypeCast":    (self.test_DtypeCast,     Y, Y, Y, Y, Y, Y, Y),
             "Einsum":       (self.test_Einsum,        Y, Y, Y, Y, Y, Y, Y),
             "Einsum2":      (self.test_Einsum2,       Y, Y, Y, Y, Y, Y, Y),
             "Einsum3":      (self.test_Einsum3,       Y, Y, Y, Y, Y, Y, Y),
@@ -178,6 +187,8 @@ class ONNX_IR_TESTER(object):
             "GRU4":         (self.test_GRU4,          N, Y, Y, N, Y, Y, N), # test gru output Y and Yh,also splitting batch dim
             "LeakyRelu":    (self.test_LeakyRelu,     Y, Y, Y, Y, Y, Y, N),
             "Log":          (self.test_Log,           Y, Y, Y, Y, Y, Y, N),
+            "LogB":         (self.test_LogB,          Y, Y, Y, Y, Y, Y, Y),
+            "LogicalAnd":   (self.test_LogicalAnd,    Y, Y, Y, Y, Y, Y, Y),
             "LogSoftmax":   (self.test_LogSoftmax,    Y, Y, Y, Y, Y, Y, Y),
             "LRN":          (self.test_LRN,           Y, Y, Y, Y, Y, Y, Y), # output_y
             "LSTM":         (self.test_LSTM,          N, Y, Y, Y, Y, Y, N), # output all
@@ -218,6 +229,7 @@ class ONNX_IR_TESTER(object):
             "Resize2":      (self.test_Resize2,       N, Y, Y, Y, Y, Y, Y),
             "ResizeCSplit": (self.test_ResizeCSplit, N, Y, Y, N, Y, Y, Y),
             "Reshape":      (self.test_Reshape,       Y, Y, Y, N, Y, Y, Y),
+            "Reverse":      (self.test_Reverse,       Y, Y, Y, Y, Y, Y, Y),
             "Reduce":       (self.test_Reduce,        Y, Y, Y, Y, Y, Y, Y),
             "Reduce2":      (self.test_Reduce2,       Y, Y, Y, Y, Y, Y, Y),
             "ReduceL1":     (self.test_ReduceL1,      Y, Y, Y, N, Y, Y, Y),
@@ -231,6 +243,7 @@ class ONNX_IR_TESTER(object):
             "Relu":         (self.test_Relu,          Y, Y, Y, Y, Y, Y, Y),
             "ReluOnly":     (self.test_ReluOnly,      Y, N, Y, N, N, N, Y),
             "Round":        (self.test_Round,         N, Y, N, N, Y, Y, Y),
+            "Rsqrt":        (self.test_Rsqrt,         N, Y, Y, N, Y, Y, Y),
             "ScatterElements": (self.test_ScatterElements, N, Y, N, N, Y, Y, N),
             "ScatterND":    (self.test_ScatterND,     N, Y, Y, N, Y, Y, N),
             "Shape":        (self.test_Shape,         Y, Y, Y, N, Y, Y, N),
@@ -295,20 +308,25 @@ class ONNX_IR_TESTER(object):
             "TorchGroupNorm2":      (self.test_TorchGroupNorm2,     Y, Y, Y, N, Y, Y, Y),
             "TorchGRU":             (self.test_TorchGRU,            N, Y, Y, Y, Y, Y, N),
             "TorchIdentity":        (self.test_TorchIdentity,       Y, Y, Y, Y, Y, Y, Y),
+            "TorchIndexPut":        (self.test_TorchIndexPut,       Y, Y, Y, Y, Y, Y, Y),
+            "TorchInterp":          (self.test_TorchInterp,         Y, Y, Y, Y, Y, Y, Y),
             "TorchIndexCopy":       (self.test_TorchIndexCopy,      N, N, N, N, N, N, Y),
             "TorchInstanceNorm":    (self.test_TorchInstanceNorm,   N, Y, Y, N, Y, Y, Y),
             "TorchInstanceNorm2":   (self.test_TorchInstanceNorm2,  N, Y, Y, N, Y, Y, Y),
             "TorchLayerGroup":      (self.test_TorchLayerGroup,     Y, Y, Y, Y, Y, Y, Y),
             "TorchLayerNorm":       (self.test_TorchLayerNorm,      Y, Y, Y, Y, Y, Y, Y),
             "TorchLayerNorm2":      (self.test_TorchLayerNorm2,     Y, Y, Y, Y, Y, Y, Y),
+            "TorchLayerNormTrain":  (self.test_TorchLayerNormTrain, Y, Y, Y, Y, Y, Y, Y),
             "TorchLogSoftmax":      (self.test_TorchLogSoftmax,     Y, Y, Y, Y, Y, Y, Y),
             "TorchLSTM":            (self.test_TorchLSTM,           Y, Y, Y, Y, Y, Y, N),
             "TorchMaskedFill":      (self.test_TorchMaskedFill,     N, Y, Y, N, Y, Y, Y),
+            "TorchNms":             (self.test_TorchNms,            N, Y, Y, N, Y, Y, N),
             "TorchNonZero":         (self.test_TorchNonZero,        N, Y, Y, N, Y, Y, N),
             "TorchNormalize":       (self.test_TorchNormalize,      N, Y, Y, N, N, N, Y),
             "TorchReflectionPad":   (self.test_TorchReflectionPad,  N, Y, Y, Y, Y, Y, Y),
             "TorchRMSNorm":         (self.test_TorchRMSNorm,        N, Y, Y, N, Y, Y, Y),
             "TorchRoiAlign":        (self.test_TorchRoiAlign,       N, Y, Y, N, Y, Y, N),
+            "TorchRoiExtract":      (self.test_TorchRoiExtract,     N, Y, Y, N, Y, Y, N),
             "TorchScatterND":       (self.test_TorchScatterND,      N, N, Y, Y, Y, Y, N),
             "TorchSize":            (self.test_TorchSize,           Y, Y, Y, Y, Y, Y, Y),
             "TorchStd":             (self.test_TorchStd,            N, Y, Y, Y, Y, Y, Y),
@@ -425,6 +443,7 @@ class ONNX_IR_TESTER(object):
             # case:  (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support)
             # Correlation always fail in regression. Comment out to prevent affecting regression.
             "ConcatVolume":  (self.test_ConcatVolume,   N, Y, Y, N, N, N, N),
+            "ConvBwd_Weight": (self.test_ConvBwd_Weight, Y, Y, Y, N, Y, Y, Y),
             "Correlation":   (self.test_Correlation,    N, N, N, N, N, N, N),
             "SelectiveScan":   (self.test_SelectiveScan,    N, Y, N, N, N, N, N),
         }
@@ -1039,6 +1058,83 @@ class ONNX_IR_TESTER(object):
     ##################################
     # adding operators from here
     ##################################
+    def test_AdaptiveAvgPool(self, case_name):
+
+        class AdaptiveAvgPoolFunc(torch.autograd.Function):
+
+            @staticmethod
+            def forward(ctx, input, output_h, output_w):
+                return F.adaptive_avg_pool2d(input, (output_h, output_w))
+
+            @staticmethod
+            def symbolic(g, input, output_h, output_w):
+                return g.op("tpu_mlir::AdaptiveAvgPool",
+                            input,
+                            output_h_i=output_h,
+                            output_w_i=output_w)
+
+        class Model(nn.Module):
+
+            def __init__(self, output_size):
+                super(Model, self).__init__()
+                self.output_size = output_size
+
+            def forward(self, input):
+                return AdaptiveAvgPoolFunc.apply(input, self.output_size[0], self.output_size[1])
+
+        cases = [
+            ((3, 64, 15, 15), (1, 1)),
+            ((1, 32, 32, 32), (3, 3)),
+        ]
+        for idx, (input_shape, output_size) in enumerate(cases):
+            model_name = "{}_{}".format(case_name, idx)
+            input = torch.randn(*input_shape).float()
+            input_data = {"in_0": input.data.numpy().astype(np.float32)}
+            model = Model(output_size)
+            onnx_file = model_name + ".onnx"
+            torch.onnx.export(model,
+                              input,
+                              onnx_file,
+                              export_params=True,
+                              verbose=True,
+                              opset_version=14,
+                              input_names=["in_0"])
+            self.torch_and_onnx_compare(input_data, onnx_file, model(input))
+
+            onnx_model = onnx.load(onnx_file)
+            self.onnx_and_test(onnx_model.graph,
+                               name=model_name,
+                               input_data=input_data,
+                               support_modes=["f32"])
+
+    def test_AdaptiveAvgPool2d(self, case_name):
+
+        def _test_adaptive_avgpool2d(in_shape, output_size):
+
+            class Model(nn.Module):
+
+                def forward(self, x):
+                    return F.adaptive_avg_pool2d(x, output_size)
+
+            self.torch_and_test(torch.randn(*in_shape).float(), Model(), case_name)
+
+        _test_adaptive_avgpool2d((3, 64, 15, 15), (1, 1))
+        if self.chip != "cv183x":
+            _test_adaptive_avgpool2d((1, 32, 32, 32), (3, 3))
+
+    def test_AdaptiveAvgPool1d(self, case_name):
+
+        def _test_adaptive_avgpool1d(in_shape, output_size):
+
+            class Model(nn.Module):
+
+                def forward(self, x):
+                    return F.adaptive_avg_pool1d(x, output_size)
+
+            self.torch_and_test(torch.randn(*in_shape).float(), Model(), case_name)
+
+        _test_adaptive_avgpool1d((3, 64, 32), 1)
+
     def AvgPoolBase(self, case_name, input_shape, output_shape, kernel, strides):
         graph_txt = """
             %s (float%s input) => (float%s output)
@@ -2610,6 +2706,29 @@ class ONNX_IR_TESTER(object):
                 """ % (case_name, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def, input_data=input_data)
+
+    def test_DivConst(self, case_name):
+        input_shape = [1, 3, 27, 27]
+        const_val = 2.0
+
+        class DivConstFunc(torch.autograd.Function):
+
+            @staticmethod
+            def forward(ctx, input_):
+                return input_ / const_val
+
+            @staticmethod
+            def symbolic(g, input_):
+                out = g.op("tpu_mlir::DivConst", input_, const_val_f=const_val)
+                return out.setType(input_.type().with_sizes(input_shape))
+
+        class Model(torch.nn.Module):
+
+            def forward(self, input_):
+                return DivConstFunc.apply(input_)
+
+        input_ = torch.randint(-20, 20, input_shape).float() * const_val
+        self.torch_and_test(input_, Model(), case_name, support_modes=["f32"])
 
     def test_DivBcast(self, case_name):
         shapes = ([6, 11, 39, 29], )
@@ -8043,6 +8162,373 @@ class ONNX_IR_TESTER(object):
                                 dynamic_axes=dynamic_axes)
         finally:
             self.dynamic = False
+
+    def BatchNorm2DBase(self, case_name, input_shape, epsilon=1e-5, momentum=0.9):
+        channels = input_shape[1]
+        scale_data = np.random.randn(channels).astype(np.float32)
+        bias_data = np.random.randn(channels).astype(np.float32)
+        mean_data = np.random.randn(channels).astype(np.float32)
+        var_data = (np.random.rand(channels) + 0.5).astype(np.float32)
+
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            <float[%d] scale, float[%d] bias, float[%d] mean, float[%d] var>
+            {
+                output = BatchNormalization<epsilon=%f,momentum=%f>(input, scale, bias, mean, var)
+            }
+            """ % (case_name, input_shape, input_shape, channels, channels, channels, channels,
+                   epsilon, momentum)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
+        scale = helper.make_tensor('scale', TensorProto.FLOAT, [channels], scale_data)
+        bias = helper.make_tensor('bias', TensorProto.FLOAT, [channels], bias_data)
+        mean = helper.make_tensor('mean', TensorProto.FLOAT, [channels], mean_data)
+        var = helper.make_tensor('var', TensorProto.FLOAT, [channels], var_data)
+        graph_def.initializer.extend([scale, bias, mean, var])
+        self.onnx_and_test(graph_def)
+
+    def test_BatchNorm2D(self, case_name):
+        batchs = [1, 2, 4]
+        for idx, batch in enumerate(batchs):
+            self.BatchNorm2DBase("{}_{}".format(case_name, idx), [batch, 16, 32, 32])
+
+    def test_Ceil(self, case_name):
+        input_shape = [1, 3, 32, 32]
+
+        class Model(nn.Module):
+
+            def forward(self, x):
+                return torch.ceil(x)
+
+        self.torch_and_test((torch.randn(*input_shape).float(), ),
+                            Model(),
+                            case_name,
+                            support_modes=["f32"])
+
+    def test_Cos(self, case_name):
+        input_shape = [1, 3, 32, 32]
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            {
+                output = Cos(input)
+            }
+            """ % (case_name, input_shape, input_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+    def test_Cosh(self, case_name):
+        input_shape = [1, 3, 32, 32]
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            {
+                output = Cosh(input)
+            }
+            """ % (case_name, input_shape, input_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+    def test_DtypeCast(self, case_name):
+        input_shape = [1, 3, 32, 32]
+
+        class Model(torch.nn.Module):
+
+            def forward(self, x):
+                return x.half()
+
+        self.torch_and_test((torch.randn(*input_shape).float(), ),
+                            Model(),
+                            case_name,
+                            support_modes=["f32"])
+
+    def test_Reverse(self, case_name):
+        input_shape = [2, 3, 32, 32]
+        output_shape = [2, 3, 32, 32]
+        seq_lens = np.array([3] * 2, dtype=np.int64)
+
+        seq_len_tensor = helper.make_tensor(
+            name="sequence_lens",
+            data_type=TensorProto.INT64,
+            dims=[2],
+            vals=seq_lens,
+        )
+
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            <int64%s sequence_lens>
+            {
+                output = ReverseSequence<batch_axis=0, time_axis=1>(input, sequence_lens)
+            }
+            """ % (case_name, input_shape, output_shape, list(seq_lens.shape))
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([seq_len_tensor])
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        self.onnx_and_test(graph_def, input_data={"input": input_data})
+
+    def test_Rsqrt(self, case_name):
+        input_shape = [1, 3, 32, 32]
+
+        class Model(nn.Module):
+
+            def forward(self, x):
+                return torch.rsqrt(torch.abs(x) + 0.01)
+
+        self.torch_and_test((torch.randn(*input_shape).float(), ),
+                            Model(),
+                            case_name,
+                            support_modes=["f32"])
+
+    def test_TorchIndexPut(self, case_name):
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                high = 10
+                idx_shape = (3, )
+                self.index = torch.randint(0, high, idx_shape)
+                self.new_val = torch.randn(idx_shape[0], 3, 64, 64)
+
+            def forward(self, x):
+                x[self.index] = self.new_val
+                return x
+
+        x = torch.randn(10, 3, 64, 64).float()
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_TorchInterp(self, case_name):
+
+        class Model(nn.Module):
+
+            def forward(self, x):
+                return nn.functional.interpolate(x,
+                                                 scale_factor=2,
+                                                 mode='bilinear',
+                                                 align_corners=False)
+
+        x = torch.randn(1, 3, 32, 32).float()
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_TorchLayerNormTrain(self, case_name):
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.ln = nn.LayerNorm([100, 200], eps=1e-5)
+
+            def forward(self, x):
+                return self.ln(x)
+
+        x = torch.randn(3, 100, 200).float()
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_LogB(self, case_name):
+
+        class Model(nn.Module):
+
+            def forward(self, x):
+                return torch.log2(x)
+
+        x = torch.rand(1, 3, 32, 32).float() * 10 + 0.5
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_LogicalAnd(self, case_name):
+
+        class Model(nn.Module):
+
+            def forward(self, x, y):
+                return torch.logical_and(x, y).float()
+
+        x = torch.randn(1, 3, 32, 32).float()
+        y = torch.randn(1, 3, 32, 32).float()
+        self.torch_and_test((x, y), Model(), case_name)
+
+    def test_TorchNms(self, case_name):
+        num_boxes = 10
+        batch, num_classes = 1, 1
+        iou_thresh, score_thresh = 0.5, 0.1
+
+        class NmsFunc(torch.autograd.Function):
+
+            @staticmethod
+            def forward(ctx, boxes, scores):
+                cands = []
+                for i in range(num_boxes):
+                    s = scores[0, 0, i].item()
+                    if s > score_thresh:
+                        cands.append((s, i))
+                cands.sort(key=lambda x: x[0], reverse=True)
+
+                suppressed = [False] * len(cands)
+                selected = []
+                for i in range(len(cands)):
+                    if suppressed[i]:
+                        continue
+                    keep = cands[i][1]
+                    selected.extend([0.0, 0.0, float(keep)])
+                    bx1 = boxes[0, keep, 0].item()
+                    by1 = boxes[0, keep, 1].item()
+                    bx2 = boxes[0, keep, 2].item()
+                    by2 = boxes[0, keep, 3].item()
+                    for j in range(i + 1, len(cands)):
+                        if suppressed[j]:
+                            continue
+                        other = cands[j][1]
+                        ox1 = boxes[0, other, 0].item()
+                        oy1 = boxes[0, other, 1].item()
+                        ox2 = boxes[0, other, 2].item()
+                        oy2 = boxes[0, other, 3].item()
+                        ix1 = max(bx1, ox1)
+                        iy1 = max(by1, oy1)
+                        ix2 = min(bx2, ox2)
+                        iy2 = min(by2, oy2)
+                        iw = max(0.0, ix2 - ix1)
+                        ih = max(0.0, iy2 - iy1)
+                        inter = iw * ih
+                        area_a = (bx2 - bx1) * (by2 - by1)
+                        area_b = (ox2 - ox1) * (oy2 - oy1)
+                        iou = inter / (area_a + area_b - inter + 1e-8)
+                        if iou > iou_thresh:
+                            suppressed[j] = True
+                return torch.tensor(selected).float().reshape(-1, 3)
+
+            @staticmethod
+            def symbolic(g, boxes, scores):
+                max_output = g.op("Constant", value_t=torch.tensor([num_boxes], dtype=torch.long))
+                iou_threshold = g.op("Constant",
+                                     value_t=torch.tensor([iou_thresh], dtype=torch.float32))
+                score_threshold = g.op("Constant",
+                                       value_t=torch.tensor([score_thresh], dtype=torch.float32))
+                return g.op("tpu_mlir::Nms",
+                            boxes,
+                            scores,
+                            max_output,
+                            iou_threshold,
+                            score_threshold,
+                            center_point_box_i=0,
+                            max_output_size_i=num_boxes)
+
+        class Model(nn.Module):
+
+            def forward(self, boxes, scores):
+                return NmsFunc.apply(boxes, scores)
+
+        boxes = torch.rand(batch, num_boxes, 4).float() * 10.0
+        boxes[:, :, 2] = boxes[:, :, 0] + torch.rand(batch, num_boxes).float() * 5.0 + 1.0
+        boxes[:, :, 3] = boxes[:, :, 1] + torch.rand(batch, num_boxes).float() * 5.0 + 1.0
+        scores = torch.rand(batch, num_classes, num_boxes).float()
+
+        self.torch_and_test((boxes, scores), Model(), case_name, support_modes=["f32"])
+
+    def test_TorchRoiExtract(self, case_name):
+        roi_num = 5
+        n, c, h, w = 1, 3, 100, 100
+        out_h, out_w = 8, 8
+
+        class RoiExtractFunc(torch.autograd.Function):
+
+            @staticmethod
+            def forward(ctx, x, rois):
+                return torchvision.ops.roi_align(x, rois, [out_h, out_w])
+
+            @staticmethod
+            def symbolic(g, x, rois):
+                lvls = g.op("Constant", value_t=torch.zeros(roi_num, dtype=torch.int32))
+                return g.op("tpu_mlir::RoiExtractor",
+                            rois,
+                            lvls,
+                            x,
+                            num_levels_i=1,
+                            output_height_i=out_h,
+                            output_width_i=out_w,
+                            sampling_ratio_i=2,
+                            spatial_scales_f=[1.0],
+                            align_corners_i=False,
+                            mode_s="Avg")
+
+        class Model(nn.Module):
+
+            def forward(self, x, rois):
+                return RoiExtractFunc.apply(x, rois)
+
+        def gen_rois(batch, height, width, num_rois):
+            bi = torch.randint(0, batch, (num_rois, ), dtype=torch.int32).float()
+            xl, xh = torch.rand(num_rois) * (width - 1), torch.rand(num_rois) * (width - 1)
+            yl, yh = torch.rand(num_rois) * (height - 1), torch.rand(num_rois) * (height - 1)
+            for i in range(num_rois):
+                if xl[i] > xh[i]:
+                    xl[i], xh[i] = xh[i], xl[i]
+                if yl[i] > yh[i]:
+                    yl[i], yh[i] = yh[i], yl[i]
+            return torch.stack([bi, xl, yl, xh, yh], dim=1)
+
+        x = torch.randn(n, c, h, w).float()
+        boxes = gen_rois(n, h, w, roi_num)
+        self.torch_and_test((x, boxes), Model(), case_name, support_modes=["f32"])
+
+    def test_ConvBwd_Weight(self, case_name):
+        n, c_in, h, w = 1, 2, 5, 5
+        c_out, kh, kw = 4, 3, 3
+        stride, pad, dilation, groups = 1, 1, 1, 1
+        h_out = (h + 2 * pad - dilation * (kh - 1) - 1) // stride + 1
+        w_out = (w + 2 * pad - dilation * (kw - 1) - 1) // stride + 1
+
+        class ConvBwdWeightFunc(torch.autograd.Function):
+
+            @staticmethod
+            def forward(ctx, input_, grad_out):
+                padded = F.pad(input_, (pad, pad, pad, pad))
+                oc_grads = []
+                for oc in range(c_out):
+                    ic_grads = []
+                    for ic in range(c_in):
+                        rows = []
+                        for k_h in range(kh):
+                            cols = []
+                            for k_w in range(kw):
+                                window = padded[:, ic, k_h:k_h + h_out:stride,
+                                                k_w:k_w + w_out:stride]
+                                cols.append((window * grad_out[:, oc]).sum())
+                            rows.append(torch.stack(cols))
+                        ic_grads.append(torch.stack(rows))
+                    oc_grads.append(torch.stack(ic_grads))
+                return torch.stack(oc_grads)
+
+            @staticmethod
+            def symbolic(g, input_, grad_out):
+                out = g.op("tpu_mlir::ConvBwd_Weight",
+                           input_,
+                           grad_out,
+                           groups_i=groups,
+                           input_n_i=n,
+                           input_c_i=c_in,
+                           input_h_i=h,
+                           input_w_i=w,
+                           grad_out_n_i=n,
+                           grad_out_c_i=c_out,
+                           grad_out_h_i=h_out,
+                           grad_out_w_i=w_out,
+                           kernel_h_i=kh,
+                           kernel_w_i=kw,
+                           stride_h_i=stride,
+                           stride_w_i=stride,
+                           dilation_h_i=dilation,
+                           dilation_w_i=dilation,
+                           pad_top_i=pad,
+                           pad_left_i=pad,
+                           pad_bottom_i=pad,
+                           pad_right_i=pad)
+                return out.setType(input_.type().with_sizes([c_out, c_in // groups, kh, kw]))
+
+        class Model(torch.nn.Module):
+
+            def forward(self, input_, grad_out):
+                return ConvBwdWeightFunc.apply(input_, grad_out)
+
+        x = torch.randn(n, c_in, h, w).float()
+        dy = torch.randn(n, c_out, h_out, w_out).float()
+
+        self.torch_and_test((x, dy), Model(), case_name, support_modes=["f32"])
 
     def test_ConcatVolume(self, case_name):
 

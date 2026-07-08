@@ -199,6 +199,8 @@ void mul4DF32(void *input0, void *input1, void *output, bool do_relu,
                   int n2, int c2, int h2, int w2);
 void divMDF32(void *input0, void *input1, void *output, int64_t *shape0,
               int64_t *shape1, int64_t *shape2, int num_dims);
+void divConst4DF32(void *input, float const_v, void *output,
+                   bool do_relu, bool reverse, int n, int c, int h, int w);
 void neg(void *input, void *output, int size, data_type_t type);
 // zero pad
 void pad4D(void *input, void *output, int n, int c, int h, int w, int pad_h_t,
@@ -337,8 +339,9 @@ void gather(void *indices, void *embedding, void *output, int num_indices,
             int embedding_dim, int inner_dim, data_type_t ind_type,
             data_type_t embed_type);
 void gatherElements(void *indices, void *input, void *output,
-                    int index_axis_dim, int input_axis_dim, int outer_dim,
-                    int inner_dim, data_type_t index_type, data_type_t input_type);
+                    const int64_t *input_shape, const int64_t *indices_shape,
+                    int rank, int axis, data_type_t index_type,
+                    data_type_t input_type);
 void cudaGather(void *indices, void *embedding, void *output, int num_indices,
             int outer_dims, int ax_dim, int inner_dims, data_type_t ind_type,
             data_type_t embed_type);
@@ -437,5 +440,142 @@ void interp(void *input, void *output, int n, int c, int h, int w, int out_h, in
             interp_platform_t platform);
 void GQA(void *Q, void *K, void *V, void *mask, void *output, int batch, int M_q, int M_k,
          int q_head, int kv_head, int dim, float scale, bool is_bf16);
+
+// Migrated helper declarations from legacy branch.
+void add4DF32(void *input0, float scale0, void *input1, float scale1, void *output,
+               bool relu, int n0, int c0, int h0, int w0, int n1, int c1,
+               int h1, int w1, int n2, int c2, int h2, int w2);
+void bmCompare4DF32(void *lhs, void *rhs, void *output, int mode,
+                    int n0, int c0, int h0, int w0,
+                    int n1, int c1, int h1, int w1,
+                    int n2, int c2, int h2, int w2);
+void bmCompareConst4DF32(void *input, float const_v, void *output,
+                          int mode, bool inversed, int n, int c, int h, int w);
+void mulConst4DF32(void *input, float const_v, void *output, bool do_relu,
+                  int n0, int c0, int h0, int w0);
+void addConst4DF32(void *input, float const_v, void *output, bool do_relu,
+                    int n, int c, int h, int w);
+void pad5D(void *input, void *output,int n, int c,int d,int h,int w,int pad_d_f,
+           int pad_d_b,int pad_h_t,int pad_h_b, int pad_w_l, int pad_w_r, int tbytes);
+void requantInt8Perchannel_3d(void *input, void *output, void *multipliers,
+                           void *shifts, int n, int c,int d, int h, int w,
+                           bool out_sign, bool qdm = false, bool relu = false);
+void requantInt16Perchannel_3d(void *input, void *output, void *multipliers,
+                           void *shifts, int n, int c,int d, int h, int w, bool relu = false);
+void requantF8Perchannel_3d(void *input, void *output, void *scales,
+                            int n, int c, int d ,int h, int w, bool relu, bool conv);
+void bmAbs(void *input, void *output, int num);
+void bmCos(void *input, void *output, int num);
+void bmCosh(void *input, void *output, int num);
+void bmCopy(void *input, void *output, int n, int c, int h, int w,
+            int i_n, int i_c, int i_h, int i_w,
+            int o_n, int o_c, int o_h, int o_w, int tbytes);
+void bmCorrelation(void *left, void *right, void *output,
+                   int max_disp, int num_groups, int ic, int ih, int iw);
+void bmArccos(void *input, void *output, int num);
+void bmArctanh(void *input, void *output, int num);
+void bmAdaptiveAvgPool2D(void *input, void *output,
+                          int n, int c, int ih, int iw, int oh, int ow);
+void bmBatchNorm(void *input, void *output, int n, int c, int spatial,
+                 void *gamma, void *beta, void *mean, void *var, float eps,
+                 bool do_relu);
+void bmClip(void *input, void *output, int num, float min_v, float max_v);
+void bmConstantFill(void *output, float value, int num);
+void bmCumSum(void *input, void *output, int outer_dim, int axis_dim, int stride);
+void bmRMSNorm(void *input, void *output, int outer_dim, int inner_dim,
+               void *gamma, float eps);
+void bmRange(void *output, float start, float delta, int num);
+void bmReciprocal(void *input, void *output, int num, float const_val,
+                  bool do_relu, float relu_limit);
+void copyToHost(float *dst, void *src, data_type_t type);
+void bmReverse(void *input, void *output, int outer_stride, int axis_dim,
+               int inner_stride);
+void bmDepackRaw(void *input, void *output, int n, int ih, int iw,
+                 int ph, int pw, float white_level, float black_level,
+                 int c0, int c1, int c2, int c3);
+void bmDequantizeLinearPerTensor(void *input, void *output, float scale,
+                                  int32_t zp, int num, data_type_t in_type);
+void bmDequantizeLinearPerChannel(void *input, void *output, float *scale,
+                                   int32_t *zp, int outer_dim, int channel_dim,
+                                   int inner_dim, data_type_t in_type);
+void bmDequantIntPerTensor(void *input, void *output, int num,
+                            int64_t multiplier, int64_t shift, int64_t lshift,
+                            int32_t zp, int mode, rounding_mode_t rmode,
+                            data_type_t in_type);
+void bmDequantIntPerChannel(void *input, void *output,
+                             int outer_dim, int channel_dim, int inner_dim,
+                             int64_t *multiplier, int64_t *shift,
+                             int64_t lshift, int32_t zp, int mode,
+                             rounding_mode_t rmode, data_type_t in_type);
+void bmBatchNormBwd(void *grad_out, void *input, void *gamma,
+                     void *save_mean, void *save_invstd,
+                     void *dxhut, void *dgamma, void *dbeta,
+                     void *dx2_tmp, void *dx3, void *dx,
+                     int n, int c, int spatial);
+void bmBatchNormTrain(void *input, void *mean, void *var, void *gamma,
+                      void *beta, void *output, void *mean_out,
+                      void *saved_invstd, void *running_mean,
+                      void *running_var, int n, int c, int spatial, float eps,
+                      float momentum, bool do_relu);
+void bmExpElm(void *input, void *output, int num);
+void bmElu(void *input, void *output, int num, float alpha);
+void bmErf(void *input, void *output, int num);
+void bmExpand(void *input, void *output,
+              int in_n, int in_c, int in_h, int in_w,
+              int out_n, int out_c, int out_h, int out_w);
+void bmEmbDenseBwd(void *grad_output, void *indices, void *output,
+                    int batch_size, int embed_dim);
+void bmGatherND(void *input, void *indices, void *output,
+                 int *in_shape, int *in_strides,
+                 int *idx_shape, int *idx_strides,
+                 int batch_dims, int indices_dim, int coord_dim,
+                 int out_total, int copy_len);
+void bmGroupNorm(void *input, void *output, void *weight, void *bias,
+                  int outer_dim, int inner_dim,
+                  int channel, int channel_per_group, float eps);
+void bmGroupNormTrain(void *input, void *output, void *mean, void *rstd,
+                       void *weight, void *bias,
+                       int outer_dim, int inner_dim,
+                       int channel, int channel_per_group, float eps);
+void bmLRN(void *input, void *output, int n, int c, int h, int w,
+            int size, float alpha, float beta, float bias);
+void bmLSTMCell(void *x_i, void *x_o, void *x_f, void *x_c,
+                 void *h_i, void *h_o, void *h_f, void *h_c,
+                 void *cell_state, void *hidden_state,
+                 int total, float cont);
+void bmLSTMAddBias(void *gate, void *bias, int batch_size, int hidden_size);
+void bmIndexPut(void *input, void *indices, void *values, void *output,
+                 int num_indices, int inner_dim, bool accumulate);
+void bmInstanceNorm(void *input, void *output, void *weight, void *bias,
+                     int outer_dim, int inner_dim, int channel, float eps);
+void bmHardSigmoid(void *input, void *output, int num, float alpha, float beta);
+void bmLayerNormTrain(void *input, void *output, void *mean, void *rstd,
+                       void *weight, void *bias,
+                       int outer_dim, int inner_dim, float eps);
+void bmLogB(void *input, void *output, int num, float log_base_inv);
+void bmLogicalAnd(void *lhs, void *rhs, void *output,
+                   int l_n, int l_c, int l_h, int l_w,
+                   int r_n, int r_c, int r_h, int r_w,
+                   int o_n, int o_c, int o_h, int o_w);
+void bmLeakyRelu(void *input, void *output, int num, float alpha);
+void bmLog(void *input, void *output, int num);
+void bmHardSwish(void *input, void *output, int num);
+void bmGruCell(void *x_gi, void *x_gr, void *x_gh,
+                void *h_gi, void *h_gr, void *h_gh,
+                void *h_prev, void *h_out,
+                int total, bool linear_before_reset);
+void bmRound(void *input, void *output, int num);
+void bmAttentionQK(void *Q, void *K, void *scores,
+                    int B, int H, int Mq, int Mk, int d, float scale);
+void bmAttentionPV(void *scores, void *V, void *context,
+                    int B, int H, int Mq, int Mk, int d);
+void bmCeil(void *input, void *output, int num);
+void bmPermuteBMHD(void *src, void *dst, int B, int M, int H, int d);
+void bmRsqrt(void *input, void *output, int num);
+void bmRoiAlign(void *input, void *rois, void *output,
+                int N, int C, int H, int W,
+                int num_rois, int output_h, int output_w,
+                int sampling_ratio, float spatial_scale,
+                bool align_corners, bool avg_mode);
 } // namespace cuda
 } // namespace tpu_mlir

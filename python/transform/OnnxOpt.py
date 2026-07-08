@@ -965,6 +965,9 @@ class ReForm(object):
                 ]:
                     # keep int->float cast
                     continue
+                if to_attr == TensorProto.FLOAT16 and input_dtype == TensorProto.FLOAT:
+                    # keep float->fp16 cast for top.DtypeCast tests and cuda dispatch
+                    continue
                 cast_ops.append(node)
                 cast_in_dict[node.output[0]] = node.input[0]
                 if node.output[0] in net_out_names: reverse_search = True
@@ -1244,6 +1247,183 @@ def TorchHardSwishPattern2(patterns: list):
 
 
 ###====================== Register your custom operators here ======================###
+
+
+############ AdaptiveAvgPool ############
+@onnx_op(
+    op_type="tpu_mlir::AdaptiveAvgPool",
+    inputs=[
+        PyOp.dt_float,  # 0: input
+    ],
+    outputs=[PyOp.dt_float],
+    attrs={
+        "output_h": PyOp.dt_int64,
+        "output_w": PyOp.dt_int64,
+    })
+def adaptive_avg_pool(input, output_h, output_w):
+    output_h = int(output_h)
+    output_w = int(output_w)
+    n, c, ih, iw = input.shape
+    output = np.zeros((n, c, output_h, output_w), dtype=input.dtype)
+    for oh in range(output_h):
+        start_h = oh * ih // output_h
+        end_h = ((oh + 1) * ih + output_h - 1) // output_h
+        for ow in range(output_w):
+            start_w = ow * iw // output_w
+            end_w = ((ow + 1) * iw + output_w - 1) // output_w
+            output[:, :, oh, ow] = input[:, :, start_h:end_h, start_w:end_w].mean(axis=(2, 3))
+    return output
+
+
+############ DivConst ############
+@onnx_op(
+    op_type="tpu_mlir::DivConst",
+    inputs=[
+        PyOp.dt_float,  # 0: input
+    ],
+    outputs=[PyOp.dt_float],
+    attrs={"const_val": PyOp.dt_float})
+def div_const(input, const_val):
+    return input / float(const_val)
+
+
+############ ConvBwd_Weight ############
+@onnx_op(
+    op_type="tpu_mlir::ConvBwd_Weight",
+    inputs=[
+        PyOp.dt_float,  # 0: input
+        PyOp.dt_float,  # 1: grad_out
+    ],
+    outputs=[PyOp.dt_float],
+    attrs={
+        "groups": PyOp.dt_int64,
+        "input_n": PyOp.dt_int64,
+        "input_c": PyOp.dt_int64,
+        "input_h": PyOp.dt_int64,
+        "input_w": PyOp.dt_int64,
+        "grad_out_n": PyOp.dt_int64,
+        "grad_out_c": PyOp.dt_int64,
+        "grad_out_h": PyOp.dt_int64,
+        "grad_out_w": PyOp.dt_int64,
+        "kernel_h": PyOp.dt_int64,
+        "kernel_w": PyOp.dt_int64,
+        "stride_h": PyOp.dt_int64,
+        "stride_w": PyOp.dt_int64,
+        "dilation_h": PyOp.dt_int64,
+        "dilation_w": PyOp.dt_int64,
+        "pad_top": PyOp.dt_int64,
+        "pad_left": PyOp.dt_int64,
+        "pad_bottom": PyOp.dt_int64,
+        "pad_right": PyOp.dt_int64,
+    })
+def conv_bwd_weight(input, grad_out, groups, input_n, input_c, input_h, input_w, grad_out_n,
+                    grad_out_c, grad_out_h, grad_out_w, kernel_h, kernel_w, stride_h, stride_w,
+                    dilation_h, dilation_w, pad_top, pad_left, pad_bottom, pad_right):
+    groups = int(groups)
+    input_c = int(input_c)
+    grad_out_c = int(grad_out_c)
+    kernel_h = int(kernel_h)
+    kernel_w = int(kernel_w)
+    stride_h = int(stride_h)
+    stride_w = int(stride_w)
+    dilation_h = int(dilation_h)
+    dilation_w = int(dilation_w)
+    pad_top = int(pad_top)
+    pad_left = int(pad_left)
+    pad_bottom = int(pad_bottom)
+    pad_right = int(pad_right)
+
+    _, _, grad_out_h, grad_out_w = grad_out.shape
+    in_c_per_group = input_c // groups
+    out_c_per_group = grad_out_c // groups
+    padded = np.pad(input, ((0, 0), (0, 0), (pad_top, pad_bottom), (pad_left, pad_right)))
+    output = np.zeros((grad_out_c, in_c_per_group, kernel_h, kernel_w), dtype=input.dtype)
+
+    for g in range(groups):
+        for oc in range(out_c_per_group):
+            out_c_idx = g * out_c_per_group + oc
+            for ic in range(in_c_per_group):
+                in_c_idx = g * in_c_per_group + ic
+                for kh in range(kernel_h):
+                    h_start = kh * dilation_h
+                    h_end = h_start + grad_out_h * stride_h
+                    for kw in range(kernel_w):
+                        w_start = kw * dilation_w
+                        w_end = w_start + grad_out_w * stride_w
+                        window = padded[:, in_c_idx, h_start:h_end:stride_h, w_start:w_end:stride_w]
+                        output[out_c_idx, ic, kh, kw] = np.sum(window * grad_out[:, out_c_idx])
+    return output
+
+
+############ Nms ############
+@onnx_op(
+    op_type="tpu_mlir::Nms",
+    inputs=[
+        PyOp.dt_float,  # 0: boxes
+        PyOp.dt_float,  # 1: scores
+        PyOp.dt_int64,  # 2: max_output_boxes_per_class
+        PyOp.dt_float,  # 3: iou_threshold
+        PyOp.dt_float,  # 4: score_threshold
+    ],
+    outputs=[PyOp.dt_float],
+    attrs={
+        "center_point_box": PyOp.dt_int64,
+        "max_output_size": PyOp.dt_int64,
+    })
+def nms(boxes, scores, max_output_boxes_per_class, iou_threshold, score_threshold, center_point_box,
+        max_output_size):
+    center_point_box = int(center_point_box)
+    max_output = int(np.asarray(max_output_boxes_per_class).reshape(-1)[0])
+    if max_output <= 0:
+        max_output = int(max_output_size)
+    iou_threshold = float(np.asarray(iou_threshold).reshape(-1)[0])
+    score_threshold = float(np.asarray(score_threshold).reshape(-1)[0])
+
+    def get_box(batch_idx, idx):
+        box = boxes[batch_idx, idx] if boxes.ndim == 3 else boxes[idx]
+        if center_point_box == 0:
+            return box[0], box[1], box[2], box[3]
+        x_center, y_center, width, height = box
+        half_w = width / 2.0
+        half_h = height / 2.0
+        return x_center - half_w, y_center - half_h, x_center + half_w, y_center + half_h
+
+    def calc_iou(batch_idx, a_idx, b_idx):
+        ax1, ay1, ax2, ay2 = get_box(batch_idx, a_idx)
+        bx1, by1, bx2, by2 = get_box(batch_idx, b_idx)
+        ix1 = max(ax1, bx1)
+        iy1 = max(ay1, by1)
+        ix2 = min(ax2, bx2)
+        iy2 = min(ay2, by2)
+        inter_w = max(0.0, ix2 - ix1)
+        inter_h = max(0.0, iy2 - iy1)
+        inter = inter_w * inter_h
+        area_a = max(0.0, ax2 - ax1) * max(0.0, ay2 - ay1)
+        area_b = max(0.0, bx2 - bx1) * max(0.0, by2 - by1)
+        return inter / (area_a + area_b - inter + 1e-8)
+
+    selected = []
+    batch, num_classes, num_boxes = scores.shape
+    for b in range(batch):
+        for c in range(num_classes):
+            candidates = [(float(scores[b, c, i]), i) for i in range(num_boxes)
+                          if scores[b, c, i] > score_threshold]
+            candidates.sort(key=lambda item: item[0], reverse=True)
+            suppressed = [False] * len(candidates)
+            kept = 0
+            for i, (_, keep) in enumerate(candidates):
+                if suppressed[i]:
+                    continue
+                selected.append([float(b), float(c), float(keep)])
+                kept += 1
+                if kept >= max_output:
+                    break
+                for j in range(i + 1, len(candidates)):
+                    if suppressed[j]:
+                        continue
+                    if calc_iou(b, keep, candidates[j][1]) > iou_threshold:
+                        suppressed[j] = True
+    return np.asarray(selected, dtype=np.float32).reshape(-1, 3)
 
 
 ############ correlation ############

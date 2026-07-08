@@ -31,7 +31,7 @@ target_link_libraries(pymlir PRIVATE
 )
 
 if (TPUMLIR_USE_CUDA)
-  target_link_libraries(pymlir PRIVATE cudnn cudart cuda_helper)
+  target_link_libraries(pymlir PRIVATE cudnn cudart cublas cuda_helper)
 endif()
 
 install(TARGETS pymlir DESTINATION python)

@@ -21,7 +21,22 @@ namespace bm1684x {
 void DivConstTryLowering::Lowering(PatternRewriter &rewriter,
                                    top::DivConstOp op) const {
   auto prev_op = op.getInput().getDefiningOp();
-  if (!prev_op->hasTrait<trait::ShapeProducer>()) {
+  auto const_val = op.getConstVal().convertToDouble();
+  if (prev_op == nullptr || !prev_op->hasTrait<trait::ShapeProducer>()) {
+    auto constF32 = std::make_shared<std::vector<float>>(1, const_val);
+    auto out_shape = module::getShape(op.getOutput());
+    std::vector<int64_t> const_shape(out_shape.begin(), out_shape.end());
+    std::fill(const_shape.begin(), const_shape.end(), 1);
+    auto weight_type = RankedTensorType::get(const_shape, rewriter.getF32Type());
+    auto weight_op = top::WeightOp::create(op, "div_const", *constF32,
+                                           weight_type);
+    std::vector<Value> operands{op.getInput(), weight_op};
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(rewriter.getNamedAttr("is_reverse", op.getIsReverseAttr()));
+    attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
+    attrs.push_back(rewriter.getNamedAttr("relu_limit", op.getReluLimitAttr()));
+    rewriter.replaceOpWithNewOp<tpu::DivOp>(op, op.getOutput().getType(),
+                                            operands, attrs);
     return;
   }
   if (op.getIsReverse()) {
@@ -31,7 +46,7 @@ void DivConstTryLowering::Lowering(PatternRewriter &rewriter,
   attrs.push_back(rewriter.getNamedAttr("type", rewriter.getStringAttr("Div")));
 
   auto constI32 = i32_array_t(new std::vector<int32_t>(1, 0));
-  constI32->data()[0] = std::floor(op.getConstVal().convertToDouble());
+  constI32->data()[0] = std::floor(const_val);
   auto weight_type =
       RankedTensorType::get({1}, rewriter.getIntegerType(32, true));
   auto weight_op = top::WeightOp::create(op, "i64", *constI32, weight_type);

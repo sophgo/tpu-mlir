@@ -34,6 +34,8 @@ export PATH=$PROJECT_ROOT/python/tools/train/test:$PATH
 # ppl compiler path
 if [ -d "$PROJECT_ROOT/../ppl_compile" ]; then
   export PPL_PROJECT_ROOT=$PROJECT_ROOT/../ppl_compile
+elif [ -d "$PROJECT_ROOT/cross_toolchains/ppl_compile" ]; then
+  export PPL_PROJECT_ROOT=$PROJECT_ROOT/cross_toolchains/ppl_compile
 else
   export PPL_PROJECT_ROOT=$PROJECT_ROOT/cross_toolchains/ppl_compile
   $PROJECT_ROOT/download_toolchains.sh ppl || {
@@ -43,6 +45,8 @@ else
 fi
 if [ -d "$PROJECT_ROOT/../bm_prebuilt_toolchains" ]; then
   export CROSS_TOOLCHAINS=$PROJECT_ROOT/../bm_prebuilt_toolchains
+elif [ -d "$PROJECT_ROOT/cross_toolchains" ]; then
+  export CROSS_TOOLCHAINS=$PROJECT_ROOT/cross_toolchains
 else
   export CROSS_TOOLCHAINS=$PROJECT_ROOT/cross_toolchains
   $PROJECT_ROOT/download_toolchains.sh cross-gcc || {
@@ -71,19 +75,12 @@ export PYTHONPATH=$PROJECT_ROOT/python:$PYTHONPATH
 export PYTHONPATH=$PROJECT_ROOT/third_party/customlayer/python:$PYTHONPATH
 
 
-export OMP_NUM_THREADS=8
+export OMP_NUM_THREADS=4
 
 export FORBID_GEN_RISCV_CODE=1
 
 # CCache configuration
-export CCACHE_DIR=${CCACHE_DIR:-$HOME/.ccache}
-export CCACHE_MAXSIZE=${CCACHE_MAXSIZE:-20G}
-export CCACHE_COMPRESS=true
-export CCACHE_COMPRESSLEVEL=6
 export CCACHE_REMOTE_STORAGE=redis://10.132.3.118:6379
-function ccache_stats() {
-    ccache -s
-}
 
 # Coverage related settings
 export ENABLE_COVERAGE=False
@@ -109,7 +106,6 @@ function use_chip_cmodel() {
 }
 
 export LIBSOPHON_ROOT=$PROJECT_ROOT/../libsophon
-
 function rebuild_atomic_exec_alone() {
     export ATOMIC_EXEC_ALONE=1
     if [ -z "$USE_CROSS_TOOLCHAINS" ]; then

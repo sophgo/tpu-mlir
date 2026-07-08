@@ -465,6 +465,15 @@ void mul4DF32(void *input0, void *input1, void *output, bool do_relu,
       do_relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
 }
 
+void divConst4DF32(void *input, float const_v, void *output,
+                   bool do_relu, bool reverse, int n, int c, int h, int w) {
+  int size = n * c * h * w;
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_divConst4DF32<<<num_blocks, block_size>>>(
+      (float *)input, const_v, (float *)output, do_relu, reverse, n, c, h, w);
+}
+
 void divMDF32(void *input0, void *input1, void *output, int64_t* shape0,
               int64_t* shape1, int64_t* shape2, int dims) {
   int size = 1;
@@ -1016,54 +1025,78 @@ void gather(void *indices, void *embedding, void *output, int num_indices,
 }
 
 void gatherElements(void *indices, void *input, void *output,
-                    int index_axis_dim, int input_axis_dim, int outer_dim,
-                    int inner_dim, data_type_t index_type, data_type_t input_type) {
-  int num_blocks = CUDA_NUM_BLOCKS(outer_dim * inner_dim);
+                    const int64_t *input_shape, const int64_t *indices_shape,
+                    int rank, int axis, data_type_t index_type,
+                    data_type_t input_type) {
+  int total = 1;
+  for (int i = 0; i < rank; ++i) {
+    total *= indices_shape[i];
+  }
+  int64_t *input_strides = new int64_t[rank];
+  input_strides[rank - 1] = 1;
+  for (int i = rank - 2; i >= 0; --i) {
+    input_strides[i] = input_strides[i + 1] * input_shape[i + 1];
+  }
+
+  int64_t *d_input_shape, *d_indices_shape, *d_input_strides;
+  cudaMalloc(&d_input_shape, rank * sizeof(int64_t));
+  cudaMalloc(&d_indices_shape, rank * sizeof(int64_t));
+  cudaMalloc(&d_input_strides, rank * sizeof(int64_t));
+  cudaMemcpy(d_input_shape, input_shape, rank * sizeof(int64_t), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_indices_shape, indices_shape, rank * sizeof(int64_t), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_input_strides, input_strides, rank * sizeof(int64_t), cudaMemcpyHostToDevice);
+
+  int num_blocks = CUDA_NUM_BLOCKS(total);
   int block_size = CUDA_BLOCK_SIZE;
   auto dbytes = get_dtype_bytes(input_type);
   if (index_type == DT_UINT16) {
     if (dbytes == 1) {
       g_gatherElements<<<num_blocks, block_size>>>(
-          (uint16_t *)indices, (uint8_t *)input, (uint8_t *)output, index_axis_dim,
-          input_axis_dim, outer_dim, inner_dim);
+          (uint16_t *)indices, (uint8_t *)input, (uint8_t *)output, d_input_shape,
+          d_indices_shape, d_input_strides, rank, axis, total);
     } else if (dbytes == 2) {
       g_gatherElements<<<num_blocks, block_size>>>(
-          (uint16_t *)indices, (uint16_t *)input, (uint16_t *)output, index_axis_dim,
-          input_axis_dim, outer_dim, inner_dim);
+          (uint16_t *)indices, (uint16_t *)input, (uint16_t *)output, d_input_shape,
+          d_indices_shape, d_input_strides, rank, axis, total);
     } else if (dbytes == 4) {
       g_gatherElements<<<num_blocks, block_size>>>(
-          (uint16_t *)indices, (uint32_t *)input, (uint32_t *)output, index_axis_dim,
-          input_axis_dim, outer_dim, inner_dim);
+          (uint16_t *)indices, (uint32_t *)input, (uint32_t *)output, d_input_shape,
+          d_indices_shape, d_input_strides, rank, axis, total);
     }
   } else if (index_type == DT_INT32) {
     if (dbytes == 1) {
       g_gatherElements<<<num_blocks, block_size>>>(
-          (int32_t *)indices, (uint8_t *)input, (uint8_t *)output, index_axis_dim,
-          input_axis_dim, outer_dim, inner_dim);
+          (int32_t *)indices, (uint8_t *)input, (uint8_t *)output, d_input_shape,
+          d_indices_shape, d_input_strides, rank, axis, total);
     } else if (dbytes == 2) {
       g_gatherElements<<<num_blocks, block_size>>>(
-          (int32_t *)indices, (uint16_t *)input, (uint16_t *)output, index_axis_dim,
-          input_axis_dim, outer_dim, inner_dim);
+          (int32_t *)indices, (uint16_t *)input, (uint16_t *)output, d_input_shape,
+          d_indices_shape, d_input_strides, rank, axis, total);
     } else if (dbytes == 4) {
       g_gatherElements<<<num_blocks, block_size>>>(
-          (int32_t *)indices, (uint32_t *)input, (uint32_t *)output, index_axis_dim,
-          input_axis_dim, outer_dim, inner_dim);
+          (int32_t *)indices, (uint32_t *)input, (uint32_t *)output, d_input_shape,
+          d_indices_shape, d_input_strides, rank, axis, total);
     }
   } else if (index_type == DT_F32) {
     if (dbytes == 1) {
       g_gatherElements<<<num_blocks, block_size>>>(
-          (float *)indices, (uint8_t *)input, (uint8_t *)output, index_axis_dim,
-          input_axis_dim, outer_dim, inner_dim);
+          (float *)indices, (uint8_t *)input, (uint8_t *)output, d_input_shape,
+          d_indices_shape, d_input_strides, rank, axis, total);
     } else if (dbytes == 2) {
       g_gatherElements<<<num_blocks, block_size>>>(
-          (float *)indices, (uint16_t *)input, (uint16_t *)output, index_axis_dim,
-          input_axis_dim, outer_dim, inner_dim);
+          (float *)indices, (uint16_t *)input, (uint16_t *)output, d_input_shape,
+          d_indices_shape, d_input_strides, rank, axis, total);
     } else if (dbytes == 4) {
       g_gatherElements<<<num_blocks, block_size>>>(
-          (float *)indices, (uint32_t *)input, (uint32_t *)output, index_axis_dim,
-          input_axis_dim, outer_dim, inner_dim);
+          (float *)indices, (uint32_t *)input, (uint32_t *)output, d_input_shape,
+          d_indices_shape, d_input_strides, rank, axis, total);
     }
   }
+  cudaDeviceSynchronize();
+  cudaFree(d_input_shape);
+  cudaFree(d_indices_shape);
+  cudaFree(d_input_strides);
+  delete[] input_strides;
 }
 
 void cudaGather(void *indices, void *embedding, void *output, int num_indices,
@@ -2172,5 +2205,829 @@ void GQA(void *Q, void *K, void *V, void *mask, void *output, int batch, int M_q
   cudaFree(qk_buffer);
 }
 
+// Migrated helper definitions from legacy branch.
+void bmReciprocal(void *input, void *output, int num, float const_val,
+                  bool do_relu, float relu_limit) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_reciprocal<<<num_blocks, block_size>>>((float *)input, (float *)output, num,
+                                           const_val, (int)do_relu, relu_limit);
+}
+
+
+
+void add4DF32(void *input0, float scale0, void *input1, float scale1, void *output,
+               bool relu, int n0, int c0, int h0, int w0, int n1, int c1,
+               int h1, int w1, int n2, int c2, int h2, int w2) {
+  int size = n2 * c2 * h2 * w2;
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_add4DF32<<<num_blocks, block_size>>>(
+      (float *)input0, scale0, (float *)input1, scale1, (float *)output,
+      relu, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+}
+
+
+
+void addConst4DF32(void *input, float const_v, void *output,
+                    bool do_relu, int n, int c, int h, int w) {
+  int size = n * c * h * w;
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_addConst4DF32<<<num_blocks, block_size>>>(
+      (float *)input, const_v, (float *)output,
+      do_relu, n, c, h, w);
+}
+
+
+
+void bmAbs(void *input, void *output, int size) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_abs<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, size);
+}
+
+
+
+void bmAdaptiveAvgPool2D(void *input, void *output,
+                          int n, int c, int ih, int iw, int oh, int ow) {
+  dim3 block(AP_TILE_W, AP_TILE_H);
+  dim3 grid((oh + AP_TILE_H - 1) / AP_TILE_H,
+            (ow + AP_TILE_W - 1) / AP_TILE_W,
+            n * c);
+  g_adaptiveAvgPool2D<<<grid, block>>>(
+      (float *)input, (float *)output, n, c, ih, iw, oh, ow);
+}
+
+
+
+void bmArccos(void *input, void *output, int size) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_arccos<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, size);
+}
+
+
+
+void bmArctanh(void *input, void *output, int size) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_arctanh<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, size);
+}
+
+
+
+void bmAttentionPV(void *scores, void *V, void *context,
+                    int B, int H, int Mq, int Mk, int d) {
+  int total = B * H * Mq * d;
+  int nb = CUDA_NUM_BLOCKS(total), bs = CUDA_BLOCK_SIZE;
+  g_attentionPV<<<nb, bs>>>((float *)scores, (float *)V, (float *)context,
+                              B, H, Mq, Mk, d);
+}
+
+
+
+void bmAttentionQK(void *Q, void *K, void *scores,
+                    int B, int H, int Mq, int Mk, int d, float scale) {
+  int total = B * H * Mq * Mk;
+  int nb = CUDA_NUM_BLOCKS(total), bs = CUDA_BLOCK_SIZE;
+  g_attentionQK<<<nb, bs>>>((float *)Q, (float *)K, (float *)scores,
+                              B, H, Mq, Mk, d, scale);
+}
+
+
+
+void bmBatchNorm(void *input, void *output, int n, int c, int spatial,
+                 void *gamma, void *beta, void *mean, void *var, float eps,
+                 bool do_relu) {
+  int num_blocks = CUDA_NUM_BLOCKS(n * c * spatial);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_batchNormInference<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, n, c, spatial, (float *)gamma,
+      (float *)beta, (float *)mean, (float *)var, eps, do_relu);
+}
+
+
+
+void bmBatchNormBwd(void *grad_out, void *input, void *gamma,
+                     void *save_mean, void *save_invstd,
+                     void *dxhut, void *dgamma, void *dbeta,
+                     void *dx2_tmp, void *dx3, void *dx,
+                     int n, int c, int spatial) {
+  int num_blocks = CUDA_NUM_BLOCKS(n * c * spatial);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_batchNormBwdStats<<<num_blocks, block_size>>>(
+      (float *)grad_out, (float *)input, (float *)gamma,
+      (float *)save_mean, (float *)save_invstd,
+      (float *)dxhut,
+      (float *)dgamma, (float *)dbeta,
+      (float *)dx2_tmp, (float *)dx3,
+      n, c, spatial);
+  g_batchNormBwdCompute<<<num_blocks, block_size>>>(
+      (float *)grad_out, (float *)input,
+      (float *)save_mean, (float *)save_invstd,
+      (float *)dxhut,
+      (float *)dx2_tmp, (float *)dx3,
+      (float *)dx,
+      n, c, spatial);
+}
+
+
+
+void bmBatchNormTrain(void *input, void *mean, void *var, void *gamma,
+                      void *beta, void *output, void *mean_out,
+                      void *saved_invstd, void *running_mean,
+                      void *running_var, int n, int c, int spatial, float eps,
+                      float momentum, bool do_relu) {
+  int block_size = CUDA_BLOCK_SIZE;
+  int stat_blocks = CUDA_NUM_BLOCKS(c);
+  g_batchNormTrainStats<<<stat_blocks, block_size>>>(
+      (float *)input, (float *)mean, (float *)var, (float *)mean_out,
+      (float *)saved_invstd, (float *)running_mean, (float *)running_var, n, c,
+      spatial, eps, momentum);
+
+  int norm_blocks = CUDA_NUM_BLOCKS(n * c * spatial);
+  g_batchNormTrainNormalize<<<norm_blocks, block_size>>>(
+      (float *)input, (float *)output, (float *)gamma, (float *)beta,
+      (float *)mean_out, (float *)saved_invstd, n, c, spatial, do_relu);
+}
+
+
+
+void bmCeil(void *input, void *output, int num) {
+  int nb = CUDA_NUM_BLOCKS(num), bs = CUDA_BLOCK_SIZE;
+  g_ceil<<<nb, bs>>>((float *)input, (float *)output, num);
+}
+
+
+
+void bmClip(void *input, void *output, int size, float min_v, float max_v) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_clip<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, size, min_v, max_v);
+}
+
+
+
+
+void bmCompare4DF32(void *lhs, void *rhs, void *output, int mode,
+                    int n0, int c0, int h0, int w0,
+                    int n1, int c1, int h1, int w1,
+                    int n2, int c2, int h2, int w2) {
+  int size = n2 * c2 * h2 * w2;
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_compare4DF32<<<num_blocks, block_size>>>(
+      (float *)lhs, (float *)rhs, (float *)output,
+      mode, n0, c0, h0, w0, n1, c1, h1, w1, n2, c2, h2, w2);
+}
+
+
+
+void bmCompareConst4DF32(void *input, float const_v, void *output,
+                          int mode, bool inversed, int n, int c, int h, int w) {
+  int size = n * c * h * w;
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_compareConst4DF32<<<num_blocks, block_size>>>(
+      (float *)input, const_v, (float *)output, mode, inversed, n, c, h, w);
+}
+
+
+
+void bmConstantFill(void *output, float value, int size) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_constantFill<<<num_blocks, block_size>>>((float *)output, value, size);
+}
+
+
+
+void bmCopy(void *input, void *output, int n, int c, int h, int w,
+            int i_n, int i_c, int i_h, int i_w,
+            int o_n, int o_c, int o_h, int o_w, int tbytes) {
+  int total = n * c * h * w;
+  int num_blocks = CUDA_NUM_BLOCKS(total);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_copy<<<num_blocks, block_size>>>(input, output, n, c, h, w,
+                                      i_n, i_c, i_h, i_w,
+                                      o_n, o_c, o_h, o_w, tbytes);
+}
+
+
+
+void bmCorrelation(void *left, void *right, void *output,
+                   int max_disp, int num_groups, int ic, int ih, int iw) {
+  int spatial = ih * iw;
+  int total = num_groups * max_disp * spatial;
+  int num_blocks = CUDA_NUM_BLOCKS(total);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_correlation<<<num_blocks, block_size>>>(
+      (float *)left, (float *)right, (float *)output,
+      max_disp, num_groups, ic, ih, iw);
+}
+
+
+
+void bmCos(void *input, void *output, int size) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_cos<<<num_blocks, block_size>>>((float *)input, (float *)output, size);
+}
+
+
+
+void bmCosh(void *input, void *output, int size) {
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_cosh<<<num_blocks, block_size>>>((float *)input, (float *)output, size);
+}
+
+
+
+void bmCumSum(void *input, void *output, int outer_dim, int axis_dim,
+              int stride) {
+  int total = outer_dim * stride;
+  int num_blocks = CUDA_NUM_BLOCKS(total);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_cumSum<<<num_blocks, block_size>>>((float *)input, (float *)output,
+                                        outer_dim, axis_dim, stride);
+}
+
+
+
+void bmDepackRaw(void *input, void *output, int n, int ih, int iw,
+                 int ph, int pw, float white_level, float black_level,
+                 int c0, int c1, int c2, int c3) {
+  int total = n * ih * 2 * iw * 2;
+  int num_blocks = CUDA_NUM_BLOCKS(total);
+  int block_size = CUDA_BLOCK_SIZE;
+  float scale = 255.0f / (white_level - black_level);
+  g_depackRaw<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, n, ih, iw, ph, pw,
+      scale, black_level, c0, c1, c2, c3);
+}
+
+
+
+
+template <typename T>
+static void launchDequantizeLinearPerTensor(void *input, void *output,
+                                            float scale, int32_t zp, int num) {
+  int nb = CUDA_NUM_BLOCKS(num), bs = CUDA_BLOCK_SIZE;
+  g_dequantizeLinearPerTensor<<<nb, bs>>>((T *)input, (float *)output, scale,
+                                          zp, num);
+}
+
+template <typename T>
+static void launchDequantizeLinearPerChannel(void *input, void *output,
+                                             float *scale, int32_t *zp,
+                                             int outer_dim, int channel_dim,
+                                             int inner_dim) {
+  int total = outer_dim * channel_dim * inner_dim;
+  int nb = CUDA_NUM_BLOCKS(total), bs = CUDA_BLOCK_SIZE;
+  g_dequantizeLinearPerChannel<<<nb, bs>>>(
+      (T *)input, (float *)output, scale, zp, outer_dim, channel_dim,
+      inner_dim);
+}
+
+template <typename T>
+static void launchDequantIntPerTensor(void *input, void *output, int num,
+                                      int64_t multiplier, int64_t shift,
+                                      int64_t lshift, int32_t zp, int mode,
+                                      rounding_mode_t rmode) {
+  int nb = CUDA_NUM_BLOCKS(num), bs = CUDA_BLOCK_SIZE;
+  g_dequantIntPerTensor<<<nb, bs>>>((T *)input, (float *)output, num,
+                                    multiplier, shift, lshift, zp, mode,
+                                    rmode);
+}
+
+template <typename T>
+static void launchDequantIntPerChannel(void *input, void *output,
+                                       int outer_dim, int channel_dim,
+                                       int inner_dim, int64_t *multiplier,
+                                       int64_t *shift, int64_t lshift,
+                                       int32_t zp, int mode,
+                                       rounding_mode_t rmode) {
+  int total = outer_dim * channel_dim * inner_dim;
+  int nb = CUDA_NUM_BLOCKS(total), bs = CUDA_BLOCK_SIZE;
+  g_dequantIntPerChannel<<<nb, bs>>>((T *)input, (float *)output, outer_dim,
+                                     channel_dim, inner_dim, multiplier, shift,
+                                     lshift, zp, mode, rmode);
+}
+
+void bmDequantIntPerChannel(void *input, void *output,
+                             int outer_dim, int channel_dim, int inner_dim,
+                             int64_t *multiplier, int64_t *shift,
+                             int64_t lshift, int32_t zp, int mode,
+                             rounding_mode_t rmode, data_type_t in_type) {
+  if (in_type == DT_INT8)
+    launchDequantIntPerChannel<int8_t>(input, output, outer_dim, channel_dim,
+                                        inner_dim, multiplier, shift, lshift,
+                                        zp, mode, rmode);
+  else
+    launchDequantIntPerChannel<uint8_t>(input, output, outer_dim, channel_dim,
+                                         inner_dim, multiplier, shift, lshift,
+                                         zp, mode, rmode);
+}
+
+
+
+void bmDequantIntPerTensor(void *input, void *output, int num,
+                            int64_t multiplier, int64_t shift, int64_t lshift,
+                            int32_t zp, int mode, rounding_mode_t rmode,
+                            data_type_t in_type) {
+  if (in_type == DT_INT8)
+    launchDequantIntPerTensor<int8_t>(input, output, num, multiplier, shift,
+                                       lshift, zp, mode, rmode);
+  else
+    launchDequantIntPerTensor<uint8_t>(input, output, num, multiplier, shift,
+                                        lshift, zp, mode, rmode);
+}
+
+
+
+void bmDequantizeLinearPerChannel(void *input, void *output, float *scale,
+                                   int32_t *zp, int outer_dim, int channel_dim,
+                                   int inner_dim, data_type_t in_type) {
+  if (in_type == DT_INT8)
+    launchDequantizeLinearPerChannel<int8_t>(input, output, scale, zp,
+                                              outer_dim, channel_dim, inner_dim);
+  else if (in_type == DT_UINT8)
+    launchDequantizeLinearPerChannel<uint8_t>(input, output, scale, zp,
+                                               outer_dim, channel_dim, inner_dim);
+  else
+    launchDequantizeLinearPerChannel<int32_t>(input, output, scale, zp,
+                                              outer_dim, channel_dim, inner_dim);
+}
+
+
+
+void bmDequantizeLinearPerTensor(void *input, void *output, float scale,
+                                  int32_t zp, int num, data_type_t in_type) {
+  if (in_type == DT_INT8)
+    launchDequantizeLinearPerTensor<int8_t>(input, output, scale, zp, num);
+  else if (in_type == DT_UINT8)
+    launchDequantizeLinearPerTensor<uint8_t>(input, output, scale, zp, num);
+  else
+    launchDequantizeLinearPerTensor<int32_t>(input, output, scale, zp, num);
+}
+
+
+
+void bmElu(void *input, void *output, int num, float alpha) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_elu<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, num, alpha);
+}
+
+
+
+void bmEmbDenseBwd(void *grad_output, void *indices, void *output,
+                    int batch_size, int embed_dim) {
+  int total = batch_size * embed_dim;
+  int num_blocks = CUDA_NUM_BLOCKS(total);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_embDenseBwd<<<num_blocks, block_size>>>(
+      (float *)grad_output, (float *)indices, (float *)output,
+      batch_size, embed_dim);
+}
+
+
+
+void bmErf(void *input, void *output, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_erf<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, num);
+}
+
+
+
+void bmExpElm(void *input, void *output, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_expElm<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, num);
+}
+
+
+
+void bmExpand(void *input, void *output,
+              int in_n, int in_c, int in_h, int in_w,
+              int out_n, int out_c, int out_h, int out_w) {
+  int total = out_n * out_c * out_h * out_w;
+  int num_blocks = CUDA_NUM_BLOCKS(total);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_expand<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output,
+      in_n, in_c, in_h, in_w,
+      out_n, out_c, out_h, out_w);
+}
+
+
+
+void bmGatherND(void *input, void *indices, void *output,
+                 int *in_shape, int *in_strides,
+                 int *idx_shape, int *idx_strides,
+                 int batch_dims, int indices_dim, int coord_dim,
+                 int out_total, int copy_len) {
+  int total = out_total * copy_len;
+  int num_blocks = CUDA_NUM_BLOCKS(total);
+  int block_size = CUDA_BLOCK_SIZE;
+
+  int max_bytes = 8 * sizeof(int);
+  int *d_in_shape, *d_in_strides, *d_idx_strides;
+  cudaMalloc(&d_in_shape, max_bytes);
+  cudaMalloc(&d_in_strides, max_bytes);
+  cudaMalloc(&d_idx_strides, max_bytes);
+  cudaMemset(d_in_shape, 0, max_bytes);
+  cudaMemset(d_in_strides, 0, max_bytes);
+  cudaMemset(d_idx_strides, 0, max_bytes);
+  cudaMemcpy(d_in_shape, in_shape, 8 * sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_in_strides, in_strides, 8 * sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_idx_strides, idx_strides, 8 * sizeof(int), cudaMemcpyHostToDevice);
+
+  g_gatherND<<<num_blocks, block_size>>>(
+      (float *)input, (float *)indices, (float *)output,
+      d_in_shape, d_in_strides, d_idx_strides,
+      indices_dim, coord_dim, batch_dims, out_total, copy_len);
+
+  cudaDeviceSynchronize();
+  cudaFree(d_in_shape);
+  cudaFree(d_in_strides);
+  cudaFree(d_idx_strides);
+}
+
+
+
+void bmGroupNorm(void *input, void *output, void *weight, void *bias,
+                  int outer_dim, int inner_dim,
+                  int channel, int channel_per_group, float eps) {
+  int num_blocks = CUDA_NUM_BLOCKS(outer_dim);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_groupNorm<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output,
+      (float *)weight, (float *)bias,
+      outer_dim, inner_dim, channel, channel_per_group, eps);
+}
+
+
+
+void bmGroupNormTrain(void *input, void *output, void *mean, void *rstd,
+                       void *weight, void *bias,
+                       int outer_dim, int inner_dim,
+                       int channel, int channel_per_group, float eps) {
+  int num_blocks = CUDA_NUM_BLOCKS(outer_dim);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_groupNormTrain<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, (float *)mean, (float *)rstd,
+      (float *)weight, (float *)bias,
+      outer_dim, inner_dim, channel, channel_per_group, eps);
+}
+
+
+
+void bmGruCell(void *x_gi, void *x_gr, void *x_gh,
+                void *h_gi, void *h_gr, void *h_gh,
+                void *h_prev, void *h_out,
+                int total, bool linear_before_reset) {
+  int num_blocks = CUDA_NUM_BLOCKS(total);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_gruCell<<<num_blocks, block_size>>>(
+      (float *)x_gi, (float *)x_gr, (float *)x_gh,
+      (float *)h_gi, (float *)h_gr, (float *)h_gh,
+      (float *)h_prev, (float *)h_out,
+      total, linear_before_reset);
+}
+
+
+
+void bmHardSigmoid(void *input, void *output, int num, float alpha, float beta) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_hardsigmoid<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, num, alpha, beta);
+}
+
+
+
+void bmHardSwish(void *input, void *output, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_hardswish<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, num);
+}
+
+
+
+void bmIndexPut(void *input, void *indices, void *values, void *output,
+                 int num_indices, int inner_dim, bool accumulate) {
+  int total = num_indices * inner_dim;
+  int num_blocks = CUDA_NUM_BLOCKS(total);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_indexPut<<<num_blocks, block_size>>>(
+      (float *)input, (float *)indices, (float *)values, (float *)output,
+      num_indices, inner_dim, accumulate);
+}
+
+
+
+void bmInstanceNorm(void *input, void *output, void *weight, void *bias,
+                     int outer_dim, int inner_dim, int channel, float eps) {
+  int num_blocks = CUDA_NUM_BLOCKS(outer_dim);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_instanceNorm<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, (float *)weight, (float *)bias,
+      outer_dim, inner_dim, channel, eps);
+}
+
+
+
+void bmLRN(void *input, void *output, int n, int c, int h, int w,
+            int size, float alpha, float beta, float bias) {
+  int total = n * c * h * w;
+  int num_blocks = CUDA_NUM_BLOCKS(total);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_lrn<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, n, c, h, w, size, alpha, beta, bias);
+}
+
+
+
+void bmLSTMAddBias(void *gate, void *bias, int batch_size, int hidden_size) {
+  int total = batch_size * hidden_size;
+  int num_blocks = CUDA_NUM_BLOCKS(total);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_lstmAddBias<<<num_blocks, block_size>>>(
+      (float *)gate, (float *)bias, batch_size, hidden_size);
+}
+
+
+
+void bmLSTMCell(void *x_i, void *x_o, void *x_f, void *x_c,
+                 void *h_i, void *h_o, void *h_f, void *h_c,
+                 void *cell_state, void *hidden_state,
+                 int total, float cont) {
+  int num_blocks = CUDA_NUM_BLOCKS(total);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_lstmCell<<<num_blocks, block_size>>>(
+      (float *)x_i, (float *)x_o, (float *)x_f, (float *)x_c,
+      (float *)h_i, (float *)h_o, (float *)h_f, (float *)h_c,
+      (float *)cell_state, (float *)hidden_state, total, cont);
+}
+
+
+
+void bmLayerNormTrain(void *input, void *output, void *mean, void *rstd,
+                       void *weight, void *bias,
+                       int outer_dim, int inner_dim, float eps) {
+  int num_blocks = CUDA_NUM_BLOCKS(outer_dim);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_layerNormTrain<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, (float *)mean, (float *)rstd,
+      (float *)weight, (float *)bias, outer_dim, inner_dim, eps);
+}
+
+
+
+void bmLeakyRelu(void *input, void *output, int num, float alpha) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_leakyRelu<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, num, alpha);
+}
+
+
+
+void bmLog(void *input, void *output, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_log<<<num_blocks, block_size>>>((float *)input, (float *)output, num);
+}
+
+
+
+void bmLogB(void *input, void *output, int num, float log_base_inv) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_logB<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, num, log_base_inv);
+}
+
+
+
+void bmLogicalAnd(void *lhs, void *rhs, void *output,
+                   int l_n, int l_c, int l_h, int l_w,
+                   int r_n, int r_c, int r_h, int r_w,
+                   int o_n, int o_c, int o_h, int o_w) {
+  int total = o_n * o_c * o_h * o_w;
+  int num_blocks = CUDA_NUM_BLOCKS(total);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_logicalAnd<<<num_blocks, block_size>>>(
+      (float *)lhs, (float *)rhs, (float *)output,
+      l_n, l_c, l_h, l_w, r_n, r_c, r_h, r_w, o_n, o_c, o_h, o_w);
+}
+
+
+
+void bmPermuteBMHD(void *src, void *dst, int B, int M, int H, int d) {
+  int total = B * M * H * d;
+  int nb = CUDA_NUM_BLOCKS(total), bs = CUDA_BLOCK_SIZE;
+  g_permuteBMHD<<<nb, bs>>>((float *)src, (float *)dst, B, M, H, d);
+}
+
+
+
+void bmRMSNorm(void *input, void *output, int outer_dim, int inner_dim,
+               void *gamma, float eps) {
+  int num_blocks = CUDA_NUM_BLOCKS(outer_dim);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_rmsNorm<<<num_blocks, block_size>>>((float *)input, (float *)output,
+                                         outer_dim, inner_dim,
+                                         (float *)gamma, eps);
+}
+
+
+
+void bmRange(void *output, float start, float delta, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_range<<<num_blocks, block_size>>>((float *)output, start, delta, num);
+}
+
+
+
+void bmReverse(void *input, void *output, int outer_stride, int axis_dim,
+               int inner_stride) {
+  int total = outer_stride * axis_dim * inner_stride;
+  int num_blocks = CUDA_NUM_BLOCKS(total);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_reverse<<<num_blocks, block_size>>>((float *)input, (float *)output,
+                                         outer_stride, axis_dim, inner_stride);
+}
+
+
+
+void bmRoiAlign(void *input, void *rois, void *output,
+                int N, int C, int H, int W,
+                int num_rois, int output_h, int output_w,
+                int sampling_ratio, float spatial_scale,
+                bool align_corners, bool avg_mode) {
+  int total = num_rois * C * output_h * output_w;
+  int num_blocks = CUDA_NUM_BLOCKS(total);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_roiAlign<<<num_blocks, block_size>>>(
+      (float *)input, (float *)rois, (float *)output,
+      N, C, H, W,
+      num_rois, output_h, output_w,
+      sampling_ratio, spatial_scale,
+      align_corners, avg_mode);
+}
+
+
+
+void bmRound(void *input, void *output, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_round<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, num);
+}
+
+
+
+void bmRsqrt(void *input, void *output, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_rsqrt<<<num_blocks, block_size>>>(
+      (float *)input, (float *)output, num, 1e-5f);
+}
+
+
+
+static float hostF16ToF32(uint16_t h) {
+  uint32_t sign = (uint32_t)(h & 0x8000) << 16;
+  uint32_t exp = (h >> 10) & 0x1f;
+  uint32_t mant = h & 0x03ff;
+  uint32_t bits = 0;
+  if (exp == 0) {
+    if (mant == 0) {
+      bits = sign;
+    } else {
+      exp = 1;
+      while ((mant & 0x0400) == 0) {
+        mant <<= 1;
+        exp--;
+      }
+      mant &= 0x03ff;
+      bits = sign | ((exp + 112) << 23) | (mant << 13);
+    }
+  } else if (exp == 31) {
+    bits = sign | 0x7f800000 | (mant << 13);
+  } else {
+    bits = sign | ((exp + 112) << 23) | (mant << 13);
+  }
+  float out;
+  memcpy(&out, &bits, sizeof(out));
+  return out;
+}
+
+void copyToHost(float *dst, void *src, data_type_t type) {
+  if (type == DT_F32) {
+    cudaMemcpy(dst, src, sizeof(float), cudaMemcpyDeviceToHost);
+  } else if (type == DT_INT32 || type == DT_UINT32) {
+    int32_t val = 0;
+    cudaMemcpy(&val, src, sizeof(val), cudaMemcpyDeviceToHost);
+    *dst = (float)val;
+  } else if (type == DT_INT8) {
+    int8_t val = 0;
+    cudaMemcpy(&val, src, sizeof(val), cudaMemcpyDeviceToHost);
+    *dst = (float)val;
+  } else if (type == DT_UINT8) {
+    uint8_t val = 0;
+    cudaMemcpy(&val, src, sizeof(val), cudaMemcpyDeviceToHost);
+    *dst = (float)val;
+  } else if (type == DT_F16) {
+    uint16_t val = 0;
+    cudaMemcpy(&val, src, sizeof(val), cudaMemcpyDeviceToHost);
+    *dst = hostF16ToF32(val);
+  } else {
+    *dst = 0.0f;
+  }
+}
+
+void mulConst4DF32(void *input, float const_v, void *output, bool do_relu,
+                  int n0, int c0, int h0, int w0) {
+  int size = n0 * c0 * h0 * w0;
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_mulConst4DF32<<<num_blocks, block_size>>>(
+      (float *)input, const_v, (float *)output,
+      do_relu, n0, c0, h0, w0);
+}
+
+// add for conv3d
+void pad5D(void *input, void *output,int n, int c,int d,int h,int w,int pad_d_f,
+           int pad_d_b,int pad_h_t, int pad_h_b, int pad_w_l, int pad_w_r, int tbytes){
+  int od = d + pad_d_f + pad_d_b;
+  int oh = h + pad_h_t + pad_h_b;
+  int ow = w + pad_w_l + pad_w_r;
+
+  int num_blocks = CUDA_NUM_BLOCKS(n * c * oh * ow * od);
+  int block_size = CUDA_BLOCK_SIZE;
+
+  g_pad5D<<<num_blocks, block_size>>>(input, output, n, c, d, h, w, pad_d_f, pad_d_b, pad_h_t,
+                                      pad_h_b, pad_w_l, pad_w_r, tbytes);
+
+}
+
+
+
+void requantF8Perchannel_3d(void *input, void *output, void *scales,
+                            int n, int c, int d, int h, int w, bool relu, bool conv=true){
+  int num_blocks = CUDA_NUM_BLOCKS(n * c * d* h * w);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_requantF8Perchannel_3d<<<num_blocks, block_size>>>(
+      (float *)input, (uint8_t*)output, (float *)scales, n, c,
+      d,h, w, relu, conv);
+}
+
+
+
+void requantInt16Perchannel_3d(void *input, void *output, void *multipliers,
+                           void *shifts, int n, int c,int d, int h, int w, bool relu) {
+
+    int num_blocks = CUDA_NUM_BLOCKS(n * c * h * w * d);
+    int block_size = CUDA_BLOCK_SIZE;
+    g_requantInt16Perchannel_3d<<<num_blocks, block_size>>>(
+      (int32_t *)input, output, (int32_t *)multipliers, (int32_t *)shifts, n, c,
+      h, w, d, relu);
+
+
+}
+
+
+
+void requantInt8Perchannel_3d(void *input, void *output, void *multipliers,
+                           void *shifts, int n, int c, int d,int h, int w,
+                           bool out_sign, bool qdm, bool relu) {
+  // int num_blocks = CUDA_NUM_BLOCKS(n * c * h * w);
+  // int block_size = CUDA_BLOCK_SIZE;
+  // g_requantInt8Perchannel<<<num_blocks, block_size>>>(
+  //     (int32_t *)input, output, (int32_t *)multipliers, (int32_t *)shifts, n, c,
+  //     h, w, out_sign, qdm, relu);
+
+    int num_blocks = CUDA_NUM_BLOCKS(n * c * h * w * d);
+    int block_size = CUDA_BLOCK_SIZE;
+    g_requantInt8Perchannel_3d<<<num_blocks, block_size>>>(
+      (int32_t *)input, output, (int32_t *)multipliers, (int32_t *)shifts, n, c,
+      h, w, d, out_sign, qdm, relu);
+
+}
 } // namespace cuda
 } // namespace tpu_mlir
