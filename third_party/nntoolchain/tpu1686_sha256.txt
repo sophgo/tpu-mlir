@@ -1,11 +1,13 @@
 === bm1684x2 ===
-commit 57fb3b8c0311f7eaeb00ae4fcece71d46693052f
+commit 02eae2aa198d53c47c3e5d717bcf321dfc148d97
 Author: liang.wang01 <liang.wang01@sophgo.com>
-Date:   Wed Apr 15 17:22:02 2026 +0800
+Date:   Wed Jul 8 11:24:08 2026 +0800
 
-    feat: fused_moe support w4a16
+    [fix][bm1684x2]tpu_global_mem_addr
     
-    Change-Id: I3f4d70055d2881fa546e023e19654ba747c2fafa
+    - remove the global mem addr tag, and return the real addr with base addr regs
+    
+    Change-Id: Ib56d58021433a663b32a6568421c63292ab5c3cc
 === bm1684x ===
 commit 0695becc7de2e9b4ca3f3aaf87185300e5773c06
 Author: yubing.shen <yubing.shen@sophgo.com>
