@@ -125,6 +125,8 @@ class MLIR_IR_TESTER(object):
             #############################
             # case:  (test_function,      bm1684x_support, bm1688_support)
             "error0": (self.test_error0, Y, Y),
+            "layernorm_dynamic_dc": (self.test_layernorm_dynamic_dc, Y, Y),
+            "layernorm_dynamic_dc_workaround": (self.test_layernorm_dynamic_dc_workaround, Y, Y),
             "insert": (self.test_insert, Y, Y),
             "fattention": (self.test_fattention, Y, Y),
             "fattention_prefill": (self.test_fattention_prefill, Y, Y),
@@ -146,7 +148,7 @@ class MLIR_IR_TESTER(object):
             "permute_dynamic": (self.test_permute_dynamic, Y, Y),
         }
         # currently test_mlir.py only supports fp quant mode
-        self.support_quant_modes = ["f32", "f16"]  # no need "bf16" for now
+        self.support_quant_modes = ["f32", "f16", "bf16"]
         self.mode = args.mode.lower()
         self.simple = args.simple
         self.chip = args.chip.lower()
@@ -488,6 +490,155 @@ class MLIR_IR_TESTER(object):
 
         # Deploy for each quantization mode
         self._deploy_test_case(case_name, tolerance=(0.1, 0.1))
+
+    def test_layernorm_dynamic_dc(self, case_name):
+        """Test: MoonViT norm0 LayerNorm (bf16, dynamic).
+
+        Mirrors vision_block norm0: input [N,1152], weight/bias [1,1152],
+        top.LayerNormOp(axis=1, eps=1e-5). Uses the real dumped pos_emb_add
+        as input to reproduce the LocateAnything precision issue.
+        With --dynamic: compile max_N=4096, test N=1656.
+        """
+        D = 1152
+        max_N = 4096
+        test_N = 1656 if self.dynamic else max_N
+
+        input_shapes = [[max_N, D]]
+        weight_shapes = [[1, D], [1, D]]  # weight, bias
+        output_shapes = [[max_N, D]]
+
+        block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
+            case_name, input_shapes, weight_shapes, output_shapes, ["F32"])
+
+        out = top.LayerNormOp(self._T(block_mlir, [max_N, D]),
+                              input_ops[0],
+                              weight_ops[0],
+                              weight_ops[1],
+                              normalized_shape=[D],
+                              axis=1,
+                              eps=1e-5,
+                              loc=self._L(block_mlir, "norm0"),
+                              ip=ip).output
+
+        block_mlir.create_return_op([out])
+
+        actual_input_shapes = [[test_N, D]]
+        # use real pos_emb_add if available, else random
+        try:
+            real = np.load('/tmp/la_dump_tf/vit.npz')['pos_emb_add'][:test_N]
+            if real.shape[0] < test_N:  # not enough, fall back
+                raise KeyError
+        except Exception:
+            real = (np.random.randn(test_N, D) * 1.0).astype(np.float32)
+        input_descs = [self.Desc('float32', -10, 10)]
+        weight_descs = [self.Desc('float32', -10, 10), self.Desc('float32', -10, 10)]
+        self._save_mlir_and_data(case_name,
+                                 block_mlir,
+                                 actual_input_shapes,
+                                 weight_shapes,
+                                 input_descs=input_descs,
+                                 weight_descs=weight_descs)
+        np.savez(f"{case_name}_input.npz", in0=real)
+        # override weights with the REAL norm0 weight/bias from the model
+        try:
+            import glob
+            from safetensors import safe_open
+            Wn = Bn = None
+            for sf in glob.glob(
+                    '/workspace/llm/locateanything/LocateAnything-3B-AutoRound-W4A16/*.safetensors'
+            ):
+                with safe_open(sf, 'pt') as m:
+                    for k in m.keys():
+                        if k.endswith('encoder.blocks.0.norm0.weight'):
+                            Wn = m.get_tensor(k).cpu().float().numpy().reshape(1, D)
+                        if k.endswith('encoder.blocks.0.norm0.bias'):
+                            Bn = m.get_tensor(k).cpu().float().numpy().reshape(1, D)
+            if Wn is not None and Bn is not None:
+                np.savez(f"{case_name}_top_f32_all_origin_weight.npz", weight0=Wn, weight1=Bn)
+        except Exception as e:
+            print(f"[warn] could not load real norm0 weights: {e}")
+
+        self._deploy_test_case(case_name, tolerance=(0.99, 0.98))
+
+    def test_layernorm_dynamic_dc_workaround(self, case_name):
+        """Test: norm0 LayerNorm with per-position DC subtracted BEFORE LN.
+
+        Workaround for the bf16-dynamic LayerNorm bug (naive var=E[x^2]-E[x]^2
+        has catastrophic cancellation when per-position mean is non-zero).
+        LN(x - mean(x)) == LN(x) mathematically, but feeding a zero-DC input
+        makes the kernel's var computation stable.
+        """
+        D = 1152
+        max_N = 4096
+        test_N = 1656 if self.dynamic else max_N
+
+        input_shapes = [[max_N, D]]
+        weight_shapes = [[1, D], [1, D]]
+        output_shapes = [[max_N, D]]
+
+        block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
+            case_name, input_shapes, weight_shapes, output_shapes, ["F32"])
+        in_op = input_ops[0]
+
+        # per-position mean [N, 1] then subtract -> zero-DC input
+        mean_op = top.ReduceOp(self._T(block_mlir, [max_N, 1]),
+                               in_op,
+                               axes=[1],
+                               keepdims=True,
+                               mode=StringAttr.get("ReduceMean"),
+                               loc=self._L(block_mlir, "norm0.dc_mean"),
+                               ip=ip).output
+        x0 = top.SubOp(self._T(block_mlir, [max_N, D]), [in_op, mean_op],
+                       loc=self._L(block_mlir, "norm0.dc_sub"),
+                       ip=ip).output
+
+        out = top.LayerNormOp(self._T(block_mlir, [max_N, D]),
+                              x0,
+                              weight_ops[0],
+                              weight_ops[1],
+                              normalized_shape=[D],
+                              axis=1,
+                              eps=1e-5,
+                              loc=self._L(block_mlir, "norm0"),
+                              ip=ip).output
+
+        block_mlir.create_return_op([out])
+
+        actual_input_shapes = [[test_N, D]]
+        try:
+            real = np.load('/tmp/la_dump_tf/vit.npz')['pos_emb_add'][:test_N]
+            if real.shape[0] < test_N:
+                raise KeyError
+        except Exception:
+            real = (np.random.randn(test_N, D) * 1.0).astype(np.float32)
+        input_descs = [self.Desc('float32', -10, 10)]
+        weight_descs = [self.Desc('float32', -10, 10), self.Desc('float32', -10, 10)]
+        self._save_mlir_and_data(case_name,
+                                 block_mlir,
+                                 actual_input_shapes,
+                                 weight_shapes,
+                                 input_descs=input_descs,
+                                 weight_descs=weight_descs)
+        np.savez(f"{case_name}_input.npz", in0=real)
+        try:
+            import glob
+            from safetensors import safe_open
+            Wn = Bn = None
+            for sf in glob.glob(
+                    '/workspace/llm/locateanything/LocateAnything-3B-AutoRound-W4A16/*.safetensors'
+            ):
+                with safe_open(sf, 'pt') as m:
+                    for k in m.keys():
+                        if k.endswith('encoder.blocks.0.norm0.weight'):
+                            Wn = m.get_tensor(k).cpu().float().numpy().reshape(1, D)
+                        if k.endswith('encoder.blocks.0.norm0.bias'):
+                            Bn = m.get_tensor(k).cpu().float().numpy().reshape(1, D)
+            if Wn is not None and Bn is not None:
+                np.savez(f"{case_name}_top_f32_all_origin_weight.npz", weight0=Wn, weight1=Bn)
+        except Exception as e:
+            print(f"[warn] real norm0 weights: {e}")
+
+        self._deploy_test_case(case_name, tolerance=(0.99, 0.98))
 
     def test_insert(self, case_name):
         """Test case1: Simple RMSNorm operation."""

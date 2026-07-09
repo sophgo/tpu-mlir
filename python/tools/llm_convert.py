@@ -85,6 +85,10 @@ LLM_CONVERTERS = [
     (("janus", ), "llm.JanusConverter", "JanusConverter", {}),
     (("paddleocr_vl", ), "llm.PaddleOCRVLConverter", "PaddleOCRVLConverter", {}),
     (("lfm2_vl", ), "llm.LFM2VLConverter", "LFM2VLConverter", {}),
+    (("locateanything", ), "llm.LocateAnythingConverter", "LocateAnythingConverter", {
+        "default_max_shape": (896, 896),
+        "pixel_multiple": 28,
+    }),
 ]
 
 

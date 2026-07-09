@@ -67,6 +67,7 @@ from .Qwen2VLConverter import Qwen2VLConverter
 from .Qwen2_5VLConverter import Qwen2_5VLConverter
 from .Qwen3VLConverter import Qwen3VLConverter
 from .Qwen2_5OConverter import Qwen2_5OConverter
+from .LocateAnythingConverter import LocateAnythingConverter
 
 __all__ = [
     # Core
@@ -93,4 +94,5 @@ __all__ = [
     'Qwen2_5VLConverter',
     'Qwen3VLConverter',
     'Qwen2_5OConverter',
+    'LocateAnythingConverter',
 ]
