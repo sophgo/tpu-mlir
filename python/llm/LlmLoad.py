@@ -22,23 +22,24 @@ class LlmLoad:
                 elif entry.lower().endswith('.bin'):
                     f = torch.load(file_path, map_location="cpu")
                     self.st_files.append(f)
+        # build key -> (file_handle, is_dict) index for O(1) lookup
+        self.key_to_file = {}
+        for f in self.st_files:
+            is_dict = isinstance(f, dict)
+            for key in f.keys():
+                self.key_to_file[key] = (f, is_dict)
 
     def read(self, key: str):
-        for f in self.st_files:
-            if key in f.keys():
-                if isinstance(f, dict):
-                    data = f[key]
-                else:
-                    data = f.get_tensor(key)
-                if data.dtype in [
-                        torch.float16, torch.bfloat16, torch.float8_e4m3fn, torch.float8_e5m2
-                ]:
-                    return data.float().numpy()
-                return data.numpy()
-        raise RuntimeError(f"Can't find key: {key}")
+        if key not in self.key_to_file:
+            raise RuntimeError(f"Can't find key: {key}")
+        f, is_dict = self.key_to_file[key]
+        if is_dict:
+            data = f[key]
+        else:
+            data = f.get_tensor(key)
+        if data.dtype in [torch.float16, torch.bfloat16, torch.float8_e4m3fn, torch.float8_e5m2]:
+            return data.float().numpy()
+        return data.numpy()
 
     def is_exist(self, key: str):
-        for f in self.st_files:
-            if key in f.keys():
-                return True
-        return False
+        return key in self.key_to_file

@@ -277,6 +277,11 @@ class SafetensorsModelHandle(ModelHandle):
         out[normal_mask] = enc
         return out
 
+    # Vectorized: replaced row/col-wise Python loops with numpy stride-based
+    # broadcasts and pack operations (e.g. unpacked[0::2] | (unpacked[1::2] << 4)),
+    # reducing unpack_qweight from K*compress_ratio iterations to compress_ratio
+    # numpy ops and unpack_qzeros similarly. Also fixed a latent bug where
+    # pack_int8_zeros was unassigned when bits=8 and need_int8_zeros=True.
     def unpack_weights(self, conv, qweight, qzeros, bits, quant_mode, path):
         dtype = np.int32
         compress_ratio = 32 // bits
@@ -299,56 +304,45 @@ class SafetensorsModelHandle(ModelHandle):
                 need_int8_zeros = True
 
         if quant_mode == "gptq":
-            unpacked_weights = np.zeros((K * compress_ratio, N), dtype=dtype)
-            pack_int8_weights = np.zeros((K * compress_ratio // 2, N), dtype=np.uint8)
             order_map = [i for i in range(compress_ratio)]
-            for row in range(unpacked_weights.shape[0]):
-                i = order_map[row % compress_ratio]
-                unpacked_weights[row, :] = (qweight[row // compress_ratio, :] >> (bits * i)) & mask
-                if bits == 4:
-                    if row % 2 == 0:
-                        pack_int8_weights[row // 2, :] = unpacked_weights[row, :]
-                    else:
-                        pack_int8_weights[
-                            row //
-                            2, :] = unpacked_weights[row, :] << 4 | pack_int8_weights[row // 2, :]
-        elif quant_mode == "awq":
-            unpacked_weights = np.zeros((K, N * compress_ratio), dtype=dtype)
-            pack_int8_weights = np.zeros((K // 2, N * compress_ratio), dtype=np.uint8)
-            order_map = [0, 4, 1, 5, 2, 6, 3, 7]
-            for col in range(unpacked_weights.shape[1]):
-                i = order_map[col % compress_ratio]
-                unpacked_weights[:, col] = (qweight[:, col // compress_ratio] >> (bits * i)) & mask
+            unpacked_weights = np.zeros((K * compress_ratio, N), dtype=dtype)
+            for p in range(compress_ratio):
+                shift = bits * order_map[p]
+                unpacked_weights[p::compress_ratio, :] = (qweight >> shift) & mask
             if bits == 4:
-                for row in range(unpacked_weights.shape[0]):
-                    if row % 2 == 0:
-                        pack_int8_weights[row // 2, :] = unpacked_weights[row, :]
-                    else:
-                        pack_int8_weights[
-                            row //
-                            2, :] = unpacked_weights[row, :] << 4 | pack_int8_weights[row // 2, :]
+                pack_int8_weights = (unpacked_weights[0::2, :]
+                                     | (unpacked_weights[1::2, :] << 4)).astype(np.uint8)
+            else:
+                pack_int8_weights = unpacked_weights.astype("uint8")
+        elif quant_mode == "awq":
+            order_map = [0, 4, 1, 5, 2, 6, 3, 7]
+            unpacked_weights = np.zeros((K, N * compress_ratio), dtype=dtype)
+            for p in range(compress_ratio):
+                shift = bits * order_map[p]
+                unpacked_weights[:, p::compress_ratio] = (qweight >> shift) & mask
+            if bits == 4:
+                pack_int8_weights = (unpacked_weights[0::2, :]
+                                     | (unpacked_weights[1::2, :] << 4)).astype(np.uint8)
+            else:
+                pack_int8_weights = unpacked_weights.astype("uint8")
         else:
             raise NotImplementedError(f"Not support now: {quant_mode}")
 
-        for col in range(unpacked_zeros.shape[1]):
-            i = order_map[col % compress_ratio]
-            unpacked_zeros[:, col] = (qzeros[:, col // compress_ratio] >> (bits * i)) & mask
+        for p in range(compress_ratio):
+            shift = bits * order_map[p]
+            unpacked_zeros[:, p::compress_ratio] = (qzeros >> shift) & mask
 
         if bits == 8:
             pack_int8_weights = unpacked_weights.astype("uint8")
 
         if need_int8_zeros:
-            pack_int8_zeros = np.zeros((Kz // 2, Nz * compress_ratio), dtype=np.uint8)
             if quant_mode == "gptq":
                 unpacked_zeros += 1
             if bits == 4:
-                for row in range(unpacked_zeros.shape[0]):
-                    if row % 2 == 0:
-                        pack_int8_zeros[row // 2, :] = unpacked_zeros[row, :]
-                    else:
-                        pack_int8_zeros[row //
-                                        2, :] = unpacked_zeros[row, :] << 4 | pack_int8_zeros[row //
-                                                                                              2, :]
+                pack_int8_zeros = (unpacked_zeros[0::2, :]
+                                   | (unpacked_zeros[1::2, :] << 4)).astype(np.uint8)
+            else:
+                pack_int8_zeros = unpacked_zeros.astype("uint8")
             return unpacked_weights, pack_int8_weights, pack_int8_zeros
 
         if quant_mode == "gptq":

@@ -1697,6 +1697,8 @@ class LlmConverter(BaseConverter):
         batch = 1
         num_split = 1
         dtype = self.quantize
+        if self.quant_mode:
+            return num_split
         assert dtype in ["bf16", "f16"]
         _info = get_tpu_info(self.chip)
         _npu_num = _info.npu_num
@@ -1737,6 +1739,148 @@ class LlmConverter(BaseConverter):
 
     def gen_block_mlir(self, idx: int):
         return self._gen_block_mlir_impl(idx)
+
+    def _set_moe_expert_weights(self, weight_dict, shared_gate, shared_expert_gate,
+                                shared_expert_up, shared_expert_down, gate, experts_gate,
+                                experts_up, experts_down):
+        """Set MoE expert weights (shared + per-expert) into weight_dict,
+        combining per-expert weights according to quant_mode."""
+        self.set_linear_weight(shared_gate, weight_dict, do_lora=self.do_lora)
+        self.set_linear_weight(shared_expert_gate, weight_dict, do_lora=self.do_lora)
+        self.set_linear_weight(shared_expert_up, weight_dict, do_lora=self.do_lora)
+        self.set_linear_weight(shared_expert_down, weight_dict, do_lora=self.do_lora)
+        self.set_linear_weight(gate, weight_dict, do_lora=self.do_lora)
+        gate_prefix, gate_suffix = experts_gate.split("expert_id")
+        up_prefix, up_suffix = experts_up.split("expert_id")
+        down_prefix, down_suffix = experts_down.split("expert_id")
+        # set every single expert weight
+        experts_gate_weight_list, experts_up_weight_list, experts_down_weight_list = [], [], []
+        experts_gate_qweight_list, experts_up_qweight_list, experts_down_qweight_list = [], [], []
+        experts_gate_scales_list, experts_up_scales_list, experts_down_scales_list = [], [], []
+        experts_gate_qzeros_list, experts_up_qzeros_list, experts_down_qzeros_list = [], [], []
+        for expert_id in range(self.num_experts):
+            real_experts_gate = gate_prefix + str(expert_id) + gate_suffix
+            real_experts_up = up_prefix + str(expert_id) + up_suffix
+            real_experts_down = down_prefix + str(expert_id) + down_suffix
+            self.set_linear_weight(real_experts_gate, weight_dict, do_lora=self.do_lora)
+            self.set_linear_weight(real_experts_up, weight_dict, do_lora=self.do_lora)
+            self.set_linear_weight(real_experts_down, weight_dict, do_lora=self.do_lora)
+            if not self.quant_mode:
+                experts_gate_weight_list.append(weight_dict[real_experts_gate + ".weight"])
+                experts_up_weight_list.append(weight_dict[real_experts_up + ".weight"])
+                experts_down_weight_list.append(weight_dict[real_experts_down + ".weight"])
+                del weight_dict[real_experts_gate + ".weight"]
+                del weight_dict[real_experts_up + ".weight"]
+                del weight_dict[real_experts_down + ".weight"]
+            elif self.quant_mode in ["gptq", "awq"]:
+                experts_gate_qweight_list.append(weight_dict[real_experts_gate + ".qweight"])
+                experts_up_qweight_list.append(weight_dict[real_experts_up + ".qweight"])
+                experts_down_qweight_list.append(weight_dict[real_experts_down + ".qweight"])
+                del weight_dict[real_experts_gate + ".qweight"]
+                del weight_dict[real_experts_up + ".qweight"]
+                del weight_dict[real_experts_down + ".qweight"]
+                experts_gate_scales_list.append(weight_dict[real_experts_gate + ".scales"])
+                experts_up_scales_list.append(weight_dict[real_experts_up + ".scales"])
+                experts_down_scales_list.append(weight_dict[real_experts_down + ".scales"])
+                del weight_dict[real_experts_gate + ".scales"]
+                del weight_dict[real_experts_up + ".scales"]
+                del weight_dict[real_experts_down + ".scales"]
+                experts_gate_qzeros_list.append(weight_dict[real_experts_gate + ".qzeros"])
+                experts_up_qzeros_list.append(weight_dict[real_experts_up + ".qzeros"])
+                experts_down_qzeros_list.append(weight_dict[real_experts_down + ".qzeros"])
+                del weight_dict[real_experts_gate + ".qzeros"]
+                del weight_dict[real_experts_up + ".qzeros"]
+                del weight_dict[real_experts_down + ".qzeros"]
+        # combine experts weight as one
+        if not self.quant_mode:
+            experts_gate_weight = (np.concatenate(experts_gate_weight_list,
+                                                  axis=0)).reshape(self.num_experts,
+                                                                   self.hidden_size,
+                                                                   self.moe_intermediate_size)
+            experts_up_weight = (np.concatenate(experts_up_weight_list,
+                                                axis=0)).reshape(self.num_experts, self.hidden_size,
+                                                                 self.moe_intermediate_size)
+            experts_down_weight = (np.concatenate(experts_down_weight_list,
+                                                  axis=0)).reshape(self.num_experts,
+                                                                   self.moe_intermediate_size,
+                                                                   self.hidden_size)
+            weight_dict[experts_gate + ".weight"] = np.ascontiguousarray(
+                np.transpose(experts_gate_weight, (0, 2, 1)))
+            weight_dict[experts_up + ".weight"] = np.ascontiguousarray(
+                np.transpose(experts_up_weight, (0, 2, 1)))
+            weight_dict[experts_down + ".weight"] = np.ascontiguousarray(experts_down_weight)
+            del experts_gate_weight_list, experts_up_weight_list, experts_down_weight_list
+        elif self.quant_mode in ["gptq", "awq"]:
+            experts_gate_qweight = (np.concatenate(experts_gate_qweight_list, axis=0)).reshape(
+                self.num_experts, self.moe_intermediate_size,
+                self.hidden_size // (8 // self.quant_bits))
+            experts_up_qweight = (np.concatenate(experts_up_qweight_list, axis=0)).reshape(
+                self.num_experts, self.moe_intermediate_size,
+                self.hidden_size // (8 // self.quant_bits))
+            experts_down_qweight = (np.concatenate(experts_down_qweight_list, axis=0)).reshape(
+                self.num_experts, self.hidden_size,
+                self.moe_intermediate_size // (8 // self.quant_bits))
+            weight_dict[experts_gate + ".qweight"] = np.ascontiguousarray(experts_gate_qweight)
+            weight_dict[experts_up + ".qweight"] = np.ascontiguousarray(experts_up_qweight)
+            weight_dict[experts_down + ".qweight"] = np.ascontiguousarray(experts_down_qweight)
+            del experts_gate_qweight_list, experts_up_qweight_list, experts_down_qweight_list
+            experts_gate_scales = (np.concatenate(experts_gate_scales_list, axis=0)).reshape(
+                self.num_experts, self.moe_intermediate_size, self.hidden_size // self.q_group_size)
+            experts_up_scales = (np.concatenate(experts_up_scales_list, axis=0)).reshape(
+                self.num_experts, self.moe_intermediate_size, self.hidden_size // self.q_group_size)
+            experts_down_scales = (np.concatenate(experts_down_scales_list, axis=0)).reshape(
+                self.num_experts, self.hidden_size, self.moe_intermediate_size // self.q_group_size)
+            assert self.moe_intermediate_size % self.tpu_info.npu_num == 0, \
+                f"moe_intermediate_size={self.moe_intermediate_size} must be divisible by npu_num={self.tpu_info.npu_num}"
+            weight_dict[experts_gate + ".scales"] = np.ascontiguousarray(
+                experts_gate_scales.reshape(self.num_experts,
+                                            self.moe_intermediate_size // self.tpu_info.npu_num,
+                                            self.tpu_info.npu_num,
+                                            self.hidden_size // self.q_group_size).transpose(
+                                                0, 2, 1,
+                                                3).reshape(self.num_experts,
+                                                           self.moe_intermediate_size,
+                                                           self.hidden_size // self.q_group_size))
+            weight_dict[experts_up + ".scales"] = np.ascontiguousarray(
+                experts_up_scales.reshape(self.num_experts,
+                                          self.moe_intermediate_size // self.tpu_info.npu_num,
+                                          self.tpu_info.npu_num,
+                                          self.hidden_size // self.q_group_size).transpose(
+                                              0, 2, 1,
+                                              3).reshape(self.num_experts,
+                                                         self.moe_intermediate_size,
+                                                         self.hidden_size // self.q_group_size))
+            weight_dict[experts_down + ".scales"] = np.ascontiguousarray(
+                np.transpose(experts_down_scales, (0, 2, 1)))
+            del experts_gate_scales_list, experts_up_scales_list, experts_down_scales_list
+            experts_gate_qzeros = (np.concatenate(experts_gate_qzeros_list, axis=0)).reshape(
+                self.num_experts, self.moe_intermediate_size,
+                self.hidden_size // self.q_group_size // (8 // self.quant_bits))
+            experts_up_qzeros = (np.concatenate(experts_up_qzeros_list, axis=0)).reshape(
+                self.num_experts, self.moe_intermediate_size,
+                self.hidden_size // self.q_group_size // (8 // self.quant_bits))
+            experts_down_qzeros = (np.concatenate(experts_down_qzeros_list, axis=0)).reshape(
+                self.num_experts, self.hidden_size,
+                self.moe_intermediate_size // self.q_group_size // (8 // self.quant_bits))
+            weight_dict[experts_gate + ".qzeros"] = np.ascontiguousarray(
+                experts_gate_qzeros.reshape(
+                    self.num_experts, self.moe_intermediate_size // self.tpu_info.npu_num,
+                    self.tpu_info.npu_num,
+                    self.hidden_size // self.q_group_size // (8 // self.quant_bits)).transpose(
+                        0, 2, 1,
+                        3).reshape(self.num_experts, self.moe_intermediate_size,
+                                   self.hidden_size // self.q_group_size // (8 // self.quant_bits)))
+            weight_dict[experts_up + ".qzeros"] = np.ascontiguousarray(
+                experts_up_qzeros.reshape(
+                    self.num_experts, self.moe_intermediate_size // self.tpu_info.npu_num,
+                    self.tpu_info.npu_num,
+                    self.hidden_size // self.q_group_size // (8 // self.quant_bits)).transpose(
+                        0, 2, 1,
+                        3).reshape(self.num_experts, self.moe_intermediate_size,
+                                   self.hidden_size // self.q_group_size // (8 // self.quant_bits)))
+            weight_dict[experts_down + ".qzeros"] = np.ascontiguousarray(
+                np.transpose(experts_down_qzeros, (0, 2, 1)))
+            del experts_gate_qzeros_list, experts_up_qzeros_list, experts_down_qzeros_list
 
     def _gen_block_mlir_impl(self, idx: int):
         tqdm.write(f"generate block_{idx} mlir ...")
@@ -1790,48 +1934,11 @@ class LlmConverter(BaseConverter):
             self.set_common_weight(pre_mlp_ln, weight_dict, self.rmsnorm_type)
             self.set_common_weight(post_mlp_ln, weight_dict, self.rmsnorm_type)
         self.set_common_weight(post_attn_ln, weight_dict, self.rmsnorm_type)
-        if self.llm_type in [LlmType.QWEN2_MOE]:
-            self.set_linear_weight(shared_gate, weight_dict, do_lora=self.do_lora)
-            self.set_linear_weight(shared_expert_gate, weight_dict, do_lora=self.do_lora)
-            self.set_linear_weight(shared_expert_up, weight_dict, do_lora=self.do_lora)
-            self.set_linear_weight(shared_expert_down, weight_dict, do_lora=self.do_lora)
-            self.set_linear_weight(gate, weight_dict, do_lora=self.do_lora)
-            gate_prefix, gate_suffix = experts_gate.split("expert_id")
-            up_prefix, up_suffix = experts_up.split("expert_id")
-            down_prefix, down_suffix = experts_down.split("expert_id")
-            experts_gate_data_list = []
-            experts_up_data_list = []
-            experts_down_data_list = []
-            # set every single expert weight
-            for expert_id in range(self.num_experts):
-                real_experts_gate = gate_prefix + str(expert_id) + gate_suffix
-                real_experts_up = up_prefix + str(expert_id) + up_suffix
-                real_experts_down = down_prefix + str(expert_id) + down_suffix
-                self.set_linear_weight(real_experts_gate, weight_dict, do_lora=self.do_lora)
-                self.set_linear_weight(real_experts_up, weight_dict, do_lora=self.do_lora)
-                self.set_linear_weight(real_experts_down, weight_dict, do_lora=self.do_lora)
-                experts_gate_data_list.append(weight_dict[real_experts_gate + ".weight"])
-                experts_up_data_list.append(weight_dict[real_experts_up + ".weight"])
-                experts_down_data_list.append(weight_dict[real_experts_down + ".weight"])
-                del weight_dict[real_experts_gate + ".weight"]
-                del weight_dict[real_experts_up + ".weight"]
-                del weight_dict[real_experts_down + ".weight"]
-            # combine experts weight as one
-            experts_gate_data = (np.concatenate(experts_gate_data_list,
-                                                axis=0)).reshape(self.num_experts, self.hidden_size,
-                                                                 self.moe_intermediate_size)
-            experts_up_data = (np.concatenate(experts_up_data_list,
-                                              axis=0)).reshape(self.num_experts, self.hidden_size,
-                                                               self.moe_intermediate_size)
-            experts_down_data = (np.concatenate(experts_down_data_list,
-                                                axis=0)).reshape(self.num_experts,
-                                                                 self.moe_intermediate_size,
-                                                                 self.hidden_size)
-            weight_dict[experts_gate + ".weight"] = np.ascontiguousarray(
-                np.transpose(experts_gate_data, (0, 2, 1)))
-            weight_dict[experts_up + ".weight"] = np.ascontiguousarray(
-                np.transpose(experts_up_data, (0, 2, 1)))
-            weight_dict[experts_down + ".weight"] = np.ascontiguousarray(experts_down_data)
+        if self.llm_type in [LlmType.QWEN2_MOE] and (idx not in self.mlp_only_layers) and (
+                self.num_experts > 0) and ((idx + 1) % self.decoder_sparse_step == 0):
+            self._set_moe_expert_weights(weight_dict, shared_gate, shared_expert_gate,
+                                         shared_expert_up, shared_expert_down, gate, experts_gate,
+                                         experts_up, experts_down)
             # split experts weight if need
             num_split_fused_moe = self.split_fused_moe()
             if num_split_fused_moe > 1:
