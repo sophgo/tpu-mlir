@@ -135,6 +135,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       CoshLowering,
       CustomLowering,
       CumSumLowering,
+      C2CAllReduceLowering,
+      C2CBroadcastLowering,
       DeconvLowering,
       DeformConv2DLowering,
       DepackRawLowering,

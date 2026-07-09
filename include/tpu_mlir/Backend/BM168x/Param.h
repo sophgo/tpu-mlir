@@ -1343,6 +1343,26 @@ typedef struct a16_gather_spec {
   int q_group_size;
 } a16_gather_spec_t;
 
+#ifndef MAX_RANKS
+#define MAX_RANKS 32
+#endif
+
+typedef struct c2c_all_reduce_common_spec {
+  int reduce_method;
+  int nranks;
+  int rank;
+  int sccl_algo;
+  int chip_map[MAX_RANKS];
+} c2c_all_reduce_common_spec_t;
+
+typedef struct c2c_broadcast_common_spec {
+  int root;
+  int nranks;
+  int rank;
+  int sccl_algo;
+  int chip_map[MAX_RANKS];
+} c2c_broadcast_common_spec_t;
+
 typedef struct mlp_spec {
   bool R_trans_gate;
   bool has_zp_gate;

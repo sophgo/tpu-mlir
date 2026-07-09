@@ -145,6 +145,9 @@ struct GlobalOpReorderPattern : public OpRewriterPatternEx3 {
       auto prev_op = opd.getDefiningOp();
       while (prev_op && !isLgSupport(prev_op)) {
         auto prev_opds = prev_op->getOperands();
+        if (prev_opds.empty()) {
+          break;
+        }
         int num_act = 0;
         for (auto prev_opd : prev_opds) {
           auto pp_op = prev_opd.getDefiningOp();

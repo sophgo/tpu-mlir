@@ -1737,39 +1737,50 @@ Offset<bmodel::SubNet> BMCodegen::CreateSubNet(ModuleOp s, func::CallOp call,
       multi_core->useCore(i);
       auto cmd_group_v = CreateCmdGroupVector();
       auto cmd_group = builder.CreateVector(*cmd_group_v);
-      // for bm1690
+      // for bm1690/bm1684x2
       auto sdma_cmds_bin = CreateCmdVector("sdma:0:0");
       auto hau_cmds_bin = CreateCmdVector("hau:0:0");
+      auto cdma_cmds_bin = CreateCmdVector("cdma:0:0");
       auto sdma_cmds = builder.CreateVectorOfStructs(sdma_cmds_bin->data(),
                                                      sdma_cmds_bin->size());
       auto hau_cmds = builder.CreateVectorOfStructs(hau_cmds_bin->data(),
                                                     hau_cmds_bin->size());
+      auto cdma_cmds = builder.CreateVectorOfStructs(cdma_cmds_bin->data(),
+                                                     cdma_cmds_bin->size());
       bmodel::CoreCommandsBuilder ccb(builder);
       ccb.add_gdma_tiu_commands(cmd_group);
       if (sdma_cmds_bin->size())
         ccb.add_sdma_commands(sdma_cmds);
       if (hau_cmds_bin->size())
         ccb.add_hau_commands(hau_cmds);
+      if (cdma_cmds_bin->size())
+        ccb.add_cdma_commands(cdma_cmds);
 
       core_commands.push_back(ccb.Finish());
     }
   } else {
     auto sdma_cmds_bin = CreateCmdVector("sdma:0:0");
     auto hau_cmds_bin = CreateCmdVector("hau:0:0");
-    if (sdma_cmds_bin->size() || hau_cmds_bin->size()) {
-      // Support HAU or SDMA in single core
+    auto cdma_cmds_bin = CreateCmdVector("cdma:0:0");
+    if (sdma_cmds_bin->size() || hau_cmds_bin->size() ||
+        cdma_cmds_bin->size()) {
+      // Support HAU, SDMA or CDMA in single core
       auto cmd_group_v = CreateCmdGroupVector();
       auto cmd_group = builder.CreateVector(*cmd_group_v);
       auto sdma_cmds = builder.CreateVectorOfStructs(sdma_cmds_bin->data(),
                                                      sdma_cmds_bin->size());
       auto hau_cmds = builder.CreateVectorOfStructs(hau_cmds_bin->data(),
                                                     hau_cmds_bin->size());
+      auto cdma_cmds = builder.CreateVectorOfStructs(cdma_cmds_bin->data(),
+                                                     cdma_cmds_bin->size());
       bmodel::CoreCommandsBuilder ccb(builder);
       ccb.add_gdma_tiu_commands(cmd_group);
       if (sdma_cmds_bin->size())
         ccb.add_sdma_commands(sdma_cmds);
       if (hau_cmds_bin->size())
         ccb.add_hau_commands(hau_cmds);
+      if (cdma_cmds_bin->size())
+        ccb.add_cdma_commands(cdma_cmds);
 
       core_commands.push_back(ccb.Finish());
     } else {

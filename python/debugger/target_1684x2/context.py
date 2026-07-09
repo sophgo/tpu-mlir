@@ -9,7 +9,7 @@
 from functools import partial, lru_cache
 
 import numpy as np
-from .regdef import sDMA_sys_reg as dma_sys, SYS_reg as tiu_sys, SYS_TR_WR_reg
+from .regdef import sDMA_sys_reg as dma_sys, SYS_reg as tiu_sys, SYS_TR_WR_reg, sCDMA_sys_reg as cdma_sys
 from .memmap import *
 from .decoder import Decoder
 from typing import List, Type
@@ -33,6 +33,7 @@ class BM1684X2Context(BModelContext):
 
     dma_sys = dma_sys
     tiu_sys = tiu_sys
+    cdma_sys = cdma_sys
 
     local_layout_to_stride = local_layout_to_stride
     valid_tag = {1: 0, 2: 1}  # @key=tag, @value=index in self.base_addr
@@ -58,14 +59,16 @@ class BM1684X2Context(BModelContext):
             return MType.G
         elif tag == 0:
             return MType.R
-        elif tag == 28:
+        elif tag == 30:
             return MType.L
         elif tag == 31:
             if (reg_address >> 22) & 0x1:
                 return MType.S
             else:
                 return MType.R
-        assert False, "Invalid memory tag: " + str(tag)
+        # io-tag (user tags): BM1684X2 uses tags [USER_TAG_START..USER_TAG_END]
+        elif 4 <= tag <= 29:
+            return MType.G
         return MType.UNKNOWN
 
     def fix_addr(self, reg_address: int) -> int:
@@ -73,7 +76,7 @@ class BM1684X2Context(BModelContext):
         tag = (reg_address >> 40) & 0x1F
         if tag == 31 or tag == 0:
             return reg_address & 0x3FFFFF  # keep 23 bits. (23-th bits is a tag bit)
-        elif tag == 28:  # L2M
+        elif tag == 30:  # L2M
             return reg_address & 0xFFFFFFFFFF
         fixed_addr = self.base_addr[self.valid_tag[tag]] + (reg_address & 0xFFFFFFFFFF)
         return fixed_addr
@@ -112,7 +115,7 @@ class BM1684X2Context(BModelContext):
 
     @classmethod
     def is_sys(cls, cmd: BaseTpuCmd):
-        return isinstance(cmd.reg, (dma_sys, tiu_sys))
+        return isinstance(cmd.reg, (dma_sys, tiu_sys, cdma_sys))
 
     def get_runner(self, memory_size: int) -> CModelRunner:
         assert self.using_cmodel, "BM1684X2 currently only support cmodel mode"

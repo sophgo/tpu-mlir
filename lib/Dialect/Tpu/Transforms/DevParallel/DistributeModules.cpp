@@ -342,6 +342,57 @@ static void buildDistibution(tpu::DevBeginOp begin, tpu::DevEndOp end,
   }
 }
 
+static void distributeC2COp(Operation *op, ModuleOp m, int64_t num_devices,
+                            int64_t &step) {
+  OpBuilder builder(m.getContext());
+  bool is_broadcast = isa<tpu::C2CBroadcastOp>(op);
+  bool is_all_reduce = isa<tpu::C2CAllReduceOp>(op);
+  assert(is_broadcast || is_all_reduce);
+
+  std::vector<Operation *> clones;
+  for (int64_t dev = 0; dev < num_devices; ++dev) {
+    builder.setInsertionPointAfter(op);
+    auto cloned = builder.clone(*op);
+    auto dev_loc = module::getLocLike(cloned, std::to_string(dev));
+    cloned->setLoc(dev_loc);
+    cloned->setAttr("rank", builder.getI64IntegerAttr(dev));
+    if (is_broadcast) {
+      auto root_attr = cloned->getAttrOfType<IntegerAttr>("root");
+      int64_t root = root_attr ? root_attr.getInt() : 0;
+      if (dev != root) {
+        auto none = builder.create<top::NoneOp>(dev_loc, builder.getNoneType());
+        cloned->setOperand(0, none.getResult());
+      }
+    }
+    clones.push_back(cloned);
+  }
+
+  for (auto it : llvm::zip(op->getResults(), clones.back()->getResults())) {
+    std::get<0>(it).replaceUsesWithIf(
+        std::get<1>(it), [&](OpOperand &use) { return use.getOwner() != op; });
+  }
+
+  for (int64_t dev = 0; dev < num_devices; ++dev) {
+    auto subf = std::make_shared<SubFunction>(dev, step);
+    insert_subop(subf, clones[dev]);
+    std::vector<Operation *> dummies;
+    builder.setInsertionPointAfter(clones[dev]);
+    for (auto r : clones[dev]->getResults()) {
+      if (r.use_empty()) {
+        auto dummy = builder.create<tpu::IdentityOp>(r.getLoc(), r.getType(),
+                                                     ValueRange{r});
+        dummies.push_back(dummy);
+      }
+    }
+    buildSubFunction(subf, m);
+    for (auto d : dummies) {
+      d->erase();
+    }
+  }
+  step++;
+  op->erase();
+}
+
 static int64_t buildEndToSum(tpu::DevEndOp end, ModuleOp m,
                              std::vector<Value> &origin_operands,
                              int64_t num_devices, int64_t step,
@@ -741,7 +792,11 @@ void distributeModules(ModuleOp m, int64_t num_device) {
             func::CallOp>(op)) {
       // do nothing
     } else {
-      if (isa<tpu::DevBeginOp>(op)) {
+      if (isa<tpu::C2CBroadcastOp, tpu::C2CAllReduceOp>(op)) {
+        buildSubFunction(subf, m);
+        subf = nullptr;
+        distributeC2COp(op, m, num_device, step);
+      } else if (isa<tpu::DevBeginOp>(op)) {
         // for some patterns maybe do slice here
         buildSubFunction(subf, m);
         in_distribution = true;

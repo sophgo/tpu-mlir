@@ -1141,6 +1141,15 @@ bmodel::bmodel_mem_info_t ModelCtx::get_bmodel_mem_info() {
                         core_cmd->sdma_commands()->Get(j)->size();
                 }
               }
+              // CDMA is used by C2C ops (e.g. BM1684X2);
+              if (subnet->core_commands() &&
+                  subnet->core_commands()->Get(core_idx)->cdma_commands()) {
+                auto core_cmd = subnet->core_commands()->Get(core_idx);
+                for (unsigned int j = 0; j < core_cmd->cdma_commands()->size();
+                     ++j)
+                  info.cdma_cmd_mem_size +=
+                      core_cmd->cdma_commands()->Get(j)->size();
+              }
             }
           }
         }

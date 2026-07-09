@@ -20,4 +20,5 @@ uint32_t tpu::Fp8MatMulOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   UNREACHABLE_THIS("Not Implemented");
   return 0;
 }
+
 int64_t tpu::Fp8MatMulOp::get_fw_type_bm1684() { return -1; }

@@ -35,11 +35,13 @@ def BModel2MLIR(bmodel_net: BModel):
     from .target_sgtpuv8.context import SGTPUV8Context
     from .target_1690e.context import BM1690EContext
     from .target_1690.context import BM1690Context
+    from .target_1684x2.context import BM1684X2Context
 
     with use_backend(bmodel_net.chip) as context:
         if (isinstance(context, BM1688Context) or isinstance(context, SG2380Context)
                 or isinstance(context, CV184XContext) or isinstance(context, SGTPUV8Context)
-                or isinstance(context, BM1690Context) or isinstance(context, BM1690EContext)):
+                or isinstance(context, BM1690Context) or isinstance(context, BM1690EContext)
+                or isinstance(context, BM1684X2Context)):
             coeff = bmodel_net.net[0].parameter[0].coeff_mem
             if coeff and context.base_addr[0] != context.base_addr[1]:
                 context.base_addr[1] += len(coeff.data)
@@ -70,6 +72,20 @@ def decode_cmdgroup(
 
     cmdgroup = StaticCmdGroup(tiu, dma, context.merge_instruction(tiu, dma))
     return cmdgroup
+
+
+def decode_cdma_of_subnet(context: BModelContext, subnet, subnet_id: int):
+    """
+        Decode CDMA (C2C) descriptors carried in a subnet's core_commands.
+    """
+    decoder = context.decoder
+    if not hasattr(decoder, "decode_cdma_cmds"):
+        return []
+    ops = []
+    for core_id, cc in enumerate(subnet.core_commands or []):
+        for cmds in (cc.cdma_commands or []):
+            ops.extend(decoder.decode_cdma_cmds(cmds.bytes, core_id=core_id, subnet_id=subnet_id))
+    return ops
 
 
 class _AtomicContext:
@@ -222,6 +238,10 @@ class Block(Node):
                     if msgcore.no_sys_cmds:
                         self.operations.extend(msgcore.no_sys_cmds)
                     self.operations.extend(msgcore.sys_cmds)
+
+                cdma_ops = decode_cdma_of_subnet(context, subnet, self.subnet_id)
+                self.core_operations.extend(cdma_ops)
+                self.operations.extend(cdma_ops)
                 return
 
             if subnet.cmd_group:
@@ -253,6 +273,8 @@ class Block(Node):
 
             for x in self.cmds:
                 self.operations.extend(x.all)
+
+            self.operations.extend(decode_cdma_of_subnet(context, subnet, self.subnet_id))
 
     @functools.lru_cache()
     def __str__(self):

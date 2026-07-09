@@ -381,7 +381,13 @@ public:
     auto mOp = getOperation();
     auto mainFunc = module::getMainFuncOp(mOp);
     auto mode = module::getMode();
-    if (num_device > 1) {
+    bool has_c2c = false;
+    mainFunc.walk([&](Operation *op) {
+      if (isa<tpu::C2CBroadcastOp, tpu::C2CAllReduceOp>(op)) {
+        has_c2c = true;
+      }
+    });
+    if (num_device > 1 && !has_c2c) {
       checkIfNeedUpdateGroupSize(mOp);
       if (mode == module::Mode::F16 || mode == module::Mode::BF16) {
         module::applyPatternOnce<MatMulSliceMerge3>(mOp);

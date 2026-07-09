@@ -15,7 +15,7 @@ import numpy as np
 import ctypes
 
 from .regdef import op_class_dic
-from .regdef import sDMA_sys_reg as dma_sys, SYS_reg as tiu_sys
+from .regdef import sDMA_sys_reg as dma_sys, SYS_reg as tiu_sys, sCDMA_sys_reg as cdma_sys
 from ..target_common import (
     atomic_reg,
     CMDType,
@@ -188,6 +188,41 @@ class Decoder(DecoderBase):
         )
         return cmd
 
+    def decode_cdma_cmd(self, reg_buf: memoryview, *, offset, core_id, cmd_id, subnet_id):
+        assert cmd_id is not None, "1684x2 must assign cmd_id manually"
+        head = CDmaHead.from_buffer(reg_buf, offset)  # type: CDmaHead
+        op_info = cdma_index.get(head, None)
+
+        assert op_info is not None, (
+            f"Unable to decode CDMA code at offset {offset} out of {len(reg_buf)} total."
+            f" Potential head identified as {head}")
+        # get op struct
+        op_clazz = op_class_dic[op_info.name]
+
+        reg = self.decode_reg(op_clazz, buf=reg_buf, offset=offset)
+        buf = reg_buf[offset:offset + op_clazz.length // 8]
+        param_fn = self.context.opparam_converter.get(reg.OP_NAME, None)
+        cmd = op_info(
+            reg,
+            buf=buf,
+            cmd_id=cmd_id,
+            subnet_id=subnet_id,
+            core_id=core_id,
+            param_fn=param_fn,
+        )
+        return cmd
+
+    @staticmethod
+    def _head_is_zero(reg_buf, offset, head_bits):
+        """
+            Whether the command head at `offset` is all-zero.
+        """
+        head_bytes = (head_bits + 7) // 8
+        slot = reg_buf[offset:offset + head_bytes]
+        if len(slot) == 0:
+            return True
+        return not np.any(np.frombuffer(slot, np.uint8))
+
     def decode_dma_cmds(
         self,
         reg_buf: bytes,
@@ -225,6 +260,10 @@ class Decoder(DecoderBase):
         res = []
         cmd_id = 1
         while offset < len(reg_buf):
+            # (a zero head matches opcode-0 ops such as long CONV), BM1684X2 only has sCONV.
+            # But still need to check WHY there are zero heads but backend do not have this op.
+            if self._head_is_zero(reg_buf, offset, self.tiu_head_length):
+                break
             cmd = self.decode_tiu_cmd(
                 reg_buf,
                 offset=offset,
@@ -246,6 +285,35 @@ class Decoder(DecoderBase):
         if is_sys and is_less_1024 and not np.any(np.frombuffer(reg_buf, np.uint8)):
             return True
         return False
+
+    def decode_cdma_cmds(
+        self,
+        reg_buf: bytes,
+        *,
+        core_id=0,
+        subnet_id=0,
+    ) -> List[atomic_reg]:
+        offset = 0
+        res = []
+        cmd_id = 1
+        while offset < len(reg_buf):
+            cmd = self.decode_cdma_cmd(
+                reg_buf,
+                offset=offset,
+                core_id=core_id,
+                subnet_id=subnet_id,
+                cmd_id=cmd_id,
+            )
+
+            cmd_id += 1
+            offset += cmd.reg.length // 8
+            res.append(cmd)
+            # reached sys_end already
+            if isinstance(cmd.reg, cdma_sys) and cmd.reg.cmd_special_function == 0:
+                break
+            if self.buf_is_end(reg_buf[offset:], cmd, cdma_sys):
+                break
+        return res
 
     def decode_cmds(self, cmd_arry: bytes, core_id: int, cmd_id: int, t: int) -> list:
         from ..pmu_support import EngineType

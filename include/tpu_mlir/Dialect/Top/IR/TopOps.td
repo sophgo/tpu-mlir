@@ -398,6 +398,46 @@ def Top_A16MatMulOp : Top_Op<"A16MatMul"> {
   }];
 }
 
+def Top_C2CAllReduceOp : Top_Op<"C2CAllReduce"> {
+  let summary = "C2C all-reduce operator across chips";
+
+  let description = [{
+    Reduce a tensor across multiple chips via CDMA C2C interconnect.
+    Each rank sends its local tensor and receives the reduced result.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$send,
+    AnyTensor:$recv,
+    DefaultValuedAttr<I64Attr, "1">:$reduce_method,
+    DefaultValuedAttr<I64Attr, "2">:$nranks,
+    DefaultValuedAttr<I64Attr, "0">:$rank,
+    DefaultValuedAttr<I64Attr, "0">:$sccl_algo,
+    DefaultValuedAttr<I64ArrayAttr, "{0, 1}">:$chip_map
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_C2CBroadcastOp : Top_Op<"C2CBroadcast"> {
+  let summary = "C2C broadcast operator across chips";
+
+  let description = [{
+    Broadcast a tensor from root rank to all chips via CDMA C2C interconnect.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    DefaultValuedAttr<I64Attr, "0">:$root,
+    DefaultValuedAttr<I64Attr, "2">:$nranks,
+    DefaultValuedAttr<I64Attr, "0">:$rank,
+    DefaultValuedAttr<I64Attr, "0">:$sccl_algo,
+    DefaultValuedAttr<I64ArrayAttr, "{0, 1}">:$chip_map
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_Fp8MatMulOp : Top_Op<"Fp8MatMul"> {
   let summary = "fp8 matmul operator";
 

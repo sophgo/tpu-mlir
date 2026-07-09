@@ -513,6 +513,68 @@ def Tpu_A16MatMulOp : Tpu_Op<"A16MatMul",
   let results = (outs AnyRankedTensor:$output);
 }
 
+def Tpu_C2CAllReduceOp : Tpu_Op<"C2CAllReduce"> {
+  let summary = "C2C all-reduce operator across chips";
+
+  let description = [{
+  1.Op Introduction
+  Reduce a tensor across multiple chips via CDMA C2C interconnect.
+
+  2.Inputs
+  send(act.): tensor to send for reduction.;
+  recv(act.): tensor to receive reduced result (may alias send).;
+
+  3.attributes
+  reduce_method: SG_REDUCE_MEAN/SUM/MAX/MIN/PROD.;
+  nranks: number of participating ranks.;
+  rank: current chip rank.;
+  sccl_algo: 0 Switch, 1 Cascade, 2 Ring.;
+  chip_map: rank-to-chip-id mapping.;
+  }];
+
+  let arguments = (ins
+    AnyRankedTensor:$send,
+    AnyRankedTensor:$recv,
+    I64Attr:$reduce_method,
+    I64Attr:$nranks,
+    I64Attr:$rank,
+    I64Attr:$sccl_algo,
+    I64ArrayAttr:$chip_map
+  );
+
+  let results = (outs AnyRankedTensor:$output);
+}
+
+def Tpu_C2CBroadcastOp : Tpu_Op<"C2CBroadcast"> {
+  let summary = "C2C broadcast operator across chips";
+
+  let description = [{
+  1.Op Introduction
+  Broadcast a tensor from root rank to all chips via CDMA C2C interconnect.
+
+  2.Inputs
+  input(act.): tensor buffer (in-place).;
+
+  3.attributes
+  root: source rank for broadcast.;
+  nranks: number of participating ranks.;
+  rank: current chip rank.;
+  sccl_algo: 0 Switch, 1 Cascade, 2 Ring.;
+  chip_map: rank-to-chip-id mapping.;
+  }];
+
+  let arguments = (ins
+    AnyType:$input,
+    I64Attr:$root,
+    I64Attr:$nranks,
+    I64Attr:$rank,
+    I64Attr:$sccl_algo,
+    I64ArrayAttr:$chip_map
+  );
+
+  let results = (outs AnyRankedTensor:$output);
+}
+
 def Tpu_Fp8MatMulOp : Tpu_Op<"Fp8MatMul",
     [DeclareOpInterfaceMethods<IndexingMapsInterface>]> {
   let summary = "fp8 matmul operator";

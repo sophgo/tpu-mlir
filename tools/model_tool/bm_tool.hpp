@@ -300,11 +300,12 @@ void bm_show(const string &filename, bool all) {
        << mem_info.coeff_mem_size + mem_info.neuron_mem_size +
               mem_info.bd_cmd_mem_size + mem_info.gdma_cmd_mem_size +
               mem_info.middle_buffer_size + mem_info.dynamic_ir_mem_size +
-              mem_info.hau_cmd_mem_size + mem_info.sdma_cmd_mem_size
+              mem_info.hau_cmd_mem_size + mem_info.sdma_cmd_mem_size +
+              mem_info.cdma_cmd_mem_size
        << " (weight: " << mem_info.coeff_mem_size << ", instruct: "
        << mem_info.bd_cmd_mem_size + mem_info.gdma_cmd_mem_size +
               mem_info.dynamic_ir_mem_size + mem_info.hau_cmd_mem_size +
-              mem_info.sdma_cmd_mem_size
+              mem_info.sdma_cmd_mem_size + mem_info.cdma_cmd_mem_size
        << ", runtime: "
        << mem_info.neuron_mem_size + mem_info.middle_buffer_size << ")"
        << std::endl;

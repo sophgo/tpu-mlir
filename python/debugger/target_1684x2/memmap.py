@@ -135,7 +135,7 @@ class LazyMemmap(LazyDict):
             MType.R: (
                 0,
                 info.LMEM_SIZE,
-            ),  # local memory: 256KB per lane * 16 lanes = 4MB, use addr[26] to determine if it's lmem or smem
+            ),  # local memory: 256KB per lane * 16 lanes = 4MB, use addr[22] to determine if it's lmem or smem
             MType.S: (0, 64 * 1024),  # 64KB
             MType.L: (0x6980000000, 0x6980000000 + info.L2MEM_SIZE),
             MType.G: (0x1000000000, 0x1100000000),  # global memory 4G, start at 0x1000000000

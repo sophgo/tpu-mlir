@@ -298,6 +298,12 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
         continue;
       }
       module::setAddress(autoincOp.getOutput(), addr);
+    } else if (auto bcastOp = dyn_cast<tpu::C2CBroadcastOp>(op)) {
+      auto addr = module::getAddress(module::getOriValue(bcastOp.getInput()));
+      if (addr == 0) {
+        continue;
+      }
+      module::setAddress(bcastOp.getOutput(), addr);
     } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
       auto addr = module::getAddress(module::getOriValue(sliceOp.getInput()));
       if (addr == 0) {
@@ -1511,6 +1517,8 @@ bool BMAddressAssign::isInPlaceOp(Operation *op) {
     return true;
   } else if (isa<tpu::IdentityOp, tpu::AutoIncreaseOp>(op)) {
     return true;
+  } else if (auto bcastOp = dyn_cast<tpu::C2CBroadcastOp>(op)) {
+    return !module::isNone(bcastOp.getInput());
   } else if (auto insertOp = dyn_cast<tpu::InsertOp>(op)) {
     return true;
   }

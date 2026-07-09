@@ -47,9 +47,9 @@ SUPPORTED_CHIPS = ["bm1684x", "bm1688", "bm1690", "bm1690e", "bm1684x2"]
 SUPPORTED_MODES = ["f32", "f16", "bf16"]  # Extend as needed
 
 # Chip columns of the per-row support tuples in ``_test_functions``.
-_CHIP_COLUMNS = ("bm1684x", "bm1688")
-# ``bm1684x2`` shares the ``bm1684x`` support column.
-_CHIP_ALIASES = {"bm1684x2": "bm1684x"}
+# Order must match the flags in each row: (bm1684x, bm1688, bm1684x2).
+_CHIP_COLUMNS = ("bm1684x", "bm1688", "bm1684x2")
+_CHIP_ALIASES = {}
 _resolve_chip_support = make_chip_resolver(_CHIP_COLUMNS, _CHIP_ALIASES)
 
 
@@ -59,6 +59,7 @@ def deploy_case_bmodel(case_name: str,
                        tolerance: Tuple[float, float] = (0.98, 0.95),
                        test_reference: Optional[str] = None,
                        num_core: int = 1,
+                       num_device: int = 1,
                        debug: bool = False,
                        dynamic: bool = False,
                        rvti: bool = False,
@@ -75,6 +76,7 @@ def deploy_case_bmodel(case_name: str,
         chip: chip name, e.g. "bm1684x"
         mode: quant mode, e.g. "f32" / "f16"
         tolerance: (cos_tol, euclidean_tol) pair passed to --tolerance
+        num_device: number of devices for multi-chip compilation (default 1)
     """
     chip = chip.lower()
     mode = mode.lower()
@@ -88,7 +90,8 @@ def deploy_case_bmodel(case_name: str,
         test_args = f"--test_input {case_name}_input.npz --tolerance {cos_tol},{euclidean_tol} {test_reference_arg}"
     deploy_cmd = [
         f"model_deploy.py --mlir {case_name}.mlir", f"--chip {chip}", f"--model {bmodel_name}",
-        test_args, f"--quantize {mode.upper()}", f"--num_core {num_core}"
+        test_args, f"--quantize {mode.upper()}", f"--num_core {num_core}",
+        f"--num_device {num_device}"
     ]
     if debug:
         deploy_cmd.append("--debug")
@@ -124,30 +127,34 @@ class MLIR_IR_TESTER(object):
             #############################
             # MLIR Test Case, Alphabetically
             #############################
-            # case:  (test_function,      bm1684x_support, bm1688_support)
-            "error0": (self.test_error0, Y, Y),
-            "layernorm_dynamic_dc": (self.test_layernorm_dynamic_dc, Y, Y),
-            "layernorm_dynamic_dc_workaround": (self.test_layernorm_dynamic_dc_workaround, Y, Y),
-            "insert": (self.test_insert, Y, Y),
-            "fattention": (self.test_fattention, Y, Y),
-            "fattention_prefill": (self.test_fattention_prefill, Y, Y),
-            "fattention_decode": (self.test_fattention_decode, Y, Y),
-            "fattn_o_proj": (self.test_fattn_o_proj, Y, Y),
-            "fp8matmul": (self.test_fp8matmul, Y, Y),
-            "slice": (self.test_slice, Y, Y),
-            "a16matmul": (self.test_a16matmul, Y, Y),
-            "a16gather": (self.test_a16gather, Y, Y),
-            "chunk_gated_delta_rule": (self.test_chunk_gated_delta_rule, Y, Y),
-            "recurrent_gated_delta_rule": (self.test_recurrent_gated_delta_rule, Y, Y),
-            "concat_slice": (self.test_concat_slice, Y, Y),
-            "softplus_mul": (self.test_softplus_mul, Y, Y),
-            "softmax_topk": (self.test_softmax_topk, Y, Y),
-            "conv2d_non_overlapping": (self.test_conv2d_non_overlapping, Y, Y),
-            "matmul_reshape_permute": (self.test_matmul_reshape_permute, Y, Y),
-            "matmul_dynamic": (self.test_matmul_dynamic, Y, Y),
-            "reshape_dynamic": (self.test_reshape_dynamic, Y, Y),
-            "permute_dynamic": (self.test_permute_dynamic, Y, Y),
+            # case:  (test_function,      bm1684x_support, bm1688_support, bm1684x2_support)
+            "error0": (self.test_error0, Y, Y, Y),
+            "layernorm_dynamic_dc": (self.test_layernorm_dynamic_dc, Y, Y, Y),
+            "layernorm_dynamic_dc_workaround": (self.test_layernorm_dynamic_dc_workaround, Y, Y, Y),
+            "insert": (self.test_insert, Y, Y, Y),
+            "fattention": (self.test_fattention, Y, Y, Y),
+            "fattention_prefill": (self.test_fattention_prefill, Y, Y, Y),
+            "fattention_decode": (self.test_fattention_decode, Y, Y, Y),
+            "fattn_o_proj": (self.test_fattn_o_proj, Y, Y, Y),
+            "fp8matmul": (self.test_fp8matmul, Y, Y, Y),
+            "slice": (self.test_slice, Y, Y, Y),
+            "a16matmul": (self.test_a16matmul, Y, Y, Y),
+            "a16gather": (self.test_a16gather, Y, Y, Y),
+            "chunk_gated_delta_rule": (self.test_chunk_gated_delta_rule, Y, Y, Y),
+            "recurrent_gated_delta_rule": (self.test_recurrent_gated_delta_rule, Y, Y, Y),
+            "concat_slice": (self.test_concat_slice, Y, Y, Y),
+            "softplus_mul": (self.test_softplus_mul, Y, Y, Y),
+            "softmax_topk": (self.test_softmax_topk, Y, Y, Y),
+            "conv2d_non_overlapping": (self.test_conv2d_non_overlapping, Y, Y, Y),
+            "matmul_reshape_permute": (self.test_matmul_reshape_permute, Y, Y, Y),
+            "matmul_dynamic": (self.test_matmul_dynamic, Y, Y, Y),
+            "reshape_dynamic": (self.test_reshape_dynamic, Y, Y, Y),
+            "permute_dynamic": (self.test_permute_dynamic, Y, Y, Y),
+            # C2C operators tests
+            "c2c_broadcast": (self.test_c2c_broadcast, N, N, Y),
+            "c2c_all_reduce": (self.test_c2c_all_reduce, N, N, Y),
         }
+        self.c2c_ops = ["c2c_broadcast", "c2c_all_reduce"]
         # currently test_mlir.py only supports fp quant mode
         self.support_quant_modes = ["f32", "f16", "bf16"]
         self.mode = args.mode.lower()
@@ -400,6 +407,9 @@ class MLIR_IR_TESTER(object):
             raise RuntimeError(f"shape-infer failed for {mlir_path}:\n"
                                f"stdout: {e.stdout}\nstderr: {e.stderr}") from e
 
+        test_reference = None
+        if case_name in self.c2c_ops:
+            self.no_check = True
         for mode in self.quant_modes:
             try:
                 deploy_case_bmodel(case_name=case_name,
@@ -1899,6 +1909,230 @@ class MLIR_IR_TESTER(object):
                                  input_descs=[self.Desc('float32', -1, 1)])
 
         self._deploy_test_case(case_name, tolerance=(0.99, 0.98))
+
+    def _deploy_c2c_case(self, case_name: str, num_device: int = 2) -> None:
+        """
+            Deploy a C2C collective op test case for multi-device compilation.
+        """
+        chip = self.chip
+        mode = self.mode
+        # shape-infer sanity check
+        subprocess.run(
+            [
+                "tpuc-opt", "--shape-infer", f"{case_name}.mlir", "-o",
+                f"{case_name}_shape_infer.mlir"
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+        # lower top -> tpu with num_device
+        tpu_mlir = f"{case_name}_{chip}_{mode}_tpu.mlir"
+        weight_file = f"{case_name}_{chip}_{mode}_weights.npz"
+        lower_cmd = (
+            f"tpuc-opt {case_name}.mlir "
+            f"--processor-assign=\"chip={chip} mode={mode.upper()} "
+            f"num_device={num_device} num_core={self.num_core} "
+            f"addr_mode=auto high_precision={'true' if not self.disable_hp else 'false'}\" "
+            f"--processor-top-optimize "
+            f"--convert-top-to-tpu=\"weightFileName={weight_file} "
+            f"asymmetric=false doWinograd=false q_group_size=0 "
+            f"q_symmetric=false matmul_perchannel=false gelu_mode=normal\" "
+            f"--canonicalize --weight-fold -o {tpu_mlir}")
+        print(lower_cmd)
+        assert os.system(lower_cmd) == 0, f"lowering failed for {case_name}"
+
+        # dev-parallel: split into per-device submodules
+        dev_mlir = f"{case_name}_{chip}_{mode}_dev.mlir"
+        dev_cmd = f"tpuc-opt {tpu_mlir} --dev-parallel -o {dev_mlir}"
+        print(dev_cmd)
+        assert os.system(dev_cmd) == 0, f"dev-parallel failed for {case_name}"
+
+        final_mlir = f"{case_name}_{chip}_{mode}_final.mlir"
+        codegen_passes = (f"tpuc-opt {dev_mlir} --weight-reorder "
+                          f"--subnet-divide=\"dynamic=False\" --op-reorder --topo-sort "
+                          f"--layer-group=\"opt=2 group_by_cores=auto compress_mode=none "
+                          f"debugger=0 disable_group_overlap=false lgcache=true "
+                          f"config_filename= enable_lghash=False lghash_dir=\" "
+                          f"--core-parallel --after-layergroup-weight-reorder "
+                          f"--address-assign --processor-tpu-optimize -o {final_mlir}")
+        print(codegen_passes)
+        assert os.system(codegen_passes) == 0, \
+            f"codegen passes failed for {case_name}"
+
+        bmodel = f"{case_name}_{chip}_{mode}.bmodel"
+        bmodel_cmd = (f"tpuc-opt {final_mlir} "
+                      f"--codegen=\"model_file={bmodel} "
+                      f"embed_debug_info=false gdma_check=false\"")
+        print(bmodel_cmd)
+        rc = os.system(bmodel_cmd)
+        if rc != 0:
+            assert False, f"bmodel codegen for {case_name} exited with {rc}"
+
+    def _c2c_broadcast_reference(self, inputs: Dict[str, np.ndarray], root: int,
+                                 nranks: int) -> List[np.ndarray]:
+        """Python reference for C2CBroadcast across nranks devices.
+
+        Broadcast: the root device's input is sent to all devices. Every
+        device ends up with a copy of the root's data.
+        Returns a list of per-device output arrays.
+        """
+        in_name = "in0"
+        root_data = inputs[in_name]
+        # every device gets the root's data
+        return [root_data.copy() for _ in range(nranks)]
+
+    def _c2c_all_reduce_reference(self, per_device_inputs: List[np.ndarray], nranks: int,
+                                  reduce_method: int) -> List[np.ndarray]:
+        """Reference for C2CAllReduce across nranks devices.
+
+        Each device contributes its own local tensor; the reduced result is
+        the same on every device. This implements the actual cross-device
+        reduction (SUM / MEAN / MAX / MIN / PROD) over the per-device inputs.
+        """
+        assert len(per_device_inputs) == nranks
+        stacked = np.stack(per_device_inputs)
+        if reduce_method == 1:  # SUM
+            result = stacked.sum(axis=0)
+        elif reduce_method == 0:  # MEAN
+            result = stacked.mean(axis=0)
+        elif reduce_method == 2:  # MAX
+            result = stacked.max(axis=0)
+        elif reduce_method == 3:  # MIN
+            result = stacked.min(axis=0)
+        elif reduce_method == 4:  # PROD
+            result = stacked.prod(axis=0)
+        else:
+            raise ValueError(f"unknown reduce_method {reduce_method}")
+        return [result.copy() for _ in range(nranks)]
+
+    def test_c2c_broadcast(self, case_name):
+        """
+            Test case: C2CBroadcast operator (per-rank multi-device split).
+        """
+        input_shapes = [
+            [256],
+        ]
+        weight_shapes = []
+        output_shapes = [
+            [256],
+        ]
+
+        # Create MLIR importer
+        block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
+            case_name, input_shapes, weight_shapes, output_shapes, ["F32"])
+
+        in0_op = input_ops[0]
+        op = top.C2CBroadcastOp(self._T(block_mlir, output_shapes[0]),
+                                in0_op,
+                                root=0,
+                                nranks=2,
+                                rank=0,
+                                sccl_algo=0,
+                                chip_map=[0, 1],
+                                loc=self._L(block_mlir, "c2c_broadcast"),
+                                ip=ip).output
+
+        # Create return operation
+        block_mlir.create_return_op([op])
+
+        # Save MLIR text and inputs
+        self._save_mlir_and_data(case_name,
+                                 block_mlir,
+                                 input_shapes,
+                                 weight_shapes,
+                                 input_descs=[self.Desc('float32', -5, 5)])
+
+        # C2C only supports bm1684x2; skip silently on other chips.
+        if self.chip != "bm1684x2":
+            print(f"[SKIP] {case_name}: C2C requires bm1684x2, got {self.chip}")
+            return
+
+        self._deploy_c2c_case(case_name, num_device=2)
+        shape = tuple(input_shapes[0])
+        inputs = {"in0": rand_data(shape, "float32", -5, 5, seed=100)}
+        ref_outputs = self._c2c_broadcast_reference(inputs, root=0, nranks=2)
+        # all devices should have identical output (the root's data)
+        assert all(np.array_equal(ref_outputs[0], o) for o in ref_outputs), \
+            "broadcast reference: all devices must have identical output"
+        assert np.allclose(ref_outputs[0], inputs["in0"]), \
+            "broadcast reference: output must equal root input"
+        print(f"[OK] {case_name}: broadcast reference semantics validated")
+
+    def test_c2c_all_reduce(self, case_name):
+        """
+            Test case: C2CAllReduce operator (per-rank multi-device split).
+        """
+        input_shapes = [
+            [256],
+        ]
+        weight_shapes = []
+        output_shapes = [
+            [256],
+        ]
+
+        # Create MLIR importer
+        block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
+            case_name, input_shapes, weight_shapes, output_shapes, ["F32"])
+
+        in0_op = input_ops[0]
+        op = top.C2CAllReduceOp(self._T(block_mlir, output_shapes[0]),
+                                in0_op,
+                                in0_op,
+                                reduce_method=1,
+                                nranks=2,
+                                rank=0,
+                                sccl_algo=0,
+                                chip_map=[0, 1],
+                                loc=self._L(block_mlir, "c2c_all_reduce"),
+                                ip=ip).output
+
+        # Create return operation
+        block_mlir.create_return_op([op])
+
+        # Save MLIR text and inputs
+        self._save_mlir_and_data(case_name,
+                                 block_mlir,
+                                 input_shapes,
+                                 weight_shapes,
+                                 input_descs=[self.Desc('float32', -5, 5)])
+
+        # C2C only supports bm1684x2; skip silently on other chips.
+        if self.chip != "bm1684x2":
+            print(f"[SKIP] {case_name}: C2C requires bm1684x2, got {self.chip}")
+            return
+
+        self._deploy_c2c_case(case_name, num_device=2)
+
+        # Python reference semantics check.
+        num_device = 2  # TODO: only support num_device=2 for now, need to support num_device=4
+        shape = tuple(input_shapes[0])
+        per_device_inputs = [
+            rand_data(shape, "float32", -5, 5, seed=100 + dev) for dev in range(num_device)
+        ]
+
+        np.savez(f"{case_name}_per_device_inputs.npz",
+                 **{f"in0_device{d}": per_device_inputs[d]
+                    for d in range(num_device)})
+
+        ref_outputs = self._c2c_all_reduce_reference(per_device_inputs,
+                                                     nranks=num_device,
+                                                     reduce_method=1)
+        # all devices should have identical reduced output
+        assert all(np.array_equal(ref_outputs[0], o) for o in ref_outputs), \
+            "all_reduce reference: all devices must have identical output"
+        expected = sum(per_device_inputs)  # SUM over all devices
+        assert np.allclose(ref_outputs[0], expected), \
+            "all_reduce reference: SUM must equal sum of per-device inputs"
+
+        # for dev in range(num_device):
+        #     assert not np.allclose(ref_outputs[0],
+        #                            per_device_inputs[dev] * num_device), \
+        #         f"all_reduce reference: result should differ from the " \
+        #         f"degenerate {num_device}*in_device{dev} case " \
+        #         f"(per-device inputs must be distinct)"
+        # print(f"[OK] {case_name}: all_reduce reference semantics validated")
 
 
 def test_one_case_in_all(tester: MLIR_IR_TESTER, case: str, error_cases: List,

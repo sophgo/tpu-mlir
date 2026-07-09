@@ -53,6 +53,8 @@ class CMD_TYPE(Enum):
 class SYS_TYPE(Enum):
     SEND = 0
     WAIT = 1
+    CHAIN_END = 2
+    NOP = 3
 
 
 class Status(Enum):
@@ -156,11 +158,12 @@ class MsgCore(Node):
             if self.msgcore_id == 0:
                 repr_head = f'{self.msg_result}, %msg{self.out_msg_id} = "@core_{self.core_id}"({self.msg_operand}) {{\n'
             elif self.msgcore_id == self.msgcore_num - 1:
-                msg_result = []
-                if isinstance(self.sys_cmds[1].reg, tiu_sys):
-                    msg_result = (f"%B{self.sys_cmds[1].cmd_id}C{self.sys_cmds[1].core_id}")
-                elif isinstance(self.sys_cmds[1].reg, dma_sys):
-                    msg_result = (f"%D{self.sys_cmds[1].cmd_id}C{self.sys_cmds[1].core_id}")
+                msg_result = self.msg_result
+                if len(self.sys_cmds) > 1:
+                    if isinstance(self.sys_cmds[1].reg, tiu_sys):
+                        msg_result = (f"%B{self.sys_cmds[1].cmd_id}C{self.sys_cmds[1].core_id}")
+                    elif isinstance(self.sys_cmds[1].reg, dma_sys):
+                        msg_result = (f"%D{self.sys_cmds[1].cmd_id}C{self.sys_cmds[1].core_id}")
                 repr_head = f'{msg_result} = "@core_{self.core_id}"({self.msg_operand}, %msg{self.in_msg_id}) {{\n'
             else:
                 repr_head = f'{self.msg_result}, %msg{self.out_msg_id} = "@core_{self.core_id}"({self.msg_operand}, %msg{self.in_msg_id}) {{\n'
@@ -207,16 +210,19 @@ class MultiCore(Node):
         for cmd_id, mlir_cmd in enumerate(mlir_cmds):
             cmd = mlir_cmd
             if isinstance(cmd.reg, (tiu_sys, dma_sys)):
-                in_sys = True
-                ret = self.consume_sys(cmd)
-                if last_ret == Status.PRODUCING and ret == Status.RECIEVING:
-                    self.core_split_cmds.append(tmp_cmds)
-                    self.core_split_rets.append(tmp_rets)
-                    tmp_cmds = []
-                    tmp_rets = []
-                tmp_cmds.append(mlir_cmds[cmd_id])
-                tmp_rets.append(ret)
-                last_ret = ret
+                if MultiCore.is_sys_end(cmd):
+                    pass
+                else:
+                    in_sys = True
+                    ret = self.consume_sys(cmd)
+                    if last_ret == Status.PRODUCING and ret == Status.RECIEVING:
+                        self.core_split_cmds.append(tmp_cmds)
+                        self.core_split_rets.append(tmp_rets)
+                        tmp_cmds = []
+                        tmp_rets = []
+                    tmp_cmds.append(mlir_cmds[cmd_id])
+                    tmp_rets.append(ret)
+                    last_ret = ret
             else:
                 if in_sys:
                     if (last_ret == Status.RECIEVING or last_ret == Status.CONSUMED
@@ -247,6 +253,14 @@ class MultiCore(Node):
                 indent,
             ) for msgcore_id in range(len(self.core_split_cmds))
         ]
+
+    @staticmethod
+    def is_sys_end(cmd: BaseTpuCmd):
+        if isinstance(cmd.reg, tiu_sys):
+            return cmd.reg.tsk_eu_typ == 31  # system.end
+        if isinstance(cmd.reg, dma_sys):
+            return cmd.reg.cmd_special_function in (0, 1)  # chain_end, nop
+        return False
 
     @staticmethod
     def get_cmd_type(cmd: BaseTpuCmd):
