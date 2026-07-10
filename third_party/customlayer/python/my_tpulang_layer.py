@@ -111,6 +111,24 @@ class preprocess:
             out_dtypes=[dtype])
         return outs
 
+class scaleAdd:
+    @staticmethod
+    def native(a, b, scale):
+        out0 = a * scale
+        out1 = out0 + b
+        return out0, out1
+    @staticmethod
+    def tpulang(inputs, scale, dtype="float32"):
+        # inputs = [A, B]; returns [A*scale, A*scale+B]
+        params = {"scale": scale}
+        outs = tpul.custom(
+            tensors_in=inputs,
+            # op_name should be consistent with the backend
+            op_name="scaleadd",
+            params=params,
+            out_dtypes=[dtype, dtype])
+        return outs
+
 class cpuTopk:
     @staticmethod
     def native(data, axis, k):

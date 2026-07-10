@@ -45,3 +45,9 @@ static preprocess_param_t preprocess_parse_param(const void* param) {
     return sc_param;
 }
 
+static scaleadd_param_t scaleadd_parse_param(const void* param) {
+    scaleadd_param_t p = {0};
+    p.scale = ((custom_param_t *)param)[0].float_t;
+    return p;
+}
+

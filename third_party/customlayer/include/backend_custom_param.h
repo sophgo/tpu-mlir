@@ -31,4 +31,9 @@ typedef struct {
   int type;
 } preprocess_param_t;
 
+// scaleadd: 2 inputs (A, B) -> 2 outputs (A*scale, A*scale+B)
+typedef struct {
+  float scale;
+} scaleadd_param_t;
+
 #endif
