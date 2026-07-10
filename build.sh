@@ -71,6 +71,7 @@ cmake -G Ninja \
   -DTPUMLIR_USE_CUDA="${USE_CUDA}" \
   -DTPUMLIR_ENABLE_COVERAGE="${ENABLE_COVERAGE_FLAG}" \
   -DCMAKE_INSTALL_PREFIX="${INSTALL_PATH}" \
+  -DTPUMLIR_USE_PCH=${TPUMLIR_USE_PCH:-ON} \
   "${PROJECT_ROOT}"
 
 cpu_num=$(cat /proc/stat | grep cpu[0-9] -c)

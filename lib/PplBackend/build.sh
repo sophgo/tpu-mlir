@@ -40,13 +40,48 @@ clean_up() {
 # Ensure the target lib directory exists
 mkdir -p "${INSTALL_PATH}/lib"
 
-# Parallel ppl-compile over all *.pl files in PplBackend/src
+# Parallel ppl-compile over all *.pl files in PplBackend/src.
+# Uses JOB_CORES (not CPU_NUM) so total parallelism stays bounded when
+# multiple chip targets run concurrently.
 # Args: chip [extra ppl-compile flags...]
 ppl_compile_all() {
   local chip=$1
   shift
-  ls "$DIR"/src/*.pl | xargs -n1 -P"${CPU_NUM}" -I{} \
+  ls "$DIR"/src/*.pl | xargs -n1 -P"${JOB_CORES}" -I{} \
     ppl-compile {} --chip "$chip" --mode 5 --O2 --o . "$@"
+}
+
+# Build one dynamic chip target.
+# Each target uses its own build_dir and produces uniquely-named .so
+# files, so multiple targets can build and install in parallel.
+# Args: compile_chip cmake_chip [extra ppl-compile flags...]
+build_dyn_chip() {
+  local compile_chip=$1
+  local cmake_chip=$2
+  shift 2
+  local build_dir="${PPL_BUILD_PATH}/build_${cmake_chip}_dyn"
+  clean_up "$build_dir"
+  (
+    cd "$build_dir"
+    ppl_compile_all "$compile_chip" "$@"
+    cmake "$DIR" ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=OFF -DCHIP=${cmake_chip} -DCMODEL=ON -DBUILD_DIR=${build_dir}
+    make -j${JOB_CORES} install
+    cmake "$DIR" ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=OFF -DCHIP=${cmake_chip} -DCMODEL=OFF -DBUILD_DIR=${build_dir} -DBUILD_DYN_HOST=ON
+    make -j${JOB_CORES} install
+  )
+}
+
+# Build the static target (libppl_host.so).
+build_static() {
+  local build_dir="${PPL_BUILD_PATH}/build"
+  clean_up "$build_dir"
+  (
+    cd "$build_dir"
+    ls "$DIR"/src/*.pl | xargs -n1 -P"${JOB_CORES}" -I{} \
+      ppl-compile {} --I "$PPL_PROJECT_ROOT/inc" --desc --O2 --o .
+    cmake "$DIR" ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=ON -DBUILD_DIR=${build_dir}
+    make -j${JOB_CORES} install
+  )
 }
 
 generate_md5_list() {
@@ -116,43 +151,59 @@ echo "rebuilding ppl in $PPL_BUILD_PATH"
 mkdir -p "$PPL_BUILD_PATH"
 # wipe ppl compile cache ONCE for the whole rebuild (not per-chip)
 clean_cache
-# dyn pio
-chips=("bm1684x" "bm1688" "bm1690" "sg2260e" "bm1684x2")
-for chip in "${chips[@]}"; do
-  build_dir="${PPL_BUILD_PATH}/build_${chip}_dyn"
-  clean_up "$build_dir"
-  pushd "$build_dir"
-  ppl_compile_all "$chip"
-  cmake "$DIR" ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=OFF -DCHIP=${chip} -DCMODEL=ON -DBUILD_DIR=${build_dir}
-  make -j${CPU_NUM} install
-  cmake "$DIR" ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=OFF -DCHIP=${chip} -DCMODEL=OFF -DBUILD_DIR=${build_dir} -DBUILD_DYN_HOST=ON
-  make -j${CPU_NUM} install
-  popd
-done
-# dyn rvti
-chips_rvti=("sg2260e")
-for chip in "${chips_rvti[@]}"; do
-  name="${chip}rv"
-  build_dir="${PPL_BUILD_PATH}/build_${name}_dyn"
-  clean_up "$build_dir"
-  pushd "$build_dir"
-  ppl_compile_all "$chip" --rv
-  cmake "$DIR" ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=OFF -DCHIP=${name} -DCMODEL=ON -DBUILD_DIR=${build_dir}
-  make -j${CPU_NUM} install
-  cmake "$DIR" ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=OFF -DCHIP=${name} -DCMODEL=OFF -DBUILD_DIR=${build_dir}
-  make -j${CPU_NUM} install
-  popd
+# --- Parallel build ---
+# 7 independent targets: 5 dyn chips + 1 rvti + 1 static.
+# Divide CPU cores among concurrent jobs so total processes ≈ CPU_NUM.
+NUM_JOBS=7
+JOB_CORES=$(( CPU_NUM / NUM_JOBS ))
+[ "$JOB_CORES" -lt 1 ] && JOB_CORES=1
+MAX_PARALLEL=$(( CPU_NUM / JOB_CORES ))
+[ "$MAX_PARALLEL" -gt "$NUM_JOBS" ] && MAX_PARALLEL=$NUM_JOBS
+[ "$MAX_PARALLEL" -lt 1 ] && MAX_PARALLEL=1
+echo "PPL parallel build: ${MAX_PARALLEL} jobs × ${JOB_CORES} cores/job (${CPU_NUM} cores total)"
+
+# FIFO-based semaphore: read -u 3 blocks until a slot is free; echo >&3 releases.
+_sem_fifo=$(mktemp -u)
+mkfifo "$_sem_fifo"
+exec 3<>"$_sem_fifo"
+rm "$_sem_fifo"
+_i=0
+while [ $_i -lt $MAX_PARALLEL ]; do
+  echo >&3
+  _i=$((_i + 1))
 done
 
+pids=()
+labels=()
+
+# dyn pio
+for chip in bm1684x bm1688 bm1690 sg2260e bm1684x2; do
+  read -u 3
+  ( trap 'echo >&3' EXIT; build_dyn_chip "$chip" "$chip" ) &
+  pids+=($!); labels+=("dyn_$chip")
+done
+
+# dyn rvti (ppl-compile uses --chip sg2260e --rv; cmake uses -DCHIP sg2260erv)
+read -u 3
+( trap 'echo >&3' EXIT; build_dyn_chip "sg2260e" "sg2260erv" --rv ) &
+pids+=($!); labels+=("rvti_sg2260erv")
+
 # static
-build_dir="${PPL_BUILD_PATH}/build"
-clean_up "$build_dir"
-pushd "$build_dir"
-ls "$DIR"/src/*.pl | xargs -n1 -P"${CPU_NUM}" -I{} \
-  ppl-compile {} --I "$PPL_PROJECT_ROOT/inc" --desc --O2 --o .
-cmake "$DIR" ${DEBUG_FLAG} -DCMAKE_INSTALL_PREFIX="${TPUC_ROOT}" -DBUILD_STATIC=ON -DBUILD_DIR=${build_dir}
-make -j${CPU_NUM} install
-popd
+read -u 3
+( trap 'echo >&3' EXIT; build_static ) &
+pids+=($!); labels+=("static")
+
+# Wait for all background jobs; fail if any failed
+failed=0
+for i in "${!pids[@]}"; do
+  if ! wait "${pids[$i]}" 2>/dev/null; then
+    echo -e "\033[1;31mERROR: PPL build failed for ${labels[$i]} (pid ${pids[$i]})\033[0m"
+    failed=1
+  fi
+done
+if [ "$failed" -ne 0 ]; then
+  exit 1
+fi
 
 # Check if each PPL_FW_LAYER_TYPE_T enum already exists in FW_LAYER_TYPE_T
 header_file="${PROJECT_ROOT}/include/tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynCompileCommon.hpp"
