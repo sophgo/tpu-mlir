@@ -122,16 +122,24 @@ git clone https://huggingface.co/Intel/Qwen3.5-2B-int4-AutoRound
 ### 2. Compile to bmodel
 
 ```shell
-# If you encounter transformers/torch version issues:
-#   pip3 install transformers torchvision -U
+# Typically without history context
+
 # --max_input_length sets the max prefill length; if omitted it defaults to -s.
 llm_convert.py \
-  -m /workspace/Qwen3.5-2B-int4-AutoRound \
-  --max_input_length 1024 \
+  -m /workspace/Qwen3.5/Qwen3.5-2B-int4-AutoRound \
   -s 2048 \
+  --max_input_length 1024 \
   -c bm1684x \
-  --max_pixels 768,768 \
-  -o qwen3.5_2b
+  -o qwen3.5_4b
+
+# Typically with history context
+llm_convert.py \
+  -m /workspace/Qwen3.5/Qwen3.5-2B-int4-AutoRound \
+  -s 8192 \
+  --use_history_kv \
+  --chunk_length 1024 \
+  -c bm1684x \
+  -o qwen3.5_4b_history
 ```
 
 Main arguments of `llm_convert.py`:
@@ -141,28 +149,27 @@ Main arguments of `llm_convert.py`:
 | `model_path`   |  `m`  |    ✅    | Path to the model weights                                                                                                                      |
 | `seq_length`   |  `s`  |    ✅    | Maximum sequence length                                                                                                                        |
 | `max_input_length` |  —  |    —    | Maximum input length; defaults to `seq_length` (`-s`) when omitted                                                                        |
-| `quantize`     |  `q`  |    ✅    | Quantization type: `auto` / `w4bf16` / `w4f16` / `bf16` / `f16`, etc. (omit if the source model is already quantized)                          |
-| `q_group_size` |  `g`  |    —    | Group size for quantization (default `64`)                                                                                                     |
+| `use_history_kv`     |  —  |    —    | Enable history KV cache                                                                                                                         |
+| `chunk_length` |  —  |    —    | Chunk length for prefill and decode                                                                                                             |
 | `chip`         |  `c`  |    ✅    | Target platform: `bm1684x` / `bm1688` / `cv186ah`                                                                                              |
-| `max_pixels`   |   —   |    —    | Multi-modal max resolution `width,height`. Defaults vary by `model_type` (qwen2_5_vl: `672,896`; minicpmv: `980,980`; otherwise `768,768`)     |
 | `out_dir`      |  `o`  |    ✅    | Output directory                                                                                                                               |
 
 ### 3. Run on PCIe / SoC
 
-Copy the [`python_demo`](https://github.com/sophgo/LLM-TPU/tree/main/models/Qwen3_5/python_demo) folder onto your device and build it:
+Copy the [`cpp_demo`](https://github.com/sophgo/LLM-TPU/tree/main/models/Qwen3_5/cpp_demo) folder onto your device and build it:
 
 ```shell
 mkdir build && cd build
 cmake ..
 make
-cp *cpython*.so ..
+mv pipeline ..
 cd ..
 ```
 
 Then run the bmodel:
 
 ```shell
-python3 pipeline.py -m xxxx.bmodel -c config
+./pipeline -m xxxx.bmodel -c config
 ```
 
 Sample output:

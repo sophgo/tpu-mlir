@@ -40,16 +40,14 @@ class LlmConverter(BaseConverter):
         self.max_input_length = args.max_input_length if (
             args.max_input_length > 0
             and args.max_input_length < self.seq_length) else self.seq_length
-        self.max_prefill_kv_length = args.max_prefill_kv_length
-        self.decode_chunk_length = args.decode_chunk_length
+        self.chunk_length = args.chunk_length
         self.decode_chunk_list = []
-        if self.decode_chunk_length > 0:
-            len = self.decode_chunk_length
+        if self.chunk_length > 0:
+            len = self.chunk_length
             while len < self.seq_length:
                 self.decode_chunk_list.append(len)
                 len = len * 2
             self.decode_chunk_list.reverse()
-        self.share_prompt = args.share_prompt
         self.quantize = args.quantize
         self.num_device = args.num_device
         self.distribute_strategy = getattr(args, 'distribute_strategy', 'tp')
@@ -63,7 +61,7 @@ class LlmConverter(BaseConverter):
         self.MASK_SIZE = self.tpu_info.npu_num * 4
         self.embedding_disk = args.embedding_disk
         self.dynamic = args.dynamic
-        self.use_block_with_kv = args.use_block_with_kv
+        self.use_history_kv = args.use_history_kv
         self.debug = args.debug
         self.only_mlir = args.only_mlir
         self.lora_rank = args.lora_max_rank
@@ -99,13 +97,14 @@ class LlmConverter(BaseConverter):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.model_name = os.path.basename(self.model_path).lower()
         batch_str = f"_{self.batch}b" if self.batch > 1 else ""
+        history_str = f"_history" if self.use_history_kv else ""
         if self.only_mlir:
             folder_name = f"tmp_mlir_analyse"
         elif args.chip == "bm1684x":
-            folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_device}dev{batch_str}"
+            folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_device}dev{batch_str}{history_str}"
             folder_name += "_dynamic" if args.dynamic else "_static"
         else:
-            folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_core}core{batch_str}"
+            folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_core}core{batch_str}{history_str}"
             folder_name += "_dynamic" if args.dynamic else "_static"
         self.out_bmodel = os.path.join(self.out_dir, f"{folder_name}_{timestamp}.bmodel")
         self.bmodel_dir = os.path.join(self.out_dir, folder_name)
@@ -2055,17 +2054,26 @@ class LlmConverter(BaseConverter):
             return new_op
 
         # create block mlir
-        def gen_block_by_length(name: str, input_len: int):
+        def gen_block_by_length(name: str, input_len: int, with_history: bool = False):
             input_shape = [1, input_len, self.hidden_size]
             id_shape = list(self.position_shape)
             id_shape[-1] = input_len
 
             q_shape = [1, input_len, self.num_attention_heads, self.head_dim]
             kv_shape = [1, input_len, self.num_key_value_heads, self.head_dim]
-            mask_shape = [1, 1, input_len, input_len]
+            # with history kv, the key/value cache is concatenated in front of the
+            # current token, so the effective kv length covers the whole sequence.
+            max_kv_len = self.seq_length + input_len if with_history else input_len
+            mask_shape = [1, 1, input_len, max_kv_len]
             input_shapes = [input_shape, id_shape
                             ] if self.use_small_mask() else [input_shape, id_shape, mask_shape]
             input_types = ["F32", "INT32"] if self.use_small_mask() else ["F32", "INT32", "F32"]
+            if with_history:
+                history_shape = [1, self.seq_length, self.num_key_value_heads, self.head_dim]
+                input_shapes.append(history_shape)  # k cache
+                input_shapes.append(history_shape)  # v cache
+                input_types.append("F32")
+                input_types.append("F32")
             block_mlir = MLIRImporter(input_shapes, [input_shape, kv_shape, kv_shape],
                                       name,
                                       self.platform,
@@ -2080,8 +2088,13 @@ class LlmConverter(BaseConverter):
 
             in0_op = block_mlir.create_input_op(L("input_states"), 0)
             in1_op = block_mlir.create_input_op(L("position_ids"), 1)
-            in2_op = block_mlir.create_input_op(L("attention_mask"), 2) if not self.use_small_mask() \
-                else None
+            in2_op = block_mlir.create_input_op(L("attention_mask"), 2) \
+                if not self.use_small_mask() else None
+            if with_history:
+                # k/v cache inputs sit right after the (optional) attention_mask input
+                index = 3 if not self.use_small_mask() else 2
+                in3_op = block_mlir.create_input_op(L("history_k"), index)
+                in4_op = block_mlir.create_input_op(L("history_v"), index + 1)
             return_ops = []
             ln_op = self.rms_norm(block_mlir, in0_op, input_ln)
 
@@ -2127,6 +2140,20 @@ class LlmConverter(BaseConverter):
                                                rotary_sin)
             return_ops.append(k_op)
             return_ops.append(v_op)
+            # ====== kv concat ========
+            if with_history:
+                k_op = top.ConcatOp(T([1, max_kv_len, self.num_key_value_heads, self.head_dim]),
+                                    [in3_op, k_op],
+                                    axis=1,
+                                    only_merge=True,
+                                    loc=L(k_proj + ".concat"),
+                                    ip=ip).output
+                v_op = top.ConcatOp(T([1, max_kv_len, self.num_key_value_heads, self.head_dim]),
+                                    [in4_op, v_op],
+                                    axis=1,
+                                    only_merge=True,
+                                    loc=L(v_proj + ".concat"),
+                                    ip=ip).output
             # ======= fattention =========
             mask_op, mask_size = self.get_fattention_mask_op(block_mlir, in2_op)
             fa_op = top.FAttentionOp(T([1, input_len, q_dim]),
@@ -2141,7 +2168,7 @@ class LlmConverter(BaseConverter):
                                      kv_head=self.num_key_value_heads,
                                      dim=self.head_dim,
                                      mq=input_len,
-                                     mk=input_len,
+                                     mk=max_kv_len,
                                      keep_dims=False,
                                      mask_size=mask_size,
                                      loc=L(TOP_PATH + "fattention"),
@@ -2166,13 +2193,12 @@ class LlmConverter(BaseConverter):
             self.save_mlir_module(block_mlir, name)
 
         def gen_block():
-            name = f"block_{idx}"
-            if self.share_prompt:
-                name = f"block_prompt_{idx}"
-                gen_block_by_length(name, self.max_prefill_kv_length)
-                return
+            gen_block_by_length(f"block_{idx}", self.max_input_length)
+            return
 
-            gen_block_by_length(name, self.max_input_length)
+        def gen_block_kv():
+            # Generate block with kv cache related operations
+            gen_block_by_length(f"block_kv_{idx}", self.max_input_length, with_history=True)
             return
 
         def gen_block_cache_by_length(kv_length: int, stage_idx: int = 0):
@@ -2317,136 +2343,10 @@ class LlmConverter(BaseConverter):
                 for stage_idx, kv_length in enumerate(self.decode_chunk_list):
                     gen_block_cache_by_length(kv_length, stage_idx + 1)
 
-        def gen_block_with_kv():
-            # Generate block with kv cache related operations
-            name = f"block_{idx}"
-            input_len = self.max_input_length
-            input_shape = [1, input_len, self.hidden_size]
-            id_shape = list(self.position_shape)
-            max_kv_len = self.max_prefill_kv_length + input_len
-            mask_shape = [1, 1, input_len, max_kv_len]
-            history_shape = [1, self.max_prefill_kv_length, self.num_key_value_heads, self.head_dim]
-
-            q_shape = [1, input_len, self.num_attention_heads, self.head_dim]
-            kv_shape = [1, input_len, self.num_key_value_heads, self.head_dim]
-
-            block_mlir = MLIRImporter(
-                [input_shape, id_shape, mask_shape, history_shape, history_shape],
-                [input_shape, kv_shape, kv_shape],
-                name,
-                self.platform, ["F32", "INT32", "F32", "F32", "F32"],
-                lora_rank=self.lora_rank,
-                weight_file=f"../{weight_file}")
-
-            T = block_mlir.get_tensor_type
-            L = lambda name: self.get_loc(name, block_mlir)
-
-            ip = block_mlir.insert_point
-
-            in0_op = block_mlir.create_input_op(L("input_states"), 0)
-            in1_op = block_mlir.create_input_op(L("position_ids"), 1)
-            in2_op = block_mlir.create_input_op(L("attention_mask"), 2)
-            in3_op = block_mlir.create_input_op(L("history_k"), 3)
-            in4_op = block_mlir.create_input_op(L("history_v"), 4)
-            return_ops = []
-            ln_op = self.rms_norm(block_mlir, in0_op, input_ln)
-
-            # q_proj
-            q_dim = self.num_attention_heads * self.head_dim
-            q_op = self.linear(block_mlir,
-                               q_proj,
-                               ln_op, [self.hidden_size, q_dim], [1, input_len, q_dim],
-                               do_lora=self.do_lora)
-            # k_proj
-            k_op = self.linear(block_mlir,
-                               k_proj,
-                               ln_op, [self.hidden_size, self.kv_dim], [1, input_len, self.kv_dim],
-                               do_lora=self.do_lora)
-            # v_proj
-            v_op = self.linear(block_mlir,
-                               v_proj,
-                               ln_op, [self.hidden_size, self.kv_dim], [1, input_len, self.kv_dim],
-                               do_lora=self.do_lora)
-            # reshape q,k,v
-            q_op = top.ReshapeOp(T(q_shape),
-                                 q_op,
-                                 shape=[1, -1, self.num_attention_heads, self.head_dim],
-                                 loc=L(q_proj + ".reshape"),
-                                 ip=ip).output
-            k_op = top.ReshapeOp(T(kv_shape),
-                                 k_op,
-                                 shape=[1, -1, self.num_key_value_heads, self.head_dim],
-                                 loc=L(k_proj + ".reshape"),
-                                 ip=ip).output
-            v_op = top.ReshapeOp(T(kv_shape),
-                                 v_op,
-                                 shape=[1, -1, self.num_key_value_heads, self.head_dim],
-                                 loc=L("v_cache"),
-                                 ip=ip).output
-            if self.llm_type in [LlmType.QWEN3, LlmType.GEMMA3]:
-                q_op = self.rms_norm(block_mlir, q_op, q_norm)
-                k_op = self.rms_norm(block_mlir, k_op, k_norm)
-            # rotary cos/sin
-            q_op, k_op = self.apply_rotary_pos(block_mlir, in1_op, q_op, k_op, rotary_cos,
-                                               rotary_sin)
-            return_ops.append(k_op)
-            return_ops.append(v_op)
-            # ====== kv concat ========
-            k_op = top.ConcatOp(T([1, max_kv_len, self.num_key_value_heads, self.head_dim]),
-                                [in3_op, k_op],
-                                axis=1,
-                                only_merge=True,
-                                loc=L(k_proj + ".concat"),
-                                ip=ip).output
-            v_op = top.ConcatOp(T([1, max_kv_len, self.num_key_value_heads, self.head_dim]),
-                                [in4_op, v_op],
-                                axis=1,
-                                only_merge=True,
-                                loc=L(v_proj + ".concat"),
-                                ip=ip).output
-            # ======= fattention =========
-            fa_op = top.FAttentionOp(T([1, input_len, q_dim]),
-                                     q_op,
-                                     k_op,
-                                     v_op,
-                                     in2_op,
-                                     block_mlir.none_op,
-                                     scale=self.head_dim**-0.5,
-                                     batch=1,
-                                     q_head=self.num_attention_heads,
-                                     kv_head=self.num_key_value_heads,
-                                     dim=self.head_dim,
-                                     mq=input_len,
-                                     mk=max_kv_len,
-                                     keep_dims=False,
-                                     loc=L(TOP_PATH + "fattention"),
-                                     ip=ip).output
-            o_op = self.linear(block_mlir,
-                               o_proj,
-                               fa_op, [q_dim, self.hidden_size],
-                               input_shape,
-                               do_lora=self.do_lora)
-            if self.llm_type == LlmType.GEMMA3:
-                o_op = self.rms_norm(block_mlir, o_op, post_attn_ln)
-            if self.llm_type == LlmType.MINICPM4:
-                o_op = top.MulConstOp(T(input_shape),
-                                      o_op,
-                                      const_val=self.scale_depth / np.sqrt(self.num_layers),
-                                      loc=L(o_proj + ".scale0"),
-                                      ip=ip).output
-            o_op = top.AddOp(T(input_shape), [in0_op, o_op], loc=L(o_proj + ".add"), ip=ip).output
-            # ========== mlp =============
-            new_op = gen_mlp(block_mlir, input_shape, o_op)
-            block_mlir.create_return_op([new_op] + return_ops)
-            self.save_mlir_module(block_mlir, name)
-
-        if self.use_block_with_kv:
-            gen_block_with_kv()
-        else:
-            gen_block()
-        if self.share_prompt:
-            gen_block()
+        gen_block()
         gen_block_cache()
+        if self.use_history_kv:
+            gen_block_kv()
 
     def gen_vit_mlir(self):
         pass
@@ -2511,10 +2411,9 @@ class LlmConverter(BaseConverter):
                 return info.symmetric
         return self.symmetric
 
-    def compile_block(self, layer_id):
-        name = f"block_{layer_id}"
-        if self.register_bmodel(name, with_size=False):
-            return
+    def _deploy_block_phase(self, name: str, layer_id):
+        """Submit a block / block_kv deploy task with GGUF-aware per-layer
+        quantize args (full-float fallback, per-layer quant bits)."""
         quantize_param = self.quantize
         extra_deploy_args = []
         if isinstance(self.loader, GGUFModelHandle):
@@ -2533,6 +2432,29 @@ class LlmConverter(BaseConverter):
             symmetric=self._get_block_symmetric(layer_id),
             dynamic=True,
         )
+
+    def compile_block(self, layer_id):
+        # prompt phase (prefill over the full input)
+        name = f"block_{layer_id}"
+        if self.register_bmodel(name, with_size=False):
+            return
+        self._deploy_block_phase(name, layer_id)
+
+    def compile_block_kv(self, layer_id):
+        # kv phase (prefill concatenating history K/V); only generated when
+        # use_history_kv is on
+        name = f"block_kv_{layer_id}"
+        # Some converters override gen_block_mlir without emitting a block_kv
+        # phase (history-KV is unsupported for those models). Skip silently
+        # when the mlir was never generated, instead of failing later in
+        # model_deploy.py on a missing input. The check must happen before
+        # register_bmodel, otherwise we would register a bmodel that the final
+        # combine step cannot find.
+        if not os.path.exists(os.path.join(name, f"{name}.mlir")):
+            return
+        if self.register_bmodel(name, with_size=False):
+            return
+        self._deploy_block_phase(name, layer_id)
 
     def compile_block_cache(self, layer_id):
         quantize_param = self.quantize
@@ -2592,22 +2514,6 @@ class LlmConverter(BaseConverter):
                         symmetric=self._get_block_symmetric(layer_id),
                         addr_mode='io_alone',
                     )
-
-    def compile_block_prompt(self, layer_id):
-        name = f"block_prompt_{layer_id}"
-        if self.register_bmodel(name, with_size=False):
-            return
-        self.submit_deploy_task(
-            name,
-            [
-                f'--quantize {self.quantize}',
-                f'--q_group_size {self.q_group_size}',
-                '--quant_input',
-                '--quant_output',
-            ],
-            symmetric=self._get_block_symmetric(layer_id),
-            dynamic=True,
-        )
 
     def _detect_vit_symmetric(self):
         """Determine whether ViT weights use symmetric quantization.
@@ -2709,11 +2615,11 @@ class LlmConverter(BaseConverter):
 
         # Classify bmodels into categories
         embedding_vit_group = []  # embedding_xxx and vit_xxx
-        block_models = {}  # layer_id -> list of bmodels (block + block_cache + block_prompt)
+        block_models = {}  # layer_id -> list of bmodels (block + block_kv + block_cache)
         add_group = []  # add operations for residual connections
         remaining_group = []  # lm_head, greedy_head, sample_head, etc.
 
-        block_pattern = re.compile(r'block(?:_cache|_prompt)?_(\d+)')
+        block_pattern = re.compile(r'block(?:_cache|_kv)?_(\d+)')
         embedding_vit_pattern = re.compile(r'(embedding|vit)')
         add_pattern = re.compile(r'add')
         for bmodel in bmodel_list:
@@ -2830,8 +2736,8 @@ class LlmConverter(BaseConverter):
             for i in range(self.num_layers):
                 self.all_compiles.append(lambda i=i: self.compile_block(i))
                 self.all_compiles.append(lambda i=i: self.compile_block_cache(i))
-                if self.share_prompt:
-                    self.all_compiles.append(lambda i=i: self.compile_block_prompt(i))
+                if self.use_history_kv:
+                    self.all_compiles.append(lambda i=i: self.compile_block_kv(i))
         else:
             self.all_compiles.append(lambda i=0: self.compile_block(i))
             self.all_compiles.append(lambda i=0: self.compile_block_cache(i))

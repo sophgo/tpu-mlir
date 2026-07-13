@@ -1,55 +1,51 @@
-# Copilot Instructions for TPU-MLIR
+# CLAUDE.md
 
-TPU-MLIR is an MLIR-based compiler that turns ONNX/PyTorch/TFLite/Caffe/HuggingFace models into `bmodel` binaries for SOPHGO TPUs (bm1684x, bm1688, bm1690, cv186ah, etc.).
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Environment
+## What this is
 
-All build/test commands assume you are inside the `sophgo/tpuc_dev:latest` Docker container (Ubuntu 22.04, Python ≥ 3.10). Always source the env first — `build.sh` aborts unless `INSTALL_PATH` is set and `ENVSETUP_LAST_UPDATED` matches the date pinned in `envsetup.sh`.
+TPU-MLIR is an MLIR-based compiler that converts ONNX / PyTorch / TFLite / Caffe / HuggingFace models into `bmodel` binaries for SOPHGO TPUs (`bm1684x`, `bm1688`, `bm1690`, `cv186ah`, `cv180x`, `cv181x`, `mars3`, `sgtpuv8`, …). All build/test commands assume you are inside the `sophgo/tpuc_dev:latest` Docker container (Ubuntu 22.04, Python ≥ 3.10).
+
+## Environment & build
+
+Always source the env first — `build.sh` aborts unless `INSTALL_PATH` is set and `ENVSETUP_LAST_UPDATED` matches the date pinned in `envsetup.sh`.
 
 ```bash
 pip install -r requirements.txt
-source ./envsetup.sh        # exports PROJECT_ROOT, BUILD_PATH, INSTALL_PATH, REGRESSION_PATH, PYTHONPATH, PATH; also installs git hooks
+source ./envsetup.sh        # exports PROJECT_ROOT, BUILD_PATH, INSTALL_PATH, REGRESSION_PATH, PYTHONPATH, PATH; installs git hooks
+./build.sh                  # RELEASE (default) — also runs release_doc.sh and strips binaries
+./build.sh DEBUG            # debug build with -ggdb, no doc/strip — recommended for development
+./build.sh DEBUG CUDA       # enable -DTPUMLIR_USE_CUDA=ON
 ```
 
-`envsetup.sh` puts `python/tools`, `python/utils`, `python/test`, `python/samples` on `PATH`, so scripts like `model_transform.py`, `model_deploy.py`, `model_runner.py`, `run_calibration.py`, `llm_convert.py`, `test_onnx.py` are run by name.
-
-## Build
-
-```bash
-./build.sh              # RELEASE (default), also runs ./release_doc.sh and strips binaries
-./build.sh DEBUG        # debug build with -ggdb, no doc/strip
-./build.sh RELEASE CUDA # enable -DTPUMLIR_USE_CUDA=ON
-```
-
-Normally use `DEBUG` is recommended for development.
+`envsetup.sh` puts `python/tools`, `python/utils`, `python/test`, `python/samples` on `PATH`, so scripts like `model_transform.py`, `model_deploy.py`, `model_runner.py`, `run_calibration.py`, `llm_convert.py`, `test_onnx.py` are run by bare name.
 
 ## Tests
 
-There are three layers of tests; run the relevant one — there is no single "run all" command for routine work.
+There are three layers of tests; there is no single "run all" command for routine work.
 
 1. **Python op / model regression** via `regression/main_entry.py`:
    ```bash
-   # full sets used by CI:
    regression/run.sh op       # torch op set + custom layer rebuild
    regression/run.sh model    # onnx op set
    regression/run.sh script   # check-tpumlir + script + model basic set
-   # direct invocation:
    regression/main_entry.py --test_type basic --test_set onnx torch script model
    ```
-
 2. **Single op / model case** — run the underlying `test_*.py` directly (they are on `PATH`):
    ```bash
-   test_onnx.py   --case Conv2d   --chip bm1684x
-   test_torch.py  --case LayerNorm --chip bm1688
-   test_tflite.py --case <Case>   --chip bm1684x
-   test_tpulang.py --case <Case>  --chip bm1684x
-   run_model.py <model_name> --chip bm1684x --mode f16   # end-to-end model regression, configured by regression/config/
+   test_onnx.py    --case Conv2d     --chip bm1684x
+   test_torch.py   --case LayerNorm  --chip bm1688
+   test_tflite.py  --case <Case>     --chip bm1684x
+   test_tpulang.py --case <Case>     --chip bm1684x
+   python regression/run_model.py <model_name> --chip bm1684x --mode f16   # end-to-end, configured by regression/config/
    ```
    Logs land in `regression/regression_out/`. `--simple` skips heavy checks.
 
+**Do all test/run commands in `./tmp`, not in the source tree** — this avoids polluting the source tree with generated files.
+
 ## Lint / format
 
-Pre-commit hooks installed by `envsetup.sh` enforce these — run them manually before pushing:
+Pre-commit hooks installed by `envsetup.sh` enforce these (run manually before pushing):
 
 - C/C++ in `lib/`, `include/`, `tools/`: `clang-format -i` (config `.clang-format`, LLVM style).
 - Python in `python/`, `regression/`: `yapf -i` (config `.style.yapf`, **100-column limit**, 4-space indent).
@@ -57,7 +53,7 @@ Pre-commit hooks installed by `envsetup.sh` enforce these — run them manually 
 
 ## Architecture
 
-The compiler is structured as an MLIR pipeline with two principal dialects:
+The compiler is an MLIR pipeline with two principal dialects:
 
 ```
 front-end importer (python/transform/) ──► Top dialect ──lowering──► Tpu dialect ──► codegen ──► bmodel
@@ -67,7 +63,7 @@ front-end importer (python/transform/) ──► Top dialect ──lowering─�
 
 - **Dialects** live in `include/tpu_mlir/Dialect/{Top,Tpu}/{IR,Transforms}` with implementations in `lib/Dialect/{Top,Tpu}`. Ops are defined in TableGen (`*.td`); regenerated headers go to `$BUILD_PATH`.
 - **Conversions** between dialects: `lib/Conversion/{TopToTpu,TopToTosa,TopToLinalg}`. `TopToTpu` is per-chip (subdirectories for BM1684X, BM1688, etc.).
-- **Backends** (`lib/Backend`) wrap chip backend libraries; `lib/PplBackend` is the PPL kernel backend (built separately by `lib/PplBackend/build.sh`).
+- **Backends** (`lib/Backend`) wrap chip backend libraries (`BM168x`, `CV18xx`); `lib/PplBackend` is the PPL kernel backend, built separately by `lib/PplBackend/build.sh`.
 - **Driver tools** (`tools/`): `tpuc-opt` (the MLIR opt tool with all TPU passes), `tpuc-tool`, `model_tool` (bmodel inspector), `chiprunner`.
 - **Python front-end** (`python/transform/`) imports framework graphs and emits Top-dialect MLIR via the C-API in `capi/` / `bindings/`. `python/tools/model_transform.py` and `model_deploy.py` are the user-facing entry points; `llm_convert.py` is the one-shot LLM pipeline.
 - **Calibration / quantization**: `python/calibration/` (PTQ, AutoTune, search), `python/tools/run_calibration.py`. INT8 deploy requires a calibration table.
@@ -77,16 +73,24 @@ front-end importer (python/transform/) ──► Top dialect ──lowering─�
 ## Conventions
 
 - Always import via the `tpu_mlir` namespace in C++; new passes register in `lib/InitAll.cpp` and the corresponding `Passes.td`.
-- Per-chip code paths key off the `processor`/`chip` argument (`bm1684x`, `bm1684`, `bm1688`, `bm1690`, `cv186ah`, `cv183x`, `cv182x`, `mars3`, `sgtpuv8`). The canonical list is in `regression/chip.py` and `python/utils/`; mirror it when adding chip switches.
+- Per-chip code paths key off the `processor`/`chip` argument. The canonical chip list and support matrix live in `regression/chip.py` — mirror it when adding chip switches.
 - Quantize modes are spelled `F32 / BF16 / F16 / INT8` (uppercase) in user-facing flags but `f32/bf16/f16/int8` in regression configs — follow the surrounding file.
 - `model_deploy.py` uses `--processor`, not `--chip`; `test_*.py` and most internal scripts use `--chip`. Don't conflate them.
 - Tolerances in deploy/test are `<cos>,<euclid>` pairs (e.g. `0.99,0.90`); INT8 typically needs looser values like `0.85,0.45`.
 - New ops require: a `.td` entry in the relevant dialect, a shape-inference + lowering pattern, a Python importer hook in `python/transform/`, and a regression case in `python/test/test_onnx.py` (or the matching framework file).
 - Commit messages: short imperative summary; sign commits with a GitHub-registered email (CONTRIBUTING.md). One logical change per PR; CI must pass.
-- Do **not** edit anything under `third_party/` casually — those are vendored or submoduled. The same goes for `install/`, `build/`, `dist/`, `tmp/` (build artefacts).
+- Do **not** edit anything under `third_party/`, `install/`, `build/`, `dist/`, or `tmp/` casually — those are vendored/submoduled or build artefacts.
 
-## Other notes
+## Compiling LLMs
 
-- **English refinement:** Users are mostly non-native English speakers. When the user's input or a description contains awkward or incorrect English, render the corresponding output (reports, docs, commit messages, skill files) in clear, natural English rather than mirroring the broken phrasing. If the user's English is already correct, preserve it as-is — do not "correct" fluent prose.
+These are two typical situations for compiling an LLM (using Qwen3.5 as an example):
+
+- Without history kv: llm_convert.py -m /workspace/Qwen3.5/Qwen3.5-2B-int4-AutoRound -s 2048  --max_input_length 1024 -c bm1684x -o qwen3.5_4b
+
+- With history kv: llm_convert.py -m /workspace/Qwen3.5/Qwen3.5-2B-int4-AutoRound -s 8192 --use_history_kv --chunk_length 1024 -c bm1684x -o qwen3.5_4b_history
+
+## Working style
+
+- **English refinement:** Users are mostly non-native English speakers. When the user's input or a description contains awkward or incorrect English, render the corresponding output (reports, docs, commit messages) in clear, natural English rather than mirroring the broken phrasing. If the user's English is already correct, preserve it as-is.
 - **No auto-commit:** When making code fixes, do not `git commit` them directly. Leave the changes in the working tree for the user to review and commit themselves.
-- **Test Directory:** Do all test or run command in `./tmp` directory, not in the source tree. This avoids polluting the source tree with generated files and ensures a clean environment for each test run.
+- **Preserve file ownership:** Do not change file ownership. When copying, moving, fixing, or regenerating files, preserve their original owner.

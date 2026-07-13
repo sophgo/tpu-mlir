@@ -30,6 +30,7 @@ third_party/nntoolchain/ppl/
 dist/
 !/python/tools/soc_infer/debugger/bmodel_fbs.py
 lib/PplBackend/src/test_*
+.claude/settings.local.json
 
 # Python
 *.egg-info/

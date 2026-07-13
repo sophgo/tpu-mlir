@@ -87,11 +87,10 @@
 
 - ``-b``, ``--batch`` *(int, 默认: ``1``)*
 - ``--max_input_length`` *(int, 默认: ``0`` ⇒ 等于 ``seq_length``)*
-- ``--max_prefill_kv_length`` *(int, 默认: ``0`` ⇒ 等于 ``seq_length``)*
-- ``--use_block_with_kv``
-  Prefill 阶段复用历史 KV。``--share_prompt`` 会自动开启。
-- ``--share_prompt``
-  多轮对话共享同一段 prompt 前缀。
+- ``--use_history_kv``
+  Prefill 阶段复用历史 KV。开启后除普通 prefill block (``block``) 外，额外
+  生成一个拼接历史 K/V 的 prefill block (``block_kv``)；否则只生成普通
+  prefill block。
 
 视觉相关（仅多模态模型）
 ~~~~~~~~~~~~~~~~~~~~~~~~

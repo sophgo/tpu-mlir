@@ -963,8 +963,7 @@ class GLM4VConverter(LlmConverter):
             return new_op
 
         # create block mlir
-        def gen_block():
-            name = f"block_{idx}"
+        def gen_block(name=f"block_{idx}"):
             input_len = self.max_input_length
             input_shape = [1, input_len, self.hidden_size]
             id_shape = list(self.position_shape)
@@ -1127,15 +1126,15 @@ class GLM4VConverter(LlmConverter):
             block_mlir.create_return_op([new_op] + return_ops)
             self.save_mlir_module(block_mlir, name)
 
-        def gen_block_with_kv():
+        def gen_block_kv():
             # Generate block with kv cache related operations
-            name = f"block_{idx}"
+            name = f"block_kv_{idx}"
             input_len = self.max_input_length
             input_shape = [1, input_len, self.hidden_size]
             id_shape = list(self.position_shape)
-            max_kv_len = self.max_prefill_kv_length + self.max_input_length
+            max_kv_len = self.seq_length + self.max_input_length
             mask_shape = [1, 1, self.max_input_length, max_kv_len]
-            history_shape = [1, self.max_prefill_kv_length, self.num_key_value_heads, self.head_dim]
+            history_shape = [1, self.seq_length, self.num_key_value_heads, self.head_dim]
 
             q_shape = [1, input_len, self.num_attention_heads, self.head_dim]
             kv_shape = [1, input_len, self.num_key_value_heads, self.head_dim]
@@ -1216,8 +1215,7 @@ class GLM4VConverter(LlmConverter):
             self.save_mlir_module(block_mlir, name)
 
         save_weights()
-        if self.use_block_with_kv:
-            gen_block_with_kv()
-        else:
-            gen_block()
+        gen_block()
         gen_block_cache()
+        if self.use_history_kv:
+            gen_block_kv()

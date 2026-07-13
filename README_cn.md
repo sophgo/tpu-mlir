@@ -122,16 +122,24 @@ git clone https://huggingface.co/Intel/Qwen3.5-2B-int4-AutoRound
 ### 2. 编译为 bmodel
 
 ```shell
-# 如遇 transformers / torch 版本问题：
-#   pip3 install transformers torchvision -U
+# 通常不带历史上下文
+
 # --max_input_length 设置最大 prefill 长度，缺省时取 -s。
 llm_convert.py \
-  -m /workspace/Qwen3.5-2B-int4-AutoRound \
-  --max_input_length 1024 \
+  -m /workspace/Qwen3.5/Qwen3.5-2B-int4-AutoRound \
   -s 2048 \
+  --max_input_length 1024 \
   -c bm1684x \
-  --max_pixels 768,768 \
-  -o qwen3.5_2b
+  -o qwen3.5_4b
+
+# 通常带历史上下文
+llm_convert.py \
+  -m /workspace/Qwen3.5/Qwen3.5-2B-int4-AutoRound \
+  -s 8192 \
+  --use_history_kv \
+  --chunk_length 1024 \
+  -c bm1684x \
+  -o qwen3.5_4b_history
 ```
 
 `llm_convert.py` 主要参数：
@@ -141,28 +149,27 @@ llm_convert.py \
 | `model_path`    |  `m`  |  ✅  | 模型权重路径                                                                                                                        |
 | `seq_length`    |  `s`  |  ✅  | 最大序列长度                                                                                                                        |
 | `max_input_length` |  —  |  —   | 最大单次输入长度，缺省时取 `seq_length`（`-s`）                                                                                    |
-| `quantize`      |  `q`  |  ✅  | 量化方式：`auto` / `w4bf16` / `w4f16` / `bf16` / `f16` 等（如源模型已量化可省略）                                                   |
-| `q_group_size`  |  `g`  |  —   | 量化分组大小（默认 64）                                                                                                             |
+| `use_history_kv`     |  —  |  —   | 启用历史 KV cache                                                                                                                  |
+| `chunk_length` |  —  |  —   | prefill 与 decode 的 chunk_length                                                                                                  |
 | `chip`          |  `c`  |  ✅  | 目标芯片：`bm1684x` / `bm1688` / `cv186ah`                                                                                          |
-| `max_pixels`    |   —   |  —   | 多模态最大分辨率 `width,height`，按 `model_type` 取默认值（qwen2_5_vl: `672,896`；minicpmv: `980,980`；其他：`768,768`）            |
 | `out_dir`       |  `o`  |  ✅  | 输出目录                                                                                                                            |
 
 ### 3. 在 PCIe / SoC 环境运行
 
-将 [`python_demo`](https://github.com/sophgo/LLM-TPU/tree/main/models/Qwen3_5/python_demo) 拷贝到设备上并编译：
+将 [`cpp_demo`](https://github.com/sophgo/LLM-TPU/tree/main/models/Qwen3_5/cpp_demo) 拷贝到设备上并编译：
 
 ```shell
 mkdir build && cd build
 cmake ..
 make
-cp *cpython*.so ..
+mv pipeline ..
 cd ..
 ```
 
 执行 bmodel：
 
 ```shell
-python3 pipeline.py -m xxxx.bmodel -c config
+./pipeline -m xxxx.bmodel -c config
 ```
 
 运行示例：

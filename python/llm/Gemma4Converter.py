@@ -955,16 +955,16 @@ class Gemma4Converter(LlmConverter):
             with open(f"{name}/{name}.mlir", "w") as f:
                 f.write(mlir_txt)
 
-        # ============ gen_block_with_kv (prefill with history) ============
-        def gen_block_with_kv():
-            name = f"block_{idx}"
+        # ============ gen_block_kv (prefill with history) ============
+        def gen_block_kv():
+            name = f"block_kv_{idx}"
             input_len = self.max_input_length
             input_shape = [1, input_len, self.hidden_size]
             id_shape = list(self.position_shape)
             id_shape[-1] = input_len
-            max_kv_len = self.max_prefill_kv_length + input_len
+            max_kv_len = self.seq_length + input_len
             mask_shape = [1, 1, input_len, max_kv_len]
-            history_shape = [1, self.max_prefill_kv_length, self.num_key_value_heads, cur_head_dim]
+            history_shape = [1, self.seq_length, self.num_key_value_heads, cur_head_dim]
             q_shape = [1, input_len, self.num_attention_heads, cur_head_dim]
             kv_shape = [1, input_len, self.num_key_value_heads, cur_head_dim]
 
@@ -1154,19 +1154,10 @@ class Gemma4Converter(LlmConverter):
                 f.write(mlir_txt)
 
         # ============ dispatch block generation ============
-        if self.use_block_with_kv:
-            gen_block_with_kv()
-        else:
-            name = f"block_{idx}"
-            if self.share_prompt:
-                name = f"block_prompt_{idx}"
-                gen_block_by_length(name, self.max_prefill_kv_length)
-            else:
-                gen_block_by_length(name, self.max_input_length)
-        if self.share_prompt:
-            # share_prompt needs separate prompt block, then normal block
-            gen_block_by_length(f"block_{idx}", self.max_input_length)
+        gen_block_by_length(f"block_{idx}", self.max_input_length)
         gen_block_cache()
+        if self.use_history_kv:
+            gen_block_kv()
 
     @override
     def gen_vit_mlir(self):

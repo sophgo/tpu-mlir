@@ -137,16 +137,15 @@ if __name__ == '__main__':
                         help='export embedding as bin file and inference by cpu')
     parser.add_argument('--do_sample', action='store_true',
                         help='Add sample head and separate greedy head from lmhead')
-    parser.add_argument('--use_block_with_kv', action='store_true',
-                        help='use history kv for prefill, default is False')
-    parser.add_argument('--share_prompt', action='store_true',
-                        help='share the same prompt for multi dialog, default is False')
-    parser.add_argument('--max_input_length','--prefill_chunk_length', type=int, default=0,
-                        help='max input length for prefill, default 0 means the same as seq_length')
-    parser.add_argument('--decode_chunk_length', type=int, default=0,
-                        help='whether to compile multi decode commands into one bmodel, default 0 means no, >0 means decode chunk length for one bmodel')
-    parser.add_argument('--max_prefill_kv_length', type=int, default=0,
-                        help='max prefill kv length, default 0 means the same as seq_length')
+    parser.add_argument('--use_history_kv',"--use_block_with_kv", action='store_true',
+                        help='reuse history KV cache during prefill, default is False')
+    parser.add_argument('--max_input_length', type=int, default=0,
+                        help='max input length for prefill, default 0 means the same as seq_length. '
+                             'Cannot be set together with --use_history_kv, where it is derived from '
+                             '--chunk_length instead.')
+    parser.add_argument('--chunk_length', type=int, default=0,
+                        help='chunk length for prefill(with_kv) and decode. default 0 means no decode '
+                             'chunking; with --use_history_kv it defaults to seq_length // 4.')
     parser.add_argument('--max_pixels', type=parse_max_pixels, default=None,
                         help="max pixels for vit as 'width,height', e.g. 672,896. "
                              "If unset, defaults are picked by model_type: "
@@ -180,29 +179,30 @@ if __name__ == '__main__':
     deprecated_option(args.dynamic_vit, "DEPRECATED,default is dynamic compiling")
     deprecated_option(args.input_length_list, "DEPRECATED, please use --dynamic to enable dynamic compiling")
     # yapf: enable
-    if args.share_prompt:
-        args.use_block_with_kv = True
-    if args.input_length_list and args.max_input_length > 0:
-        raise ValueError("Cannot set both input_length_list and max_input_length.")
-    if args.use_block_with_kv:
-        if args.max_input_length <= 0:
-            args.max_input_length = args.seq_length // 4
-            print("Warning: max_input_length is not set, use seq_length // 4 as default value: {}".
-                  format(args.max_input_length))
-        elif args.max_input_length > args.seq_length // 2:
+    if args.seq_length <= 0:
+        raise ValueError("seq_length must be positive, got: {}".format(args.seq_length))
+    if args.use_history_kv:
+        args.dynamic = True
+        if args.chunk_length <= 0:
+            args.chunk_length = args.seq_length // 4
+            print(
+                "Warning: chunk_length is not set, use seq_length // 4 as default value: {}".format(
+                    args.chunk_length))
+        if args.chunk_length <= 0:
             raise ValueError(
-                "max_input_length should not be larger than seq_length // 2, got: {}".format(
-                    args.max_input_length))
-    if args.max_prefill_kv_length <= 0:
-        args.max_prefill_kv_length = args.seq_length
-    elif args.max_prefill_kv_length > args.seq_length:
-        raise ValueError(
-            "max_prefill_kv_length should not be larger than seq_length, got: {}".format(
-                args.max_prefill_kv_length))
-    if args.decode_chunk_length > args.seq_length // 2:
-        raise ValueError(
-            "decode_chunk_length should not be larger than seq_length // 2, got: {}".format(
-                args.decode_chunk_length))
+                "chunk_length must be positive under --use_history_kv, but seq_length // 4 = 0; "
+                "set --chunk_length explicitly or use a larger --seq_length, got: {}".format(
+                    args.chunk_length))
+        if args.max_input_length <= 0:
+            args.max_input_length = args.chunk_length
+        else:
+            raise ValueError(
+                "max_input_length should not be set when --use_history_kv is enabled, got: {}".
+                format(args.max_input_length))
+
+    if args.chunk_length > args.seq_length // 2:
+        raise ValueError("chunk_length should not be larger than seq_length // 2, got: {}".format(
+            args.chunk_length))
 
     # Resolve out_dir before loading the model so --dry_run is fast.
     if args.out_dir is None:
@@ -305,10 +305,9 @@ if __name__ == '__main__':
     if args.dry_run:
         print("=== llm_convert dry-run ===")
         for k in ("model_path", "model_type:" + model_type, "out_dir", "chip", "quantize",
-                  "seq_length", "max_input_length", "max_prefill_kv_length", "max_shape",
-                  "max_pixels", "num_device", "distribute_strategy", "num_core", "batch", "dynamic",
-                  "embedding_disk", "do_sample", "use_block_with_kv", "share_prompt",
-                  "lora_max_rank", "symmetric"):
+                  "seq_length", "max_input_length", "max_shape", "max_pixels", "num_device",
+                  "distribute_strategy", "num_core", "batch", "dynamic", "embedding_disk",
+                  "do_sample", "use_history_kv", "lora_max_rank", "symmetric"):
             if ":" in k:
                 key, value = k.split(":", 1)
                 print("  {:<22} = {}".format(key, value))

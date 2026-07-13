@@ -25,8 +25,6 @@ class Qwen3_5Converter(LlmConverter):
         if self.max_pixels == 0 or self.max_pixels % (pm * pm) != 0:
             raise RuntimeError(
                 f"max_pixels values must be multiples of {pm}*{pm} and non-zero: {args.max_pixels}")
-        if self.use_block_with_kv:
-            self.share_prompt = True  # share prompt and kv are the same
 
         # extern compiles
         self.extern_block_weights = {"mrope_interleave_idx": self.get_mrope_index()}
@@ -722,15 +720,13 @@ class Qwen3_5Converter(LlmConverter):
 
             q_shape = [1, input_len, self.num_attention_heads, self.head_dim]
             kv_shape = [1, input_len, self.num_key_value_heads, self.head_dim]
-            max_kv_len = input_len if not with_history else self.max_prefill_kv_length + input_len
+            max_kv_len = input_len if not with_history else self.seq_length + input_len
             mask_shape = [1, 1, input_len, max_kv_len]
             input_shapes = [input_shape, id_shape
                             ] if self.use_small_mask() else [input_shape, id_shape, mask_shape]
             input_types = ["F32", "INT32"] if self.use_small_mask() else ["F32", "INT32", "F32"]
             if with_history:
-                history_shape = [
-                    1, self.max_prefill_kv_length, self.num_key_value_heads, self.head_dim
-                ]
+                history_shape = [1, self.seq_length, self.num_key_value_heads, self.head_dim]
                 input_shapes.append(history_shape)  # k cache
                 input_shapes.append(history_shape)  # v cache
                 input_types.append("F32")
@@ -855,7 +851,7 @@ class Qwen3_5Converter(LlmConverter):
                                      kv_head=self.num_key_value_heads,
                                      dim=self.head_dim,
                                      mq=input_len,
-                                     mk=input_len,
+                                     mk=max_kv_len,
                                      keep_dims=False,
                                      mask_size=mask_size,
                                      loc=L(TOP_PATH + "fattention"),
@@ -879,13 +875,11 @@ class Qwen3_5Converter(LlmConverter):
             block_mlir.create_return_op([new_op] + return_ops)
             self.save_mlir_module(block_mlir, name)
 
-        def gen_block(pt: PrefillType = PrefillType.NORMAL):
-            if pt == PrefillType.NORMAL:
-                gen_block_by_length(f"block_{idx}", self.max_input_length)
-            elif pt == PrefillType.SHARE_PROMPT:
-                gen_block_by_length(f"block_prompt_{idx}", self.max_input_length)
-            elif pt == PrefillType.WITH_HISTORY:
-                gen_block_by_length(f"block_{idx}", self.max_input_length, with_history=True)
+        def gen_block():
+            gen_block_by_length(f"block_{idx}", self.max_input_length)
+
+        def gen_block_kv():
+            gen_block_by_length(f"block_kv_{idx}", self.max_input_length, with_history=True)
             return
 
         def gen_block_cache_by_length(kv_length: int, stage_idx: int = 0):
@@ -1059,12 +1053,10 @@ class Qwen3_5Converter(LlmConverter):
                 for stage_idx, kv_length in enumerate(self.decode_chunk_list):
                     gen_block_cache_by_length(kv_length, stage_idx + 1)
 
-        if self.use_block_with_kv:
-            gen_block(PrefillType.WITH_HISTORY)
-            gen_block(PrefillType.SHARE_PROMPT)
-        else:
-            gen_block(PrefillType.NORMAL)
+        gen_block()
         gen_block_cache()
+        if self.use_history_kv:
+            gen_block_kv()
 
     def gen_block_linear_attn_mlir(self, idx: int):
         tqdm.write(f"generate block_{idx} linear attention mlir ...")
@@ -1446,7 +1438,7 @@ class Qwen3_5Converter(LlmConverter):
 
         def gen_block():
             name = f"block_{idx}"
-            gen_block_by_length(name, self.max_input_length, self.use_block_with_kv)
+            gen_block_by_length(name, self.max_input_length, self.use_history_kv)
             return
 
         def gen_block_cache():
@@ -1652,7 +1644,7 @@ class Qwen3_5Converter(LlmConverter):
         return
 
     @override
-    def compile_block_prompt(self, layer_id):
+    def compile_block_kv(self, layer_id):
         if self.llm_config.layer_types[layer_id] != "full_attention":
             return
-        super().compile_block_prompt(layer_id)
+        super().compile_block_kv(layer_id)

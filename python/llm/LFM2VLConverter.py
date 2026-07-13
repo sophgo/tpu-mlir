@@ -728,14 +728,11 @@ class LFM2VLConverter(LlmConverter):
             self.save_mlir_module(block_mlir, name)
 
         def gen_block():
-            name = f"block_{idx}"
-            if self.share_prompt:
-                name = f"block_prompt_{idx}"
-                gen_block_by_length(name, self.max_prefill_kv_length)
-                return
-
-            gen_block_by_length(name, self.max_input_length)
+            gen_block_by_length(f"block_{idx}", self.max_input_length)
             return
+
+        def gen_block_kv():
+            raise RuntimeError("Block KV generation is not supported in this version.")
 
         def gen_block_cache():
             name = f"block_cache_{idx}"
@@ -943,6 +940,6 @@ class LFM2VLConverter(LlmConverter):
             self.save_mlir_module(block_mlir, name)
 
         gen_block()
-        if self.share_prompt:
-            gen_block()
         gen_block_cache()
+        if self.use_history_kv:
+            gen_block_kv()

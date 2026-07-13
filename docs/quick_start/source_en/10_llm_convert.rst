@@ -89,11 +89,11 @@ Sequence and prefill
 
 - ``-b``, ``--batch`` *(int, default: ``1``)*
 - ``--max_input_length`` *(int, default: ``0`` ⇒ same as ``seq_length``)*
-- ``--max_prefill_kv_length`` *(int, default: ``0`` ⇒ same as ``seq_length``)*
-- ``--use_block_with_kv``
-  Reuse history KV during prefill. Required for ``--share_prompt``.
-- ``--share_prompt``
-  Share the same prompt prefix across multiple dialogs.
+- ``--use_history_kv``
+  Reuse history KV during prefill. When enabled, an additional prefill
+  block (``block_kv``) that concatenates history K/V is generated alongside
+  the normal prefill block (``block``); otherwise only the normal prefill
+  block is generated.
 
 Vision (multimodal models only)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
