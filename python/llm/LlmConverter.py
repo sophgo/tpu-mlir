@@ -1639,7 +1639,7 @@ class LlmConverter(BaseConverter):
     def create_small_attn_mask(self):
         """Create a small upper-triangular mask for dynamic prefill FAttentionOp.
 
-        Returns a MASK_SIZE x MASK_SIZE upper-triangular matrix filled with -1e10
+        Returns a MASK_SIZE x MASK_SIZE upper-triangular matrix filled with -1e9
         below the diagonal, suitable for use as a static weight in FAttentionOp
         when dynamic mode is enabled (eliminating the need for a dynamic mask input).
         """
@@ -1666,7 +1666,6 @@ class LlmConverter(BaseConverter):
         Returns (mask_op, mask_size) tuple.
         """
         if self.use_small_mask():
-            # TODO: only bm1684x support small mask, other chip need to be tested
             mask_op = block_mlir.create_weight_op(self.ATTN_MASK_WEIGHT,
                                                   [self.MASK_SIZE, self.MASK_SIZE])
             mask_size = self.MASK_SIZE
@@ -2670,6 +2669,7 @@ class LlmConverter(BaseConverter):
             f"{len(groups)} groups")
 
         # Combine each group separately
+        generated_bmodels = []
         for i, (group, group_out) in enumerate(zip(groups, group_names)):
             if not group:
                 print(f"PP group {i} ({os.path.basename(group_out)}) is empty, "
@@ -2680,6 +2680,20 @@ class LlmConverter(BaseConverter):
             group_size = os.path.getsize(group_out)
             print(f"PP group {i} bmodel size: {group_size / (1024.0 ** 3):.4f} GB, "
                   f"models: {len(group)}, output: {group_out}")
+            generated_bmodels.append(group_out)
+
+        # Tar all PP bmodels into a single {base}_pp_xdev.tar archive so the
+        # whole pipeline-parallel bundle can be shipped / loaded as one file.
+        if generated_bmodels:
+            import tarfile
+            tar_path = f"{out_base}_pp.tar"
+            with tarfile.open(tar_path, "w") as tar:
+                for bmodel in generated_bmodels:
+                    tar.add(bmodel, arcname=os.path.basename(bmodel))
+            tar_size = os.path.getsize(tar_path)
+            print(f"PP tar size: {tar_size / (1024.0 ** 3):.4f} GB, "
+                  f"bmodels: {len(generated_bmodels)}, output: {tar_path}")
+            logger.info("PP tar created: %s (%d bmodels)", tar_path, len(generated_bmodels))
 
     def compile_all(self):
         ## ============= main compile ================

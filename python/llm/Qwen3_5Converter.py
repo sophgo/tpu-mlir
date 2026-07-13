@@ -1014,16 +1014,16 @@ class Qwen3_5Converter(LlmConverter):
                 gen_block_by_length(f"block_{idx}", self.max_input_length, with_history=True)
             return
 
-        def gen_block_cache():
+        def gen_block_cache_by_length(kv_length: int, stage_idx: int = 0):
             name = f"block_cache_{idx}"
             input_shape = [self.batch, 1, self.hidden_size]
             id_shape = list(self.position_shape)
-            mask_len = self.seq_length if self.use_insert else self.seq_length + 1
+            mask_len = kv_length if self.use_insert else kv_length + 1
             if self.use_insert:
                 id_shape[0] = self.batch
             id_shape[-1] = 1
             mask_shape = [self.batch, 1, 1, mask_len]
-            history_shape = [self.batch, self.seq_length, self.num_key_value_heads, self.head_dim]
+            history_shape = [self.batch, kv_length, self.num_key_value_heads, self.head_dim]
 
             kv_shape = [self.batch, 1, self.num_key_value_heads, self.head_dim]
             output_shapes = [input_shape] if self.use_insert else [input_shape, kv_shape, kv_shape]
@@ -1108,15 +1108,13 @@ class Qwen3_5Converter(LlmConverter):
                 return_ops.append(v_op)
             # ====== kv concat ========
             if not self.use_insert:
-                k_op = top.ConcatOp(T(
-                    [1, self.seq_length + 1, self.num_key_value_heads, self.head_dim]),
+                k_op = top.ConcatOp(T([1, kv_length + 1, self.num_key_value_heads, self.head_dim]),
                                     [in3_op, k_op],
                                     axis=1,
                                     only_merge=True,
                                     loc=L(k_proj + ".concat"),
                                     ip=ip).output
-                v_op = top.ConcatOp(T(
-                    [1, self.seq_length + 1, self.num_key_value_heads, self.head_dim]),
+                v_op = top.ConcatOp(T([1, kv_length + 1, self.num_key_value_heads, self.head_dim]),
                                     [in4_op, v_op],
                                     axis=1,
                                     only_merge=True,
@@ -1124,19 +1122,19 @@ class Qwen3_5Converter(LlmConverter):
                                     ip=ip).output
             else:
                 k_op = top.InsertOp(T(
-                    [self.batch, self.seq_length, self.num_key_value_heads, self.head_dim]),
+                    [self.batch, kv_length, self.num_key_value_heads, self.head_dim]),
                                     in3_op,
                                     rhs=k_op,
                                     axis=1,
-                                    offset=self.seq_length - 1,
+                                    offset=kv_length - 1,
                                     loc=L(k_proj + ".insert"),
                                     ip=ip).output
                 v_op = top.InsertOp(T(
-                    [self.batch, self.seq_length, self.num_key_value_heads, self.head_dim]),
+                    [self.batch, kv_length, self.num_key_value_heads, self.head_dim]),
                                     in4_op,
                                     rhs=v_op,
                                     axis=1,
-                                    offset=self.seq_length - 1,
+                                    offset=kv_length - 1,
                                     loc=L(v_proj + ".insert"),
                                     ip=ip).output
             # ======= fattention =========
@@ -1175,7 +1173,17 @@ class Qwen3_5Converter(LlmConverter):
             # ========== mlp =============
             new_op = gen_mlp(block_mlir, input_shape, o_op)
             block_mlir.create_return_op([new_op] + return_ops)
-            self.save_mlir_module(block_mlir, name)
+            if stage_idx == 0:
+                self.save_mlir_module(block_mlir, name)
+            else:
+                self.save_mlir_module(block_mlir, f"{name}_{stage_idx}")
+
+        def gen_block_cache():
+            # largest
+            gen_block_cache_by_length(self.seq_length)
+            if len(self.decode_chunk_list) > 0:
+                for stage_idx, kv_length in enumerate(self.decode_chunk_list):
+                    gen_block_cache_by_length(kv_length, stage_idx + 1)
 
         if self.use_block_with_kv:
             gen_block(PrefillType.WITH_HISTORY)
@@ -1886,6 +1894,14 @@ class Qwen3_5Converter(LlmConverter):
             symmetric=self._get_block_symmetric(layer_id),
             addr_mode='io_alone',
         )
+
+    @override
+    def compile_block_cache_chunk(self, layer_id):
+        # decode chunk only applies to full_attention layers; linear attention
+        # layers use recurrent/conv state (no kv-length), so skip them.
+        if self.llm_config.layer_types[layer_id] == "full_attention":
+            return super().compile_block_cache_chunk(layer_id)
+        return
 
     @override
     def compile_block_prompt(self, layer_id):
