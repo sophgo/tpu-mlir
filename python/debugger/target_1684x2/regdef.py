@@ -1095,9 +1095,9 @@ class SYS_TR_WR_reg(atomic_reg):
         ("reg_idx1", ctypes.c_uint64, 8),
         ("reg_idx2", ctypes.c_uint64, 8),
         ("imm1", ctypes.c_uint64, 64),
-        ("opd0_addr", ctypes.c_uint64, 32),
-        ("tsk_lane_num", ctypes.c_uint64, 64),
-        ("res0_addr", ctypes.c_uint64, 32),
+        # ("opd0_addr", ctypes.c_uint64, 32),
+        # ("tsk_lane_num", ctypes.c_uint64, 64),
+        # ("res0_addr", ctypes.c_uint64, 32),
     ]
 
     imm0: int
@@ -1112,7 +1112,7 @@ class SYS_TR_WR_reg(atomic_reg):
     tsk_lane_num: int
     res0_addr: int
 
-    length: int = 256
+    length: int = 128
 
 
 class sCMP_reg(atomic_reg):

@@ -818,7 +818,7 @@ def sRQ_sDQ_converter(context: "BM1684X2Context", reg: sRQ_sDQ_reg):
     )
     res0 = dict(
         address=reg.res0_addr,
-        dtype=(reg.opt_res0_prec, reg.opt_opd2_sign),
+        dtype=(reg.opt_res0_prec, reg.opt_res0_sign),
         shape=(n, c, h, w),
         layout=Layout.alignEU,
     )
