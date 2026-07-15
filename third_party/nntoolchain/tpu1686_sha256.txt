@@ -25,3 +25,11 @@ Date:   Wed Apr 15 17:22:02 2026 +0800
     feat: fused_moe support w4a16
 
     Change-Id: I3f4d70055d2881fa546e023e19654ba747c2fafa
+=== cv184x ===
+commit 7f831917ad1bb3f1cada5bf53b80baefb061486f
+Author: yifei.gao <yifei.gao@sophgo.com>
+Date:   Wed Jul 29 15:40:36 2026 +0800
+
+    ap_mode is set to 0 by default in cmodel
+
+    Change-Id: I5cfca9d872e2abd1b84e34af212545b1667aa40c

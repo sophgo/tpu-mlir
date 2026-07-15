@@ -34,6 +34,7 @@ void populateWeightReorderBM1684XPatterns(RewritePatternSet *patterns) {
     WeightReorder<tpu::Deconv3DOp, Float16Type>,
     WeightReorder<tpu::Deconv3DOp, Float32Type>,
     WeightReorder<tpu::GRUOp, Float32Type>,
+    WeightReorder<tpu::GRUOp, BFloat16Type>,
     WeightReorder<tpu::LSTMOp, Float32Type>,
     WeightReorder<tpu::LSTMOp, BFloat16Type>,
     WeightReorder<tpu::MatMulOp, int8_t>,

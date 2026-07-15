@@ -12,7 +12,8 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-static void LoweringGRU(PatternRewriter &rewriter, top::GRUOp op, Type type) {
+static void LoweringGRU(PatternRewriter &rewriter, top::GRUOp op, Type type,
+                        bool keep_bias_f32 = false) {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();
@@ -20,7 +21,9 @@ static void LoweringGRU(PatternRewriter &rewriter, top::GRUOp op, Type type) {
     auto opd = op->getOperand(i);
     if (module::isWeight(opd)) {
       auto weightOp = opd.getDefiningOp<top::WeightOp>();
-      if (type.isBF16()) {
+      if (keep_bias_f32 && opd == op.getBias()) {
+        operands.push_back(opd);
+      } else if (type.isBF16()) {
         operands.push_back(weightOp.clone_bf16(op));
       } else if (type.isF16()) {
         operands.push_back(weightOp.clone_f16(op));
@@ -70,7 +73,10 @@ void GRULowering::LoweringINT4(PatternRewriter &rewriter, top::GRUOp op,
   LoweringINT8(rewriter, op, asymmetric);
 }
 void GRULowering::LoweringBF16(PatternRewriter &rewriter, top::GRUOp op) const {
-  // LoweringGRU(rewriter, op, rewriter.getBF16Type());
+  if (module::isCV184X()) {
+    LoweringGRU(rewriter, op, rewriter.getBF16Type(), true);
+    return;
+  }
   LoweringGRU(rewriter, op, rewriter.getF32Type());
 }
 
