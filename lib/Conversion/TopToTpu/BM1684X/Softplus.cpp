@@ -27,10 +27,12 @@ void SoftplusLowering::LoweringINT4(PatternRewriter &rewriter,
 
 void SoftplusLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::SoftplusOp op, bool asymmetric) const {
+  bool output_asym = op->hasAttr("output_asym");
   Value table = create_lookup_table(
       op.getInput(), op.getOutput(), asymmetric,
-      [](double val) { return val > 20 ? val : std::log(std::exp(val) + 1); });
-  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
+      [](double val) { return val > 20 ? val : std::log(std::exp(val) + 1); },
+      8, tpu_mlir::ROUNDING_HALF_AWAY_FROM_ZERO, output_asym || asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), output_asym || asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});
 }

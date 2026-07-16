@@ -35,13 +35,16 @@ void SigmoidLowering::LoweringINT4(PatternRewriter &rewriter, top::SigmoidOp op,
 }
 void SigmoidLowering::LoweringINT8(PatternRewriter &rewriter, top::SigmoidOp op,
                                    bool asymmetric) const {
+  bool output_asym = op->hasAttr("output_asym");
   bool log = op.getLog();
   Value table = create_lookup_table(
-      op.getInput(), op.getOutput(), asymmetric, [&](double val) {
+      op.getInput(), op.getOutput(), asymmetric,
+      [&](double val) {
         return log ? std::log(1 / (1 + std::exp(-val)))
                    : 1 / (1 + std::exp(-val));
-      });
-  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
+      },
+      8, tpu_mlir::ROUNDING_HALF_AWAY_FROM_ZERO, output_asym || asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), output_asym || asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});
 }

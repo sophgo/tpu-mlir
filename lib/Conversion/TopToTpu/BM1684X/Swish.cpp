@@ -33,14 +33,13 @@ void SwishLowering::LoweringINT4(PatternRewriter &rewriter, top::SwishOp op,
 }
 void SwishLowering::LoweringINT8(PatternRewriter &rewriter, top::SwishOp op,
                                  bool asymmetric) const {
+  bool output_asym = op->hasAttr("output_asym");
   auto beta = op.getBeta().convertToDouble();
-  auto round_mode =
-      round_mode_convert(get_round_mode(op.getRoundModeAttr().str()));
   auto table = create_lookup_table(
       op.getInput(), op.getOutput(), asymmetric,
       [beta](double val) { return val / (1 + std::exp(-val * beta)); }, 8,
-      round_mode);
-  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
+      tpu_mlir::ROUNDING_HALF_AWAY_FROM_ZERO, output_asym || asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), output_asym || asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});
 }

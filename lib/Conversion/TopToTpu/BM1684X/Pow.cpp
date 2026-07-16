@@ -124,11 +124,13 @@ void PowLowering::LoweringF32(PatternRewriter &rewriter, top::PowOp op) const {
 static double g_ex = 0;
 void PowLowering::LoweringINT8(PatternRewriter &rewriter, top::PowOp op,
                                bool asymmetric) const {
+  bool output_asym = op->hasAttr("output_asym");
   g_ex = op.getExponent().convertToDouble();
-  auto table =
-      create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
-                          [](double val) { return std::pow(val, g_ex); });
-  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
+  auto table = create_lookup_table(
+      op.getInput(), op.getOutput(), asymmetric,
+      [](double val) { return std::pow(val, g_ex); }, 8,
+      tpu_mlir::ROUNDING_HALF_AWAY_FROM_ZERO, output_asym || asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), output_asym || asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});
 }

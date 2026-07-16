@@ -35,11 +35,13 @@ void EluLowering::LoweringINT4(PatternRewriter &rewriter, top::EluOp op,
 }
 void EluLowering::LoweringINT8(PatternRewriter &rewriter, top::EluOp op,
                                bool asymmetric) const {
+  bool output_asym = op->hasAttr("output_asym");
   const double alpha_ = op.getAlpha().convertToDouble();
-  Value table =
-      create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
-                          [alpha_](double val) { return elu(val, alpha_); });
-  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
+  Value table = create_lookup_table(
+      op.getInput(), op.getOutput(), asymmetric,
+      [alpha_](double val) { return elu(val, alpha_); }, 8,
+      tpu_mlir::ROUNDING_HALF_AWAY_FROM_ZERO, output_asym || asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), output_asym || asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});
 }

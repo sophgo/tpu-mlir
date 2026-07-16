@@ -28,12 +28,14 @@ void LogBLowering::LoweringINT4(PatternRewriter &rewriter, top::LogBOp op,
 }
 void LogBLowering::LoweringINT8(PatternRewriter &rewriter, top::LogBOp op,
                                 bool asymmetric) const {
+  bool output_asym = op->hasAttr("output_asym");
   int base = op.getBase();
   if (base == 2) {
-    Value table =
-        create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
-                            [](double val) { return std::log2(val); });
-    auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
+    Value table = create_lookup_table(
+        op.getInput(), op.getOutput(), asymmetric,
+        [](double val) { return std::log2(val); }, 8,
+        tpu_mlir::ROUNDING_HALF_AWAY_FROM_ZERO, output_asym || asymmetric);
+    auto newType = getQuantInt8Type(op.getOutput(), output_asym || asymmetric);
     rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                             ValueRange{op.getInput(), table});
   }

@@ -33,9 +33,12 @@ void SqrtLowering::LoweringINT4(PatternRewriter &rewriter, top::SqrtOp op,
 }
 void SqrtLowering::LoweringINT8(PatternRewriter &rewriter, top::SqrtOp op,
                                 bool asymmetric) const {
-  auto table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
-                                   [](double val) { return std::sqrt(val); });
-  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
+  bool output_asym = op->hasAttr("output_asym");
+  auto table = create_lookup_table(
+      op.getInput(), op.getOutput(), asymmetric,
+      [](double val) { return std::sqrt(val); }, 8,
+      tpu_mlir::ROUNDING_HALF_AWAY_FROM_ZERO, output_asym || asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), output_asym || asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});
 }

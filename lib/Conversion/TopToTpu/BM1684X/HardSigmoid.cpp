@@ -42,12 +42,14 @@ void HardSigmoidLowering::LoweringINT4(PatternRewriter &rewriter,
 void HardSigmoidLowering::LoweringINT8(PatternRewriter &rewriter,
                                        top::HardSigmoidOp op,
                                        bool asymmetric) const {
+  bool output_asym = op->hasAttr("output_asym");
   const double beta_ = op.getBeta().convertToDouble();
   const double alpha_ = op.getAlpha().convertToDouble();
   Value table = create_lookup_table(
       op.getInput(), op.getOutput(), asymmetric,
-      [alpha_, beta_](double val) { return hsigmoid(val, alpha_, beta_); });
-  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
+      [alpha_, beta_](double val) { return hsigmoid(val, alpha_, beta_); }, 8,
+      tpu_mlir::ROUNDING_HALF_AWAY_FROM_ZERO, output_asym || asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), output_asym || asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});
 }
