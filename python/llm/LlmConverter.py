@@ -635,6 +635,10 @@ class LlmConverter(BaseConverter):
         self.tie_word_embeddings = getattr(self.llm_config, 'tie_word_embeddings', None)
         if self.tie_word_embeddings is None:
             self.tie_word_embeddings = getattr(self.config, 'tie_word_embeddings', False)
+        # whether to merge lm_head and embedding in bmodel.  Set in the base so
+        # converters that gate on it (ChatGLM3 / Phi3 / Llama3.2-V / GLM4V) are
+        # defined; Gemma3/4 re-derive the same value in their own init_config.
+        self.do_lmhead_merge = self.tie_word_embeddings and not self.embedding_disk and self.num_device < 2
         self.init_quantization()
 
     def get_qtype(self, dtype, bits):
