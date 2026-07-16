@@ -63,6 +63,7 @@ class LlmConverter(BaseConverter):
         self.dynamic = args.dynamic
         self.use_history_kv = args.use_history_kv
         self.debug = args.debug
+        self.gen_test_input = getattr(args, "gen_test_input", False)
         self.only_mlir = args.only_mlir
         self.lora_rank = args.lora_max_rank
         self.do_lora = self.lora_rank > 0
@@ -312,6 +313,8 @@ class LlmConverter(BaseConverter):
             deploy_args.append('--dynamic')
         if self.debug:
             deploy_args.append('--debug')
+        if self.gen_test_input:
+            deploy_args.append('--gen_test_input')
         deploy_args.append('--disable_gdma_check')
         deploy_args.append('&& popd')
         self.add_task(deploy_args, f"{name}.log")
@@ -2786,10 +2789,24 @@ class LlmConverter(BaseConverter):
 
         # Remove any .npz files
         if not self.debug:
+            # validation/test artifacts produced by model_deploy --gen_test_input:
+            # keep them for offline inspection (bmodel output, tpu-mlir output,
+            # mlir reference, input npz). Weight npz still get cleaned as usual.
+            _keep_suffixes = ()
+            if self.gen_test_input:
+                _keep_suffixes = (
+                    '_model_outputs.npz',
+                    '_tpu_outputs.npz',
+                    '_top_outputs.npz',
+                    '_in_f32.npz',
+                    '_gen_in.npz',
+                )
             for dirpath, _, filenames in os.walk('.'):
                 if dirpath.startswith("./config"):
                     continue
                 for filename in filenames:
                     if filename.endswith('.npz'):
+                        if _keep_suffixes and filename.endswith(_keep_suffixes):
+                            continue
                         file_path = os.path.join(dirpath, filename)
                         os.remove(file_path)

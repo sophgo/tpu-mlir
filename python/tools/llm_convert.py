@@ -161,6 +161,10 @@ if __name__ == '__main__':
                         help='enable dynamic compiling for llm prefill')
     parser.add_argument('--debug', action='store_true',
                         help='enable debug mode, temp files will not be deleted')
+    parser.add_argument('--gen_test_input', action='store_true',
+                        help='forward --gen_test_input to every model_deploy.py so each block '
+                        'auto-generates a test_input npz from its mlir and validates the '
+                        'bmodel against an mlir-inferred reference')
     parser.add_argument('--only_mlir', action='store_true', help='only export mlir file, do not convert to bmodel')
     parser.add_argument('--rvti', action='store_true',
                         help='enable rvti, only for bm1684x2 and bm1690e')

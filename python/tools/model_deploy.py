@@ -87,6 +87,8 @@ class DeployTool:
                 raise RuntimeError("Please set the tolerance for quantization type: {}".format(
                     self.quantize))
         self.test_input = args.test_input
+        self.gen_test_input = args.gen_test_input
+        self.gen_test_seed = args.gen_test_seed
         self.asymmetric = args.asymmetric
         self.cali_table = args.calibration_table
         self.quant_input = args.quant_input
@@ -163,6 +165,7 @@ class DeployTool:
 
         self.tpu_npz = "{}_tpu_outputs.npz".format(self.prefix)
         self.model_npz = "{}_model_outputs.npz".format(self.prefix)
+        self._maybe_gen_test_input()
         self._prepare_input_npz()
         self.patterns_count = args.patterns_count
         self.compress_mode = args.compress_mode if self.chip == "bm1688" else "none"
@@ -282,6 +285,94 @@ class DeployTool:
                 self.validate_tpu_mlir()
             return patterns
 
+    def _maybe_gen_test_input(self):
+        """If --gen_test_input is set and no --test_input was given, synthesize a
+        test_input npz from the mlir's own declared inputs (name/shape/dtype)
+        and feed it through the normal single-npz path. Defaults: causal mask
+        for *mask*, 0..N-1 arange for *position*/*_ids*, small random otherwise.
+        """
+        if not self.gen_test_input:
+            return
+        if self.test_input:
+            logger.info("--gen_test_input ignored: --test_input already set to %s", self.test_input)
+            return
+        if not self.module.inputs:
+            return
+
+        rng = np.random.default_rng(self.gen_test_seed)
+        tensors = {}
+        for op in self.module.inputs:
+            name = op.name or f"input.{len(tensors)}"
+            shape = list(op.shape) if op.shape else []
+            try:
+                etype = str(mlir.ir.ShapedType(op.op.input.type).element_type)
+            except Exception:
+                etype = "f32"
+            tensors[name] = self._gen_input_array(name, shape, etype, rng)
+
+        out_npz = self.module_name + "_gen_in.npz"
+        np.savez(out_npz, **tensors)
+        self.test_input = [out_npz]
+        logger.info("--gen_test_input: wrote %s with %d tensor(s):", out_npz, len(tensors))
+        for name, arr in tensors.items():
+            logger.info("    %-24s %s %s", name, arr.dtype, list(arr.shape))
+
+    # element-type token (mlir) -> numpy dtype
+    _GEN_DTYPE_MAP = {
+        "f32": np.float32,
+        "f16": np.float16,
+        "bf16": np.float16,
+        "si32": np.int32,
+        "i32": np.int32,
+        "ui32": np.uint32,
+        "si16": np.int16,
+        "ui16": np.uint16,
+        "i16": np.int16,
+        "si8": np.int8,
+        "i8": np.int8,
+        "ui8": np.uint8,
+    }
+
+    def _gen_input_array(self, name, shape, etype, rng):
+        np_dtype = self._GEN_DTYPE_MAP.get(etype)
+        if np_dtype is None:
+            raise RuntimeError(f"--gen_test_input: unsupported element type '{etype}' for '{name}'")
+        lname = (name or "").lower()
+
+        # causal attention mask: [., 1, N, N] (or 2-D). 0 where valid, -1e4 masked.
+        if "mask" in lname and len(shape) >= 2:
+            m, n = shape[-2], shape[-1]
+            eye = np.tri(m, n, dtype=np_dtype)
+            if np.issubdtype(np_dtype, np.floating):
+                neg = np.dtype(np_dtype).type(-1e4)
+                arr = np.where(eye == 1, np.dtype(np_dtype).type(0), neg)
+            else:
+                arr = eye.astype(np_dtype)
+            arr = arr.reshape([1] * (len(shape) - 2) + [m, n])
+            return np.broadcast_to(arr, shape).copy()
+
+        # position ids / *_ids -> 0..N-1 arange
+        if ("position" in lname or "pos_id" in lname or lname.endswith("_ids")) and shape:
+            n = shape[-1]
+            arr = np.arange(n, dtype=np_dtype).reshape([1] * (len(shape) - 1) + [n])
+            return np.broadcast_to(arr, shape).copy()
+
+        # gather/scatter index (e.g. Qwen2.5-VL merger `reverse_index`): the
+        # values index an axis of another tensor, so bound them by this tensor's
+        # own extent.  The generic [0,64) below can exceed the gathered axis
+        # size (here num_patches//spatial_merge_size**2 == 25) and produce
+        # out-of-bounds reads -> garbage -> f16 overflow NaN in the bmodel.
+        if "index" in lname and shape:
+            dims = [int(s) for s in shape if int(s) > 0]
+            hi = min(dims) if dims else min(64, int(np.iinfo(np_dtype).max))
+            return rng.integers(0, hi, size=shape, dtype=np_dtype)
+
+        # generic: small random
+        if np.issubdtype(np_dtype, np.floating):
+            return (rng.standard_normal(shape).astype(np_dtype) * np.dtype(np_dtype).type(0.1))
+        info = np.iinfo(np_dtype)
+        return rng.integers(0, min(64, int(info.max)) + 1, size=shape, dtype=np_dtype)
+
     def _prepare_input_npz(self):
         num_inputs = len(self.test_input)
         self.do_validate = (0 < num_inputs)
@@ -354,19 +445,24 @@ class DeployTool:
             raise RuntimeError(
                 "Not support now, aligned_input requires fuse_preprocess to be set to True.")
         np.savez(self.in_f32_npz, **self.tpu_inputs)
+        # When --gen_test_input is on, keep the validation artifacts (input npz,
+        # mlir reference, tpu-mlir output, bmodel output) on disk for offline
+        # inspection/testing instead of auto-removing them at cleanup().
+        keep_test_artifacts = bool(self.gen_test_input)
         if gen_ref:
             gen_in_f32_npz = self.module_name + '_in_f32.npz'
-            file_mark(gen_in_f32_npz)
+            if not keep_test_artifacts:
+                file_mark(gen_in_f32_npz)
             np.savez(gen_in_f32_npz, **gen_input_f32)
             self.ref_npz = self.module_name + "_top_outputs.npz"
             show_fake_cmd(gen_in_f32_npz, self.mlir_file, self.ref_npz)
             top_outputs = mlir_inference(gen_input_f32, self.mlir_file)
             np.savez(self.ref_npz, **top_outputs)
 
-        if not self.cache_skip:
+        if not self.cache_skip and not keep_test_artifacts:
             file_mark(self.tpu_npz)
 
-        if not self.cache_skip:
+        if not self.cache_skip and not keep_test_artifacts:
             file_mark(self.model_npz)
         # dynamic layer output data dump
         if "NEED_DUMP_DYNAMIC_LAYER_OUTPUT_DATA" in os.environ and os.environ[
@@ -558,6 +654,12 @@ if __name__ == '__main__':
     parser.add_argument("--test_input", default="", type=str2list,
                         help="input npy/npz/image file for inference; image if fuse preprocess"
                         "if has more than one input, join npy with semicolon")
+    parser.add_argument("--gen_test_input", action="store_true",
+                        help="auto-generate a test_input npz from the mlir's declared inputs "
+                        "(causal mask for *mask*, arange for *position*/*_ids*, small random "
+                        "otherwise) and use it for validation when --test_input is not given")
+    parser.add_argument("--gen_test_seed", default=0, type=int,
+                        help="rng seed for --gen_test_input random tensors")
     parser.add_argument("--test_reference", default="",
                         help="reference npz file; if none, will run inner")
     parser.add_argument("--compare_all", action="store_true",
