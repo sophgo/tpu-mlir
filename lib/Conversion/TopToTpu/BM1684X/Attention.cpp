@@ -77,6 +77,10 @@ top::AttentionOp attention_head(PatternRewriter &rewriter, top::AttentionOp op,
   attrs.push_back(
       rewriter.getNamedAttr("has_bias", rewriter.getI64IntegerAttr(has_bias)));
   attrs.push_back(rewriter.getNamedAttr("scale_param", op.getScaleParamAttr()));
+  if (op->hasAttr("input_asym")) {
+    attrs.push_back(
+        rewriter.getNamedAttr("input_asym", rewriter.getBoolAttr(true)));
+  }
   std::string name_new = out_name + "_head_" + std::to_string(index);
   auto name_loc = NameLoc::get(rewriter.getStringAttr(name_new));
   auto attention = rewriter.create<top::AttentionOp>(
@@ -219,8 +223,69 @@ double get_weight_sacle(Value weight) {
   return scale;
 }
 
+// Quantize a q/k/v (weight, bias) pair to int8/int32 while absorbing the input
+// zero point into the bias (bias correction), mirroring MatMul.cpp.
+// Returns the int8 weight, the int32 bias (None if no bias and zp == 0), and
+// whether a bias is now present (a bias is synthesized when the original bias
+// is absent but the input has a non-zero zero point).
+struct QkvQuantResult {
+  Value weight;
+  Value bias;
+  bool has_bias;
+};
+static QkvQuantResult quant_qkv_weight_bias(Operation *op, Value weight,
+                                            Value bias, double w_scale,
+                                            double in_scale, int64_t in_zp,
+                                            Type i8_type, Type i32_type,
+                                            const std::string &suffix) {
+  // weight -> int8
+  auto wOp = weight.getDefiningOp<top::WeightOp>();
+  auto weight_fp32 = wOp.read<float>();
+  auto weight_int8 = std::make_shared<std::vector<int8_t>>(weight_fp32->size());
+  for (size_t i = 0; i < weight_fp32->size(); i++) {
+    weight_int8->data()[i] = std::round(weight_fp32->at(i) / w_scale);
+  }
+  auto w_shape = module::getShape(weight);
+  auto w_new_type = RankedTensorType::get(w_shape, i8_type);
+  auto q_w =
+      top::WeightOp::create(op, suffix + "_int8", *weight_int8, w_new_type);
+
+  bool had_bias = !module::isNone(bias);
+  if (!had_bias && in_zp == 0) {
+    return {q_w, bias, false}; // keep None, unchanged behavior
+  }
+  // bias -> int32 with zero point correction: subtract
+  //   sum_i(W_int8[i, j] * in_zp) from round(B / (w_scale * in_scale)).
+  int64_t K = w_shape[0];
+  int64_t N = w_shape[1];
+  std::shared_ptr<std::vector<float>> bias_fp32;
+  if (had_bias) {
+    bias_fp32 = bias.getDefiningOp<top::WeightOp>().read<float>();
+  }
+  auto bias_int32 = std::make_shared<std::vector<int32_t>>(N);
+  for (int64_t j = 0; j < N; j++) {
+    int64_t bias_w_xz = 0;
+    if (in_zp) {
+      for (int64_t i = 0; i < K; i++) {
+        bias_w_xz += (int64_t)weight_int8->at(i * N + j) * in_zp;
+      }
+    }
+    double b_val = had_bias ? bias_fp32->at(j) : 0.0;
+    bias_int32->data()[j] =
+        std::round(b_val / (w_scale * in_scale) - (double)bias_w_xz);
+  }
+  std::vector<int64_t> b_shape =
+      had_bias ? std::vector<int64_t>(module::getShape(bias).begin(),
+                                      module::getShape(bias).end())
+               : std::vector<int64_t>{N};
+  auto b_new_type = RankedTensorType::get(b_shape, i32_type);
+  auto q_b =
+      top::WeightOp::create(op, suffix + "_int32", *bias_int32, b_new_type);
+  return {q_w, q_b, true};
+}
+
 Value lowering_attention_int(PatternRewriter &rewriter, top::AttentionOp op,
-                             double ow_scale) {
+                             double ow_scale, bool asymmetric) {
   // get scale param
   auto scale_param = module::getF64Array(op.getScaleParam());
   double qo_scale = scale_param->at(0);
@@ -230,41 +295,57 @@ Value lowering_attention_int(PatternRewriter &rewriter, top::AttentionOp op,
   double si_scale = scale_param->at(4);
   double so_scale = scale_param->at(5);
   double m1_scale = scale_param->at(6);
-  int64_t zp = 0;
+  // Honor input zero point when either the lowering pass is asymmetric or the
+  // op was marked "input_asym" by calibration (same OR-semantics as
+  // MatMul/Conv). Internal tensors (qo/ko/vo, m0/si/so/m1) and the whole
+  // output stay symmetric, so their zp is read with asymmetric == false.
+  bool input_asymmetric = op->hasAttr("input_asym") || asymmetric;
+  int64_t q_zp = 0, k_zp = 0, v_zp = 0, o_zp = 0;
   double qw_scale = 1.f, q_scale = 1.f, kw_scale = 1.f, k_scale = 1.f;
   double vw_scale = 1.f, v_scale = 1.f, o_scale = 1.f;
-  module::getScaleAndZeroPoint(op.getInput(), q_scale, zp, false);
-  module::getScaleAndZeroPoint(op.getKeys(), k_scale, zp, false);
-  module::getScaleAndZeroPoint(op.getValues(), v_scale, zp, false);
-  module::getScaleAndZeroPoint(op.getOutput(), o_scale, zp, false);
+  module::getScaleAndZeroPoint(op.getInput(), q_scale, q_zp, input_asymmetric);
+  module::getScaleAndZeroPoint(op.getKeys(), k_scale, k_zp, input_asymmetric);
+  module::getScaleAndZeroPoint(op.getValues(), v_scale, v_zp, input_asymmetric);
+  module::getScaleAndZeroPoint(op.getOutput(), o_scale, o_zp, false);
   qw_scale = get_weight_sacle(op.getQueriesWeight());
   kw_scale = get_weight_sacle(op.getKeysWeight());
   vw_scale = get_weight_sacle(op.getValuesWeight());
-  // weight quantize
-  Value q_w = weight_quant<int8_t>(op.getQueriesWeight(), qw_scale, "int8",
-                                   rewriter.getI8Type());
-  op->setOperand(3, q_w);
-  Value q_b = weight_quant<int32_t>(op.getQueriesBias(), qw_scale * q_scale,
-                                    "int32", rewriter.getI32Type());
-  op->setOperand(4, q_b);
-  Value k_w = weight_quant<int8_t>(op.getKeysWeight(), kw_scale, "int8",
-                                   rewriter.getI8Type());
-  op->setOperand(5, k_w);
-  Value k_b = weight_quant<int32_t>(op.getKeysBias(), kw_scale * k_scale,
-                                    "int32", rewriter.getI32Type());
-  op->setOperand(6, k_b);
-  Value v_w = weight_quant<int8_t>(op.getValuesWeight(), vw_scale, "int8",
-                                   rewriter.getI8Type());
-  op->setOperand(7, v_w);
-  Value v_b = weight_quant<int32_t>(op.getValuesBias(), vw_scale * v_scale,
-                                    "int32", rewriter.getI32Type());
-  op->setOperand(8, v_b);
+  // weight + bias quantize (with input zp bias correction for q/k/v)
+  auto qkv = quant_qkv_weight_bias(
+      op, op.getQueriesWeight(), op.getQueriesBias(), qw_scale, q_scale, q_zp,
+      rewriter.getI8Type(), rewriter.getI32Type(), "weight_q");
+  op->setOperand(3, qkv.weight);
+  op->setOperand(4, qkv.bias);
+  auto kkv = quant_qkv_weight_bias(
+      op, op.getKeysWeight(), op.getKeysBias(), kw_scale, k_scale, k_zp,
+      rewriter.getI8Type(), rewriter.getI32Type(), "weight_k");
+  op->setOperand(5, kkv.weight);
+  op->setOperand(6, kkv.bias);
+  auto vkv = quant_qkv_weight_bias(
+      op, op.getValuesWeight(), op.getValuesBias(), vw_scale, v_scale, v_zp,
+      rewriter.getI8Type(), rewriter.getI32Type(), "weight_v");
+  op->setOperand(7, vkv.weight);
+  op->setOperand(8, vkv.bias);
+  // output projection: input is the internal symmetric m1 tensor, no zp
+  // correction needed.
   Value o_w = weight_quant<int8_t>(op.getOutWeight(), ow_scale, "int8",
                                    rewriter.getI8Type());
   op->setOperand(9, o_w);
   Value o_b = weight_quant<int32_t>(op.getOutBias(), ow_scale * m1_scale,
                                     "int32", rewriter.getI32Type());
   op->setOperand(10, o_b);
+  // update has_bias if a bias was synthesized for q/k/v due to non-zero zp
+  int64_t has_bias = op.getHasBias();
+  if (qkv.has_bias) {
+    has_bias |= 0x01 << 0;
+  }
+  if (kkv.has_bias) {
+    has_bias |= 0x01 << 1;
+  }
+  if (vkv.has_bias) {
+    has_bias |= 0x01 << 2;
+  }
+  op->setAttr("has_bias", rewriter.getI64IntegerAttr(has_bias));
   attention_reorder(rewriter, op);
   auto softmax_table = generate_table(op, si_scale);
   // generate requant param
@@ -299,7 +380,7 @@ Value lowering_attention_int(PatternRewriter &rewriter, top::AttentionOp op,
 }
 
 void lowering_multi_attention_int(PatternRewriter &rewriter,
-                                  top::AttentionOp op) {
+                                  top::AttentionOp op, bool asymmetric) {
   rewriter.setInsertionPointAfter(op);
   auto head = op.getHead();
   std::string out_name = module::getName(op.getOutput()).data();
@@ -317,7 +398,8 @@ void lowering_multi_attention_int(PatternRewriter &rewriter,
   for (int i = 0; i < head; ++i) {
     auto attention = attention_head(rewriter, op, i);
     // multi head fuse
-    operands.push_back(lowering_attention_int(rewriter, attention, ow_scale));
+    operands.push_back(
+        lowering_attention_int(rewriter, attention, ow_scale, asymmetric));
     if (i > 0) {
       std::vector<NamedAttribute> attrs_none;
       auto newType = RankedTensorType::get(module::getShape(op.getOutput()),
@@ -351,7 +433,7 @@ void AttentionLowering::LoweringINT4(PatternRewriter &rewriter,
 void AttentionLowering::LoweringINT8(PatternRewriter &rewriter,
                                      top::AttentionOp op,
                                      bool asymmetric) const {
-  lowering_multi_attention_int(rewriter, op);
+  lowering_multi_attention_int(rewriter, op, asymmetric);
 }
 
 void AttentionLowering::LoweringBF16(PatternRewriter &rewriter,

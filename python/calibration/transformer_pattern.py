@@ -242,6 +242,11 @@ sub_blocks = {
         "top.Reshape", "top.GridSampler", "top.Permute", "top.Reshape", "top.Concat", "top.Mul",
         "top.Reduce", "top.Reshape", "top.Permute", "top.MatMul", "top.Add", "top.LayerNorm"
     ],  # rtdetrv2 cross-attn block
+    "vf_attention_block": [
+        'top.MatMul', 'top.MatMul', 'top.MatMul', 'top.Reshape', 'top.Permute', 'top.Reshape',
+        'top.Reshape', 'top.Permute', 'top.Permute', 'top.MatMul', 'top.MulConst', 'top.Softmax',
+        'top.MatMul', 'top.Permute', 'top.Reshape', 'top.MatMul'
+    ],
 }
 openclip_blocks = {
     'openclip_vision_block': [
@@ -332,6 +337,7 @@ class MatchPattern:
         count = 0
         type_tensors = []
         fp_layer_list = []
+        symmetric_ops = []
         all_tensors = self.parser.get_op_name_list()
         num_tensors = len(all_tensors)
         model_block_name = None
@@ -434,7 +440,7 @@ class MatchPattern:
                         else:
                             continue
                     if pos_concat is None or conf_concat is None:
-                        return split_fuse_fp_layer_list, [], [], 0, self._logs
+                        return split_fuse_fp_layer_list, [], [], 0, self._logs, []
                     next_mul = get_next_op_by_op_name(self.parser, conf_concat)
                     next_concat = get_next_op_by_op_name(self.parser, next_mul[0])
                     pre_concat = self.parser.get_pre_op_by_op_name(next_concat[0])
@@ -493,12 +499,21 @@ class MatchPattern:
                         for op in new_ops:
                             if op not in fp_layer_list:
                                 split_fuse_fp_layer_list.append(op)
-                return split_fuse_fp_layer_list, [], split_fuse_fp_layer_list_extend, flag, self._logs
+                return split_fuse_fp_layer_list, [], split_fuse_fp_layer_list_extend, flag, self._logs, []
 
             if model_block_name == 'rtdetrv2_block':
                 rtdetrv2_fp16_layers, rtdetrv2_fp32_layers = self.generate_rtdetrv2_fp_layers(
                     all_tensors, type_tensors)
-                return rtdetrv2_fp16_layers, rtdetrv2_fp32_layers, [], flag, self._logs
+                return rtdetrv2_fp16_layers, rtdetrv2_fp32_layers, [], flag, self._logs, []
+
+            if model_block_name == 'vf_attention_block':
+                vf_sub_block = sub_blocks['vf_attention_block']
+                sub_len = len(vf_sub_block)
+                for j in range(len(type_tensors) - sub_len + 1):
+                    if type_tensors[j:j + sub_len] == vf_sub_block:
+                        for op_name in all_tensors[j:j + sub_len]:
+                            append_unduplicated(symmetric_ops, op_name)
+                return [], [], [], flag, self._logs, symmetric_ops
 
             for i in range(num_tensors):
                 op_type = self.parser.get_op_type_by_op_name(all_tensors[i])
@@ -645,7 +660,7 @@ class MatchPattern:
                         if (len(next_op) == 1 and next_op_type in ['top.Add', 'top.Slice', 'top.Gather']) or \
                            all(pre_op_type == 'top.Add' for pre_op_type in pre_op_types):
                             append_unduplicated(fp_layer_list, all_tensors[i])
-        return fp_layer_list, [], [], flag, self._logs
+        return fp_layer_list, [], [], flag, self._logs, symmetric_ops
 
     def generate_rtdetrv2_fp_layers(self, tensor_names, tensor_types):
         fp16_layer_list = []

@@ -1165,6 +1165,15 @@ protected:
       attrs.push_back(rewriter.getNamedAttr("scale_param",
                                             rewriter.getF64ArrayAttr(scale_v)));
     }
+    // Propagate input asymmetry marking from the fused q/k/v MatMul ops so the
+    // INT8 lowering honors the input zero point (bias correction), mirroring
+    // the per-op "input_asym" attribute used by Conv/MatMul.
+    if (matmul_queries->hasAttr("input_asym") ||
+        matmul_keys->hasAttr("input_asym") ||
+        matmul_values->hasAttr("input_asym")) {
+      attrs.push_back(
+          rewriter.getNamedAttr("input_asym", rewriter.getBoolAttr(true)));
+    }
     std::vector<Value> operands;
     operands.push_back(matmul_queries.getInput());
     operands.push_back(matmul_keys.getInput());

@@ -646,6 +646,7 @@ class ActivationCalibrator(BaseKldCalibrator):
         self.input_op = []
         self.asym_op = []
         self.asym_op1 = []
+        self.symmetric_op = getattr(self.args, 'symmetric_ops', [])
         self.last_five_tensors_threshold = {}
         self.histogram_data_map = {}
         self.histogram_width_map = {}
@@ -858,6 +859,9 @@ class ActivationCalibrator(BaseKldCalibrator):
                         else:
                             threshold = 1.0
                             min_value, max_value = -1, 1
+                        if op_name in self.symmetric_op:
+                            min_value = 0 if min_value >= 0 else (-threshold * 128.0 / 127.0)
+                            max_value = threshold
                         thresholds_map_list.append(threshold)
                         layer_name_list.append('{}_{}'.format(i, op_name))
                         f.write("{} {:.7f} {:.7f} {:.7f}\n".format(out, threshold, min_value,
@@ -881,6 +885,11 @@ class ActivationCalibrator(BaseKldCalibrator):
                 f.write("#asym_op\n")
                 for i, op_name in enumerate(self.asym_op1):
                     f.write("{}\n".format(op_name))
+            if len(self.symmetric_op) > 0:
+                f.write("\n")
+                f.write("# symmetric_op\n")
+                for op_name in self.symmetric_op:
+                    f.write("# {}\n".format(op_name))
         return thresholds_map_list, layer_name_list
 
     def gen_multiple_thresholds(self, all_op_names, quantize_method_list):

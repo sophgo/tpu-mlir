@@ -113,8 +113,9 @@ if __name__ == '__main__':
     shape_ops = ShapeOps(args)
     shape_fp_layers = shape_ops.run()
     matcher = MatchPattern(args)
-    transformer_fp_layers, fp32_layers, transformer_fp_layers_extend, flag, match_log = matcher.run(
+    transformer_fp_layers, fp32_layers, transformer_fp_layers_extend, flag, match_log, symmetric_ops = matcher.run(
     )
+    args.symmetric_ops = symmetric_ops
     transformer_fp_layers = [item for item in transformer_fp_layers if item not in shape_fp_layers]
     transformer_fp_layers_extend = [
         item for item in transformer_fp_layers_extend if item not in shape_fp_layers
