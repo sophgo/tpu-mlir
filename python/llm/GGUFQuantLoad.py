@@ -88,6 +88,24 @@ ARCH_NAME_MAPS = {
             "lm_head": ComponentSpec("token_embd.weight", None, True, False),
         },
     },
+    "deepseek2-ocr": {
+        "prefixes": ["standard"],
+        "components": {
+            **BASE_LLM_COMPONENTS,
+            "mlp.gate": ComponentSpec("ffn_gate_inp.weight", None, True, False),
+            "mlp.experts.expert_id.gate_proj": ComponentSpec("ffn_gate_exps.weight", None, True, False),
+            "mlp.experts.expert_id.up_proj": ComponentSpec("ffn_up_exps.weight", None, True, False),
+            "mlp.experts.expert_id.down_proj": ComponentSpec("ffn_down_exps.weight", None, True, False),
+            "mlp.shared_experts.gate_proj": ComponentSpec("ffn_gate_shexp.weight", None, True, False),
+            "mlp.shared_experts.up_proj": ComponentSpec("ffn_up_shexp.weight", None, True, False),
+            "mlp.shared_experts.down_proj": ComponentSpec("ffn_down_shexp.weight", None, True, False),
+        },
+        "top_level": {
+            "model.embed_tokens": ComponentSpec("token_embd.weight", None, True, False),
+            "model.norm": ComponentSpec("output_norm.weight", None, True, False),
+            "lm_head": ComponentSpec("output.weight", None, True, False),
+        },
+    },
     "qwen3": {
         "prefixes": ["standard", "vlm"],
         "components": {

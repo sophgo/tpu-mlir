@@ -707,6 +707,27 @@ def create_gguf_config(gguf_reader,
             config.text_config.rope_parameters = Config(build_rope_parameters(config.text_config))
     else:
         config.model_type = architecture
+    # MoE fields for deepseek2-ocr / DeepseekV2 (read from GGUF metadata)
+    _expert_count = get_val(f"{architecture}.expert_count")
+    if _expert_count is not None:
+        config.n_routed_experts = int(_expert_count)
+        config.expert_count = int(_expert_count)
+        config.num_experts = int(_expert_count)
+        config.num_experts_per_tok = int(get_val(f"{architecture}.expert_used_count") or 1)
+        config.expert_used_count = config.num_experts_per_tok
+        config.moe_intermediate_size = int(get_val(f"{architecture}.expert_feed_forward_length") or 1)
+        config.expert_feed_forward_length = config.moe_intermediate_size
+        config.n_shared_experts = int(get_val(f"{architecture}.expert_shared_count") or 0)
+        config.expert_shared_count = config.n_shared_experts
+        config.first_k_dense_replace = int(get_val(f"{architecture}.leading_dense_block_count") or 0)
+        config.leading_dense_block_count = config.first_k_dense_replace
+        config.norm_topk_prob = False
+        config.scoring_func = "softmax"
+        config.topk_method = "greedy"
+        config.n_group = int(get_val(f"{architecture}.expert_group_count") or 1)
+        config.topk_group = int(get_val(f"{architecture}.expert_group_used_count") or 1)
+        config.routed_scaling_factor = 1.0
+        config.mlp_only_layers = list(range(config.first_k_dense_replace))
     if quantization_config:
         config.quantization_config = quantization_config
 

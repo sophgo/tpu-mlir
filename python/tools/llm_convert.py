@@ -93,6 +93,7 @@ LLM_CONVERTERS = [
         "default_max_shape": (256, 256),
         "pixel_multiple": 16,
     }),
+    (("unlimited-ocr", "unlimitedocr", "deepseek2-ocr", "deepseek2ocr"), "llm.UnlimitedOCRConverter", "UnlimitedOCRConverter", {}),
 ]
 
 

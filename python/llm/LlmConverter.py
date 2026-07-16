@@ -324,13 +324,17 @@ class LlmConverter(BaseConverter):
             self.all_gen_mlirs.append(lambda i=0: self.gen_block_mlir(i))
             if self.llm_type in (LlmType.QWEN3_5, LlmType.QWEN3_5_MOE):
                 self.all_gen_mlirs.append(lambda i=3: self.gen_block_mlir(i))
+            # UOCR: also gen block_1 (first MoE) under --only_mlir for SE9 testing
+            if os.environ.get("UOCR_UNFUSE") and os.environ.get("UOCR_DENSE"):
+                self.all_gen_mlirs.append(lambda i=1: self.gen_block_mlir(i))
 
         if self.debug:
             for func in self.all_gen_mlirs:
                 func()
             return
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        with concurrent.futures.ThreadPoolExecutor(
+                max_workers=int(os.environ.get("LLM_GEN_MLIR_WORKERS", "4"))) as executor:
             futures = []
 
             for func in self.all_gen_mlirs:
@@ -1893,7 +1897,7 @@ class LlmConverter(BaseConverter):
         v_proj = TOP_PATH + self.model_info.weights[LlmList.V_PROJ]
         o_proj = TOP_PATH + self.model_info.weights[LlmList.O_PROJ]
         post_attn_ln = TOP_PATH + self.model_info.weights[LlmList.POST_ATTN_LN]
-        if self.llm_type in [LlmType.QWEN2_MOE]:
+        if self.llm_type in [LlmType.QWEN2_MOE] and (idx not in self.mlp_only_layers):
             shared_gate = TOP_PATH + self.model_info.weights[LlmList.SHARED_GATE]
             shared_expert_gate = TOP_PATH + self.model_info.weights[LlmList.SHARED_EXPERT_GATE]
             shared_expert_up = TOP_PATH + self.model_info.weights[LlmList.SHARED_EXPERT_UP]
