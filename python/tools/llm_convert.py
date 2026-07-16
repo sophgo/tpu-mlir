@@ -89,6 +89,10 @@ LLM_CONVERTERS = [
         "default_max_shape": (896, 896),
         "pixel_multiple": 28,
     }),
+    (("falcon_perception", ), "llm.FalconPerceptionConverter", "FalconPerceptionConverter", {
+        "default_max_shape": (256, 256),
+        "pixel_multiple": 16,
+    }),
 ]
 
 
@@ -116,7 +120,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--seq_length', type=int, required=True,
                         help="sequence length")
     parser.add_argument('-q', '--quantize', type=str, default="auto",
-                        choices=["auto", "bf16", "w8bf16", "w4bf16", "f16", "w8f16", "w4f16"],
+                        choices=["auto", "bf16", "w8bf16", "w4bf16", "f16", "w8f16", "w4f16", "f32"],
                         help="quantize type for bmodel")
     parser.add_argument('-g', "--q_group_size", default=64, type=int,
                         help="group size for per-group quant, only used in quant mode")

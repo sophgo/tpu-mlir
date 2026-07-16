@@ -433,3 +433,32 @@ GEMMA4_INFO = ModelInfo(
         LlmList.NORM: "model.language_model.norm",
         LlmList.LMHEAD: "model.language_model.embed_tokens",
     })
+
+# Falcon-Perception (early-fusion segmentation VLM)
+# Config field names differ from HF defaults (dim/n_layers/n_heads/...).
+# Per-layer RMSNorms are unweighted (fused into wqkv/w13, QK-norm) so the
+# standard INPUT_LN/POST_ATTN_LN paths are unused; the block is fully custom.
+FALCON_PERCEPTION_INFO = ModelInfo(
+    ModelConfig(
+        num_attention_heads='n_heads',
+        num_hidden_layers='n_layers',
+        num_key_value_heads='n_kv_heads',
+        hidden_size='dim',
+        vocab_size='vocab_size',
+        intermediate_size='ffn_dim',
+        rope_theta='rope_theta',
+        rms_norm_eps='norm_eps',
+        hidden_act='hidden_act',
+    ),
+    weights={
+        LlmList.LAYERS:
+        "layers",
+        LlmList.EMBEDING:
+        "tok_embeddings",
+        # per-layer weights are read directly by the custom block (fused wqkv,
+        # wo, sinks, fused w13, w2); no separate norm weights exist.
+        LlmList.NORM:
+        "norm",
+        LlmList.LMHEAD:
+        "output",
+    })
