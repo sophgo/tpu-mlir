@@ -41,14 +41,19 @@ LogicalResult top::RecurrentGatedDeltaRuleOp::inference(InferenceParameter &p) {
   // Output:
   //   attn_out:        [B, 1, num_v_heads, v_head_dim]
 
+  // Inputs may be 4-D [B, 1, num_heads, head_dim] (prefill layout) or the
+  // flattened 2-D [B, num_heads * head_dim] layout emitted by the LLM cache
+  // block. Derive all head dims from op attributes so neither rank is
+  // required: d is the per-head dim (state is [B, num_v_heads, d, d], so
+  // k_head_dim == v_head_dim == d).
   auto v_shape = module::getShape(getValue());
-  auto q_shape = module::getShape(getQuery());
 
   const int64_t B = v_shape[0];
-  const int64_t num_v_heads = v_shape[2];
-  const int64_t v_head_dim = v_shape[3];
-  const int64_t num_k_heads = q_shape[2];
-  const int64_t k_head_dim = q_shape[3];
+  const int64_t num_v_heads = getNumVHeads();
+  const int64_t num_k_heads = getNumKHeads();
+  const int64_t d = getD();
+  const int64_t v_head_dim = d;
+  const int64_t k_head_dim = d;
   const int64_t num_group = num_v_heads / num_k_heads;
   const bool use_l2norm = getUseQkL2norm();
   const float scale = static_cast<float>(getScale().convertToDouble());
