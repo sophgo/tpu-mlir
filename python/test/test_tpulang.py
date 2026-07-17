@@ -8,13 +8,12 @@
 
 import json
 import numpy as np
-import os, sys
+import os
 import transform.TpuLang as tpul
 from typing import List
 import math
 from utils.timer import Timer
-import cv2
-from typing import List, Union
+from typing import Union
 import random
 import torch
 from utils.regression_logger import run_in_log_wrapper
@@ -73,9 +72,7 @@ def rand_indices2(shape, dtype):
     return data.reshape(shape).astype(dtype=dtype)
 
 
-from typing import Any, Dict, Optional
-import warnings
-import inspect
+from typing import Any, Dict
 
 
 def generate_torch_ref(op_name: str, device: str = "cpu", **kwargs) -> Dict[str, Any]:
@@ -139,14 +136,11 @@ def generate_torch_ref(op_name: str, device: str = "cpu", **kwargs) -> Dict[str,
         # Convert the result to a numpy array (if it is a tensor)
         if isinstance(result, torch.Tensor):
             result_numpy = result.cpu().numpy()
-            result_type = "tensor"
         elif isinstance(result, (tuple, list)):
             # Handle operators with multiple return values
             result_numpy = [r.cpu().numpy() if isinstance(r, torch.Tensor) else r for r in result]
-            result_type = "tuple"
         else:
             result_numpy = result
-            result_type = "other"
 
         # Prepare data to be saved
         save_data = {
@@ -1388,8 +1382,6 @@ class TPULANG_IR_TESTER(object):
         var = self.coeff_tensor([oc],
                                 x.dtype,
                                 data=np.clip(np.random.randn(oc), 0.5, 10).astype(x.dtype))
-        gamma = self.coeff_tensor([oc], x.dtype, data=np.ones((oc)).astype(x.dtype))
-        beta = self.coeff_tensor([oc], x.dtype, data=np.zeros((oc)).astype(x.dtype))
         return tpul.batch_norm(x, mean, var, epsilon=1e-5)
 
     def layer_norm_op(self, x, oc, axis):
@@ -2033,7 +2025,6 @@ class TPULANG_IR_TESTER(object):
         def _test_A16Matmul(dtype, group_size, bits, read_file=False):
             weight, scale, zp, bias = gen_weight(read_file, group_size, bits)
             K = int(weight.shape[0] * 32 / bits)
-            N = weight.shape[1]
             seq_length = 2048
             input = rand_data((1, seq_length, K), "float32")
             input = tpul.Tensor(dtype="float32", shape=list(input.shape), data=input)
@@ -4206,8 +4197,6 @@ class TPULANG_IR_TESTER(object):
             var = self.coeff_tensor([oc],
                                     x.dtype,
                                     data=np.clip(np.random.randn(oc), 0.5, 10).astype(x.dtype))
-            gamma = self.coeff_tensor([oc], x.dtype, data=np.ones((oc)).astype(x.dtype))
-            beta = self.coeff_tensor([oc], x.dtype, data=np.zeros((oc)).astype(x.dtype))
             y = tpul.batch_norm(x, mean, var, epsilon=1e-5)
             self.compile_and_check(self.unique_name(case_name), [x], [y], is_quantized=is_quantized)
 
@@ -5038,8 +5027,6 @@ class TPULANG_IR_TESTER(object):
             assert bs == 1
             value_proj_size = int(embed_dims * value_proj_ratio)
             query_data = np.random.randn(bs, num_query, embed_dims).astype(dtype)
-            value_data = np.random.randn(bs, num_value, embed_dims).astype(dtype)
-            query_pos_data = np.random.randn(bs, num_query, embed_dims).astype(dtype)
             key_padding_mask_data = np.zeros((bs, num_query), dtype=dtype)
             reference_points_data = np.random.randn(bs, num_query, num_levels, 4).astype(dtype)
             sampling_offsets_weight_data = np.random.randn(embed_dims, num_heads * num_levels *
@@ -5055,10 +5042,6 @@ class TPULANG_IR_TESTER(object):
             output_proj_weight_data = np.random.randn(value_proj_size, embed_dims).astype(dtype)
             output_proj_bias_data = np.random.randn(embed_dims).astype(dtype)
             query = tpul.Tensor(dtype=dtype, shape=[bs, num_query, embed_dims], data=query_data)
-            value = tpul.Tensor(dtype=dtype, shape=[bs, num_value, embed_dims], data=value_data)
-            query_pos = tpul.Tensor(dtype=dtype,
-                                    shape=[bs, num_query, embed_dims],
-                                    data=query_pos_data)
             key_padding_mask = tpul.Tensor(dtype=dtype,
                                            shape=[bs, num_query],
                                            data=key_padding_mask_data)

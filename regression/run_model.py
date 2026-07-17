@@ -6,7 +6,6 @@
 #
 # ==============================================================================
 
-from tools.npz_tool import npz_compare
 from utils.preprocess import supported_customization_format
 from utils.mlir_shell import _os_system
 from utils.misc import str2dict
@@ -16,7 +15,6 @@ import configparser
 from tools.model_transform import *
 from utils.mlir_shell import *
 import os
-import threading
 import queue
 from utils.misc import *
 import re

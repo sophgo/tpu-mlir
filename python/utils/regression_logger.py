@@ -1,12 +1,6 @@
-from contextlib import redirect_stdout, redirect_stderr
 import functools
-import io
-import logging
 import os
 import sys
-import traceback
-import pdb
-import functools
 import traceback
 from contextlib import contextmanager
 
@@ -84,7 +78,7 @@ def run_in_log_wrapper(func):
             with stdout_stderr_redirected(to=f, stdout=sys.stdout, stderr=sys.stderr):
                 try:
                     return func(self, *args, **kwargs)
-                except Exception as e:
+                except Exception:
                     console_err_trace = traceback.format_exc()
                     f.write(console_err_trace)
             print(f"------------ Error occurs in: {args[0]}, log in: {running_log} ------------")

@@ -14,8 +14,6 @@ Common test infrastructure lives in :mod:`_test_base` so it can be shared with
 """
 
 import os
-import sys
-import traceback
 from typing import List, Union
 
 import numpy as np
@@ -30,12 +28,9 @@ from tools.model_runner import mlir_inference, model_inference, torch_inference,
 from tools.npz_tool import npz_compare
 from tools.model_transform import *
 from utils.mlir_shell import *
-from utils.auto_remove import clean_kmp_files
 from utils.regression_logger import run_in_log_wrapper
 
 from _test_base import (
-    Y,
-    N,
     cosine_similarity,
     generate_random,
     make_chip_resolver,
@@ -186,7 +181,6 @@ class TORCH_IR_TESTER(object):
             "Roll":             (self.test_Roll,              N, Y, Y, N, Y),
             "PixelShuffle":     (self.test_PixelShuffle,      N, Y, Y, Y, Y),
             "PixelUnshuffle":   (self.test_PixelUnshuffle,    N, Y, Y, Y, Y),
-            "PRelu":            (self.test_PRelu,             N, Y, Y, Y, Y),
             "PRelu":            (self.test_PRelu,             N, Y, Y, Y, Y),
             "Permute":          (self.test_Permute,           N, Y, Y, Y, Y),
             "Permute2":         (self.test_Permute2,          N, Y, Y, N, Y),
@@ -1136,7 +1130,6 @@ class TORCH_IR_TESTER(object):
                     self.prelu = nn.PReLU()
 
                 def forward(self, hidden_states: torch.Tensor):
-                    input_dtype = hidden_states.dtype
                     hidden_states = hidden_states + 1
                     variance = hidden_states.to(torch.float32).pow(2).mean(-1, keepdim=True)
                     hidden_states = hidden_states * torch.rsqrt(variance + eps)
@@ -3641,8 +3634,6 @@ class TORCH_IR_TESTER(object):
 
                 def __init__(self):
                     super(Model, self).__init__()
-                    input_tensor = torch.randn(in_shape, dtype=torch.float32)
-                    grid = torch.rand(grid_shape, dtype=torch.float32)
 
                 def forward(self, input_tensor, grid):
                     output_tensor = torch.grid_sampler(input_tensor,
@@ -3715,8 +3706,6 @@ class TORCH_IR_TESTER(object):
 
                 def __init__(self):
                     super(Model, self).__init__()
-                    input_tensor = torch.randn(in_shape, dtype=torch.float32)
-                    grid = torch.rand(grid_shape, dtype=torch.float32)
 
                 def forward(self, input_tensor, grid):
                     output_tensor = torch.grid_sampler(input_tensor,
@@ -3730,19 +3719,6 @@ class TORCH_IR_TESTER(object):
                                 [self.Desc('float32', -10, 10),
                                  self.Desc('float32', -1, 1)])
 
-        mode_list = [0, 1]
-        padding_mode_list = [0, 1]
-        align_corners_list = [False, True]
-
-        # for mode in mode_list:
-        #     for padding_mode in padding_mode_list:
-        #         for align_corners in align_corners_list:
-        #             _test_grid_sampler((1, 3, 100, 150, 150), (1, 100, 150, 150, 3), mode,
-        #                                padding_mode, align_corners)
-        #             _test_grid_sampler((1, 3, 100, 150, 150), (1, 40, 80, 120, 3), mode,
-        #                                padding_mode, align_corners)
-        #             _test_grid_sampler((1, 3, 50, 50, 50), (1, 1, 1, 1, 3), mode,
-        #                                padding_mode, align_corners)
         _test_grid_sampler((1, 15, 17, 17, 17), (1, 1, 1440, 2560, 3), 0, 1, True)
 
     #######################################################################
@@ -3757,8 +3733,6 @@ class TORCH_IR_TESTER(object):
 
                 def __init__(self):
                     super(Model, self).__init__()
-                    input_tensor = torch.randn(in_shape, dtype=torch.float32)
-                    grid = torch.rand(grid_shape, dtype=torch.float32)
 
                 def forward(self, input_tensor, grid):
                     grid = grid.permute(0, 2, 3, 4, 1)

@@ -20,7 +20,6 @@ from utils.auto_remove import file_mark, file_clean
 from utils.preprocess import get_preprocess_parser, preprocess, supported_yuv_type
 from utils.log_setting import setup_logger
 import pymlir
-import warnings
 from utils.cache_tool import CommandRecorder
 from tools.gen_rewriter_config import gen_struct_optimize_config
 

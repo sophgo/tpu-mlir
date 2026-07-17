@@ -6,7 +6,6 @@
 #
 # ==============================================================================
 import numpy as np
-from typing import List, Union
 
 from tools.model_transform import *
 from tools.tool_maskrcnn import MaskRCNN_InputPreprocessor, MaskRCNN_Tester_Basic
@@ -17,9 +16,6 @@ from utils.timer import Timer
 import os
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.jit as jit
 import traceback
 
 import yaml
@@ -60,7 +56,7 @@ class MaskRCNN_IR_TESTER(MaskRCNN_Tester_Basic):
         MaskRCNN_Tester_Basic.__init__(self, debug, path_custom_dataset)
         self.path_custom_dataset = path_custom_dataset
         self.data_npz_path_init()
-        Y, N = True, False
+        Y, N = True, False  # noqa: F841 (N used in commented-out cases)
         self.model_def_multi_torch = model_def_multi_torch
         self.debug = debug
         self.debug_cmd = debug_cmd

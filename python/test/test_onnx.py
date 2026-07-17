@@ -32,14 +32,12 @@ import torchvision
 from tools.model_runner import mlir_inference, model_inference, onnx_inference, show_fake_cmd
 from tools.npz_tool import npz_compare
 from tools.model_transform import *
-from utils.auto_remove import file_mark, file_clean, clean_kmp_files
+from utils.auto_remove import file_mark, file_clean
 from utils.mlir_shell import *
 from utils.regression_logger import run_in_log_wrapper
 from transform.OnnxOpt import *
 
 from _test_base import (
-    Y,
-    N,
     cosine_similarity,
     make_chip_resolver,
     make_simple_calibration_table,
@@ -1740,7 +1738,6 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_Concat(self, case_name):
-        input_shape = {"input1": [1, 2, 64], "input2": [1, 3, 64], "input3": [1, 4, 64]}
         output_shape = [1, 2 + 3 + 4, 64]
         graph_txt = """
             %s (float[1, 2, 64] input1, float[1, 3, 64] input2, float[1, 4, 64] input3) => (float%s output)
@@ -2478,18 +2475,15 @@ class ONNX_IR_TESTER(object):
         num_batches = 1
         num_classes = 80
         spatial_dimension = 15200
-        max_out = 200
         in_shape = [num_batches, spatial_dimension, 4]
         score_shape = [num_batches, num_classes, spatial_dimension]
-        y_shape = [max_out * num_classes, 3]
-
         graph_txt = """
             %s (float%s boxes, float%s scores) => (int64 selected_indices)
             <int64 max_output_boxes_per_class = {200}, float iou_threshold = {0.5}, float score_threshold = {0.05}>
             {
                 selected_indices = NonMaxSuppression(boxes, scores, max_output_boxes_per_class, iou_threshold, score_threshold)
             }
-            """ % (case_name, in_shape, score_shape, y_shape)
+            """ % (case_name, in_shape, score_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -3306,7 +3300,6 @@ class ONNX_IR_TESTER(object):
         input_shape = [6, 116, 64, 64]
         output1_shape = [3, 116, 64, 64]
         output2_shape = [3, 116, 64, 64]
-        split_data = np.array([3, 3], dtype=np.int64)
 
         graph_txt = """
             %s (float%s input) => (float%s output_1, float%s output_2)
@@ -3749,7 +3742,6 @@ class ONNX_IR_TESTER(object):
                 self.prelu = nn.PReLU()
 
             def forward(self, hidden_states: torch.Tensor):
-                input_dtype = hidden_states.dtype
                 variance = hidden_states.to(torch.float32).pow(2).mean(-1, keepdim=True)
                 hidden_states = hidden_states * torch.rsqrt(variance + eps)
                 rmsnorm_out = self.weight * hidden_states
@@ -4985,13 +4977,6 @@ class ONNX_IR_TESTER(object):
             dims=b_data.shape,
             vals=b_data.flatten(),
         )
-        lstm_def = helper.make_node(
-            "LSTM",
-            inputs=['input', 'w', 'r', 'b', '', 'h0', 'c0'],
-            outputs=['', 'Y_h', 'Y_c'],
-            direction=direction,
-            hidden_size=hidden_size,
-        )
         graph_def.initializer.extend([w_value, r_value, b_value])
         self.onnx_and_test(graph_def)
 
@@ -5828,7 +5813,6 @@ class ONNX_IR_TESTER(object):
             print("====== TEST {} Success ======".format(cmp_type))
 
     def test_And(self, case_name):
-        shape = [1, 3, 27, 27]
         graph_txt = """
             %s (bool[1, 3, 27, 27] input, bool[1] constant = {1}) => (bool[1, 3, 27, 27] output)
             {
@@ -5853,7 +5837,6 @@ class ONNX_IR_TESTER(object):
 
     def test_Compare(self, case_name):
         shape = [1, 3, 27, 27]
-        input_shape = {"input1": shape, "input2": shape}
         # "Equal" need not to be tested since equal op between floating number may be invalid
         for cmp_type in ("Greater", "GreaterOrEqual", "Less", "LessOrEqual"):
             graph_txt = """
@@ -6636,9 +6619,6 @@ class ONNX_IR_TESTER(object):
         ]
 
         axis_data = [1, 0, 1, 2, 2, 4, 5, 6, 4, 2]
-        test_len = len(input_data)
-        if self.simple:
-            test_len = 2
         for i in range(len(input_data)):
             # if i != 9:
             #     continue
@@ -6914,13 +6894,7 @@ class ONNX_IR_TESTER(object):
         self.torch_and_test(x, Model(), case_name)
 
     def test_If(self, case_name):
-        from onnx.numpy_helper import from_array
         import copy
-        # initializers
-        value = np.array([0], dtype=np.float32)
-        zero = from_array(value, name='zero')
-        value2 = np.array([0, 1, 2, 3], dtype=np.int64)
-        axes = from_array(value2, name='axes')
         input_shape = [1, 3, 100, 10]
         out_shape = copy.deepcopy(input_shape)
         shape = copy.deepcopy(input_shape)
@@ -7058,7 +7032,6 @@ class ONNX_IR_TESTER(object):
 
     def test_ShapeUnsqueeze(self, case_name):
         from onnx import numpy_helper
-        from onnx.helper import (make_node, make_graph, make_model, make_tensor_value_info)
         input_shape = [2, 3]
         output_shape = [len(input_shape)]
         axes = [0, 2]
@@ -7078,11 +7051,8 @@ class ONNX_IR_TESTER(object):
 
     def test_ShapeSqueeze(self, case_name):
         from onnx import numpy_helper
-        from onnx.helper import (make_node, make_graph, make_model, make_tensor_value_info)
         input_shape = [1, 1, 2, 3]
-        output_shape = [2, 3]
         axes = [0, 1]
-        unsqueeze_shape = [1, 1, output_shape[0]]
         squeeze_shape = [len(input_shape)]
         axes_unsqueeze_tensor = numpy_helper.from_array(np.array(axes, dtype=np.int64),
                                                         name="axes_unsqueeze")

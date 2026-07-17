@@ -19,8 +19,6 @@ import multiprocessing
 import os
 import shlex
 import subprocess
-import sys
-import traceback
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from utils.tpu_info import get_tpu_info
 
@@ -407,7 +405,6 @@ class MLIR_IR_TESTER(object):
             raise RuntimeError(f"shape-infer failed for {mlir_path}:\n"
                                f"stdout: {e.stdout}\nstderr: {e.stderr}") from e
 
-        test_reference = None
         if case_name in self.c2c_ops:
             self.no_check = True
         for mode in self.quant_modes:

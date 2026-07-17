@@ -16,14 +16,11 @@ stdout = sys.stdout
 stderr = sys.stderr
 import json
 import textwrap
-import shutil
 import tempfile
 from typing import Tuple
 from subprocess import run, CalledProcessError, TimeoutExpired
-import os
 import sys
 import re
-import signal
 import psutil
 from contextlib import contextmanager
 import ctypes
@@ -1198,7 +1195,6 @@ def origin_mlir_txt_to_bmodel(*,
         options.extend(["-debug-only=pattern-application,dialect-conversion,greedy-rewriter"])
 
     import pymlir
-    import sys
     mlir_txt = converter.get_mlir_txt()
     weight_option = "weight_in_mem=True"
     if log_level == "quiet":

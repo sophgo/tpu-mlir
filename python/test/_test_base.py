@@ -25,7 +25,7 @@ from __future__ import annotations
 import os
 import traceback
 from contextlib import contextmanager
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 

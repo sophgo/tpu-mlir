@@ -8,7 +8,6 @@
 #
 # ==============================================================================
 
-import re
 import argparse
 import pymlir
 
@@ -21,7 +20,7 @@ from calibration.softmax_correction import SoftmaxCorrecter
 from calibration.mix_precision import MixPrecSearcher
 from calibration.transformer_pattern import MatchPattern
 from calibration.shape_ops import ShapeOps
-from calibration.utils import gen_shape_pattern_qtable, QuantizeTable
+from calibration.utils import gen_shape_pattern_qtable
 from calibration.utils import parse_method_list, compactable_method_list, compactable_cmd_method_list, parse_optype_list
 from utils.log_setting import logger
 from utils.misc import parse_debug_cmd

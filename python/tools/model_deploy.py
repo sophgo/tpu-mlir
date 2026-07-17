@@ -20,7 +20,6 @@ from tools.model_runner import mlir_inference, model_inference, show_fake_cmd
 from tools.gen_rewriter_config import gen_rewriter_config
 from tools.gen_layer_group_config import gen_layer_group_config
 import pymlir
-from utils.misc import str2bool
 from utils.log_setting import setup_logger
 from utils.cache_tool import CommandRecorder
 

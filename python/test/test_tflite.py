@@ -6,8 +6,6 @@
 #
 # ==============================================================================
 
-from copy import deepcopy
-from re import T
 import numpy as np
 from tools.model_runner import mlir_inference, model_inference, tflite_inference, show_fake_cmd
 from tools.npz_tool import npz_compare
@@ -25,18 +23,14 @@ try:
     # tensorflow.python.framework.ops module itself is not part of
     # TensorFlow's public API: the precise contents of that module
     # may vary from one version to the next
-    import tensorflow.compat.v1 as ops
+    import tensorflow.compat.v1 as ops  # noqa: F401
 except ImportError:
     import tensorflow as tf
-    import tensorflow as ops
-from tensorflow.python.framework import constant_op
 
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import nn_ops
 from tensorflow.python.ops import array_ops
-from tensorflow.python.ops import image_ops
 from tensorflow.python.ops import gen_array_ops
-from tensorflow.python.ops import nn_impl
 from tensorflow.python.ops import variables
 
 try:
