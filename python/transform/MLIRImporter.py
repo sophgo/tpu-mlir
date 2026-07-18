@@ -29,7 +29,66 @@ def get_weight_file(model_name: str, state: str, chip: str):
     return name.lower()
 
 
-class MLIRImporter(object):
+class MlirContextOwner(object):
+    """Owns one MLIR Context/Location stack frame (thread-local).
+
+    Push in ``_push_mlir_context()``, pop with ``close()`` (LIFO). Callers
+    that own a conversion lifetime must close explicitly in ``finally``;
+    ``__del__`` is only a best-effort fallback because GC order is not LIFO
+    when several owners are live.
+    """
+
+    def _push_mlir_context(self):
+        self.ctx = Context()
+        self.ctx.allow_unregistered_dialects = True
+        self.loc = Location.unknown(self.ctx)
+        self.ctx.__enter__()
+        self.loc.__enter__()
+        self._closed = False
+
+    def close(self):
+        if getattr(self, "_closed", False):
+            return
+        if self.loc is None or self.ctx is None:
+            self._closed = True
+            return
+        try:
+            current_ctx = Context.current
+            current_loc = Location.current
+        except Exception as exc:
+            raise RuntimeError(
+                "MLIR Context/Location stack is empty before this importer could close") from exc
+        if current_ctx is not self.ctx or current_loc is not self.loc:
+            raise RuntimeError(
+                "MLIR Context/Location frames must close in LIFO order; refusing to pop "
+                "another importer's frame")
+        self.loc.__exit__(None, None, None)
+        self.ctx.__exit__(None, None, None)
+        self.loc = None
+        self.ctx = None
+        self._closed = True
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.close()
+        return False
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
+
+    def _emit_and_close(self, mlir_module):
+        """Serialize module ASM then release the context stack (print = end of build)."""
+        mlir_format = mlir_module.operation.get_asm(enable_debug_info=True)
+        self.close()
+        return mlir_format
+
+
+class MLIRImporter(MlirContextOwner):
 
     def __init__(self,
                  input_shapes: list,
@@ -60,11 +119,7 @@ class MLIRImporter(object):
             self.weight_file = get_weight_file(self.model_name, self.state, self.chip)
         else:
             self.weight_file = weight_file
-        self.ctx = Context()
-        self.ctx.allow_unregistered_dialects = True
-        self.loc = Location.unknown(self.ctx)
-        self.ctx.__enter__()
-        self.loc.__enter__()
+        self._push_mlir_context()
         self.input_shapes = input_shapes
         self.output_shapes = output_shapes
         self.num_input = len(self.input_shapes)
@@ -93,16 +148,6 @@ class MLIRImporter(object):
         }
         if do_declare:
             self.declare_func(input_types, output_types)
-
-    def __del__(self):
-        try:
-            self.loc.__exit__(None, None, None)
-        except:
-            pass
-        try:
-            self.ctx.__exit__(None, None, None)
-        except:
-            pass
 
     def ArrayAttr(self, data: list, data_type: str = 'INT64'):
         assert (data_type in self.mlir_type)
@@ -271,8 +316,7 @@ class MLIRImporter(object):
         pass
 
     def print_module(self):
-        mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)
-        return mlir_format
+        return self._emit_and_close(self.mlir_module)
 
     def declare_func(self, input_types: list = [], output_types: list = []):
         if len(input_types) == 0:

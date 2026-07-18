@@ -4,42 +4,23 @@ import numpy as np
 import torch
 import operator
 
+from transform.MLIRImporter import MlirContextOwner
+
 
 class State:
     TOP_F32 = 'TOP_F32'
 
 
-class FxMIIRImporter(object):
+class FxMIIRImporter(MlirContextOwner):
 
     def __init__(self, model_name, weight_file):
         self.model_name = model_name
         self.weight_file = weight_file
-        self.ctx = Context()
-        self.ctx.allow_unregistered_dialects = True
-        self.loc = Location.unknown(self.ctx)
-        self.ctx.__enter__()
-        self.loc.__enter__()
+        self._push_mlir_context()
         self.weights_data = dict()
         self.load_weight = dict()
         # self.F32Type = F32Type.get()
         self.mlir_type = {"F32": F32Type.get(), "F16": F32Type.get(), "BF16": F32Type.get()}
-
-    def __del__(self):
-        import traceback
-        try:
-            self.loc.__exit__(None, None, None)
-        except Exception as e:
-            tb_info = traceback.format_exc()
-            print(tb_info)
-            print("failed exit loc!")
-            pass
-        try:
-            self.ctx.__exit__(None, None, None)
-        except Exception as e:
-            tb_info = traceback.format_exc()
-            print(tb_info)
-            print("failed exit ctx!")
-            pass
 
     def convert_scalar_param(self, scalar):
         if not isinstance(scalar, (int, float)):
@@ -204,8 +185,7 @@ class FxMIIRImporter(object):
         return result
 
     def print_module(self):
-        mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)
-        return mlir_format
+        return self._emit_and_close(self.mlir_module)
 
     def createMlirModuleAndInput(self, input_nodes, in_args_txt, output_args_txt, operands):
         num_output = len(output_args_txt.split(','))

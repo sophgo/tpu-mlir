@@ -63,8 +63,7 @@ class TorchConverter(BaseConverter):
         self.mlir = None
         self.node_name_mapping = {}  # used in torch opt
         self.load_torch_model(torch_file, input_shapes, input_types, output_names)
-        self.init_MLIRImporter()
-        self.unranked_type = self.mlir.get_tensor_type([])
+        self.unranked_type = None
         self.preprocess_args = {}
         if 'preprocess_list' in preprocess_args:
             if preprocess_args['preprocess_list'] is not None:
@@ -265,6 +264,10 @@ class TorchConverter(BaseConverter):
 
     def __del__(self):
         if self.mlir != None:
+            try:
+                self.mlir.close()
+            except Exception:
+                pass
             del self.mlir
             self.mlir = None
 
@@ -375,6 +378,7 @@ class TorchConverter(BaseConverter):
                                  self.output_types,
                                  run_mode=self.run_mode)
         self.weight_file = self.mlir.weight_file
+        return self.mlir
 
     def generate_list_map(self):
         self.list_map = dict()
@@ -445,6 +449,23 @@ class TorchConverter(BaseConverter):
         self.addOperand(torch_node.outputs[4], new_op.running_var_update)
 
     def generate_mlir(self, mlir_file: str):
+        # MLIRImporter still enters its Context in __init__ for compatibility
+        # with existing direct callers. Requiring ``with`` here would force a
+        # repository-wide migration. This is the regular Torch conversion ownership
+        # boundary, so try/finally gives deterministic release on both normal
+        # and exceptional paths without expanding that API change.
+        try:
+            self.init_MLIRImporter()
+            self.unranked_type = self.mlir.get_tensor_type([])
+            return self._generate_mlir(mlir_file)
+        finally:
+            self.unranked_type = None
+            mlir = self.mlir
+            self.mlir = None
+            if mlir is not None:
+                mlir.close()
+
+    def _generate_mlir(self, mlir_file: str):
         """convert all to mlir"""
         # add input op
         input_data = None
