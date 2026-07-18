@@ -1,8 +1,10 @@
 # TPU-MLIR Python dependencies
 # Canonical list mirrored from docker/requirements.txt.
 # Install with: pip install -r requirements.txt
-# Note: torch/torchvision/torchaudio use the +cpu build; you may need:
-#   pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+# Note: torch/torchvision/torchaudio use the +cpu builds from the PyTorch CPU
+# index (required below) to avoid pulling in multi-GB CUDA/nvidia packages.
+
+--extra-index-url https://download.pytorch.org/whl/cpu
 
 argcomplete==3.1.1
 build==1.0.3
@@ -49,7 +51,7 @@ pycocotools==2.0.6
 pytest-xdist==3.3.1
 python-dateutil==2.8.2
 python-gflags==3.1.2
-PyYAML==5.4.1
+PyYAML==6.0.2
 rst2pdf==0.100
 scikit-image==0.21.0
 scipy==1.11.1
@@ -59,9 +61,9 @@ sphinx-autobuild==2021.3.14
 sphinx-rtd-theme==1.2.2
 termcolor==2.3.0
 tf2onnx==1.8.4
-torch==2.11.0
-torchaudio==2.1.0+cpu
-torchvision==0.26.0
+torch==2.11.0+cpu
+torchaudio==2.11.0+cpu
+torchvision==0.26.0+cpu
 tqdm==4.65.0
 transformers==5.6.2
 twine==4.0.2

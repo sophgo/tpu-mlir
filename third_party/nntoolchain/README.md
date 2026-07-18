@@ -20,6 +20,8 @@ cp bmcompiler/libbackend/libbackend_bm1684.so /workspace/tpu-mlir/third_party/nn
 ./build_tpu1686.sh -t /workspace/TPU1686
 # update one, (bm1684x2 for example)
 ./build_tpu1686.sh -t /workspace/TPU1686 -c bm1684x2
+# update multi chip, (bm1684x2/bm1688/bm1684x for example)
+./build_tpu1686.sh -t /workspace/TPU1686 -c bm1684x -c bm1688 -c bm1684x2
 # if debug, add -d
 ```
 
