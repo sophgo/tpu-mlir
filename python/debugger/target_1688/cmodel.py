@@ -26,7 +26,11 @@ class BM1688Runner(CModelRunner):
     # tag, range from 0 to 31, set as defined in /nntoolchain/TPU1686/bm1686/firmware_base/src/fullnet/nodechip_multi_fullnet.c
     TAG_WEIGHT = 1  # coeff
     TAG_ACTIVATION = 2  # neuron
-    TAG_LMEM = 3  # lmem
+    TAG_USER_IO0 = 3  # was TAG_LMEM; first user IO tag
+    TAG_USER_IO1 = 4
+    TAG_USER_IO2 = 5
+    TAG_USER_IO3 = 6
+    TAG_USER_IO4 = 7
 
     # ENGINE code, must same as defined in /nntoolchain/TPU1686/sg2260/spec/include/engine_type.h
     ENGINE_GDMA = 1
@@ -89,23 +93,36 @@ class BM1688Runner(CModelRunner):
 
     def init_memory(self, memory_size: int):
         self.memory_list = []
-        base_idx = (ctypes.c_int32 * 3)(
-            self.TAG_WEIGHT, self.TAG_ACTIVATION, self.TAG_LMEM
-        )  # config 2 register, the first one is TAG_WEIGHT, use the base_addr_regine{TAG_WEIGHT}. (base_addr_regine0~31)
+        # io_tag iff base_addr[2] is not the LMEM callable
+        io_tag_mode = not callable(self.base_addr[2])
+        if io_tag_mode:
+            all_tags = [
+                self.TAG_WEIGHT, self.TAG_ACTIVATION, self.TAG_USER_IO0, self.TAG_USER_IO1,
+                self.TAG_USER_IO2, self.TAG_USER_IO3, self.TAG_USER_IO4
+            ]
+            # skip tags without an assigned base (None)
+            pairs = [(t, self.base_addr[k]) for k, t in enumerate(all_tags)
+                     if self.base_addr[k] is not None]
+            tags = [p[0] for p in pairs]
+        else:
+            tags = [self.TAG_WEIGHT, self.TAG_ACTIVATION, self.TAG_USER_IO0]
+            pairs = None
+        n = len(tags)
+        # config 2 register, the first one is TAG_WEIGHT, use the base_addr_regine{TAG_WEIGHT}. (base_addr_regine0~31)
+        base_idx = (ctypes.c_int32 * n)(*tags)
         LMEM = []
         SMEM = []
 
         for i in range(self.core_num):
-            base_addr = [
-                self.base_addr[0],
-                self.base_addr[1],
-                self.base_addr[2](i),
-            ]
+            if io_tag_mode:
+                base_addr = [int(p[1]) for p in pairs]
+            else:
+                base_addr = [self.base_addr[0], self.base_addr[1], self.base_addr[2](i)]
             print("using base_addr:", base_addr)
-            base_addr = (ctypes.c_uint64 * 3)(*base_addr)
+            base_addr = (ctypes.c_uint64 * n)(*base_addr)
             self.lib.cmodel_init(i, memory_size)
             self.lib.set_cur_nodechip_idx(i)
-            self.lib.atomic_set_base_ddr(base_idx, base_addr, 3, self.ENGINE_GDMA)
+            self.lib.atomic_set_base_ddr(base_idx, base_addr, n, self.ENGINE_GDMA)
 
             LMEM.append(
                 c_array_to_ndarray(

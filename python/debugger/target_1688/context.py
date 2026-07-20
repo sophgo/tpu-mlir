@@ -32,8 +32,9 @@ class BM1688Context(BModelContext):
     tiu_sys = tiu_sys
 
     local_layout_to_stride = local_layout_to_stride
-    valid_tag = {1: 0, 2: 1, 3: 2}  # {tag : corresponding index in self.base_addr}
-    base_addr = [2**32, 0x5F11000 + 2**32, GET_LMEM_START_ADDR]
+    # {tag: index in base_addr}; 3-7 are user IO tags for io_tag
+    valid_tag = {1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6}
+    base_addr = [2**32, 0x5F11000 + 2**32, GET_LMEM_START_ADDR, None, None, None, None]
 
     def __init__(self) -> None:
         super().__init__()
@@ -63,6 +64,9 @@ class BM1688Context(BModelContext):
         assert 0 <= reg_address < 2**40
         if reg_address & (1 << 39):  # GMEM
             tag = (reg_address >> 36) & 0x7
+            if tag not in self.valid_tag:
+                raise ValueError(f"unsupported GMEM tag {tag} (addr=0x{reg_address:x}); "
+                                 f"valid_tag={self.valid_tag}.")
             fixed_addr = self.base_addr[self.valid_tag[tag]] + (reg_address & 0x7FFFFFFFF)
         else:
             fixed_addr = reg_address & (0xFFFFFF)

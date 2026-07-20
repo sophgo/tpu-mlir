@@ -27,6 +27,47 @@ import textwrap
 
 INDENT_SPACE = "  "
 
+# addr_mode values (BASIC=0, IO_ALONE=1, IO_TAG=2, IO_TAG_FUSE=3)
+_ADDR_MODE_IO_TAG = 2
+_ADDR_MODE_IO_TAG_FUSE = 3
+
+
+def _extract_user_io_tag(context, addr):
+    """Return (tag, offset) if addr is a BM1688 GMEM user IO tag address (3-7), else None."""
+    from .target_1688.context import BM1688Context
+    if not isinstance(context, BM1688Context):
+        return None
+    if not (addr & (1 << 39)):
+        return None
+    tag = (addr >> 36) & 0x7
+    if 3 <= tag <= 7:
+        return tag, addr & 0x7FFFFFFFF
+    return None
+
+
+def _assign_io_tag_bases(context, bmodel_net):
+    """Assign per-model GMEM IO base addresses to user IO tags 3-7 for io_tag models."""
+    if bmodel_net.addr_mode not in (_ADDR_MODE_IO_TAG, _ADDR_MODE_IO_TAG_FUSE):
+        return
+    io_tensors = []
+    for net in bmodel_net.net:
+        for p in net.parameter:
+            io_tensors += list(p.input_tensor) + list(p.output_tensor)
+    if not io_tensors:
+        return
+    io_start = context.base_addr[1] + bmodel_net.neuron_size
+    tag_extent = {}
+    for t in io_tensors:
+        info = _extract_user_io_tag(context, t.device_addr)
+        if info is None:
+            continue
+        tag, offset = info
+        tag_extent[tag] = max(tag_extent.get(tag, 0), offset + t.size)
+    acc = io_start
+    for tag in sorted(tag_extent):
+        context.base_addr[context.valid_tag[tag]] = acc
+        acc += tag_extent[tag]
+
 
 def BModel2MLIR(bmodel_net: BModel):
     from .target_1688.context import BM1688Context
@@ -45,6 +86,13 @@ def BModel2MLIR(bmodel_net: BModel):
             coeff = bmodel_net.net[0].parameter[0].coeff_mem
             if coeff and context.base_addr[0] != context.base_addr[1]:
                 context.base_addr[1] += len(coeff.data)
+
+        if isinstance(context, BM1688Context):
+            try:
+                _assign_io_tag_bases(context, bmodel_net)
+            except Exception as e:
+                import warnings
+                warnings.warn(f"failed to assign IO tag bases: {e}")
 
         with atomic_context(bmodel_net, context):
             atomic_mlir = MlirModule(bmodel_net)
