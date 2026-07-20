@@ -468,6 +468,8 @@ class MODEL_RUN(object):
             output_file = self.model_name + f"_{quant_mode}.jpg"
             self.run_sample(model_file, self.ini_content["test_input"], output_file)
 
+        return model_file
+
     def run_dynamic(self, quant_mode: str):
         '''do dynamic regression
             1. do static model_transform (with dynamic_shapes)
@@ -567,7 +569,7 @@ if __name__ == "__main__":
     parser.add_argument("--mode", default="all", type=str.lower,
                         choices=['all', 'basic', 'f32', 'f16', 'bf16', 'int8_sym', 'int8_asym', 'int4_sym', 'f8e4m3', 'f8e5m2'],
                         help="quantize mode, 'all' runs all modes except int4 and f8, 'basic' runs f16 and int8 sym only")
-    parser.add_argument("--dyn_mode", default='store_true', help="dynamic mode")
+    parser.add_argument("--dyn_mode", action="store_true", help="dynamic mode")
     parser.add_argument("--merge_weight", action="store_true",
                         help="merge weights into one weight binary with previous generated cvimodel")
     # fuse preprocess

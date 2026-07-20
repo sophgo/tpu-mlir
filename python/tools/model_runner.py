@@ -191,16 +191,18 @@ def link_custom_so(chip: str):
     #     lib_so = 'libcmodel_custom_cv184x.so'
     custom_path = os.path.join(TPUC_ROOT, "lib", custom_so)
     custom_link = os.path.join(TPUC_ROOT, "lib", "libcmodel_custom.so")
-    if os.path.exists(custom_path):
+    if not os.path.exists(custom_path):
         return
-    if os.path.exists(custom_link):
-        cur_lib = ""
-        if os.path.islink(custom_link):
-            cur_lib = os.readlink(custom_link)
-        if cur_lib != custom_path:
-            os.system(f'ln -sf {custom_path} {custom_link}')
-    else:
-        os.system(f'ln -sf {custom_path} {custom_link}')
+
+    # All current callers hold /tmp/cmodel_so.lock while switching this shared
+    # link, so the update can stay explicit and easy to inspect.
+    if os.path.lexists(custom_link):
+        if not os.path.islink(custom_link):
+            raise RuntimeError(f"custom CModel link is not a symlink: {custom_link}")
+        if os.path.realpath(custom_link) == os.path.realpath(custom_path):
+            return
+        os.unlink(custom_link)
+    os.symlink(custom_path, custom_link)
 
 
 def link_cmodel_so(chip: str, is_rvti: bool = False):
