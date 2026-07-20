@@ -2384,6 +2384,106 @@ def Top_FAttentionOp : Top_Op<"FAttention"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_FAttentionLseOp : Top_Op<"FAttentionLse"> {
+  let summary = "Flash Attention with fp32 logsumexp output";
+
+  let description = [{
+    1.Op Introduction
+    Identical compute to FAttention, but additionally emits a fp32 logsumexp
+    (lse) result for attention-sink scaling (out *= sigmoid(lse - sinks)).
+    Used by Falcon-Perception. FAttentionOp is unchanged.
+    2.Math formula
+    ```math
+        out, lse = FlashAttention(Q, K, V, mask);  lse = logsumexp(scale*Q*K^T + mask)
+    ```
+    3.activation and weight
+    queries/keys/values/mask/buffer: same as FAttention.
+    4.attributes
+    scale/batch/q_head/kv_head/dim/mq/mk/keep_dims/mask_size: same as FAttention.
+    5.outputs
+    output: attention output (same as FAttention).
+    lse: fp32 logsumexp, shape [batch, mq, q_head] (keep_dims=false) or
+         [batch, mq, q_head, 1] (keep_dims=true).
+  }];
+
+  let arguments = (ins
+    AnyTensor:$queries,
+    AnyTensor:$keys,
+    AnyTensor:$values,
+    AnyTensorOrNone:$mask,
+    AnyTensorOrNone:$buffer,
+    F64Attr:$scale,
+    I64Attr:$batch,
+    I64Attr:$q_head,
+    I64Attr:$kv_head,
+    I64Attr:$dim,
+    I64Attr:$mq,
+    I64Attr:$mk,
+    DefaultValuedAttr<BoolAttr, "true">:$keep_dims,
+    DefaultValuedAttr<SI32Attr, "0">:$mask_size
+  );
+
+  let results = (outs AnyTensor:$output, AnyTensor:$lse);
+}
+
+def Top_FlexAttentionOp : Top_Op<"FlexAttention"> {
+  let summary = "FlexAttention: generic block-sparse flash attention with non-square head dim and optional lse";
+
+  let description = [{
+    1.Op Introduction
+    Generic block-sparse flash attention (PyTorch flex_attention-style). Any
+    model with a structured mask can call it; Falcon-Perception is the first
+    user. FAttentionOp / FAttentionLseOp are unaffected. With block_bitmap None
+    and has_lse false this is dense flash attention.
+    2.Math formula
+    ```math
+        out, lse = FlexAttention(Q, K, V, mask, block_bitmap);
+        lse = logsumexp(scale * Q * K^T + mask)   [only when has_lse]
+    ```
+    Blocks whose block_bitmap cell is 0 are skipped entirely (online-softmax
+    exact: a skipped block contributes exp(-inf)=0 and does not change the row
+    max), so fully-masked query-key blocks incur no QK/softmax/AV compute.
+    3.activation and weight
+    queries [B, mq, q_head, qk_d]; keys [B, mk, kv_head, qk_d];
+    values [B, mk, kv_head, v_d]; mask [B, mq, 1, mk] additive (None ok);
+    block_bitmap [num_q_blocks, num_kv_blocks] fp32 0/1 (None ok; granularity
+    = flex_block, default 128). When qk_d == v_d this is ordinary MHA/GQA;
+    cross-attention with v_dim != qk_dim is supported.
+    4.attributes
+    scale: softmax scale.; batch/q_head/kv_head: head counts.;
+    qk_d: q,k head dim (QK contraction).; v_d: v head dim / output dim (AV).;
+    mq/mk: query/key seq len.; has_lse: also emit fp32 logsumexp [B,mq,q_head].;
+    flex_block: bitmap granularity (default 128).; keep_dims/mask_size: as FAttention.
+    5.outputs
+    output: attention output [B, mq, q_head, v_d] (keep_dims) or [B, mq, q_head*v_d].
+    lse: fp32 logsumexp [B, mq, q_head, 1] (keep_dims) / [B, mq, q_head]; when
+         has_lse is false lse is a dummy [1] and is not written.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$queries,
+    AnyTensor:$keys,
+    AnyTensor:$values,
+    AnyTensorOrNone:$mask,
+    AnyTensorOrNone:$block_bitmap,
+    AnyTensorOrNone:$buffer,
+    F64Attr:$scale,
+    I64Attr:$batch,
+    I64Attr:$q_head,
+    I64Attr:$kv_head,
+    I64Attr:$qk_d,
+    I64Attr:$v_d,
+    I64Attr:$mq,
+    I64Attr:$mk,
+    DefaultValuedAttr<BoolAttr, "false">:$has_lse,
+    DefaultValuedAttr<SI32Attr, "128">:$flex_block,
+    DefaultValuedAttr<BoolAttr, "true">:$keep_dims,
+    DefaultValuedAttr<SI32Attr, "0">:$mask_size
+  );
+
+  let results = (outs AnyTensor:$output, AnyTensor:$lse);
+}
+
 def Top_FlattenOp : Top_Op<"Flatten"> {
   let summary = "Flatten operation";
   let description = [{

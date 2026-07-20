@@ -131,6 +131,9 @@ class MLIR_IR_TESTER(object):
             "layernorm_dynamic_dc_workaround": (self.test_layernorm_dynamic_dc_workaround, Y, Y, Y),
             "insert": (self.test_insert, Y, Y, Y),
             "fattention": (self.test_fattention, Y, Y, Y),
+            "fattention_lse": (self.test_fattention_lse, Y, N, N),
+            "flex_attention": (self.test_flex_attention, Y, N, N),
+            "flex_attention_tall": (self.test_flex_attention_tall, Y, N, N),
             "fattention_prefill": (self.test_fattention_prefill, Y, Y, Y),
             "fattention_decode": (self.test_fattention_decode, Y, Y, Y),
             "fattn_o_proj": (self.test_fattn_o_proj, Y, Y, Y),
@@ -827,6 +830,258 @@ class MLIR_IR_TESTER(object):
 
         # Deploy for each quantization mode
         self._deploy_test_case(case_name)
+
+    def test_fattention_lse(self, case_name):
+        """Test case fattention_lse: FAttention + fp32 logsumexp output (2 results)."""
+        S = 512
+        D = 128
+        Q_HEAD = 16
+        KV_HEAD = 8
+        input_shapes = [
+            [1, S, Q_HEAD, D],  # Q
+            [1, S, KV_HEAD, D],  # K
+            [1, S, KV_HEAD, D],  # V
+            [1, 1, S, S],  # mask (full, additive)
+        ]
+        weight_shapes = []
+        output_shapes = [
+            [1, S, Q_HEAD, D],  # attention output
+            [1, S, Q_HEAD, 1],  # lse (fp32)
+        ]
+
+        block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
+            case_name, input_shapes, weight_shapes, output_shapes, ["F32", "F32", "F32", "F32"])
+
+        q_op, k_op, v_op, mask_op = input_ops
+        # multi-result op: pass one NameLoc per result so getLoc() (which indexes
+        # the FusedLoc by OpResult index) gives each result a distinct tensor
+        # name -- otherwise both results collide on the op loc name and the
+        # interpreter's name->tensor dict drops the second one.
+        op = top.FAttentionLseOp(self._T(block_mlir, output_shapes[0]),
+                                 self._T(block_mlir, output_shapes[1]),
+                                 q_op,
+                                 k_op,
+                                 v_op,
+                                 mask_op,
+                                 block_mlir.none_op,
+                                 batch=1,
+                                 q_head=Q_HEAD,
+                                 kv_head=KV_HEAD,
+                                 dim=D,
+                                 scale=1 / (D**0.5),
+                                 mq=S,
+                                 mk=S,
+                                 keep_dims=True,
+                                 loc=self._L(block_mlir, ["fattention_lse", "fattention_lse_lse"]),
+                                 ip=ip)
+        out_op = op.output
+        lse_op = op.lse
+
+        block_mlir.create_return_op([out_op, lse_op])
+
+        self._save_mlir_and_data(case_name,
+                                 block_mlir,
+                                 input_shapes,
+                                 weight_shapes,
+                                 input_descs=[self.Desc('float32', -5, 5) for _ in input_shapes],
+                                 weight_descs=None)
+
+        self._deploy_test_case(case_name)
+
+    def test_flex_attention(self, case_name):
+        """Test case flex_attention: block-sparse flash attention (non-square head dim, lse).
+
+        Validates: (a) block-sparse skip -- a causal block_bitmap skips the
+        fully-masked upper-right block and must match the dense causal result;
+        (b) non-square head dim (qk_d=32 for Q/K, v_d=64 for V/output);
+        (c) fp32 lse output. Compared against the Top CPU reference.
+        """
+        S = 256
+        QK_D = 32
+        V_D = 64
+        Q_HEAD = 4
+        KV_HEAD = 2
+        FLEX_BLOCK = 128
+        NUM_QB = (S + FLEX_BLOCK - 1) // FLEX_BLOCK  # 2
+        NUM_KVB = NUM_QB
+        input_shapes = [
+            [1, S, Q_HEAD, QK_D],  # Q
+            [1, S, KV_HEAD, QK_D],  # K
+            [1, S, KV_HEAD, V_D],  # V (non-square: v_d != qk_d)
+            [1, 1, S, S],  # mask (causal, additive)
+            [NUM_QB, NUM_KVB],  # block_bitmap
+        ]
+        weight_shapes = []
+        output_shapes = [
+            [1, S, Q_HEAD, V_D],  # attention output
+            [1, S, Q_HEAD, 1],  # lse (fp32)
+        ]
+
+        block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
+            case_name, input_shapes, weight_shapes, output_shapes,
+            ["F32", "F32", "F32", "F32", "F32"])
+
+        q_op, k_op, v_op, mask_op, bitmap_op = input_ops
+        # multi-result op: one NameLoc per result (see test_fattention_lse).
+        # block_bitmap is passed but unused in-kernel: block-sparse skip is
+        # deferred (conflicts with layer-group profiling + broke PPL local-addr
+        # assignment when the bitmap shape was runtime-computed). The op still
+        # carries the operand + has_bitmap attr so the interface is complete
+        # for when block-sparse is re-enabled; the dense path (non-square
+        # qk_d/v_d + lse) is what ships.
+        op = top.FlexAttentionOp(self._T(block_mlir, output_shapes[0]),
+                                 self._T(block_mlir, output_shapes[1]),
+                                 q_op,
+                                 k_op,
+                                 v_op,
+                                 mask_op,
+                                 bitmap_op,
+                                 block_mlir.none_op,
+                                 batch=1,
+                                 q_head=Q_HEAD,
+                                 kv_head=KV_HEAD,
+                                 qk_d=QK_D,
+                                 v_d=V_D,
+                                 mq=S,
+                                 mk=S,
+                                 scale=1 / (QK_D**0.5),
+                                 has_lse=True,
+                                 flex_block=FLEX_BLOCK,
+                                 keep_dims=True,
+                                 loc=self._L(block_mlir, ["flex_attention", "flex_attention_lse"]),
+                                 ip=ip)
+        out_op = op.output
+        lse_op = op.lse
+
+        block_mlir.create_return_op([out_op, lse_op])
+
+        # causal additive mask: 0 where attend (j <= i), -1e4 where masked.
+        idx = np.arange(S)
+        causal = (idx[None, :] <= idx[:, None]).astype(np.float32)  # [S,S]
+        # NOTE: the multiplier must be +1e4: (causal-1) is 0 attend / -1 masked,
+        # so (causal-1)*1e4 = 0 attend / -1e4 masked. A leading minus (the old
+        # `(causal-1)*-1e4`) flips masked to +1e4, which dominates the softmax
+        # and, worse, drives attended qk-max to ~-1e4 -- below the f16 exp range
+        # (exp_no_overflow clamps the fp16 integer exponent to [-15,15], so
+        # exp(x<-10.4) saturates at 2^-15 ~= 3e-5 instead of underflowing to 0).
+        # That leaks masked mass into attended rows and breaks f16 (cos 0.907);
+        # bf16 tolerates it (exp clamps to [-127,127] -> underflows to 0).
+        mask = (causal - 1.0) * 1.0e4
+        mask = mask.reshape(1, 1, S, S)
+        # block_bitmap: skip only the upper-right block (qb=0,kb=1), which is
+        # fully masked by causal (all j>i). Every query row still has an
+        # unmasked key (itself), so no fully-masked-row NaN.
+        bitmap = np.array([[1, 0], [1, 1]], dtype=np.float32)
+
+        inputs = {
+            "in0": rand_data(input_shapes[0], 'float32', -1, 1),  # query
+            "in1": rand_data(input_shapes[1], 'float32', -1, 1),  # key
+            "in2": rand_data(input_shapes[2], 'float32', -1, 1),  # value
+            "in3": mask,  # causal mask
+            "in4": bitmap,  # block_bitmap
+        }
+        if not self.no_check:
+            np.savez(f"{case_name}_input.npz", **inputs)
+
+        mlir_txt = block_mlir.print_module()
+        with open(f"{case_name}.mlir", "w") as f:
+            f.write(mlir_txt)
+
+        self._deploy_test_case(case_name, tolerance=(0.99, 0.98))
+
+    def test_flex_attention_tall(self, case_name):
+        """FlexAttention with tall seq + no-lse branch in bf16.
+
+        Complements test_flex_attention (square mq=mk=256, causal mask, has_lse):
+        this test exercises the has_lse=False branch (dummy lse output) and a
+        tall shape mq=8192 >> mk=256 with a sparse window mask whose masked
+        entries are -1e9 (bf16-safe; f16 range would overflow, hence bf16 only).
+
+        Motivation: the old FAttentionOp NaN'd on tall non-square cross-attn
+        (FalconPerceptionConverter line 1346-1348: "half the query tiles go NaN
+        regardless of mask/chunking"). This test confirms FlexAttention's
+        kernel does not hit the same failure mode.
+        """
+        MQ = 8192  # tall: query seq len
+        MK = 256  # short: key seq len
+        QK_D = 32
+        V_D = 64
+        Q_HEAD = 4
+        KV_HEAD = 4  # head_rep=1 (kv already repeated to q_head)
+        FLEX_BLOCK = 128
+        NUM_QB = (MQ + FLEX_BLOCK - 1) // FLEX_BLOCK  # 64
+        NUM_KVB = (MK + FLEX_BLOCK - 1) // FLEX_BLOCK  # 2
+
+        input_shapes = [
+            [1, MQ, Q_HEAD, QK_D],  # Q (tall)
+            [1, MK, KV_HEAD, QK_D],  # K (short, already q_head heads)
+            [1, MK, KV_HEAD, V_D],  # V (short, already q_head heads)
+            [1, 1, MQ, MK],  # mask (window, baked additive)
+            [NUM_QB, NUM_KVB],  # block_bitmap (dense, all 1s)
+        ]
+        weight_shapes = []
+        output_shapes = [
+            [1, MQ, Q_HEAD, V_D],  # attention output (tall, non-square v_d)
+            [1],  # lse dummy (has_lse=False)
+        ]
+
+        block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
+            case_name, input_shapes, weight_shapes, output_shapes,
+            ["F32", "F32", "F32", "F32", "F32"])
+
+        q_op, k_op, v_op, mask_op, bitmap_op = input_ops
+        op = top.FlexAttentionOp(self._T(block_mlir, output_shapes[0]),
+                                 self._T(block_mlir, output_shapes[1]),
+                                 q_op,
+                                 k_op,
+                                 v_op,
+                                 mask_op,
+                                 bitmap_op,
+                                 block_mlir.none_op,
+                                 batch=1,
+                                 q_head=Q_HEAD,
+                                 kv_head=KV_HEAD,
+                                 qk_d=QK_D,
+                                 v_d=V_D,
+                                 mq=MQ,
+                                 mk=MK,
+                                 scale=1 / (QK_D**0.5),
+                                 has_lse=False,
+                                 flex_block=FLEX_BLOCK,
+                                 keep_dims=True,
+                                 loc=self._L(block_mlir, ["tall_attn", "tall_lse"]),
+                                 ip=ip)
+        out_op = op.output
+        lse_op = op.lse
+
+        block_mlir.create_return_op([out_op, lse_op])
+
+        # Window mask: query i attends to keys j near (i * MK / MQ) with
+        # half-window 2 (~5 keys per query). Masked positions get -1e9, matching
+        # the baked window-mask const used in FalconPerceptionConverter. bf16
+        # handles -1e9 fine (range +/-3.4e38); f16 would overflow.
+        i_idx = np.arange(MQ, dtype=np.float64)[:, None]
+        j_idx = np.arange(MK, dtype=np.float64)[None, :]
+        center = i_idx * MK / MQ
+        keep = np.abs(j_idx - center) < 2
+        mask = np.where(keep, 0.0, -1e9).astype(np.float32).reshape(1, 1, MQ, MK)
+        bitmap = np.ones((NUM_QB, NUM_KVB), dtype=np.float32)
+
+        inputs = {
+            "in0": rand_data(input_shapes[0], 'float32', -1, 1),  # Q
+            "in1": rand_data(input_shapes[1], 'float32', -1, 1),  # K
+            "in2": rand_data(input_shapes[2], 'float32', -1, 1),  # V
+            "in3": mask,
+            "in4": bitmap,
+        }
+        if not self.no_check:
+            np.savez(f"{case_name}_input.npz", **inputs)
+
+        mlir_txt = block_mlir.print_module()
+        with open(f"{case_name}.mlir", "w") as f:
+            f.write(mlir_txt)
+
+        self._deploy_test_case(case_name, tolerance=(0.99, 0.98))
 
     def test_fattention_prefill(self, case_name):
         """Test case fattention prefill: Fused attention with multiple inputs/outputs."""

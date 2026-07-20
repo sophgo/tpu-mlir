@@ -1669,6 +1669,13 @@ typedef struct flash_attention_common_spec {
   bool high_precision;
   bool keep_dim;
   int mask_size;
+  bool has_lse; // true: also write fp32 logsumexp [b,mq,q_head,1]
+                // (FAttentionLseOp)
+  // FlexAttentionOp-only fields (zero for FAttention/FAttentionLse):
+  bool has_bitmap; // true: block-sparse skip via block_bitmap
+  int flex_block;  // bitmap granularity (default 128)
+  int qk_d;        // q,k head dim (QK); FlexAttentionOp
+  int v_d;         // v head dim / output dim (AV); FlexAttentionOp
 } flash_attention_common_spec_t;
 
 typedef struct flash_attention_global_spec {

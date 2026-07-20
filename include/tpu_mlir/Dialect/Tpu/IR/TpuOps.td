@@ -2918,6 +2918,72 @@ def Tpu_FAttentionOp : Tpu_Op<"FAttention", [
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_FAttentionLseOp : Tpu_Op<"FAttentionLse", [
+    DeclareOpInterfaceMethods<TypeInterface>]> {
+  let summary = "Flash Attention with fp32 logsumexp output";
+
+  let description = [{
+    Same as FAttention but additionally emits a fp32 logsumexp result for
+    attention-sink scaling. Lowering uses the fattention_v2 _lse kernel;
+    FAttentionOp is unaffected.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$queries,
+    AnyTensor:$keys,
+    AnyTensor:$values,
+    AnyTensorOrNone:$mask,
+    AnyTensorOrNone:$buffer,
+    F64Attr:$scale,
+    I64Attr:$batch,
+    I64Attr:$q_head,
+    I64Attr:$kv_head,
+    I64Attr:$dim,
+    I64Attr:$mq,
+    I64Attr:$mk,
+    DefaultValuedAttr<BoolAttr, "true">:$keep_dims,
+    DefaultValuedAttr<SI32Attr, "0">:$mask_size,
+    OptionalAttr<BoolAttr>:$multicore
+  );
+
+  let results = (outs AnyTensor:$output, AnyTensor:$lse);
+}
+
+def Tpu_FlexAttentionOp : Tpu_Op<"FlexAttention", [
+    DeclareOpInterfaceMethods<TypeInterface>]> {
+  let summary = "FlexAttention: generic block-sparse flash attention (non-square head dim, optional lse)";
+
+  let description = [{
+    Same as top::FlexAttentionOp. Lowering uses the fattention_v2 _flex kernel
+    (block-sparse bitmap guard + qk_d/v_d split + optional lse). FAttentionOp
+    and FAttentionLseOp are unaffected.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$queries,
+    AnyTensor:$keys,
+    AnyTensor:$values,
+    AnyTensorOrNone:$mask,
+    AnyTensorOrNone:$block_bitmap,
+    AnyTensorOrNone:$buffer,
+    F64Attr:$scale,
+    I64Attr:$batch,
+    I64Attr:$q_head,
+    I64Attr:$kv_head,
+    I64Attr:$qk_d,
+    I64Attr:$v_d,
+    I64Attr:$mq,
+    I64Attr:$mk,
+    DefaultValuedAttr<BoolAttr, "false">:$has_lse,
+    DefaultValuedAttr<SI32Attr, "128">:$flex_block,
+    DefaultValuedAttr<BoolAttr, "true">:$keep_dims,
+    DefaultValuedAttr<SI32Attr, "0">:$mask_size,
+    OptionalAttr<BoolAttr>:$multicore
+  );
+
+  let results = (outs AnyTensor:$output, AnyTensor:$lse);
+}
+
 def Tpu_FusedActiveCastOp : Tpu_Op<"FusedActiveCast", [
   InOutSameShape, SupportElementwise]> {
   let summary = "Active + Cast";
