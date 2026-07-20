@@ -93,4 +93,5 @@ These are two typical situations for compiling an LLM (using Qwen3.5 as an examp
 
 - **English refinement:** Users are mostly non-native English speakers. When the user's input or a description contains awkward or incorrect English, render the corresponding output (reports, docs, commit messages) in clear, natural English rather than mirroring the broken phrasing. If the user's English is already correct, preserve it as-is.
 - **No auto-commit:** When making code fixes, do not `git commit` them directly. Leave the changes in the working tree for the user to review and commit themselves.
-- **Preserve file ownership:** Do not change file ownership. When copying, moving, fixing, or regenerating files, preserve their original owner.
+- **Preserve file ownership:** Do not change file ownership. Edits made through the Edit/Write tools run as root and silently change the edited file's owner to `root` — after editing, copying, moving, or regenerating any file, restore its original owner (repo files are uid/gid 1018; verify against untouched neighbors with `ls -l`), e.g. `chown 1018:1018 <files>`.
+- **Remember in CLAUDE.md:** When the user asks to remember something (a rule, preference, or lesson learned), always record it in this `CLAUDE.md` so it persists in the repo for every session — not in private/session-only memory.

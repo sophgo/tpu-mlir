@@ -129,7 +129,7 @@ class LlmConverter(BaseConverter):
                 self.fused_mlp = False
 
     def use_small_mask(self):
-        # TODO: other chip support small mask in future
+        # use small attention for dynamic
         return self.dynamic
 
     def run(self):

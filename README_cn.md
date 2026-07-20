@@ -349,6 +349,7 @@ model_tool --info resnet18_1684x_f32.bmodel
 | 类型   | 链接                                                                                |
 | ------ | ----------------------------------------------------------------------------------- |
 | 论文   | [TPU-MLIR (arXiv 2210.15016)](https://arxiv.org/abs/2210.15016)                     |
+| 论文   | [An MLIR-Based Compilation Method for Large Language Models (arXiv 2607.15865)](https://arxiv.org/abs/2607.15865) |
 | 手册   | [技术参考手册](https://tpumlir.org/developer_manual/index.html)                     |
 | 入门   | [快速入门](https://tpumlir.org/quick_start/index.html)                              |
 
@@ -385,6 +386,15 @@ model_tool --info resnet18_1684x_f32.bmodel
   author        = {HuPengchao and LuMan and WangLei and JiangGuoyue},
   year          = {2022},
   eprint        = {2210.15016},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.PL}
+}
+
+@misc{llmtpu2026,
+  title         = {An MLIR-Based Compilation Method for Large Language Models},
+  author        = {HuPengchao and XinZhibin and ChenYifan and ZhouYangyang and WangLiang},
+  year          = {2026},
+  eprint        = {2607.15865},
   archivePrefix = {arXiv},
   primaryClass  = {cs.PL}
 }

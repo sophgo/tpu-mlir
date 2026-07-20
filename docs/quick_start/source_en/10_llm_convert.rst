@@ -25,6 +25,10 @@ Supported model families include ``qwen2``, ``qwen3``, ``qwen2_vl``,
 ``qwen2_5_omni``, ``qwen3_asr``.
 AWQ / GPTQ / AutoRound pre-quantized weights are accepted directly.
 
+For a detailed introduction to how LLMs are compiled with MLIR in
+TPU-MLIR, see the paper `An MLIR-Based Compilation Method for Large
+Language Models <https://arxiv.org/abs/2607.15865>`_.
+
 Prerequisites
 -------------
 

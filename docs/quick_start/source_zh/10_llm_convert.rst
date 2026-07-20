@@ -24,6 +24,10 @@
 ``qwen3_asr``。
 直接支持 AWQ / GPTQ / AutoRound 等已量化权重。
 
+关于 TPU-MLIR 如何基于 MLIR 编译 LLM 的详细介绍，可参考论文
+`An MLIR-Based Compilation Method for Large Language Models
+<https://arxiv.org/abs/2607.15865>`_。
+
 环境准备
 --------
 
