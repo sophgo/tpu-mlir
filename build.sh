@@ -9,7 +9,7 @@ if [[ -z "$INSTALL_PATH" ]]; then
   exit 1
 fi
 
-if [[ -z "$ENVSETUP_LAST_UPDATED" || "$ENVSETUP_LAST_UPDATED" != "2026-06-17" ]];
+if [[ -z "$ENVSETUP_LAST_UPDATED" || "$ENVSETUP_LAST_UPDATED" != "2026-07-17" ]];
 then
   echo -e "${RED}ERROR${NC}: envsetup.sh has updated. Please source envsetup.sh again."
   exit 1

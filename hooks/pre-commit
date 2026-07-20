@@ -4,6 +4,8 @@ c_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^(lib|inclu
 py_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^(python|regression)/.*\.(py)$')
 doc_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(rst|md)$')
 comment_check_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(cpp|c|h|hpp|cc|cxx|py|sh|bash|html|htm)$')
+MAX_FILE_SIZE=$((80 * 1024 * 1024)) # 80MB
+WARN_FILE_SIZE=$((30 * 1024 * 1024)) # 30MB
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
@@ -23,6 +25,37 @@ then
   echo -e "\t pip3 install yapf\n"
   exit 1
 fi
+
+# Check staged file sizes: >80MB is an error, >30MB is a warning
+oversized_files=()
+large_files=()
+while IFS= read -r f; do
+    if [ -f "$f" ]; then
+        size=$(stat -c%s "$f")
+        if [ "$size" -gt "$MAX_FILE_SIZE" ]; then
+            oversized_files+=("$f ($(numfmt --to=iec "$size"))")
+        elif [ "$size" -gt "$WARN_FILE_SIZE" ]; then
+            large_files+=("$f ($(numfmt --to=iec "$size"))")
+        fi
+    fi
+done < <(git diff --cached --name-only --diff-filter=ACM)
+
+if [ ${#large_files[@]} -gt 0 ]; then
+    echo -e "${YELLOW}Warning${NC}: The following staged files exceed 30MB:"
+    for f in "${large_files[@]}"; do
+        echo -e "\t${YELLOW}$f${NC}"
+    done
+fi
+
+if [ ${#oversized_files[@]} -gt 0 ]; then
+    echo -e "${RED}ERROR${NC}: The following staged files exceed the 80MB limit:"
+    for f in "${oversized_files[@]}"; do
+        echo -e "\t${RED}$f${NC}"
+    done
+    echo "Please remove them from the commit (e.g. use Git LFS or add to .gitignore)."
+    exit 1
+fi
+echo -e "${GREEN}Success: file size check ok${NC}"
 
 if [ -n "$c_files" ]; then
     echo "Running clang-format on staged files..."
