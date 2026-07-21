@@ -8,6 +8,7 @@
 #
 # ==============================================================================
 
+import ctypes
 import importlib
 import sys
 import numpy as np
@@ -24,6 +25,7 @@ from utils.lowering import lowering, round_away_from_zero, bf16_to_fp32
 # from transform.OnnxOpt import *
 
 TPUC_ROOT = os.getenv("TPUC_ROOT")
+_CMODEL_SO_HANDLES = {}
 
 
 def show_fake_cmd(in_npz: str, model: str, out_npz: str, dump_all_tensors=False, use_cuda=False):
@@ -244,6 +246,18 @@ def link_bmlib_so(chip: str):
         os.system(cmd)
 
 
+def bind_cmodel_so(chip: str, is_rvti: bool = False):
+    """Bind libcmodel.so while the caller holds cmodel_so.lock.
+
+    The runtime resolves the fixed libcmodel.so SONAME lazily during Model().
+    Keeping the CDLL handle alive pins the library selected by the protected
+    symlink switch before Model() runs outside the lock.
+    """
+    cmodel_so = get_cmodel_so(chip, is_rvti)
+    if cmodel_so not in _CMODEL_SO_HANDLES:
+        _CMODEL_SO_HANDLES[cmodel_so] = ctypes.CDLL("libcmodel.so")
+
+
 def _model_inference(inputs: dict,
                      model_file: str,
                      dump_all=True,
@@ -264,7 +278,8 @@ def _model_inference(inputs: dict,
             link_custom_so(chip)
             link_bmlib_so(chip)
             pyrtlib = importlib.import_module(pyruntime)
-            model = pyrtlib.Model(model_file, 0, decrypt_lib)
+            bind_cmodel_so(chip, is_rvti)
+        model = pyrtlib.Model(model_file, 0, decrypt_lib)
         net = model.Net(model.networks[0])
     elif model_file.endswith(".cvimodel"):
         pyruntime = pyruntime + "cvi"
