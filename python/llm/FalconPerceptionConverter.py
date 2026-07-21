@@ -108,6 +108,20 @@ class FalconPerceptionConverter(LlmConverter):
             raise RuntimeError(f"Quantize {self.quantize} mismatch with model dtype: {dtype}")
 
     @override
+    def submit_deploy_task(self, name, extra_args=(), **kwargs):
+        """Falcon bf16: keep every net's IO f32; bf16 only internally.
+
+        The host/d2d boundaries (embedding out -> host image-scatter -> block_0
+        in; block out -> lm_head in / host h_last; head IO; anyup IO) all carry
+        f32 on the host and use raw bm_memcpy s2d/d2s/d2d, which break on a
+        bf16<->f32 size mismatch. Stripping --quant_input/--quant_output keeps
+        the IO f32 (a CastOp sits at the boundary, internal compute stays bf16
+        via --quantize). chat.cpp is then unchanged. No-op for the f32-compiled
+        embedding/lm_head (quant_io is a no-op there anyway)."""
+        extra_args = [a for a in extra_args if a not in ('--quant_input', '--quant_output')]
+        return super().submit_deploy_task(name, extra_args, **kwargs)
+
+    @override
     def rotary_embedding(self):
         """1D RoPE over the first half of head_dim (64), interleaved pairs.
 
@@ -309,7 +323,13 @@ class FalconPerceptionConverter(LlmConverter):
         return q_op, k_op
 
     def _attention(self, mlir_gen, q_op, k_op, v_op, mask_op, sinks_op, S, MK, name):
-        """Hand-written attention with logsumexp + attention sink (option D).
+        """FAttentionLseOp (fused flash-attn kernel + fp32 lse) + attention sink.
+
+        Replaces the hand-written 12-op attention (option D) whose
+        MatMulOp(hdim_is_batch=True) hit the batch_matmul_float_local assertion
+        `L.h==R.h || R.h==1` under bf16. FAttentionLseOp routes through the
+        fattention_v2 dedicated kernel (bf16/f16) and emits lse for free,
+        bypassing batch_matmul_local entirely.
 
         q: [B, S, H, D]   k,v: [B, MK, H, D] (already repeated to H heads)
         mask: [B, 1, S, MK] (additive, runtime) or None
@@ -320,142 +340,65 @@ class FalconPerceptionConverter(LlmConverter):
         B = list(q_op.type.shape)[0]
         H, D = self.num_attention_heads, self.head_dim
 
-        q = self._to_bhd(mlir_gen, q_op, name + ".q")  # [H, S, D]
-        k = self._to_bhd(mlir_gen, k_op, name + ".k")  # [H, MK, D]
-        v = self._to_bhd(mlir_gen, v_op, name + ".v")  # [H, MK, D]
-
-        # scores = q @ k^T * scale  -> [H, S, MK]
-        scores = top.MatMulOp(mlir_gen.get_tensor_type([H, S, MK]),
-                              q,
-                              k,
-                              mlir_gen.none_op,
-                              right_transpose=True,
-                              hdim_is_batch=True,
-                              do_relu=False,
-                              loc=self.get_loc(name + ".qk", mlir_gen),
-                              ip=ip).output
-        scores = top.MulConstOp(mlir_gen.get_tensor_type([H, S, MK]),
-                                scores,
-                                const_val=self.attn_scale,
-                                loc=self.get_loc(name + ".scale", mlir_gen),
-                                ip=ip).output
-        if mask_op is not None:
-            mshp = list(mask_op.type.shape)  # [B,1,S,MK]
-            mask2 = top.ReshapeOp(mlir_gen.get_tensor_type([1, S, MK]),
-                                  mask_op,
-                                  shape=[1, S, MK],
-                                  loc=self.get_loc(name + ".mask.rshp", mlir_gen),
-                                  ip=ip).output
-            scores = top.AddOp(mlir_gen.get_tensor_type([H, S, MK]), [scores, mask2],
-                               loc=self.get_loc(name + ".mask.add", mlir_gen),
-                               ip=ip).output
-
-        # logsumexp over MK
-        m = top.ReduceOp(mlir_gen.get_tensor_type([H, S, 1]),
-                         scores,
-                         axes=[2],
-                         keepdims=True,
-                         mode=StringAttr.get("ReduceMax"),
-                         loc=self.get_loc(name + ".max", mlir_gen),
-                         ip=ip).output
-        negm = top.MulConstOp(mlir_gen.get_tensor_type([H, S, 1]),
-                              m,
-                              const_val=-1.0,
-                              loc=self.get_loc(name + ".negm", mlir_gen),
-                              ip=ip).output
-        smm = top.AddOp(mlir_gen.get_tensor_type([H, S, MK]), [
-            scores,
-            top.TileOp(mlir_gen.get_tensor_type([H, S, MK]),
-                       negm,
-                       tile=[1, 1, MK],
-                       loc=self.get_loc(name + ".bcast", mlir_gen),
-                       ip=ip).output
-        ],
-                        loc=self.get_loc(name + ".smm", mlir_gen),
-                        ip=ip).output
-        e = top.ExpOp(mlir_gen.get_tensor_type([H, S, MK]),
-                      smm,
-                      loc=self.get_loc(name + ".exp", mlir_gen),
-                      ip=ip).output
-        s = top.ReduceOp(mlir_gen.get_tensor_type([H, S, 1]),
-                         e,
-                         axes=[2],
-                         keepdims=True,
-                         mode=StringAttr.get("ReduceSum"),
-                         loc=self.get_loc(name + ".sum", mlir_gen),
-                         ip=ip).output
-        logs = top.LogOp(mlir_gen.get_tensor_type([H, S, 1]),
-                         s,
-                         loc=self.get_loc(name + ".log", mlir_gen),
-                         ip=ip).output
-        lse = top.AddOp(mlir_gen.get_tensor_type([H, S, 1]), [logs, m],
-                        loc=self.get_loc(name + ".lse", mlir_gen),
-                        ip=ip).output
-
-        # w = exp(scores - lse)
-        neglse = top.MulConstOp(mlir_gen.get_tensor_type([H, S, 1]),
-                                lse,
-                                const_val=-1.0,
-                                loc=self.get_loc(name + ".neglse", mlir_gen),
-                                ip=ip).output
-        slse = top.AddOp(mlir_gen.get_tensor_type([H, S, MK]), [
-            scores,
-            top.TileOp(mlir_gen.get_tensor_type([H, S, MK]),
-                       neglse,
-                       tile=[1, 1, MK],
-                       loc=self.get_loc(name + ".bcast2", mlir_gen),
-                       ip=ip).output
-        ],
-                         loc=self.get_loc(name + ".slse", mlir_gen),
-                         ip=ip).output
-        w = top.ExpOp(mlir_gen.get_tensor_type([H, S, MK]),
-                      slse,
-                      loc=self.get_loc(name + ".w", mlir_gen),
-                      ip=ip).output
-
-        # out = w @ v -> [H, S, D]
-        out = top.MatMulOp(mlir_gen.get_tensor_type([H, S, D]),
-                           w,
-                           v,
-                           mlir_gen.none_op,
-                           hdim_is_batch=True,
-                           do_relu=False,
-                           loc=self.get_loc(name + ".wv", mlir_gen),
-                           ip=ip).output
+        # FAttentionLseOp has 2 results: output [B,S,H,D], lse [B,S,H,1].
+        # CRITICAL: pass a NAME LIST (one per result) to loc=. getLoc() indexes
+        # the FusedLoc by OpResult index, so a single name makes both results
+        # collide on the op-loc name and the runtime name->tensor dict drops
+        # lse (and pipeline d2s cannot read it). A list gives each result its
+        # own NameLoc. See test_fattention_lse / plan Layer 4 note.
+        mask_in = mask_op if mask_op is not None else mlir_gen.none_op
+        fa = top.FAttentionLseOp(
+            mlir_gen.get_tensor_type([B, S, H, D]),
+            mlir_gen.get_tensor_type([B, S, H, 1]),
+            q_op,
+            k_op,
+            v_op,
+            mask_in,
+            mlir_gen.none_op,
+            scale=self.attn_scale,
+            batch=B,
+            q_head=H,
+            kv_head=H,  # k,v already repeated to H heads -> head_rep=1
+            dim=D,
+            mq=S,
+            mk=MK,
+            keep_dims=True,
+            loc=self.get_loc([name + ".fattn", name + ".lse"], mlir_gen),
+            ip=ip)
+        out = fa.output  # [B, S, H, D]
+        lse = fa.lse  # [B, S, H, 1] (fp32)
 
         # attention sink: out *= sigmoid(lse - sinks)
-        sinks2 = top.ReshapeOp(mlir_gen.get_tensor_type([H, 1, 1]),
+        # sinks [H] -> [1,1,H,1] broadcasts over lse [B,S,H,1].
+        sinks2 = top.ReshapeOp(mlir_gen.get_tensor_type([1, 1, H, 1]),
                                sinks_op,
-                               shape=[H, 1, 1],
+                               shape=[1, 1, H, 1],
                                loc=self.get_loc(name + ".sinks.rshp", mlir_gen),
                                ip=ip).output
-        lse_ms = top.AddOp(mlir_gen.get_tensor_type([H, S, 1]), [
-            lse,
-            top.MulConstOp(mlir_gen.get_tensor_type([H, 1, 1]),
-                           sinks2,
-                           const_val=-1.0,
-                           loc=self.get_loc(name + ".nsink", mlir_gen),
-                           ip=ip).output
-        ],
+        neg_sinks = top.MulConstOp(mlir_gen.get_tensor_type([1, 1, H, 1]),
+                                   sinks2,
+                                   const_val=-1.0,
+                                   loc=self.get_loc(name + ".nsink", mlir_gen),
+                                   ip=ip).output
+        lse_ms = top.AddOp(mlir_gen.get_tensor_type([B, S, H, 1]), [lse, neg_sinks],
                            loc=self.get_loc(name + ".lse_ms", mlir_gen),
                            ip=ip).output
-        sink_scale = top.SigmoidOp(mlir_gen.get_tensor_type([H, S, 1]),
+        sink_scale = top.SigmoidOp(mlir_gen.get_tensor_type([B, S, H, 1]),
                                    lse_ms,
                                    loc=self.get_loc(name + ".sink_sig", mlir_gen),
                                    ip=ip).output
-        out = top.MulOp(mlir_gen.get_tensor_type([H, S, D]), [
+        out = top.MulOp(mlir_gen.get_tensor_type([B, S, H, D]), [
             out,
-            top.TileOp(mlir_gen.get_tensor_type([H, S, D]),
+            top.TileOp(mlir_gen.get_tensor_type([B, S, H, D]),
                        sink_scale,
-                       tile=[1, 1, D],
+                       tile=[1, 1, 1, D],
                        loc=self.get_loc(name + ".sink_bcast", mlir_gen),
                        ip=ip).output
         ],
                         loc=self.get_loc(name + ".sink_mul", mlir_gen),
                         ip=ip).output
 
-        # [H, S, D] -> [B, S, H, D] -> [B, S, H*D]
-        out = self._from_bhd(mlir_gen, out, B, S, H, D, name + ".out")
+        # [B, S, H, D] -> [B, S, H*D]
         out = top.ReshapeOp(mlir_gen.get_tensor_type([B, S, H * D]),
                             out,
                             shape=[B, S, H * D],
@@ -1242,6 +1185,13 @@ class FalconPerceptionConverter(LlmConverter):
         col_ok = (cols >= c0.reshape(-1, 1)) & (cols < c1.reshape(-1, 1))  # [HW,w]
         keep = (row_ok[:, :, None] & col_ok[:, None, :]).reshape(HW, hw)
         wd["anyup_window_mask"] = np.where(keep, 0.0, -1e9).astype(np.float32).reshape(1, 1, HW, hw)
+        # FlexAttention block-sparse bitmap (dense: all blocks active). Reserved
+        # for future block-sparse enablement; currently a no-op since the kernel
+        # has bitmap guard disabled. Shape: [ceil(HW/flex_block), ceil(hw/flex_block)].
+        flex_block = 128
+        num_qb = (HW + flex_block - 1) // flex_block
+        num_kvb = (hw + flex_block - 1) // flex_block
+        wd["anyup_bitmap"] = np.ones((num_qb, num_kvb), dtype=np.float32)
         self.weight_keys.extend(list(wd.keys()))
         np.savez(weight_file, **wd)
 
@@ -1400,48 +1350,78 @@ class FalconPerceptionConverter(LlmConverter):
                            shape=[1, hw, n_heads, v_hd],
                            loc=Lc("v.heads"),
                            ip=ip).output
-        # Hand-written cross-attention (NOT FAttentionOp): the fused FAttentionOp
-        # kernel NaNs for tall non-square attention (mq=HW=65536 >> mk=hw=256,
-        # dim=32) — half the query tiles go NaN regardless of mask/chunking. The
-        # backbone uses this same manual MatMul+softmax pattern (see _attention).
-        # Non-square head dim (qk=32, v=64) handled in one call via hdim_is_batch.
-        qb = self._to_bhd(m, xq, "fa.q")  # [n_heads, HW, qk_hd]
-        kb = self._to_bhd(m, xk, "fa.k")  # [n_heads, hw, qk_hd]
-        vb = self._to_bhd(m, xv, "fa.v")  # [n_heads, hw, v_hd]
-        scores = top.MatMulOp(T([n_heads, HW, hw]),
-                              qb,
-                              kb,
+        # Cross-attention dispatch: non-f32 uses FlexAttentionOp (fused kernel
+        # handles tall non-square mq=65536>>mk=256 without NaN); f32 keeps
+        # hand-written decomposition (kernel has no fp32 variant — dispatch is
+        # binary fp16/bf16, f32 data would be misinterpreted as bf16).
+        if self.quantize != "f32":
+            # FlexAttentionOp: operands [B,S,H,D] directly (NOT hdim_is_batch).
+            # mask [1,1,HW,hw] is the full mask (mask_size=0 default); bitmap
+            # is dense all-1s (block-sparse guard currently disabled in kernel).
+            bitmap = m.create_weight_op("anyup_bitmap", [num_qb, num_kvb])
+            flex = top.FlexAttentionOp(T([1, HW, n_heads, v_hd]),
+                                       T([1]),
+                                       xq,
+                                       xk,
+                                       xv,
+                                       mask,
+                                       bitmap,
+                                       m.none_op,
+                                       scale=scale,
+                                       batch=1,
+                                       q_head=n_heads,
+                                       kv_head=n_heads,
+                                       qk_d=qk_hd,
+                                       v_d=v_hd,
+                                       mq=HW,
+                                       mk=hw,
+                                       has_lse=False,
+                                       flex_block=flex_block,
+                                       keep_dims=True,
+                                       loc=Lc(["anyup_flex", "anyup_lse"]),
+                                       ip=ip)
+            out = flex.output  # [1, HW, n_heads, v_hd]
+        else:
+            # f32 path: hand-written MatMul(hdim_is_batch) + scale + mask +
+            # softmax + MatMul. Avoids FlexAttentionOp kernel (no fp32 variant).
+            qb = self._to_bhd(m, xq, "fa.q")  # [n_heads, HW, qk_hd]
+            kb = self._to_bhd(m, xk, "fa.k")  # [n_heads, hw, qk_hd]
+            vb = self._to_bhd(m, xv, "fa.v")  # [n_heads, hw, v_hd]
+            scores = top.MatMulOp(T([n_heads, HW, hw]),
+                                  qb,
+                                  kb,
+                                  m.none_op,
+                                  right_transpose=True,
+                                  hdim_is_batch=True,
+                                  do_relu=False,
+                                  loc=Lc("fa.qk"),
+                                  ip=ip).output
+            scores = top.MulConstOp(T([n_heads, HW, hw]),
+                                    scores,
+                                    const_val=scale,
+                                    loc=Lc("fa.scale"),
+                                    ip=ip).output
+            mask2 = top.ReshapeOp(T([1, HW, hw]),
+                                  mask,
+                                  shape=[1, HW, hw],
+                                  loc=Lc("fa.mask.rshp"),
+                                  ip=ip).output
+            scores = top.AddOp(T([n_heads, HW, hw]), [scores, mask2], loc=Lc("fa.mask.add"),
+                               ip=ip).output
+            w = top.SoftmaxOp(T([n_heads, HW, hw]), scores, axis=2, loc=Lc("fa.softmax"),
+                              ip=ip).output
+            ob = top.MatMulOp(T([n_heads, HW, v_hd]),
+                              w,
+                              vb,
                               m.none_op,
-                              right_transpose=True,
                               hdim_is_batch=True,
                               do_relu=False,
-                              loc=Lc("fa.qk"),
-                              ip=ip).output
-        scores = top.MulConstOp(T([n_heads, HW, hw]),
-                                scores,
-                                const_val=scale,
-                                loc=Lc("fa.scale"),
-                                ip=ip).output
-        mask2 = top.ReshapeOp(T([1, HW, hw]),
-                              mask,
-                              shape=[1, HW, hw],
-                              loc=Lc("fa.mask.rshp"),
-                              ip=ip).output
-        scores = top.AddOp(T([n_heads, HW, hw]), [scores, mask2], loc=Lc("fa.mask.add"),
-                           ip=ip).output
-        w = top.SoftmaxOp(T([n_heads, HW, hw]), scores, axis=2, loc=Lc("fa.softmax"), ip=ip).output
-        ob = top.MatMulOp(T([n_heads, HW, v_hd]),
-                          w,
-                          vb,
-                          m.none_op,
-                          hdim_is_batch=True,
-                          do_relu=False,
-                          loc=Lc("fa.wv"),
-                          ip=ip).output  # [n_heads, HW, v_hd]
-        oa = self._from_bhd(m, ob, 1, HW, n_heads, v_hd, "fa.out")  # [1,HW,n_heads,v_hd]
-        out = top.ReshapeOp(T([1, HW, v_dim]), oa, shape=[1, HW, v_dim], loc=Lc("fa.flat"),
+                              loc=Lc("fa.wv"),
+                              ip=ip).output  # [n_heads, HW, v_hd]
+            out = self._from_bhd(m, ob, 1, HW, n_heads, v_hd, "fa.out")
+        # Reshape output [1,HW,n_heads,v_hd] -> [1,HW,v_dim] -> NCHW.
+        out = top.ReshapeOp(T([1, HW, v_dim]), out, shape=[1, HW, v_dim], loc=Lc("fa.flat"),
                             ip=ip).output
-        # (HW, C) -> NHWC -> NCHW to match HF rearrange "b (h w) c -> b c h w"
         out = top.ReshapeOp(T([1, H, W, v_dim]),
                             out,
                             shape=[1, H, W, v_dim],
@@ -1457,11 +1437,16 @@ class FalconPerceptionConverter(LlmConverter):
         name = "anyup"
         if self.register_bmodel(name):
             return
+        # anyup follows self.quantize: bf16/fp16 uses FlexAttentionOp (fused
+        # kernel, non-square qk_d=32/v_d=64, tall mq=65536 validated not to
+        # NaN); f32 keeps hand-written MatMul decomposition (kernel has no
+        # fp32 variant). IO is always f32 (submit_deploy_task strips
+        # --quant_input/--quant_output for bf16).
         self.submit_deploy_task(
             name,
             [
-                f'--quantize {self.quantize}', f'--q_group_size {self.q_group_size}',
-                '--quant_input', '--quant_output'
+                f'--quantize {self.quantize}',
+                f'--q_group_size {self.q_group_size}',
             ],
         )
 
