@@ -26,16 +26,12 @@ matmul.eval()
 
 prun_dim = 1  # random.randint(0, 1)
 print("prun_dim:", prun_dim)
-rand_pchl = random.randint(1, 10) * 64
+pruned_channel_count = random.randint(1, 10) * 64
 dummy_input = torch.randn(960, 1536)  # batch_size=1，in_f=128
 mask_1 = torch.ones_like(matmul.weight1)
 mask_2 = torch.ones_like(matmul.weight2)
 
-while 1:
-    mask_channel = [random.randint(0, 8959) for i in range(rand_pchl)]
-    mask_channel = sorted(list(set(mask_channel)))
-    if len(mask_channel) % 64 == 0:
-        break
+mask_channel = sorted(random.sample(range(matmul.weight1.shape[1]), pruned_channel_count))
 # dummy_input[:, mask_channel] = 0
 mask_1[:, mask_channel] = 0
 # dummy_input_1 = torch.tensor(np.delete(dummy_input.detach().numpy(), mask_channel, axis=1))
