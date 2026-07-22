@@ -30,9 +30,8 @@ void tpu::DivOp::codegen_global_bm1684x() {
   spec.rshift_B = 0;
   spec.f8_scale_A = 1.0;
   spec.f8_scale_B = 1.0;
-  BM168x::call_global_func("backend_api_eltbinary_global", &param,
-                           sizeof(param), input_spec->data(),
-                           output_spec->data());
+  BM168x::call_global_func("backend_api_bcbinary_global", &param, sizeof(param),
+                           input_spec->data(), output_spec->data());
 }
 // =========================================
 // LocalGenInterface
@@ -118,4 +117,4 @@ int64_t tpu::DivOp::dyn_codegen_global_bm1684x(void *buffer) {
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
-int64_t tpu::DivOp::get_fw_type_bm1684x() { return FW_BMNET_ELTWISE_BINARY; }
+int64_t tpu::DivOp::get_fw_type_bm1684x() { return FW_BMNET_BROADCAST_BINARY; }
