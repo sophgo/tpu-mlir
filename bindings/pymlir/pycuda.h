@@ -111,6 +111,7 @@ private:
   void cudaRequantFpOp(tpu::RequantFpOp op);
   void cudaRequantIntAxisOp(tpu::RequantIntAxisOp op);
   void cudaReshapeOp(tpu::ReshapeOp op);
+  void cudaShapeSliceOp(tpu::ShapeSliceOp op);
   void cudaSliceOp(tpu::SliceOp op);
   void cudaSoftmaxOp(tpu::SoftmaxOp op);
   void cudaSqueezeOp(tpu::SqueezeOp op);
@@ -131,6 +132,7 @@ private:
   void cudaConvOp(top::ConvOp op);
   void cudaDepth2SpaceOp(top::Depth2SpaceOp op);
   void cudaDivOp(top::DivOp op);
+  void cudaEinsumOp(top::EinsumOp op);
   void cudaFloorOp(top::FloorOp op);
   void cudaGatherElementsOp(top::GatherElementsOp op);
   void cudaGatherOp(top::GatherOp op);
@@ -140,28 +142,56 @@ private:
   void cudaLayerNormOp(top::LayerNormOp op);
   void cudaMatMulOp(top::MatMulOp op);
   void cudaMaxConstOp(top::MaxConstOp op);
+  void cudaMaxOp(top::MaxOp op);
   void cudaMaxPoolOp(top::MaxPoolOp op);
+  void cudaMeanRstdOp(top::MeanRstdOp op);
+  void cudaMeanStdScaleOp(top::MeanStdScaleOp op);
   void cudaMinConstOp(top::MinConstOp op);
+  void cudaMinOp(top::MinOp op);
+  void cudaMishOp(top::MishOp op);
   void cudaMulConstOp(top::MulConstOp op);
   void cudaMulOp(top::MulOp op);
+  void cudaPackOp(top::PackOp op);
   void cudaPadOp(top::PadOp op);
   void cudaPermuteOp(top::PermuteOp op);
+  void cudaPowOp(top::PowOp op);
   void cudaReduceOp(top::ReduceOp op);
   void cudaReluOp(top::ReluOp op);
   void cudaRequantFpOp(top::RequantFpOp op);
   void cudaReshapeOp(top::ReshapeOp op);
   void cudaScaleOp(top::ScaleOp op);
+  void cudaScatterElementsOp(top::ScatterElementsOp op);
+  void cudaScatterNDOp(top::ScatterNDOp op);
+  void cudaShapeOp(top::ShapeOp op);
+  void cudaShuffleChannelOp(top::ShuffleChannelOp op);
   void cudaSigmoidOp(top::SigmoidOp op);
+  void cudaSignOp(top::SignOp op);
   void cudaSiLUOp(top::SiLUOp op);
+  void cudaSinOp(top::SinOp op);
+  void cudaSinhOp(top::SinhOp op);
+  void cudaSliceAxisOp(top::SliceAxisOp op);
   void cudaSliceOp(top::SliceOp op);
   void cudaSoftmaxOp(top::SoftmaxOp op);
+  void cudaSoftplusOp(top::SoftplusOp op);
+  void cudaSoftsignOp(top::SoftsignOp op);
+  void cudaSplitOp(top::SplitOp op);
+  void cudaSqrtOp(top::SqrtOp op);
   void cudaSqueezeOp(top::SqueezeOp op);
+  void cudaStridedSliceOp(top::StridedSliceOp op);
   void cudaSubConstOp(top::SubConstOp op);
   void cudaSubOp(top::SubOp op);
+  void cudaSwapChannelOp(top::SwapChannelOp op);
   void cudaSwapDimInnerOp(top::SwapDimInnerOp op);
+  void cudaSwishOp(top::SwishOp op);
+  void cudaTanOp(top::TanOp op);
+  void cudaTanhOp(top::TanhOp op);
   void cudaTileOp(top::TileOp op);
+  void cudaTopKOp(top::TopKOp op);
+  void cudaTriluOp(top::TriluOp op);
+  void cudaUnpackOp(top::UnpackOp op);
   void cudaUnsqueezeOp(top::UnsqueezeOp op);
   void cudaUpsampleOp(top::UpsampleOp op);
+  void cudaWhereOp(top::WhereOp op);
 
 private:
   cuda_ptr cuda_malloc(size_t bytes);
@@ -194,4 +224,5 @@ private:
   std::map<std::string, std::shared_ptr<std::vector<float>>> buffer_map_; // cpu mems, only active for dump
   std::map<std::string, std::shared_ptr<std::vector<float>>> infer_map_; // cpu mems, for cpu inference, including weights and active
   std::map<std::string, std::shared_ptr<InferenceParameter>> inference_map; // cpu infer ops
+
 };

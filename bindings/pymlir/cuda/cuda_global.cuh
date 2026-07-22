@@ -2455,6 +2455,7 @@ __global__ void g_cvLutSlope(uint16_t *input, uint16_t *output,
   }
 }
 
+
 __global__ void g_bmExp(float *input, float *output, int outer_dim, int axis_dim, int inner_dim, float *exp_table) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   int out_idx = idx / (axis_dim * inner_dim);
@@ -3542,3 +3543,357 @@ __global__ void g_GQA_mm(float *A, float *B, float *C, int batch, int mq, int mk
 
 } // namespace cuda
 } // namespace tpu_mlir
+// 35-op kernel: EINSUM_MAX_DIMS macro for g_einsumF32
+#define EINSUM_MAX_DIMS 6
+
+// 35-op kernel: g_sin
+__global__ void g_sin(const float *in, float *out, int n) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= n) return; out[idx] = sinf(in[idx]);
+}
+
+// 35-op kernel: g_sinh
+__global__ void g_sinh(const float *in, float *out, int n) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= n) return; out[idx] = sinhf(in[idx]);
+}
+
+// 35-op kernel: g_sign
+__global__ void g_sign(const float *in, float *out, int n) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= n) return;
+  float v = in[idx];
+  out[idx] = (v > 0.0f) ? 1.0f : ((v < 0.0f) ? -1.0f : 0.0f);
+}
+
+// 35-op kernel: g_sqrt
+__global__ void g_sqrt(const float *in, float *out, int n) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= n) return; out[idx] = sqrtf(in[idx]);
+}
+
+
+// 35-op kernel: g_max
+__global__ void g_max(const float *a, const float *b, float *out, int n) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= n) return;
+  out[idx] = fmaxf(a[idx], b[idx]);
+}
+
+// 35-op kernel: g_maxConst
+__global__ void g_maxConst(float *in, float *out, float const_val, int n) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= n) return;
+  out[idx] = fmaxf(in[idx], const_val);
+}
+
+// 35-op kernel: g_min
+__global__ void g_min(const float *a, const float *b, float *out, int n) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= n) return;
+  out[idx] = fminf(a[idx], b[idx]);
+}
+
+// 35-op kernel: g_minConst
+__global__ void g_minConst(float *in, float *out, float const_val, int n) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= n) return;
+  out[idx] = fminf(in[idx], const_val);
+}
+
+// 35-op kernel: g_mish
+__global__ void g_mish(float *in, float *out, int n) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= n) return;
+  float x = in[idx];
+  float sp = logf(1.0f + expf(x));
+  out[idx] = x * tanhf(sp);
+}
+
+// 35-op kernel: g_swish
+__global__ void g_swish(float *in, float *out, float beta, int n) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= n) return;
+  float x = in[idx];
+  out[idx] = x / (1.0f + expf(-x * beta));
+}
+
+// 35-op kernel: g_softplus
+__global__ void g_softplus(const float *in, float *out, int n) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= n) return;
+  float x = in[idx];
+  out[idx] = (x > 20.0f) ? x : logf(1.0f + expf(x));
+}
+
+// 35-op kernel: g_softsign
+__global__ void g_softsign(const float *in, float *out, int n) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= n) return;
+  float x = in[idx];
+  out[idx] = x / (1.0f + fabsf(x));
+}
+
+// 35-op kernel: g_trilu
+__global__ void g_trilu(const float *in, float *out, int batch, int H, int W,
+                        int row_stride, int diagonal, bool upper) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int total = batch * H * W;
+  if (idx >= total) return;
+  int r = (idx % (H * W)) / W;
+  int c = idx % W;
+  bool keep;
+  if (upper)
+    keep = (c >= r + diagonal);
+  else
+    keep = (c <= r + diagonal);
+  out[idx] = keep ? in[idx] : 0.0f;
+}
+
+
+// 35-op kernel: g_einsumF32
+__global__ void g_einsumF32(
+    const float *lhs, const float *rhs, float *out,
+    int lhs_shape[EINSUM_MAX_DIMS], int rhs_shape[EINSUM_MAX_DIMS],
+    int out_shape[EINSUM_MAX_DIMS],
+    int lhs_rank, int rhs_rank, int out_rank, int num_contract,
+    int lhs_out_dim[EINSUM_MAX_DIMS], int rhs_out_dim[EINSUM_MAX_DIMS],
+    int lhs_contract_dim[EINSUM_MAX_DIMS], int rhs_contract_dim[EINSUM_MAX_DIMS],
+    int contract_shapes[EINSUM_MAX_DIMS],
+    int total_out_elems, int total_contract_elems) {
+  int out_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (out_idx >= total_out_elems)
+    return;
+
+  int out_multi[EINSUM_MAX_DIMS] = {0};
+  int rem = out_idx;
+  for (int i = out_rank - 1; i >= 0; i--) {
+    out_multi[i] = rem % out_shape[i];
+    rem /= out_shape[i];
+  }
+
+  float sum = 0.0f;
+
+  for (int c_flat = 0; c_flat < total_contract_elems; c_flat++) {
+    int contract_multi[EINSUM_MAX_DIMS] = {0};
+    int crem = c_flat;
+    for (int i = num_contract - 1; i >= 0; i--) {
+      contract_multi[i] = crem % contract_shapes[i];
+      crem /= contract_shapes[i];
+    }
+
+    int lhs_idx = 0;
+    int stride = 1;
+    for (int i = lhs_rank - 1; i >= 0; i--) {
+      int val = 0;
+      for (int j = 0; j < out_rank; j++) {
+        if (lhs_out_dim[j] == i) {
+          val = out_multi[j];
+          break;
+        }
+      }
+      for (int j = 0; j < num_contract; j++) {
+        if (lhs_contract_dim[j] == i) {
+          val = contract_multi[j];
+          break;
+        }
+      }
+      lhs_idx += val * stride;
+      stride *= lhs_shape[i];
+    }
+
+    int rhs_idx = 0;
+    stride = 1;
+    for (int i = rhs_rank - 1; i >= 0; i--) {
+      int val = 0;
+      for (int j = 0; j < out_rank; j++) {
+        if (rhs_out_dim[j] == i) {
+          val = out_multi[j];
+          break;
+        }
+      }
+      for (int j = 0; j < num_contract; j++) {
+        if (rhs_contract_dim[j] == i) {
+          val = contract_multi[j];
+          break;
+        }
+      }
+      rhs_idx += val * stride;
+      stride *= rhs_shape[i];
+    }
+
+    sum += lhs[lhs_idx] * rhs[rhs_idx];
+  }
+
+  out[out_idx] = sum;
+}
+
+// 35-op kernel: g_meanStdScale
+__global__ void g_meanStdScale(const float *input, float *output,
+                               const float *mean, const float *std,
+                               const float *scale, const float *zero_point,
+                               int n, int c, int h, int w) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int total = n * c * h * w;
+  if (idx >= total) return;
+
+  int ci = (idx / (h * w)) % c;
+  float val = (input[idx] - mean[ci]) / std[ci] * scale[ci] + zero_point[ci];
+  output[idx] = val;
+}
+
+// 35-op kernel: g_scatterElements
+__global__ void g_scatterElements(float *output, const float *updates,
+                                  const int *flat_indices, int upd_num, bool add) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= upd_num) return;
+  int fi = flat_indices[idx];
+  if (add) atomicAdd(&output[fi], updates[idx]);
+  else     output[fi] = updates[idx];
+}
+
+// 35-op kernel: g_scatterND
+__global__ void g_scatterND(float *output, const float *updates,
+                            const int *flat_indices, int upd_num, bool add) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= upd_num) return;
+  int fi = flat_indices[idx];
+  if (add) atomicAdd(&output[fi], updates[idx]);
+  else     output[fi] = updates[idx];
+}
+
+// 35-op kernel: g_shuffleChannel
+__global__ void g_shuffleChannel(const float *in, float *out,
+                                 int n, int c, int frame_size, int group) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int total = n * c * frame_size;
+  if (idx >= total) return;
+
+  int spatial = idx % frame_size;
+  int c_out = (idx / frame_size) % c;
+  int batch = idx / (c * frame_size);
+  int gc = c / group;
+  int c_in = (c_out % group) * gc + (c_out / group);
+
+  out[batch * c * frame_size + c_out * frame_size + spatial] =
+      in[batch * c * frame_size + c_in * frame_size + spatial];
+}
+
+// 35-op kernel: g_swapChannel
+__global__ void g_swapChannel(const float *in, float *out,
+                              const int *order, int n, int c, int frame_size) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int total = n * c * frame_size;
+  if (idx >= total) return;
+
+  int fs = frame_size;
+  int spatial = idx % fs;
+  int c_out = (idx / fs) % c;
+  int batch = idx / (c * fs);
+  int c_in = order[c_out];
+
+  out[batch * c * fs + c_out * fs + spatial] =
+      in[batch * c * fs + c_in * fs + spatial];
+}
+
+// 35-op kernel: g_selectiveScan
+__global__ void g_selectiveScan(
+    const float *c_ptr, const float *deltaA, const float *deltaB_u,
+    const float *u_ptr, const float *D_ptr,
+    float *output, int Kcdim, int L, int Batch, int has_uD) {
+
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int Cdim = Kcdim / 2;
+  int total = Cdim * Batch;
+  if (idx >= total) return;
+
+  int k = idx / Batch;
+  int b = idx % Batch;
+
+  float x_up = 0.0f;
+  for (int i = 0; i < L; i++) {
+    int d_idx = k * L * Batch + i * Batch + b;
+    x_up = deltaA[d_idx] * x_up + deltaB_u[d_idx];
+    int c_idx = i * Kcdim * Batch + k * Batch + b;
+    output[i * Kcdim * Batch + k * Batch + b] = x_up * c_ptr[c_idx];
+  }
+
+  float x_down = 0.0f;
+  for (int i = 0; i < L; i++) {
+    int ri = L - 1 - i;
+    int d_idx = (Cdim + k) * L * Batch + ri * Batch + b;
+    x_down = deltaA[d_idx] * x_down + deltaB_u[d_idx];
+    int c_idx = ri * Kcdim * Batch + (Cdim + k) * Batch + b;
+    output[ri * Kcdim * Batch + (Cdim + k) * Batch + b] = x_down * c_ptr[c_idx];
+  }
+
+  if (has_uD) {
+    for (int l = 0; l < L; l++) {
+      int idx = l * Kcdim * Batch + k * Batch + b;
+      output[idx] += u_ptr[idx] * D_ptr[k];
+      int idx2 = l * Kcdim * Batch + (Cdim + k) * Batch + b;
+      output[idx2] += u_ptr[idx2] * D_ptr[Cdim + k];
+    }
+  }
+}
+
+// 35-op kernel: g_stridedSlice
+__global__ void g_stridedSlice(const float *in, float *out,
+                               const int *flat_indices, int out_num) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= out_num) return;
+  out[idx] = in[flat_indices[idx]];
+}
+
+// 35-op kernel: g_meanRstd
+__global__ void g_meanRstd(const float *input, float *mean_out, float *rstd_out,
+                           float *running_mean, float *running_var,
+                           const float *weight, const float *bias,
+                           int n, int c, int hw, float eps, float momentum) {
+  extern __shared__ float shared[];
+  float *s_mean = shared;
+  float *s_var  = shared + blockDim.x;
+
+  int tid = threadIdx.x;
+  int ci = blockIdx.x;
+  if (ci >= c) return;
+
+  int chw = c * hw;
+
+  float sum = 0.0f;
+  for (int i = tid; i < n * hw; i += blockDim.x) {
+    int batch = i / hw;
+    int spatial = i % hw;
+    sum += input[batch * chw + ci * hw + spatial];
+  }
+  s_mean[tid] = sum;
+  __syncthreads();
+  for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+    if (tid < s) s_mean[tid] += s_mean[tid + s];
+    __syncthreads();
+  }
+  float mean_val = s_mean[0] / (n * hw);
+
+  float var_sum = 0.0f;
+  for (int i = tid; i < n * hw; i += blockDim.x) {
+    int batch = i / hw;
+    int spatial = i % hw;
+    float diff = input[batch * chw + ci * hw + spatial] - mean_val;
+    var_sum += diff * diff;
+  }
+  s_var[tid] = var_sum;
+  __syncthreads();
+  for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+    if (tid < s) s_var[tid] += s_var[tid + s];
+    __syncthreads();
+  }
+  float var_val = s_var[0] / (n * hw);
+  float rstd_val = 1.0f / sqrtf(var_val + eps);
+
+  if (tid == 0) {
+    mean_out[ci] = mean_val;
+    rstd_out[ci] = rstd_val;
+    running_mean[ci] = (1.0f - momentum) * running_mean[ci] + momentum * mean_val;
+    running_var[ci]  = (1.0f - momentum) * running_var[ci]  + momentum * var_val;
+  }
+}

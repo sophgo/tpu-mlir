@@ -175,3 +175,32 @@ void py_cuda::cudaSigmoidOp(top::SigmoidOp op) {
   cudnnDestroyTensorDescriptor(output_desc);
   cudnnDestroyActivationDescriptor(activation_desc);
 }
+
+
+void py_cuda::cudaTanhOp(top::TanhOp op) {
+  int64_t n, c, h , w;
+  auto in = op.getInput();
+  module::getNCHW(in, n, c, h, w, false);
+  cudnnTensorDescriptor_t input_desc, output_desc;
+  cudnnActivationDescriptor_t activation_desc;
+
+  CHECK_CUDNN(cudnnCreateTensorDescriptor(&input_desc));
+  CHECK_CUDNN(cudnnCreateTensorDescriptor(&output_desc));
+
+  CHECK_CUDNN(cudnnSetTensor4dDescriptor(input_desc, CUDNN_TENSOR_NCHW,
+                                          CUDNN_DATA_FLOAT, n, c, h, w));
+  CHECK_CUDNN(cudnnSetTensor4dDescriptor(output_desc, CUDNN_TENSOR_NCHW,
+                                          CUDNN_DATA_FLOAT, n, c, h, w));
+  CHECK_CUDNN(cudnnCreateActivationDescriptor(&activation_desc));
+  CHECK_CUDNN(cudnnSetActivationDescriptor(activation_desc,
+                                            CUDNN_ACTIVATION_TANH,
+                                            CUDNN_NOT_PROPAGATE_NAN, 0.0));
+  float alpha = 1.0f, beta = 0.0f;
+  CHECK_CUDNN(cudnnActivationForward(cudnn_, activation_desc, &alpha,
+                                      input_desc, getCudaData(op.getInput()),
+                                      &beta, output_desc,
+                                      getCudaData(op.getOutput())));
+  cudnnDestroyTensorDescriptor(input_desc);
+  cudnnDestroyTensorDescriptor(output_desc);
+  cudnnDestroyActivationDescriptor(activation_desc);
+}

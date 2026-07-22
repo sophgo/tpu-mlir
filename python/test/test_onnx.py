@@ -139,6 +139,7 @@ class ONNX_IR_TESTER(object):
             "Div":          (self.test_Div,           Y, Y, Y, Y, Y, Y, Y),
             "DivBcast":     (self.test_DivBcast,      Y, Y, Y, N, Y, Y, Y),
             "DivBcast2":    (self.test_DivBcast2,     Y, Y, Y, N, Y, Y, Y),
+            "DivConst":     (self.test_DivConst,      N, Y, Y, Y, Y, Y, N),
             "Einsum":       (self.test_Einsum,        Y, Y, Y, Y, Y, Y, Y),
             "Einsum2":      (self.test_Einsum2,       Y, Y, Y, Y, Y, Y, Y),
             "Einsum3":      (self.test_Einsum3,       Y, Y, Y, Y, Y, Y, Y),
@@ -192,6 +193,8 @@ class ONNX_IR_TESTER(object):
             "MatMul2PC":    (self.test_MatMul2PC,     N, Y, Y, N, N, N, Y),
             "Max":          (self.test_Max,           Y, Y, Y, Y, Y, Y, Y),
             "MaxBcast":     (self.test_MaxBcast,      Y, Y, Y, N, Y, Y, Y),
+            "MeanRstd":     (self.test_MeanRstd,  N, Y, Y, N, Y, N, N),
+            "MeanStdScale": (self.test_MeanStdScale,  N, Y, Y, N, Y, N, N),
             "Not":          (self.test_Not,           N, Y, Y, N, Y, Y, Y),
             # "MLP1":         (self.test_MLP1,          N, Y, Y, N, N, N, N),
             # "MLP2":         (self.test_MLP2,          N, Y, Y, N, N, N, N),
@@ -203,8 +206,10 @@ class ONNX_IR_TESTER(object):
             "MulBcast2":    (self.test_MulBcast2,     Y, Y, Y, N, Y, Y, Y),
             "Min":          (self.test_Min,           Y, Y, Y, Y, Y, Y, Y),
             "MinBcast":     (self.test_MinBcast,      Y, Y, Y, N, Y, Y, Y),
+            "Mish":         (self.test_Mish,  N, Y, Y, N, Y, N, N),
             "MulConst":     (self.test_MulConst,      Y, Y, Y, Y, Y, Y, Y),
             "Neg":          (self.test_Neg,           Y, Y, Y, Y, Y, Y, Y),
+            "Pack":         (self.test_Pack,          Y, Y, Y, N, Y, Y, N),
             "Pad":          (self.test_Pad,           Y, Y, Y, Y, Y, Y, Y), # zero pad
             "Pad1":         (self.test_Pad1,          Y, Y, Y, Y, Y, Y, Y), # pad val
             "PadEdge":      (self.test_PadEdge,       N, Y, Y, Y, Y, Y, Y),
@@ -234,15 +239,21 @@ class ONNX_IR_TESTER(object):
             "ScatterElements": (self.test_ScatterElements, N, Y, N, N, Y, Y, N),
             "ScatterND":    (self.test_ScatterND,     N, Y, Y, N, Y, Y, N),
             "Shape":        (self.test_Shape,         Y, Y, Y, N, Y, Y, N),
+            "ShuffleChannel": (self.test_ShuffleChannel,  N, Y, Y, N, Y, N, N),
             "ShapeCast":    (self.test_ShapeCast,     N, N, N, N, N, N, N),
             "ShapeSlice":   (self.test_ShapeSlice,    Y, N, N, N, N, N, N),
             "SiLU":         (self.test_SiLU,          Y, Y, Y, Y, Y, Y, Y),
             "Softmax":      (self.test_Softmax,       Y, Y, Y, Y, Y, Y, Y),
             "Softplus":     (self.test_Softplus,      Y, Y, Y, Y, Y, Y, Y),
+            "Softsign":     (self.test_Softsign,     N, Y, Y, N, Y, N, N),
             "Space2Depth":  (self.test_Space2Depth,   Y, Y, Y, N, Y, Y, Y),
             "Squeeze":      (self.test_Squeeze,       Y, Y, Y, Y, Y, Y, Y),
+            "StridedSlice": (self.test_StridedSlice, N, Y, Y, N, Y, N, N),
             "Sigmoid":      (self.test_Sigmoid,       Y, Y, Y, Y, Y, Y, Y),
             "Sign":         (self.test_Sign,          N, Y, Y, N, Y, Y, Y),
+            "Sin":          (self.test_Sin,          N, Y, Y, N, Y, N, N),
+            "Sinh":         (self.test_Sinh,         N, Y, Y, N, Y, N, N),
+            "SliceAxis":    (self.test_SliceAxis,    N, Y, Y, N, Y, N, N),
             "Slice":        (self.test_Slice,         Y, Y, Y, Y, Y, Y, Y),
             "Slice2":       (self.test_Slice2,        Y, Y, Y, Y, Y, Y, Y),
             "Slice3":       (self.test_Slice3,        Y, Y, Y, Y, Y, Y, Y),
@@ -252,6 +263,7 @@ class ONNX_IR_TESTER(object):
             "Scale":        (self.test_Scale,         Y, Y, Y, Y, Y, Y, Y),
             "Sqrt":         (self.test_Sqrt,          Y, Y, Y, Y, Y, Y, Y),
             "Sub":          (self.test_Sub,           Y, Y, Y, Y, Y, Y, Y),
+            "SwapChannel":  (self.test_SwapChannel,   N, Y, Y, N, Y, N, N),
             "Sub2":         (self.test_Sub2,          Y, Y, Y, Y, Y, Y, Y),
             "SubBcast":     (self.test_SubBcast,      Y, Y, Y, N, Y, Y, Y),
             "SubBcast2":    (self.test_SubBcast2,     Y, Y, Y, N, Y, Y, Y),
@@ -272,6 +284,7 @@ class ONNX_IR_TESTER(object):
             "TopKTrans":    (self.test_TopKTrans,     N, Y, N, N, N, N, N),
             "Upsample":     (self.test_Upsample,      Y, Y, Y, N, Y, Y, Y),
             "Unsqueeze":    (self.test_Unsqueeze,     Y, Y, Y, N, Y, Y, Y),
+            "Unpack":       (self.test_Unpack,        Y, Y, Y, N, Y, Y, N),
             # Only 1D shape is supported currently
             # "ShapeUnsqueeze":  (self.test_ShapeUnsqueeze,  N, Y, Y, N),
             # "ShapeSqueeze":    (self.test_ShapeSqueeze,    N, Y, Y, N),
@@ -364,6 +377,8 @@ class ONNX_IR_TESTER(object):
             "ReduceTranspose":  (self.test_ReduceTranspose, Y, Y, Y, N, Y, Y, Y),
             "ReduceFuse":       (self.test_ReduceFuse,      Y, Y, Y, Y, Y, Y, Y),
             "SwapDimInner":     (self.test_SwapDimInner,    Y, Y, Y, N, Y, Y, Y),
+            "Swish":            (self.test_Swish,           N, Y, Y, N, Y, N, N),
+            "Tan":              (self.test_Tan,             N, Y, Y, N, Y, N, N),
             "SliceToReverse":   (self.test_SliceToReverse,  N, Y, Y, N, Y, Y, Y),
             "StaticDynMixed":   (self.test_StaticDynMixed,  N, Y, Y, N, Y, N, N), # bm1690e has prob
             "TransposeArg":     (self.test_TransposeArg,    Y, Y, Y, Y, Y, Y, Y),
@@ -1136,6 +1151,21 @@ class ONNX_IR_TESTER(object):
 
     def test_LgMultiBranchStore(self, case_name):
         self.test_LgMultiBranchOperation(case_name, "store")
+
+    def test_Unpack(self, case_name):
+        shape = [1, 4, 32, 32]
+        out_shape = [1, 1, 32, 32]
+
+        inp_info = helper.make_tensor_value_info('input', TensorProto.FLOAT, shape)
+        o = [helper.make_tensor_value_info(f'o{i}', TensorProto.FLOAT, out_shape) for i in range(4)]
+
+        split_node = helper.make_node("Split", inputs=["input", "split_init"],
+                                      outputs=[f'o{i}' for i in range(4)], axis=1)
+        graph_def = helper.make_graph([split_node], case_name, [inp_info], o)
+        graph_def.initializer.extend([
+            helper.make_tensor('split_init', TensorProto.INT64, [4], [1, 1, 1, 1]),
+        ])
+        self.onnx_and_test(graph_def)
 
     def test_Unsqueeze(self, case_name):
 
@@ -2372,6 +2402,17 @@ class ONNX_IR_TESTER(object):
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
+    def test_Tan(self, case_name):
+        shape = [1, 3, 32, 32]
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            {
+                output = Tan(input)
+            }
+            """ % (case_name, shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
     def test_Tanh(self, case_name):
         input_shape = [1, 3, 32, 32]
         graph_txt = """
@@ -2491,6 +2532,30 @@ class ONNX_IR_TESTER(object):
             }
             """ % (case_name, in_shape, score_shape, y_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+    def test_Pack(self, case_name):
+        shape = [1, 3, 32, 32]
+        mid_shape = [1, 1, 3, 32, 32]
+        out_shape = [1, 3, 3, 32, 32]
+
+        inp_infos = [helper.make_tensor_value_info(f'i{i}', TensorProto.FLOAT, shape)
+                     for i in range(3)]
+        out_info = helper.make_tensor_value_info('o', TensorProto.FLOAT, out_shape)
+
+        nodes = []
+        u_names = []
+        for i in range(3):
+            u_name = f'u{i}'
+            u_names.append(u_name)
+            nodes.append(helper.make_node("Reshape", inputs=[f'i{i}', f'shape{i}'], outputs=[u_name]))
+        nodes.append(helper.make_node("Concat", inputs=u_names, outputs=["o"], axis=1))
+
+        graph_def = helper.make_graph(nodes, case_name, inp_infos, [out_info])
+        for i in range(3):
+            graph_def.initializer.extend([
+                helper.make_tensor(f'shape{i}', TensorProto.INT64, [5], mid_shape),
+            ])
         self.onnx_and_test(graph_def)
 
     def test_Pad(self, case_name):
@@ -2631,6 +2696,36 @@ class ONNX_IR_TESTER(object):
                     """ % (case_name, i, "".join(map(str, dims)), bcast_s, s, bcast_s, s)
                 graph_def = onnx.parser.parse_graph(graph_txt)
                 self.onnx_and_test(graph_def, input_data={"a": a_data, "b": b_data, "c": c_data})
+
+    def test_DivConst(self, case_name):
+        input_shape = [1, 3, 27, 27]
+        output_shape = [1, 3, 27, 27]
+
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            <float const_div = {2.0}>
+            {
+                output = Div(input, const_div)
+            }
+            """ % (case_name, input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+        shapes = ([5, 12, 1, 21], )
+        bcast_shapes = ([1, 12, 9, 21], )
+        out_shapes = ([5, 12, 9, 21], )
+        for i, s in enumerate(shapes):
+            a_data = np.random.randn(*bcast_shapes[i]).astype(np.float32)
+            b_data = np.clip(np.random.randn(*s).astype(np.float32), 0.01, 10)
+            c_data = np.clip(np.random.randn(*bcast_shapes[i]).astype(np.float32), 0.01, 10)
+            graph_txt = """
+                %s_%s (float%s a, float%s b, float%s c) => (float%s output)
+                {
+                    x = Div(a, b)
+                    output = Div(x, c)
+                }
+                """ % (case_name, i, bcast_shapes[i], s, bcast_shapes[i], out_shapes[i])
+            graph_def = onnx.parser.parse_graph(graph_txt)
+            self.onnx_and_test(graph_def, input_data={"a": a_data, "b": b_data, "c": c_data})
 
     def test_DivBcast2(self, case_name):
         shapes = ([5, 12, 1, 21], )
@@ -2855,6 +2950,70 @@ class ONNX_IR_TESTER(object):
                 }
                 """ % (case_name, input_shape, input_shape, input_shape, case_name)
             graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+    def test_SliceAxis(self, case_name):
+        shape = [1, 3, 32, 32]
+        out_shape = [1, 3, 16, 32]
+
+        inp_info = helper.make_tensor_value_info('input', TensorProto.FLOAT, shape)
+        out_info = helper.make_tensor_value_info('out', TensorProto.FLOAT, out_shape)
+
+        node_def = helper.make_node(
+            "Slice",
+            inputs=["input", "starts", "ends", "axes", "steps"],
+            outputs=["out"])
+
+        graph_def = helper.make_graph(
+            [node_def], case_name, [inp_info], [out_info])
+        graph_def.initializer.extend([
+            helper.make_tensor('starts', TensorProto.INT64, [1], [0]),
+            helper.make_tensor('ends', TensorProto.INT64, [1], [16]),
+            helper.make_tensor('axes', TensorProto.INT64, [1], [2]),
+            helper.make_tensor('steps', TensorProto.INT64, [1], [2]),
+        ])
+        self.onnx_and_test(graph_def)
+
+    def test_Sinh(self, case_name):
+        shape = [1, 3, 32, 32]
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            {
+                output = Sinh(input)
+            }
+            """ % (case_name, shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+    def test_Sin(self, case_name):
+        shape = [1, 3, 32, 32]
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            {
+                output = Sin(input)
+            }
+            """ % (case_name, shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+    def test_ShuffleChannel(self, case_name):
+        N, C, H, W = 1, 8, 16, 16
+        G = 4
+
+        inp_info = helper.make_tensor_value_info('input', TensorProto.FLOAT, [N, C, H, W])
+        mid_info = helper.make_tensor_value_info('mid', TensorProto.FLOAT, [N, G, C//G, H, W])
+        mid2_info = helper.make_tensor_value_info('mid2', TensorProto.FLOAT, [N, C//G, G, H, W])
+        out_info = helper.make_tensor_value_info('output', TensorProto.FLOAT, [N, C, H, W])
+
+        r0 = helper.make_node("Reshape", inputs=["input", "shape1"], outputs=["mid"])
+        t0 = helper.make_node("Transpose", inputs=["mid"], outputs=["mid2"], perm=[0,2,1,3,4])
+        r1 = helper.make_node("Reshape", inputs=["mid2", "shape2"], outputs=["output"])
+
+        graph_def = helper.make_graph([r0, t0, r1], case_name, [inp_info], [out_info])
+        graph_def.initializer.extend([
+            helper.make_tensor('shape1', TensorProto.INT64, [5], [N, G, C//G, H, W]),
+            helper.make_tensor('shape2', TensorProto.INT64, [4], [N, C, H, W]),
+        ])
         self.onnx_and_test(graph_def)
 
     def test_Sign(self, case_name):
@@ -3282,6 +3441,17 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(1, 32, 64, 88).float()
         self.torch_and_test(x, Model(), case_name)
+
+    def test_Softsign(self, case_name):
+        shape = [1, 3, 32, 32]
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            {
+                output = Softsign(input)
+            }
+            """ % (case_name, shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
 
     def test_Split(self, case_name):
         input_shape = [6, 116, 64, 64]
@@ -4275,6 +4445,18 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(1, 529, 3, 49, 49).float()
         self.torch_and_test(x, Model(), case_name)
+
+    def test_Swish(self, case_name):
+        shape = [1, 3, 32, 32]
+        graph_txt = """
+            %s (float%s x) => (float%s y)
+            {
+                sig = Sigmoid(x)
+                y = Mul(x, sig)
+            }
+            """ % (case_name, shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
 
     def test_SwapDimInner(self, case_name):
 
@@ -5374,6 +5556,23 @@ class ONNX_IR_TESTER(object):
         }
         self.onnx_and_test_bmodel_only(graph_def, static_shape=False, input_data=input_data)
 
+    def test_SwapChannel(self, case_name):
+        shape = [1, 3, 32, 32]
+
+        inp_info = helper.make_tensor_value_info('x', TensorProto.FLOAT, shape)
+        out_info = helper.make_tensor_value_info('y', TensorProto.FLOAT, shape)
+
+        node_def = helper.make_node(
+            "Gather", inputs=["x", "indices"], outputs=["y"],
+            axis=1)
+
+        graph_def = helper.make_graph(
+            [node_def], case_name, [inp_info], [out_info])
+        graph_def.initializer.extend([
+            helper.make_tensor('indices', TensorProto.INT64, [3], [2, 1, 0]),
+        ])
+        self.onnx_and_test(graph_def)
+
     def test_Sub(self, case_name):
         input_shape = [4, 3, 27, 27]
         output_shape = [4, 3, 27, 27]
@@ -5463,6 +5662,26 @@ class ONNX_IR_TESTER(object):
             graph_def = helper.make_graph([sub_node], sub_case_name, [a, b], [y])
 
             self.onnx_and_test(graph_def, name=sub_case_name)
+
+    def test_StridedSlice(self, case_name):
+        shape = [1, 3, 32, 32]
+        out_shape = [1, 3, 8, 16]
+
+        inp_info = helper.make_tensor_value_info('x', TensorProto.FLOAT, shape)
+        out_info = helper.make_tensor_value_info('y', TensorProto.FLOAT, out_shape)
+
+        node_def = helper.make_node(
+            "Slice", inputs=["x", "starts", "ends", "axes", "steps"], outputs=["y"])
+
+        graph_def = helper.make_graph(
+            [node_def], case_name, [inp_info], [out_info])
+        graph_def.initializer.extend([
+            helper.make_tensor('starts', TensorProto.INT64, [4], [0, 0, 0, 0]),
+            helper.make_tensor('ends', TensorProto.INT64, [4], [1, 3, 16, 32]),
+            helper.make_tensor('axes', TensorProto.INT64, [4], [0, 1, 2, 3]),
+            helper.make_tensor('steps', TensorProto.INT64, [4], [1, 1, 2, 2]),
+        ])
+        self.onnx_and_test(graph_def)
 
     def test_SubConst(self, case_name):
         input_shape = [4, 3, 27, 27]
@@ -5597,6 +5816,100 @@ class ONNX_IR_TESTER(object):
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
+    def test_MeanStdScale(self, case_name):
+        if not self.test_cuda:
+            return
+
+        N, C, H, W = 1, 3, 32, 32
+
+        inp_info = helper.make_tensor_value_info('input', TensorProto.FLOAT,
+                                                 [N, C, H, W])
+        out_info = helper.make_tensor_value_info('out', TensorProto.FLOAT,
+                                                 [N, C, H, W])
+
+        node_def = helper.make_node(
+            "MeanStdScale",
+            inputs=["input"],
+            outputs=["out"],
+            domain="tpu_mlir",
+            quant_mode="NORMALIZED",
+            customization_format="NCHW",
+            channel_order="RGB",
+            sign=False,
+            scale=[1.0] * C,
+            std=[1.0] * C,
+            mean=[0.0] * C,
+            zero_points=[0.0] * C,
+            rounding_mode="ROUND_HALF_AWAY_FROM_ZERO")
+
+        graph_def = helper.make_graph(
+            [node_def], case_name,
+            [inp_info], [out_info])
+
+        model_def = helper.make_model(graph_def, producer_name=case_name)
+        model_def.opset_import[0].version = 14
+        custom_opset = OperatorSetIdProto()
+        custom_opset.domain = 'tpu_mlir'
+        custom_opset.version = 1
+        model_def.opset_import.extend([custom_opset])
+
+        input_data = {'input': np.random.randn(N, C, H, W).astype(np.float32)}
+        input_npz = "{}_in_fp32.npz".format(case_name)
+        np.savez(input_npz, **input_data)
+
+        tool = OnnxTransformer(case_name, model_def, test_input=input_npz, static_shape=True)
+        fp32_mlir = "{}.mlir".format(case_name)
+        tool.model_transform(fp32_mlir)
+
+        # Only F16 lowering is implemented
+        tpu_mlir, bmodel = self.bmodel_generate(case_name, "f16")
+        print("[Success] test {} F16".format(case_name))
+
+        tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
+        file_mark(tpu_npz)
+        show_fake_cmd(input_npz, tpu_mlir, tpu_npz, True, True)
+        cuda_outs = mlir_inference(input_data, tpu_mlir, dump_all=True, use_cuda=True)
+        np.savez(tpu_npz, **cuda_outs)
+
+        model_npz = bmodel.replace("." + bmodel.split(".")[-1], "_model_out.npz")
+        file_mark(model_npz)
+        show_fake_cmd(input_npz, bmodel, model_npz)
+        model_outs = model_inference(input_data, bmodel)
+        np.savez(model_npz, **model_outs)
+        npz_compare([model_npz, tpu_npz, "--tolerance", "0.99,0.90", "-v"])
+
+    def test_MeanRstd(self, case_name):
+        N, C, H, W = 1, 4, 8, 8
+        wshape = [1, C, 1, 1]
+        eps = 1e-5
+
+        inp_info = helper.make_tensor_value_info('input', TensorProto.FLOAT, [N, C, H, W])
+        out_infos = [
+            helper.make_tensor_value_info('mean', TensorProto.FLOAT, wshape),
+            helper.make_tensor_value_info('rstd', TensorProto.FLOAT, wshape),
+        ]
+
+        eps_t = helper.make_tensor('eps_t', TensorProto.FLOAT, [1], [eps])
+        neg_t = helper.make_tensor('neg_t', TensorProto.FLOAT, [1], [-1.0])
+
+        nodes = []
+        # mean = ReduceMean(input, axes=[2,3])
+        nodes.append(helper.make_node("ReduceMean", ["input"], ["mean"], axes=[2, 3], keepdims=1))
+        # diff = Sub(input, mean)
+        nodes.append(helper.make_node("Sub", ["input", "mean"], ["diff"]))
+        # sqr = Mul(diff, diff)
+        nodes.append(helper.make_node("Mul", ["diff", "diff"], ["sqr"]))
+        # var = ReduceMean(sqr, axes=[2,3])
+        nodes.append(helper.make_node("ReduceMean", ["sqr"], ["var"], axes=[2, 3], keepdims=1))
+        # var_eps = Add(var, eps_t)
+        nodes.append(helper.make_node("Add", ["var", "eps_t"], ["var_eps"]))
+        # rstd = Pow(var_eps, -1.0)  -- avoids Reciprocal
+        nodes.append(helper.make_node("Pow", ["var_eps", "neg_t"], ["rstd"]))
+
+        graph_def = helper.make_graph(nodes, case_name, [inp_info], out_infos,
+                                       initializer=[eps_t, neg_t])
+        self.onnx_and_test(graph_def)
+
     def test_MaxBcast(self, case_name):
         shapes = ([6, 8, 39, 41], )
         bcast_dims = ([[0], [2], [0, 2]], )
@@ -5624,6 +5937,19 @@ class ONNX_IR_TESTER(object):
                 output = %s(input1, input2)
             }
             """ % (case_name, input_shape['input1'], input_shape["input2"], output_shape, case_name)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+    def test_Mish(self, case_name):
+        shape = [1, 3, 32, 32]
+        graph_txt = """
+            %s (float%s x) => (float%s y)
+            {
+                sp = Softplus(x)
+                th = Tanh(sp)
+                y = Mul(x, th)
+            }
+            """ % (case_name, shape, shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 

@@ -2172,5 +2172,207 @@ void GQA(void *Q, void *K, void *V, void *mask, void *output, int batch, int M_q
   cudaFree(qk_buffer);
 }
 
+// 35-op host function: bmSin
+void bmSin(void *input, void *output, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_sin<<<num_blocks, block_size>>>((float *)input, (float *)output, num);
+}
+// 35-op host function: bmSinh
+void bmSinh(void *input, void *output, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_sinh<<<num_blocks, block_size>>>((float *)input, (float *)output, num);
+}
+// 35-op host function: bmSign
+void bmSign(void *input, void *output, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_sign<<<num_blocks, block_size>>>((float *)input, (float *)output, num);
+}
+// 35-op host function: bmSqrt
+void bmSqrt(void *input, void *output, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_sqrt<<<num_blocks, block_size>>>((float *)input, (float *)output, num);
+}
+// 35-op host function: bmTan
+void bmTan(void *input, void *output, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_TAN<<<num_blocks, block_size>>>((float *)input, (float *)output, num);
+}
+// 35-op host function: clip4DF32
+void clip4DF32(void *input, void *output, float min_val, float max_val,
+               int n, int c, int h, int w) {
+  int size = n * c * h * w;
+  int num_blocks = CUDA_NUM_BLOCKS(size);
+  int block_size = CUDA_BLOCK_SIZE;
+}
+// 35-op host function: bmMaxConst
+void bmMaxConst(void *input, void *output, float const_val, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_maxConst<<<num_blocks, block_size>>>((float *)input, (float *)output, const_val, num);
+}
+// 35-op host function: bmMin
+void bmMin(void *a, void *b, void *output, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_min<<<num_blocks, block_size>>>((const float *)a, (const float *)b, (float *)output, num);
+}
+// 35-op host function: bmMinConst
+void bmMinConst(void *input, void *output, float const_val, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_minConst<<<num_blocks, block_size>>>((float *)input, (float *)output, const_val, num);
+}
+// 35-op host function: bmMish
+void bmMish(void *input, void *output, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_mish<<<num_blocks, block_size>>>((float *)input, (float *)output, num);
+}
+// 35-op host function: bmSwish
+void bmSwish(void *input, void *output, float beta, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_swish<<<num_blocks, block_size>>>((float *)input, (float *)output, beta, num);
+}
+// 35-op host function: bmSoftplus
+void bmSoftplus(void *input, void *output, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_softplus<<<num_blocks, block_size>>>((float *)input, (float *)output, num);
+}
+// 35-op host function: bmSoftsign
+void bmSoftsign(void *input, void *output, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_softsign<<<num_blocks, block_size>>>((float *)input, (float *)output, num);
+}
+// 35-op host function: trilu
+void trilu(void *input, void *output, int batch, int H, int W,
+           int row_stride, int diagonal, bool upper) {
+  int num = batch * H * W;
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_trilu<<<num_blocks, block_size>>>((const float *)input, (float *)output,
+                                      batch, H, W, row_stride, diagonal, upper);
+}
+// 35-op host function: einsumF32
+void einsumF32(void *lhs, void *rhs, void *out,
+               int *lhs_shape, int *rhs_shape, int *out_shape,
+               int lhs_rank, int rhs_rank, int out_rank, int num_contract,
+               int *lhs_out_dim, int *rhs_out_dim,
+               int *lhs_contract_dim, int *rhs_contract_dim,
+               int *contract_shapes, int total_out_elems, int total_contract_elems) {
+  static const int MAX_D = 6;
+  static const int ARR_BYTES = MAX_D * sizeof(int);
+  const int N_ARR = 9;
+  int *d_buf;
+  cudaMalloc(&d_buf, N_ARR * ARR_BYTES);
+  int *d_arr[9];
+  for (int i = 0; i < N_ARR; i++)
+    d_arr[i] = d_buf + i * MAX_D;
+  cudaMemcpy(d_arr[0], lhs_shape,        ARR_BYTES, cudaMemcpyHostToDevice);
+  cudaMemcpy(d_arr[1], rhs_shape,        ARR_BYTES, cudaMemcpyHostToDevice);
+  cudaMemcpy(d_arr[2], out_shape,        ARR_BYTES, cudaMemcpyHostToDevice);
+  cudaMemcpy(d_arr[3], lhs_out_dim,      ARR_BYTES, cudaMemcpyHostToDevice);
+  cudaMemcpy(d_arr[4], rhs_out_dim,      ARR_BYTES, cudaMemcpyHostToDevice);
+  cudaMemcpy(d_arr[5], lhs_contract_dim, ARR_BYTES, cudaMemcpyHostToDevice);
+  cudaMemcpy(d_arr[6], rhs_contract_dim, ARR_BYTES, cudaMemcpyHostToDevice);
+  cudaMemcpy(d_arr[7], contract_shapes,  ARR_BYTES, cudaMemcpyHostToDevice);
+
+  int num_blocks = CUDA_NUM_BLOCKS(total_out_elems);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_einsumF32<<<num_blocks, block_size>>>(
+      (const float *)lhs, (const float *)rhs, (float *)out,
+      d_arr[0], d_arr[1], d_arr[2],
+      lhs_rank, rhs_rank, out_rank, num_contract,
+      d_arr[3], d_arr[4],
+      d_arr[5], d_arr[6],
+      d_arr[7], total_out_elems, total_contract_elems);
+  cudaDeviceSynchronize();
+  cudaFree(d_buf);
+}
+// 35-op host function: meanStdScale
+void meanStdScale(void *input, void *output, void *mean, void *std,
+                  void *scale, void *zero_point, int n, int c, int h, int w) {
+  int total = n * c * h * w;
+  int num_blocks = CUDA_NUM_BLOCKS(total);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_meanStdScale<<<num_blocks, block_size>>>(
+      (const float *)input, (float *)output, (const float *)mean,
+      (const float *)std, (const float *)scale, (const float *)zero_point,
+      n, c, h, w);
+}
+// 35-op host function: scatterElements
+void scatterElements(void *output, void *updates, void *flat_indices,
+                     int upd_num, bool add) {
+  int num_blocks = CUDA_NUM_BLOCKS(upd_num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_scatterElements<<<num_blocks, block_size>>>((float *)output, (const float *)updates,
+      (const int *)flat_indices, upd_num, add);
+}
+// 35-op host function: scatterND
+void scatterND(void *output, void *updates, void *flat_indices,
+               int upd_num, bool add) {
+  int num_blocks = CUDA_NUM_BLOCKS(upd_num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_scatterND<<<num_blocks, block_size>>>((float *)output, (const float *)updates,
+      (const int *)flat_indices, upd_num, add);
+}
+// 35-op host function: bmShuffleChannel
+void bmShuffleChannel(void *input, void *output, int n, int c, int frame_size, int group) {
+  int total = n * c * frame_size;
+  int num_blocks = CUDA_NUM_BLOCKS(total);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_shuffleChannel<<<num_blocks, block_size>>>((const float *)input, (float *)output,
+      n, c, frame_size, group);
+}
+// 35-op host function: swapChannel
+void swapChannel(void *input, void *output, void *order, int n, int c, int frame_size) {
+  int total = n * c * frame_size;
+  int num_blocks = CUDA_NUM_BLOCKS(total);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_swapChannel<<<num_blocks, block_size>>>((const float *)input, (float *)output, (const int *)order, n, c, frame_size);
+}
+// 35-op host function: meanRstd
+void meanRstd(void *input, void *mean_out, void *rstd_out,
+              void *running_mean, void *running_var, void *weight, void *bias,
+              int n, int c, int hw, float eps, float momentum) {
+  int block_size = CUDA_BLOCK_SIZE;
+  int shared_bytes = 2 * block_size * sizeof(float);
+  g_meanRstd<<<c, block_size, shared_bytes>>>(
+      (const float *)input, (float *)mean_out, (float *)rstd_out,
+      (float *)running_mean, (float *)running_var,
+      (const float *)weight, (const float *)bias,
+      n, c, hw, eps, momentum);
+}
+// 35-op host function: selectiveScan
+void selectiveScan(void *c_ptr, void *deltaA, void *deltaB_u, void *u_ptr,
+                   void *D_ptr, void *output, int Kcdim, int L, int Batch, int has_uD) {
+  int Cdim = Kcdim / 2;
+  int num_blocks = CUDA_NUM_BLOCKS(Cdim * Batch);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_selectiveScan<<<num_blocks, block_size>>>((const float *)c_ptr, (const float *)deltaA,
+      (const float *)deltaB_u, (const float *)u_ptr, (const float *)D_ptr,
+      (float *)output, Kcdim, L, Batch, has_uD);
+}
+// 35-op host function: stridedSlice
+void stridedSlice(void *input, void *output, void *flat_indices, int out_num) {
+  int num_blocks = CUDA_NUM_BLOCKS(out_num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_stridedSlice<<<num_blocks, block_size>>>((const float *)input, (float *)output,
+      (const int *)flat_indices, out_num);
+}
+
+// 35-op host function: bmMax
+void bmMax(void *a, void *b, void *output, int num) {
+  int num_blocks = CUDA_NUM_BLOCKS(num);
+  int block_size = CUDA_BLOCK_SIZE;
+  g_max<<<num_blocks, block_size>>>((const float *)a, (const float *)b, (float *)output, num);
+}
 } // namespace cuda
 } // namespace tpu_mlir
