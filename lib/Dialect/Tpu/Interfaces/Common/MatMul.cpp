@@ -473,6 +473,7 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
         new float[a.batch * a.batch_low * q_group_size * a.N];
     float *cur_group_left_max = new float[a.batch * a.batch_low * a.M];
     float *cur_group_right_max = new float[a.batch * a.batch_low * a.N];
+    memset(p.outputs[0], 0, a.batch * a.batch_low * a.M * a.N * sizeof(float));
     for (int gi = 0; gi < group_num; gi++) {
       for (int b = 0; b < a.batch * a.batch_low; b++) {
         for (int row = 0; row < a.M; row++) {

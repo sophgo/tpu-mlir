@@ -97,6 +97,7 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
     float *cur_group_weight = new float[q_group_size * N];
     float *cur_group_act_max = new float[M];
     int group_num = (K + q_group_size - 1) / q_group_size;
+    memset(p.outputs[0], 0, M * N * sizeof(float));
     for (int gi = 0; gi < group_num; gi++) {
       for (int row = 0; row < M; row++) {
         cur_group_act_max[row] = 1e-8;
