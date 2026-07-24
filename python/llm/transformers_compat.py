@@ -244,6 +244,10 @@ _VISION_CONFIG_DEFAULTS = {
         "intermediate_size": 13696,
         "initializer_range": 0.02,
     },
+    "minicpmv4_6": {
+        "insert_layer_id": 6,
+        "window_kernel_size": (2, 2),
+    },
 }
 
 
@@ -265,6 +269,31 @@ def _apply_vision_defaults(data):
             vcfg[key] = value
 
 
+# --------------------------------------------------------------------------- #
+# Top-level config defaults
+# --------------------------------------------------------------------------- #
+# Some VL models have class-level defaults at the top level of the config
+# (not inside vision_config) that are not serialized in config.json.
+# AutoConfig fills these from the class __init__ defaults; we replicate them.
+_CONFIG_DEFAULTS = {
+    "minicpmv4_6": {
+        "merge_kernel_size": (2, 2),
+        "merger_times": 1,
+    },
+}
+
+
+def _apply_config_defaults(data):
+    """Fill in transformers top-level config class defaults for ``data``."""
+    model_type = data.get("model_type")
+    defaults = _CONFIG_DEFAULTS.get(model_type)
+    if not defaults:
+        return
+    for key, value in defaults.items():
+        if key not in data:
+            data[key] = value
+
+
 def load_auto_config(model_path, trust_remote_code=True, **kwargs):
     """Read ``config.json`` directly and return a :class:`Config`.
 
@@ -283,6 +312,7 @@ def load_auto_config(model_path, trust_remote_code=True, **kwargs):
     with open(config_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     _apply_vision_defaults(data)
+    _apply_config_defaults(data)
     return Config(data)
 
 
