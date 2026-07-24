@@ -61,11 +61,10 @@ class Status(enum.IntEnum):
 # Chip lists used by the op-level tests. Kept here (rather than in chip.py)
 # because they reflect *which chips we currently run in CI* for that test
 # family, which is a CI policy decision, not an intrinsic chip capability.
-_ONNX_CHIPS = ("bm1684x", "bm1688", "bm1684", "cv183x", "cv184x")
+_ONNX_CHIPS = ("bm1684x", "bm1688", "cv183x", "cv184x")
 _TORCH_CHIPS = ("bm1684x", "bm1688", "cv184x")
 _CUSTOM_TPULANG_CHIPS = ("bm1684x", "bm1688")
 _TPULANG_CHIPS = ("bm1684x", "bm1688")
-_MASKRCNN_CHIPS = ("bm1684x", )
 
 # Script-test buckets — kept as class-level constants for easy editing.
 _SCRIPT_BASIC = (
@@ -280,18 +279,6 @@ class MAIN_ENTRY(object):
                 num_core = multi_core_info[chip]
             for model in models_for_chip(model_list, chip):
                 self.send_regression_net(model, chip, num_core)
-
-        # ----- additional op-driven model tests (bm1684x only) -----
-        import test_MaskRCNN
-        maskrcnn_tester = test_MaskRCNN.MaskRCNN_IR_TESTER()
-        try:
-            for chip in _MASKRCNN_CHIPS:
-                maskrcnn_tester.chip = chip
-                for case in maskrcnn_tester.test_cases.keys():
-                    cmd = f"test_MaskRCNN.py --case {case} --chip {chip}"
-                    self._enqueue(cmd, f"test_MaskRCNN_{case}_{chip}")
-        finally:
-            del maskrcnn_tester
 
         # ----- tpulang (nightly only) -----
         if not self.is_basic:

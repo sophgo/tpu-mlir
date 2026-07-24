@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import inspect
 import os
 import numpy as np
 import torch
@@ -59,7 +60,10 @@ def build_and_save(out_dir: str) -> str:
                       do_constant_folding=True,
                       input_names=["in_0", "in_1"],
                       output_names=["output"],
-                      dynamic_axes=None)
+                      dynamic_axes=None,
+                      **({
+                          "dynamo": False
+                      } if "dynamo" in inspect.signature(torch.onnx.export).parameters else {}))
 
     print(f"[OK] Exported ONNX: {onnx_path}")
     return onnx_path

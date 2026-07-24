@@ -27,7 +27,6 @@ case "${1:-}" in
         echo "::RUN check tests and unit tests."
         cmake --build "${BUILD_PATH}" --target check-tpumlir
         echo "::RUN script and model test."
-        pip show gguf >/dev/null 2>&1 || pip install gguf==0.19.0
         "$REGRESSION_PATH/main_entry.py" --test_type basic --test_set script model
         ;;
     model)

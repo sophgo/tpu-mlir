@@ -6,6 +6,7 @@
 #
 # ==============================================================================
 
+import inspect
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -52,11 +53,17 @@ torch.onnx.export(NetA(), (x),
                   export_params=True,
                   verbose=True,
                   opset_version=13,
-                  input_names=['x'])
+                  input_names=['x'],
+                  **({
+                      "dynamo": False
+                  } if "dynamo" in inspect.signature(torch.onnx.export).parameters else {}))
 
 torch.onnx.export(NetB(), (x),
                   "test10_b.onnx",
                   export_params=True,
                   verbose=True,
                   opset_version=13,
-                  input_names=['x'])
+                  input_names=['x'],
+                  **({
+                      "dynamo": False
+                  } if "dynamo" in inspect.signature(torch.onnx.export).parameters else {}))

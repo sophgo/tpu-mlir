@@ -6,6 +6,7 @@
 #
 # ==============================================================================
 
+import inspect
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -44,7 +45,10 @@ torch.onnx.export(
     export_params=True,
     verbose=True,
     opset_version=13,  # export hardswish needed
-    input_names=['x', 'y', 'z'])
+    input_names=['x', 'y', 'z'],
+    **({
+        "dynamo": False
+    } if "dynamo" in inspect.signature(torch.onnx.export).parameters else {}))
 
 # dataset
 f = open("data2_list", "w")

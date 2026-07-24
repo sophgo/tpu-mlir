@@ -1,3 +1,4 @@
+import inspect
 import torch
 import torch.nn as nn
 import torch.nn.utils.prune as prune
@@ -48,6 +49,9 @@ torch.onnx.export(
     do_constant_folding=True,  # Whether to perform constant folding to optimize the graph
     input_names=['input'],  # Input tensor name
     output_names=['output'],  # Output tensor name
+    **({
+        "dynamo": False
+    } if "dynamo" in inspect.signature(torch.onnx.export).parameters else {}),
 )
 print("✅ 导出完成： mymatmul.onnx")
 

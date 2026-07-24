@@ -1,10 +1,14 @@
 # TPU-MLIR Python dependencies
-# Canonical list mirrored from docker/requirements.txt.
+# Canonical list — mirrored to requirements.txt at the repo root; keep both in sync.
 # Install with: pip install -r requirements.txt
 # Note: torch/torchvision/torchaudio use the +cpu builds from the PyTorch CPU
 # index (required below) to avoid pulling in multi-GB CUDA/nvidia packages.
 
 --extra-index-url https://download.pytorch.org/whl/cpu
+# PyPI no longer provides the pinned paddlepaddle==2.5.0 (pip reports
+# "No matching distribution found for paddlepaddle==2.5.0").  The exact Linux
+# wheel remains on PaddlePaddle's official archive, so keep this source.
+--find-links https://www.paddlepaddle.org.cn/whl/linux/mkl/avx/stable.html
 
 argcomplete==3.1.1
 build==1.0.3

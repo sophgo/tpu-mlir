@@ -5,6 +5,10 @@
 # index (required below) to avoid pulling in multi-GB CUDA/nvidia packages.
 
 --extra-index-url https://download.pytorch.org/whl/cpu
+# PyPI no longer provides the pinned paddlepaddle==2.5.0 (pip reports
+# "No matching distribution found for paddlepaddle==2.5.0").  The exact Linux
+# wheel remains on PaddlePaddle's official archive, so keep this source.
+--find-links https://www.paddlepaddle.org.cn/whl/linux/mkl/avx/stable.html
 
 argcomplete==3.1.1
 build==1.0.3
