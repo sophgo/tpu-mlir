@@ -1509,8 +1509,14 @@ bool BMAddressAssign::isInPlaceOp(Operation *op) {
     auto p = sliceOp.parseParam();
     return p.fusible;
   } else if (auto concatOp = dyn_cast<tpu::ConcatOp>(op)) {
-    if (run_mode == tpu::RunMode::TPU_DYNAMIC)
+    if (module::isPlatform(module::Platform::LLM) ||
+        module::isPlatform(module::Platform::LLM_QUANTIZED)) {
+      return concatOp.getOnlyMerge();
+    }
+    if (run_mode == tpu::RunMode::TPU_DYNAMIC) {
+      // TODO: why dynamic concat is not inplace ?
       return false;
+    }
     return concatOp.getOnlyMerge();
   } else if (auto weight2activation_op =
                  dyn_cast<tpu::Weight2ActivationOp>(op)) {

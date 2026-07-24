@@ -749,8 +749,8 @@ class Qwen3_5Converter(LlmConverter):
                 else None
             if with_history:
                 index = 3 if not self.use_small_mask() else 2
-                in3_op = block_mlir.create_input_op(L("k_cache"), index)
-                in4_op = block_mlir.create_input_op(L("v_cache"), index + 1)
+                in3_op = block_mlir.create_input_op(L("history_k"), index)
+                in4_op = block_mlir.create_input_op(L("history_v"), index + 1)
             return_ops = []
             ln_op = self.rms_norm(block_mlir, in0_op, input_ln)
 

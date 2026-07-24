@@ -102,6 +102,13 @@ private:
   mem_mode_t mem_mode;
   int64_t total_count;
   std::map<std::string, Value> value_map;
+  // Dedicated map for function input values (top::InputOp results). An input
+  // and an output may share the same tensor name (e.g. an in-place k/v cache
+  // written back under the same name), in which case `value_map` resolves to
+  // whichever was registered last. Keeping the input values separately lets
+  // setTensor sync the runtime shape onto the actual input operand so that
+  // downstream ops see the dynamic shape.
+  std::map<std::string, Value> input_value_map;
   std::map<std::string, std::shared_ptr<InferenceParameter>> inference_map;
   std::map<std::string, std::shared_ptr<std::vector<float>>> mem_map;
   // std::vector<float> gMem;

@@ -107,8 +107,10 @@ has_md5_changes() {
   done
   return 1
 }
-# check if files under PplBackend changed
-MD5FILE=$DIR/.md5
+# check whether the third_party/nntoolchain/lib or ppl is updated
+# use a version file under the install path for cache tracking
+VER_DIR="${INSTALL_PATH}/share/ppl"
+MD5FILE="${VER_DIR}/.md5"
 file_changed=false
 # Track every input that can affect the build outputs: PPL sources, public
 # headers, the CMake build description, and the build script itself.
@@ -134,9 +136,7 @@ mapfile -t libs_md5_list < <(
     printf '%s %s\n' "$lib" "$md5"
   done
 )
-# check whether the third_party/nntoolchain/lib or ppl is updated
-# use a version file under the install path for cache tracking
-VER_DIR="${INSTALL_PATH}/share/ppl"
+
 mkdir -p "$VER_DIR"
 VER_FILE="${VER_DIR}/.version"
 if [ ! -f "$VER_FILE" ] || [ "$(head -n1 "$VER_FILE")" != "$BUILD_MODE" ] || has_md5_changes "$VER_FILE" "${libs_md5_list[@]}" || ! grep -Fxq -f "$PPL_VER_PATH" "$VER_FILE"; then

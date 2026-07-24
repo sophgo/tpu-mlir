@@ -94,6 +94,9 @@ LogicalResult tpu::ConcatOp::LocalGenSupport() {
   auto shape = module::getShape(getOutput());
   int num_dims = shape.size();
   auto ax = getAxis();
+  if (getOnlyMerge()) {
+    return failure();
+  }
   if (module::isCV18xx()) {
     if (ax == 1 && (num_dims == 3 || num_dims == 4)) {
       return success();

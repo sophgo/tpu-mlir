@@ -86,6 +86,7 @@ void ModuleInterpreter::allocate_resources() {
 void ModuleInterpreter::allocate_tensor_in_reused_mem() {
   all_tensor_names.clear();
   value_map.clear();
+  input_value_map.clear();
   mem_map.clear();
   num_infer_op = 0;
   for (auto func : module.getOps<FuncOp>()) {
@@ -101,6 +102,7 @@ void ModuleInterpreter::allocate_tensor_in_reused_mem() {
         auto name = module::getName(v).str();
         input_names.push_back(name);
         value_map[name] = v;
+        input_value_map[name] = v;
         all_tensor_names.push_back(name);
       } else if (auto wOp = dyn_cast<top::WeightOp>(op)) {
         auto v = wOp.getOutput();
@@ -274,6 +276,7 @@ void ModuleInterpreter::collect_tensor(Value v) {
 void ModuleInterpreter::allocate_part_tensor_in_mem() {
   all_tensor_names.clear();
   value_map.clear();
+  input_value_map.clear();
   mem_map.clear();
   num_infer_op = 0;
   int step = ceiling_func(total_count, MAX_COUNT_LIMIT);
@@ -297,6 +300,7 @@ void ModuleInterpreter::allocate_part_tensor_in_mem() {
         collect_tensor(v);
         auto name = module::getName(v).str();
         input_names.push_back(name);
+        input_value_map[name] = v;
       } else if (auto wOp = dyn_cast<top::WeightOp>(op)) {
         auto v = wOp.getOutput();
         auto name = module::getName(v).str();
@@ -352,6 +356,7 @@ void ModuleInterpreter::allocate_part_tensor_in_mem() {
 void ModuleInterpreter::allocate_all_tensor_in_disk() {
   all_tensor_names.clear();
   value_map.clear();
+  input_value_map.clear();
   mem_map.clear();
   num_infer_op = 0;
   for (auto func : module.getOps<FuncOp>()) {
@@ -378,6 +383,7 @@ void ModuleInterpreter::allocate_all_tensor_in_disk() {
           bool is_input = isa<top::InputOp>(op);
           if (is_input) {
             input_names.push_back(name);
+            input_value_map[name] = result;
           }
           value_map[name] = result;
           if (auto wOp = llvm::dyn_cast<top::WeightOp>(op)) {
@@ -396,6 +402,7 @@ void ModuleInterpreter::allocate_all_tensor_in_disk() {
 void ModuleInterpreter::allocate_all_tensor_in_mem() {
   all_tensor_names.clear();
   value_map.clear();
+  input_value_map.clear();
   mem_map.clear();
   num_infer_op = 0;
   for (auto func : module.getOps<FuncOp>()) {
@@ -414,6 +421,7 @@ void ModuleInterpreter::allocate_all_tensor_in_mem() {
         collect_tensor(v);
         auto name = module::getName(v).str();
         input_names.push_back(name);
+        input_value_map[name] = v;
       } else if (auto wOp = dyn_cast<top::WeightOp>(op)) {
         auto v = wOp.getOutput();
         auto name = module::getName(v).str();
@@ -494,6 +502,7 @@ void ModuleInterpreter::allocate_all_tensor_in_mem() {
 void ModuleInterpreter::allocate_small_tensor_in_mem() {
   all_tensor_names.clear();
   value_map.clear();
+  input_value_map.clear();
   mem_map.clear();
   num_infer_op = 0;
   for (auto func : module.getOps<FuncOp>()) {
@@ -512,6 +521,7 @@ void ModuleInterpreter::allocate_small_tensor_in_mem() {
         collect_tensor(v);
         auto name = module::getName(v).str();
         input_names.push_back(name);
+        input_value_map[name] = v;
       } else if (auto wOp = dyn_cast<top::WeightOp>(op)) {
         auto v = wOp.getOutput();
         auto name = module::getName(v).str();
@@ -1339,14 +1349,24 @@ void ModuleInterpreter::setTensor(const std::string &name, const void *data,
                  << " exceeds model tensor size " << tensor_size << "\n";
     llvm_unreachable("Error, setTensor failed");
   }
+  auto value = value_map.at(name);
+  // Always sync the IR shape to the runtime shape. When the tensor memory is
+  // already pre-sized to the dynamic length (tensor_size == size) the resize
+  // branch below is skipped, but the IR shape may still hold the compiled
+  // static shape (e.g. a partial k/v cache). Without this, downstream ops such
+  // as Concat and FAttention would read the stale static shape and access
+  // out-of-bounds memory. Use the dedicated input value when available: an
+  // input and an output may share the same name (in-place k/v cache), and
+  // `value_map` may resolve to the output, leaving the input operand stale.
+  auto in_it = input_value_map.find(name);
+  Value shape_target = (in_it != input_value_map.end()) ? in_it->second : value;
+  if (std::vector<int64_t>(module::getShape(shape_target)) != shape) {
+    module::setShape(shape_target, shape);
+  }
   if (tensor_size > size) {
     tensor_size = size;
     it->second->resize(size);
-    auto it_value = value_map.find(name);
-    module::setShape(it_value->second, shape);
-
   }
-  auto value = value_map.at(name);
   if (is_integer == false && module::isUniformQuantized(value)) {
     auto qtype = module::getUniformQuantizedType(value);
     float *p = (float *)data;

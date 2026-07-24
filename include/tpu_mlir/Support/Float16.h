@@ -54,9 +54,9 @@ convert to f32 float to f16/bf16 float
 */
 float F16(float src);
 float F16(float src, bool half_away_from_zero);
-void F16(float *p_src, float *p_dst, int num);
+void F16(float *p_src, float *p_dst, int64_t num);
 float BF16(float src, bool is_tpu = true);
-void BF16(float *p_src, float *p_dst, int num, bool is_tpu = true);
+void BF16(float *p_src, float *p_dst, int64_t num, bool is_tpu = true);
 
 float bf16_mul(float lhs, float rhs);
 float bf16_add(float lhs, float rhs);

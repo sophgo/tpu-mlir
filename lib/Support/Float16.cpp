@@ -791,16 +791,16 @@ float bf16_to_f32(uint16_t src) {
   return *((float *)&tmp);
 }
 
-void BF16(float *p_src, float *p_dst, int num, bool is_tpu) {
+void BF16(float *p_src, float *p_dst, int64_t num, bool is_tpu) {
 #pragma omp parallel for schedule(static, omp_schedule(num))
-  for (int i = 0; i < num; i++) {
+  for (int64_t i = 0; i < num; i++) {
     p_dst[i] = BF16(p_src[i], is_tpu);
   }
 }
 
-void F16(float *p_src, float *p_dst, int num) {
+void F16(float *p_src, float *p_dst, int64_t num) {
 #pragma omp parallel for schedule(static, omp_schedule(num))
-  for (int i = 0; i < num; i++) {
+  for (int64_t i = 0; i < num; i++) {
     p_dst[i] = F16(p_src[i]);
   }
 }
