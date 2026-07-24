@@ -2480,7 +2480,7 @@ void ConvertTopToTpu::init_qtable() {
     mainFunc_.walk([&](Operation *op) {
       // if have other op force to f32, add here.
       // model_deploy. defaultly we need ensure the computation is correct.
-      if (isa<top::AvgPoolOp, top::SoftmaxOp>(op)) {
+      if (isa<top::AvgPoolOp, top::SoftmaxOp, top::LayerNormOp>(op)) {
         auto name = module::getName(op).str();
         LoweringConfig::quantize_map[name] = module::Mode::F32;
       }
