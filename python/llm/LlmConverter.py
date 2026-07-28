@@ -300,6 +300,11 @@ class LlmConverter(BaseConverter):
                 f'--num_device {self.num_device}',
             ]
         deploy_args += list(extra_args)
+        if self.only_mlir:
+            # only_mlir contract: lower to *_tpu.mlir but skip bmodel codegen
+            # (some quant modes, e.g. Fp8MatMul, crash in codegen). model_deploy
+            # --not_gen_bmodel runs lowering() then exit(0) before build_model.
+            deploy_args.append('--not_gen_bmodel')
         deploy_args.append('--high_precision')
         if symmetric:
             deploy_args.append('--q_symmetric')
@@ -1279,7 +1284,7 @@ class LlmConverter(BaseConverter):
             bias_op = mlir_gen.create_weight_op(proj + ".bias", bias_shape)
         else:
             bias_op = mlir_gen.none_op
-        if self.quant_mode == "fp8":
+        if self.quant_mode == "fp8" and self.model.is_exist(proj + ".weight_scale_inv"):
             weight_op = mlir_gen.create_weight_op(proj + ".weight",
                                                   [weight_shape[1], weight_shape[0]], "F8E4M3")
             scale_op = mlir_gen.create_weight_op(
@@ -1294,6 +1299,17 @@ class LlmConverter(BaseConverter):
                                      block_size=self.block_size[0],
                                      loc=self.get_loc(proj, mlir_gen),
                                      ip=mlir_gen.insert_point).output
+        elif self.quant_mode == "fp8":
+            # Weight in modules_to_not_convert (e.g. vision tower) is not
+            # FP8-quantized: emit a plain MatMul instead of Fp8MatMul.
+            weight_op = mlir_gen.create_weight_op(proj + ".weight", weight_shape)
+            new_op = top.MatMulOp(mlir_gen.get_tensor_type(out_shape),
+                                  input_op,
+                                  weight_op,
+                                  bias_op,
+                                  do_relu=False,
+                                  loc=self.get_loc(proj, mlir_gen),
+                                  ip=mlir_gen.insert_point).output
         elif self.is_key_quantized(proj):
             quant_info = self.model.quantized_tensors.get(proj, {}) \
                 if hasattr(self.model, 'quantized_tensors') else {}
@@ -2754,8 +2770,10 @@ class LlmConverter(BaseConverter):
         self.execute_tasks()
 
         # ============ Secondary compile ==============
+        # Skipped under only_mlir: only block_0/block_3 are generated, so
+        # iterating all layers for chunked cache compile would miss inputs.
         secondary_compiles = []
-        if len(self.decode_chunk_list) > 0:
+        if not self.only_mlir and len(self.decode_chunk_list) > 0:
             for i in range(self.num_layers):
                 secondary_compiles.append(lambda i=i: self.compile_block_cache_chunk(i))
         for func in secondary_compiles:

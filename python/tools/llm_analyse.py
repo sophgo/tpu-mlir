@@ -887,11 +887,23 @@ def main():
     print("\nRunning LLM conversion to generate MLIR files...")
     cmd = " ".join(cmds)
     print(f"Command: {cmd}")
+    mlir_dir = os.path.join(args.out_dir, "tmp_mlir_analyse")
     try:
         subprocess.check_call(cmd, shell=True)
     except subprocess.CalledProcessError as e:
-        print(f"Error during LLM conversion: {e}", file=sys.stderr)
-        sys.exit(1)
+        # Codegen (bmodel) may fail for some quant modes (e.g. Fp8MatMul on a
+        # chip whose backend lacks codegen), but the *_tpu.mlir files needed
+        # for analysis are produced earlier in the pipeline. Proceed if they
+        # exist; only bail out when there is nothing to analyse.
+        if glob.glob(os.path.join(mlir_dir, "*", f"*_{args.chip}_*_tpu.mlir")):
+            print(
+                f"Warning: LLM conversion exited with {e.returncode} (likely bmodel "
+                f"codegen failure), but *_tpu.mlir files are present - proceeding "
+                f"with analysis.",
+                file=sys.stderr)
+        else:
+            print(f"Error during LLM conversion: {e}", file=sys.stderr)
+            sys.exit(1)
 
     model_type = getattr(llm_config, "model_type", "")
     # Extract model config info
@@ -909,7 +921,6 @@ def main():
     # Use num_hidden_layers to correct block counts if available
     num_layers = model_config.get("num_hidden_layers")
     # Step 1: Discover modules
-    mlir_dir = os.path.join(args.out_dir, "tmp_mlir_analyse")
     print(f"Scanning: {mlir_dir}")
     modules = discover_modules(mlir_dir, llm_config.num_hidden_layers, model_type, args.chip)
     if not modules:

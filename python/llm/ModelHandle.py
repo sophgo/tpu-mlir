@@ -107,7 +107,8 @@ class SafetensorsModelHandle(ModelHandle):
                 conv.quant_bits = conv.quantization_config["bits"]
             if conv.quant_mode == "fp8":
                 conv.activation_scheme = conv.quantization_config["activation_scheme"]
-                conv.fmt = conv.quantization_config["fmt"]
+                # Some FP8 configs (e.g. Qwen3.5-4B-FP8) omit "fmt"; default to e4m3.
+                conv.fmt = conv.quantization_config.get("fmt", "e4m3")
                 conv.block_size = conv.quantization_config["weight_block_size"]
             if conv.quant_mode == "auto-round":
                 packing_format = conv.quantization_config.get("packing_format",
@@ -447,10 +448,21 @@ class SafetensorsModelHandle(ModelHandle):
             weight_path = path + ".weight"
             scale_path = path + ".weight_scale_inv"
             weight_data = self.model.read(weight_path)
-            weight_data = self.fp32_to_fp8(weight_data, conv.fmt)
-            scale_data = self.model.read(scale_path)
-            weight_dict[weight_path] = weight_data
-            weight_dict[scale_path] = scale_data
+            if self.model.is_exist(scale_path):
+                # FP8-quantized weight: pack to F8E4M3 + per-block scale.
+                weight_data = self.fp32_to_fp8(weight_data, conv.fmt)
+                scale_data = self.model.read(scale_path)
+                weight_dict[weight_path] = weight_data
+                weight_dict[scale_path] = scale_data
+            else:
+                # Weight is in modules_to_not_convert (e.g. vision tower):
+                # not FP8-quantized, so store it as a plain linear weight.
+                if conv.fused_mlp and (conv.model_info.weights[LlmList.MLP_GATE] in path
+                                       or conv.model_info.weights[LlmList.MLP_UP] in path):
+                    weight_dict[weight_path] = np.ascontiguousarray(weight_data)
+                else:
+                    weight_dict[weight_path] = np.ascontiguousarray(
+                        np.transpose(weight_data, (1, 0)))
             K = weight_data.shape[1]
             N = weight_data.shape[0]
 
@@ -715,11 +727,13 @@ def create_gguf_config(gguf_reader,
         config.num_experts = int(_expert_count)
         config.num_experts_per_tok = int(get_val(f"{architecture}.expert_used_count") or 1)
         config.expert_used_count = config.num_experts_per_tok
-        config.moe_intermediate_size = int(get_val(f"{architecture}.expert_feed_forward_length") or 1)
+        config.moe_intermediate_size = int(
+            get_val(f"{architecture}.expert_feed_forward_length") or 1)
         config.expert_feed_forward_length = config.moe_intermediate_size
         config.n_shared_experts = int(get_val(f"{architecture}.expert_shared_count") or 0)
         config.expert_shared_count = config.n_shared_experts
-        config.first_k_dense_replace = int(get_val(f"{architecture}.leading_dense_block_count") or 0)
+        config.first_k_dense_replace = int(
+            get_val(f"{architecture}.leading_dense_block_count") or 0)
         config.leading_dense_block_count = config.first_k_dense_replace
         config.norm_topk_prob = False
         config.scoring_func = "softmax"
