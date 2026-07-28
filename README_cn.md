@@ -121,18 +121,23 @@ git clone https://huggingface.co/Intel/Qwen3.5-2B-int4-AutoRound
 
 ### 2. 编译为 bmodel
 
-```shell
-# 通常不带历史上下文
+LLM 的编译场景可归纳为两类，通过 `--use_history_kv` 控制。
 
-# --max_input_length 设置最大 prefill 长度，缺省时取 -s。
+**不支持历史** —— 编译 `block_`（prefill 阶段）和 `block_cache_`（decode 阶段）两种指令。如果是单轮对话且长度较短（如 4K 以内），建议用该方式编译：
+
+```shell
+# -s 指定最大总长度；--max_input_length 指定输入最大长度（缺省时取 -s）。
 llm_convert.py \
   -m /workspace/Qwen3.5/Qwen3.5-2B-int4-AutoRound \
   -s 2048 \
   --max_input_length 1024 \
   -c bm1684x \
   -o qwen3.5_4b
+```
 
-# 通常带历史上下文
+**支持历史** —— 编译 `block_`（prefill）、`block_kv_`（带历史的 prefill）和 `block_cache_`（decode）三种指令。如果需要支持历史、长度较长（如 8K），或者不确定，建议用该方式编译——它有更高的灵活性，且兼顾性能：
+
+```shell
 llm_convert.py \
   -m /workspace/Qwen3.5/Qwen3.5-2B-int4-AutoRound \
   -s 8192 \
@@ -142,6 +147,8 @@ llm_convert.py \
   -o qwen3.5_4b_history
 ```
 
+`--chunk_length` 指定分段长度，用于分段推理：比如指定为 1K 时，实际输入为 7K，prefill 阶段会分成 `block_` 加 7 个 `block_kv_` 来完成推理；decode 阶段也会根据 KV cache 的长度不同进行分段，1K / 2K / 4K / 8K 的性能依长度而定。
+
 `llm_convert.py` 主要参数：
 
 | 参数            | 简写  | 必选 | 说明                                                                                                                                |
@@ -149,10 +156,15 @@ llm_convert.py \
 | `model_path`    |  `m`  |  ✅  | 模型权重路径                                                                                                                        |
 | `seq_length`    |  `s`  |  ✅  | 最大序列长度                                                                                                                        |
 | `max_input_length` |  —  |  —   | 最大单次输入长度，缺省时取 `seq_length`（`-s`）                                                                                    |
-| `use_history_kv`     |  —  |  —   | 启用历史 KV cache                                                                                                                  |
-| `chunk_length` |  —  |  —   | prefill 与 decode 的 chunk_length                                                                                                  |
+| `use_history_kv`     |  —  |  —   | 启用历史 KV cache（额外编译带历史的 prefill 指令组 `block_kv_`）                                                                    |
+| `chunk_length` |  —  |  —   | 分段推理的分段长度，仅与 `use_history_kv` 搭配使用时有效                                                                            |
 | `chip`          |  `c`  |  ✅  | 目标芯片：`bm1684x` / `bm1688` / `cv186ah`                                                                                          |
 | `out_dir`       |  `o`  |  ✅  | 输出目录                                                                                                                            |
+| `dynamic`       |  —  |  —   | 动态 shape 编译，建议默认都加上（`qwen3_5` 强制走动态）                                                                              |
+| `do_sample`     |  —  |  —   | 开启随机采样                                                                                                                        |
+| `max_pixels`    |  —  |  —   | 多模态模型的图像尺寸，建议不指定，按内部默认参数                                                                                    |
+| `embedding_disk` | —  |  —   | 将 word embedding 存储到 bin 文件，用 CPU 推理（节省片上内存）                                                                       |
+| `lora_max_rank` |  —  |  —   | 指定 LoRA 最大 rank，指定后会编译 LoRA 版本                                                                                          |
 
 ### 3. 在 PCIe / SoC 环境运行
 
@@ -175,6 +187,8 @@ cd ..
 运行示例：
 
 ![Qwen demo](./docs/assets/qwen3.5.png)
+
+demo 中用 `/` 表达指令（如 `/exit`、`/clear` 等），用 `@` 指定文件路径——图片如“what is the image about? @./test.jpg”，文本（`.txt` / `.md`）如“what is it talking about? @./story.txt”。
 
 </details>
 
@@ -392,7 +406,7 @@ model_tool --info resnet18_1684x_f32.bmodel
 
 @misc{llmtpu2026,
   title         = {An MLIR-Based Compilation Method for Large Language Models},
-  author        = {HuPengchao and XinZhibin and ChenYifan and ZhouYangyang and WangLiang},
+  author        = {HuPengchao and XinZhibin and ChenYifan and ZhouYangyang and WangLiang and ZhangXin},
   year          = {2026},
   eprint        = {2607.15865},
   archivePrefix = {arXiv},

@@ -677,6 +677,21 @@ Convert the LLM model into bmodel, the parameters are as follows:
    * - max_input_length
      - No
      - Specifies the maximum input length, default is seq_length
+   * - use_history_kv
+     - No
+     - Reuse history KV during prefill. Without it the bmodel contains two instruction groups (``block_`` for prefill, ``block_cache_`` for decode); with it an additional ``block_kv_`` group (prefill with history) is compiled. Recommended for multi-turn conversations or long contexts
+   * - chunk_length
+     - No
+     - Segment length for chunked inference; only meaningful with use_history_kv. Both prefill and decode are segmented by this length, so performance varies with the actual KV-cache length
+   * - dynamic
+     - No
+     - Enable dynamic shape compilation for prefill; recommended for all new conversions (qwen3_5 always compiles dynamically)
+   * - do_sample
+     - No
+     - Enable random sampling by adding a sampling head separate from the LM head
+   * - lora_max_rank
+     - No
+     - Specifies the maximum LoRA rank; setting it compiles a LoRA-enabled version. 0 (default) disables LoRA
    * - embedding_disk
      - No
      - If set, exports the word embeddings to a binary file and runs inference on the Central Processing Unit

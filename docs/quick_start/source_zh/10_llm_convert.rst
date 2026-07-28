@@ -28,6 +28,31 @@
 `An MLIR-Based Compilation Method for Large Language Models
 <https://arxiv.org/abs/2607.15865>`_。
 
+编译模式
+--------
+
+LLM 的编译场景可归纳为两类，通过 ``--use_history_kv`` 控制。
+
+**不支持历史**（默认）。编译出的 bmodel 包含两种指令：``block_``
+（prefill 阶段）和 ``block_cache_``（decode 阶段）。``-s`` 指定最大
+总长度，``--max_input_length`` 指定输入最大长度。如果是单轮对话且
+长度较短（如 4K 以内），建议用该方式编译::
+
+   llm_convert.py -m Qwen3.5-2B-int4-AutoRound -c bm1688 \
+       -s 2048 --max_input_length 1024 --out_dir qwen3_5_bm1688
+
+**支持历史**（``--use_history_kv``）。编译出的 bmodel 包含三种指令：
+``block_``（prefill）、``block_kv_``（带历史的 prefill）和
+``block_cache_``（decode）。``--chunk_length`` 指定分段长度，用于
+分段推理：比如指定为 1K 时，实际输入为 7K，prefill 阶段会分成
+``block_`` 加 7 个 ``block_kv_`` 来完成推理；decode 阶段也会根据
+KV cache 的长度不同进行分段，1K / 2K / 4K / 8K 的性能依长度而定。
+如果需要支持历史、长度较长（如 8K），或者不确定，建议用该方式
+编译——它有更高的灵活性，且兼顾性能::
+
+   llm_convert.py -m Qwen3.5-2B-int4-AutoRound -c bm1688 \
+       -s 8192 --use_history_kv --chunk_length 1024 --out_dir qwen3_5_bm1688
+
 环境准备
 --------
 
@@ -94,7 +119,10 @@
 - ``--use_history_kv``
   Prefill 阶段复用历史 KV。开启后除普通 prefill block (``block``) 外，额外
   生成一个拼接历史 K/V 的 prefill block (``block_kv``)；否则只生成普通
-  prefill block。
+  prefill block。详见上文“编译模式”一节。
+- ``--chunk_length`` *(int)*
+  分段推理的分段长度，仅与 ``--use_history_kv`` 搭配使用时有效。
+  prefill 与 decode 均按该长度分段，因此性能随实际 KV cache 长度变化。
 
 视觉相关（仅多模态模型）
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -119,13 +147,16 @@ LoRA / 采样 / 其他
 ~~~~~~~~~~~~~~~~~~
 
 - ``--lora_max_rank`` *(int, 默认: ``0``)*
-  预留 LoRA 容量；``0`` 表示不开启 LoRA。
+  预留 LoRA 容量；``0`` 表示不开启 LoRA，指定最大 rank 后会编译
+  LoRA 版本。
 - ``--do_sample``
-  在 LM head 之外额外导出采样 head（greedy + topk/topp）。
+  开启随机采样：在 LM head 之外额外导出采样 head（greedy + topk/topp）。
 - ``--embedding_disk``
   将 word_embedding 导出为 ``.bin`` 并在 CPU 上推理，节省片上内存。
 - ``--dynamic``
-  Prefill 启用动态 shape。``qwen3_5`` 始终启用。
+  Prefill 启用动态 shape 编译，建议默认都加上。为兼容过去的模型，
+  目前默认仍为静态编译（``qwen3_5`` 强制走动态）；后续可能去掉该
+  参数，所有模型统一走动态编译。
 - ``--rvti``
   启用 RVTI；仅适用于 ``bm1690e``。
 

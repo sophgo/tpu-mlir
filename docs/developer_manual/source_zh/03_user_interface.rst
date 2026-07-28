@@ -688,6 +688,21 @@ llm_convert.py
    * - max_input_length
      - 否
      - 指定最大输入长度, 默认为seq_length
+   * - use_history_kv
+     - 否
+     - prefill阶段复用历史KV。不开启时bmodel包含 ``block_`` (prefill) 和 ``block_cache_`` (decode) 两种指令; 开启后额外编译带历史的 ``block_kv_`` 指令。多轮对话或长度较长时建议开启
+   * - chunk_length
+     - 否
+     - 分段推理的分段长度, 仅与use_history_kv搭配使用时有效。prefill与decode均按该长度分段, 性能随实际KV cache长度变化
+   * - dynamic
+     - 否
+     - prefill启用动态shape编译, 建议默认都加上 (qwen3_5强制走动态)
+   * - do_sample
+     - 否
+     - 开启随机采样, 在LM head之外额外导出采样head
+   * - lora_max_rank
+     - 否
+     - 指定LoRA最大rank, 指定后会编译LoRA版本; 默认为0, 表示不开启LoRA
    * - embedding_disk
      - 否
      - 如果设置该标志, 则将word_embedding导出为二进制文件, 并通过中央处理器进行推理

@@ -121,18 +121,24 @@ git clone https://huggingface.co/Intel/Qwen3.5-2B-int4-AutoRound
 
 ### 2. Compile to bmodel
 
-```shell
-# Typically without history context
+LLM compilation falls into two scenarios, controlled by `--use_history_kv`.
 
-# --max_input_length sets the max prefill length; if omitted it defaults to -s.
+**Without history KV** — compiles two instruction groups: `block_` (prefill) and `block_cache_` (decode). Recommended for single-turn conversations with short context (e.g. within 4K):
+
+```shell
+# -s sets the max total sequence length;
+# --max_input_length sets the max input length (defaults to -s if omitted).
 llm_convert.py \
   -m /workspace/Qwen3.5/Qwen3.5-2B-int4-AutoRound \
   -s 2048 \
   --max_input_length 1024 \
   -c bm1684x \
   -o qwen3.5_4b
+```
 
-# Typically with history context
+**With history KV** — compiles three instruction groups: `block_` (prefill), `block_kv_` (prefill with history), and `block_cache_` (decode). Recommended for multi-turn conversations, long contexts (e.g. 8K), or when unsure — it is more flexible with good overall performance:
+
+```shell
 llm_convert.py \
   -m /workspace/Qwen3.5/Qwen3.5-2B-int4-AutoRound \
   -s 8192 \
@@ -142,6 +148,8 @@ llm_convert.py \
   -o qwen3.5_4b_history
 ```
 
+`--chunk_length` sets the segment length for chunked inference: with 1K chunks, a 7K input runs prefill as `block_` + 7 × `block_kv_`; decode is also segmented by KV-cache length, so performance differs at 1K / 2K / 4K / 8K lengths.
+
 Main arguments of `llm_convert.py`:
 
 | Parameter      | Short | Required | Description                                                                                                                                    |
@@ -149,10 +157,15 @@ Main arguments of `llm_convert.py`:
 | `model_path`   |  `m`  |    ✅    | Path to the model weights                                                                                                                      |
 | `seq_length`   |  `s`  |    ✅    | Maximum sequence length                                                                                                                        |
 | `max_input_length` |  —  |    —    | Maximum input length; defaults to `seq_length` (`-s`) when omitted                                                                        |
-| `use_history_kv`     |  —  |    —    | Enable history KV cache                                                                                                                         |
-| `chunk_length` |  —  |    —    | Chunk length for prefill and decode                                                                                                             |
+| `use_history_kv`     |  —  |    —    | Enable history KV cache (adds the `block_kv_` prefill-with-history instruction group)                              |
+| `chunk_length` |  —  |    —    | Segment length for chunked inference; only meaningful with `use_history_kv`                                          |
 | `chip`         |  `c`  |    ✅    | Target platform: `bm1684x` / `bm1688` / `cv186ah`                                                                                              |
 | `out_dir`      |  `o`  |    ✅    | Output directory                                                                                                                               |
+| `dynamic`      |  —  |    —    | Dynamic-shape compilation; recommended for all new conversions (Qwen3.5 forces it)                                  |
+| `do_sample`    |  —  |    —    | Enable random sampling                                                                                                                           |
+| `max_pixels`   |  —  |    —    | Max image size for VLMs; leave unset to use the per-model defaults                                                  |
+| `embedding_disk` | — |    —    | Store word embeddings in a `.bin` file and run them on CPU (saves on-chip memory)                                   |
+| `lora_max_rank` | —  |    —    | Max LoRA rank; setting it compiles a LoRA-enabled version                                                          |
 
 ### 3. Run on PCIe / SoC
 
@@ -175,6 +188,8 @@ Then run the bmodel:
 Sample output:
 
 ![Qwen demo](./docs/assets/qwen3.5.png)
+
+The demo accepts slash commands (e.g. `/exit`, `/clear`) and uses `@` to attach files — `what is the image about? @./test.jpg` for images, or `what is it talking about? @./story.txt` for text files (`.txt` / `.md`).
 
 </details>
 
@@ -392,7 +407,7 @@ If TPU-MLIR helps your research, please cite:
 
 @misc{llmtpu2026,
   title         = {An MLIR-Based Compilation Method for Large Language Models},
-  author        = {HuPengchao and XinZhibin and ChenYifan and ZhouYangyang and WangLiang},
+  author        = {HuPengchao and XinZhibin and ChenYifan and ZhouYangyang and WangLiang and ZhangXin},
   year          = {2026},
   eprint        = {2607.15865},
   archivePrefix = {arXiv},

@@ -83,11 +83,42 @@ front-end importer (python/transform/) ──► Top dialect ──lowering─�
 
 ## Compiling LLMs
 
-These are two typical situations for compiling an LLM (using Qwen3.5 as an example):
+LLM compilation falls into two scenarios, controlled by `--use_history_kv` (using Qwen3.5 as an example):
 
-- Without history kv: llm_convert.py -m /workspace/Qwen3.5/Qwen3.5-2B-int4-AutoRound -s 2048  --max_input_length 1024 -c bm1684x -o qwen3.5_4b
+**1. Without history KV** — for single-turn conversations with short context (e.g. within 4K):
 
-- With history kv: llm_convert.py -m /workspace/Qwen3.5/Qwen3.5-2B-int4-AutoRound -s 8192 --use_history_kv --chunk_length 1024 -c bm1684x -o qwen3.5_4b_history
+```bash
+llm_convert.py -m Qwen3.5-2B-int4-AutoRound -c bm1688 -s 2048 --max_input_length 1024 --out_dir qwen3_5_bm1688
+```
+
+- Compiles two instruction groups: `block_` (prefill) and `block_cache_` (decode).
+- `-s` sets the max total sequence length; `--max_input_length` sets the max input length.
+
+**2. With history KV** — for multi-turn conversations, long contexts (e.g. 8K), or when unsure. More flexible with good overall performance, so prefer this mode in those cases:
+
+```bash
+llm_convert.py -m Qwen3.5-2B-int4-AutoRound -c bm1688 -s 8192 --use_history_kv --chunk_length 1024 --out_dir qwen3_5_bm1688
+```
+
+- Compiles three instruction groups: `block_` (prefill), `block_kv_` (prefill with history), and `block_cache_` (decode).
+- `--chunk_length` sets the segment length for chunked inference. For example, with 1K chunks, a 7K input runs prefill as `block_` + 7 × `block_kv_`; decode is also segmented by KV-cache length, so performance differs at 1K / 2K / 4K / 8K lengths.
+
+**Other functional flags:**
+
+- `--dynamic` — dynamic-shape compilation; recommended to always pass it. Static compilation is still the default for backward compatibility (Qwen3.5 forces dynamic); this flag may be removed once all models go dynamic.
+- `--do_sample` — enable random sampling.
+- `--max_pixels` — image size for VLMs; leave unset to use the internal defaults.
+- `--embedding_disk` — store word embeddings in a bin file and run them on CPU.
+- `--lora_max_rank` — max LoRA rank; setting it compiles a LoRA-enabled version (LoRA for Qwen3.5 is not yet tuned).
+
+The thinking behind the compiler-based approach for LLMs is summarized in this paper: <https://arxiv.org/pdf/2607.15865>
+
+## LLM demo usage
+
+The LLM demo accepts slash commands (e.g. `/exit`, `/clear`) and uses `@` to attach files:
+
+- Image: `what is the image about? @./test.jpg`
+- Text file (`.txt` / `.md`): `what is it talking about? @./story.txt`
 
 ## Working style
 

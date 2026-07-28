@@ -29,6 +29,34 @@ For a detailed introduction to how LLMs are compiled with MLIR in
 TPU-MLIR, see the paper `An MLIR-Based Compilation Method for Large
 Language Models <https://arxiv.org/abs/2607.15865>`_.
 
+Compilation Modes
+-----------------
+
+LLM compilation falls into two scenarios, controlled by
+``--use_history_kv``.
+
+**Without history KV** (default). The compiled bmodel contains two
+instruction groups: ``block_`` (prefill) and ``block_cache_`` (decode).
+``-s`` sets the maximum total sequence length and
+``--max_input_length`` sets the maximum input length. Recommended for
+single-turn conversations with short context (e.g. within 4K)::
+
+   llm_convert.py -m Qwen3.5-2B-int4-AutoRound -c bm1688 \
+       -s 2048 --max_input_length 1024 -o qwen3_5_bm1688
+
+**With history KV** (``--use_history_kv``). The compiled bmodel contains
+three instruction groups: ``block_`` (prefill), ``block_kv_`` (prefill
+with history), and ``block_cache_`` (decode). ``--chunk_length`` sets
+the segment length for chunked inference: with 1K chunks, a 7K input
+runs prefill as ``block_`` plus 7 × ``block_kv_``; decode is also
+segmented by KV-cache length, so performance differs at 1K / 2K / 4K /
+8K lengths. Recommended for multi-turn conversations, long contexts
+(e.g. 8K), or when unsure — it is more flexible with good overall
+performance::
+
+   llm_convert.py -m Qwen3.5-2B-int4-AutoRound -c bm1688 \
+       -s 8192 --use_history_kv --chunk_length 1024 -o qwen3_5_bm1688
+
 Prerequisites
 -------------
 
@@ -97,7 +125,11 @@ Sequence and prefill
   Reuse history KV during prefill. When enabled, an additional prefill
   block (``block_kv``) that concatenates history K/V is generated alongside
   the normal prefill block (``block``); otherwise only the normal prefill
-  block is generated.
+  block is generated. See the *Compilation Modes* section above.
+- ``--chunk_length`` *(int)*
+  Segment length for chunked inference; only meaningful together with
+  ``--use_history_kv``. Both prefill and decode are split into segments
+  of this length, so performance varies with the actual KV-cache length.
 
 Vision (multimodal models only)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -123,15 +155,19 @@ LoRA / sampling / misc
 ~~~~~~~~~~~~~~~~~~~~~~
 
 - ``--lora_max_rank`` *(int, default: ``0``)*
-  Reserve LoRA capacity. ``0`` disables LoRA support.
+  Reserve LoRA capacity. ``0`` disables LoRA support; setting a positive
+  rank compiles a LoRA-enabled version.
 - ``--do_sample``
-  Add a sampling head separate from the LM head (greedy + topk/topp).
+  Enable random sampling by adding a sampling head separate from the LM
+  head (greedy + topk/topp).
 - ``--embedding_disk``
   Export the word-embedding as a ``.bin`` file and run it on the CPU
   (saves on-chip memory).
 - ``--dynamic``
-  Enable dynamic shape compilation for prefill. ``qwen3_5`` always
-  enables this.
+  Enable dynamic shape compilation for prefill. Recommended for all new
+  conversions; static compilation remains the default only for backward
+  compatibility (``qwen3_5`` always compiles dynamically). This flag may
+  be removed once all models switch to dynamic compilation.
 
 Workflow control
 ~~~~~~~~~~~~~~~~
