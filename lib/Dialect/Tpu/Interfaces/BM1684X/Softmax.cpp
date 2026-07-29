@@ -85,14 +85,27 @@ int64_t tpu::SoftmaxOp::getBufferSize_bm1684x(
   int64_t axis = group_type == GROUP_SMALL_C ? 2 : getAxis();
   int32_t padding_flag = 0;
 
+#define SIZE                                                                   \
+  ((stype.isF16() || stype.isBF16()) ? sizeof(int16_t) : sizeof(float))
+  if (module::isBM1684X2() && axis == 3 && !getLog()) {
+    buffer_size += align_up((int64_t)36, eu_num) * SIZE; // coeff
+    buffer_size += c_per_npu * align_up(in_wslice, eu_num) *
+                   (in_hslice == 1 ? 0 : in_hslice) *
+                   SIZE; // line aligned input buffer
+    buffer_size += c_per_npu * align_up(in_wslice * in_hslice, eu_num) *
+                   SIZE; // aligned input buffer
+    buffer_size +=
+        c_per_npu * align_up(in_hslice, eu_num) * SIZE; // reduce buffer
+    buffer_size += align_up(2 * (in_hslice * in_wslice + eu_num), eu_num) *
+                   SIZE * 2; // fuse_exp buffer
+    return buffer_size;
+  }
+
   // aligned with backend
   if (axis == 3 && !getLog() && in_wslice > eu_num && in_wslice % eu_num > 0) {
     in_wslice = align_up(in_wslice, eu_num);
     padding_flag = 1;
   }
-
-#define SIZE                                                                   \
-  ((stype.isF16() || stype.isBF16()) ? sizeof(int16_t) : sizeof(float))
   if (axis == 2) {
     buffer_size += c_per_npu * align_up(in_wslice, eu_num) * SIZE;
   } else if (axis == 3) {
