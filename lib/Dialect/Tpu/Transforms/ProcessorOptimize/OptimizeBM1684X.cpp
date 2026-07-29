@@ -13,6 +13,7 @@
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/LutFunc.h"
 #include "tpu_mlir/Support/RewriterConfigUtils.h"
+#include <cmath>
 
 using namespace llvm;
 using namespace tpu_mlir::backend;
@@ -4485,6 +4486,247 @@ struct CanCutGridSamplerFusePattern
       : OpRewriterPatternEx<tpu::GridSamplerOp>(
             context, "CanCutGridSamplerFusePattern", benifit) {}
 
+  bool isSupportedSplitGridSampler(tpu::GridSamplerOp op,
+                                   tpu::PermuteOp before_permute,
+                                   tpu::PermuteOp next_permute) const {
+    if (!module::isBM1684XFamily() || op.getMode() != 0 ||
+        op.getPaddingMode() != 0 || !op.getAlignCorners() ||
+        op.getNeedPermute()) {
+      return false;
+    }
+    auto before_order = module::getI64Array(before_permute.getOrder());
+    auto next_order = module::getI64Array(next_permute.getOrder());
+    if (!before_order || !next_order || before_order->size() != 4 ||
+        next_order->size() != 4) {
+      return false;
+    }
+    if (*before_order != std::vector<int64_t>{3, 1, 0, 2} ||
+        *next_order != std::vector<int64_t>{2, 1, 3, 0}) {
+      return false;
+    }
+    auto input_shape = module::getShape(before_permute.getInput());
+    auto grid_shape = module::getShape(op.getGrid());
+    auto output_shape = module::getShape(next_permute.getOutput());
+    if (input_shape.size() != 4 || grid_shape.size() != 4 ||
+        output_shape.size() != 4) {
+      return false;
+    }
+    return input_shape[0] == 1 && grid_shape[0] == input_shape[3] &&
+           grid_shape[1] == 1 && grid_shape[2] == output_shape[2] &&
+           grid_shape[3] == 2 && output_shape[0] == 1 &&
+           output_shape[1] == input_shape[1] &&
+           output_shape[3] == input_shape[3];
+  }
+
+  bool isSupportedDirectGridSampler(tpu::GridSamplerOp op,
+                                    tpu::PermuteOp next_permute) const {
+    if (!module::isBM1684XFamily() || op.getMode() != 0 ||
+        op.getPaddingMode() != 0 || !op.getAlignCorners() ||
+        op.getNeedPermute()) {
+      return false;
+    }
+    auto next_order = module::getI64Array(next_permute.getOrder());
+    if (!next_order || next_order->size() != 4 ||
+        *next_order != std::vector<int64_t>{2, 1, 3, 0}) {
+      return false;
+    }
+    auto input_shape = module::getShape(op.getInput());
+    auto grid_shape = module::getShape(op.getGrid());
+    auto output_shape = module::getShape(next_permute.getOutput());
+    if (input_shape.size() != 4 || grid_shape.size() != 4 ||
+        output_shape.size() != 4) {
+      return false;
+    }
+    return input_shape[0] == grid_shape[0] && input_shape[2] == 1 &&
+           grid_shape[1] == 1 && grid_shape[3] == 2 && output_shape[0] == 1 &&
+           output_shape[1] == input_shape[1] &&
+           output_shape[2] == grid_shape[2] &&
+           output_shape[3] == input_shape[0];
+  }
+
+  bool isZeroWeight(Value value) const {
+    auto weight = value.getDefiningOp<top::WeightOp>();
+    if (!weight) {
+      return false;
+    }
+    auto stype = module::getStorageType(value);
+    if (stype.isF32()) {
+      auto data = weight.read<float>();
+      return llvm::all_of(*data, [](float v) { return v == 0.0f; });
+    }
+    if (stype.isF16() || stype.isBF16()) {
+      auto data = weight.read<uint16_t>();
+      return llvm::all_of(*data, [](uint16_t v) { return v == 0; });
+    }
+    return false;
+  }
+
+  bool isScatterUpdateFirstGridDim(tpu::ScatterNDOp scatter) const {
+    if (scatter.getReduction() != 0) {
+      return false;
+    }
+    auto data_shape = module::getShape(scatter.getInputData());
+    auto update_shape = module::getShape(scatter.getUpdates());
+    auto indices_shape = module::getShape(scatter.getIndices());
+    if (data_shape.size() != 4 || update_shape.size() != 4 ||
+        indices_shape.size() != 5 || data_shape[1] != 1 || data_shape[3] != 2 ||
+        update_shape[0] != data_shape[0] || update_shape[1] != 1 ||
+        update_shape[2] != data_shape[2] || update_shape[3] != 1 ||
+        indices_shape[0] != data_shape[0] || indices_shape[1] != 1 ||
+        indices_shape[2] != data_shape[2] || indices_shape[3] != 1 ||
+        indices_shape[4] != 4) {
+      return false;
+    }
+    auto indices = scatter.getIndices().getDefiningOp<top::WeightOp>();
+    if (!indices ||
+        !module::getStorageType(scatter.getIndices()).isInteger(32)) {
+      return false;
+    }
+    auto data = indices.read<int32_t>();
+    auto *ptr = data->data();
+    for (int64_t n = 0; n < indices_shape[0]; ++n) {
+      for (int64_t h = 0; h < indices_shape[2]; ++h) {
+        auto offset = (n * indices_shape[2] + h) * 4;
+        if (ptr[offset + 0] != n || ptr[offset + 1] != 0 ||
+            ptr[offset + 2] != h || ptr[offset + 3] != 0) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  Value getRawGridBeforeNormalize(Value value, int64_t sample_width) const {
+    if (sample_width <= 1) {
+      return nullptr;
+    }
+    if (auto reshape = value.getDefiningOp<tpu::ReshapeOp>()) {
+      value = reshape.getInput();
+    }
+    auto add_const = value.getDefiningOp<tpu::AddConstOp>();
+    if (!add_const || add_const.getConstVal().convertToDouble() != -1.0) {
+      return nullptr;
+    }
+    auto mul_const = add_const.getInput().getDefiningOp<tpu::MulConstOp>();
+    if (!mul_const) {
+      return nullptr;
+    }
+    auto scale = mul_const.getConstVal().convertToDouble();
+    auto expect_scale = 2.0 / static_cast<double>(sample_width - 1);
+    if (!std::isfinite(scale) ||
+        std::abs(scale - expect_scale) > std::abs(expect_scale) * 1e-6) {
+      return nullptr;
+    }
+    auto raw = mul_const.getInput();
+    if (auto squeeze = raw.getDefiningOp<tpu::SqueezeOp>()) {
+      raw = squeeze.getInput();
+    }
+    return raw;
+  }
+
+  Value getRawGridFromConcat(tpu::ConcatOp concat, int64_t sample_width) const {
+    if (concat.getInputs().size() != 2 || concat.getAxis() != 3) {
+      return nullptr;
+    }
+    auto concat_shape = module::getShape(concat.getOutput());
+    if (concat_shape.size() != 4 || concat_shape[1] != 1 ||
+        concat_shape[3] != 2 || !isZeroWeight(concat.getInputs()[1])) {
+      return nullptr;
+    }
+    return getRawGridBeforeNormalize(concat.getInputs()[0], sample_width);
+  }
+
+  Value getRawGridFromScatter(tpu::ScatterNDOp scatter,
+                              int64_t sample_width) const {
+    if (!isScatterUpdateFirstGridDim(scatter)) {
+      return nullptr;
+    }
+    auto input_concat = scatter.getInputData().getDefiningOp<tpu::ConcatOp>();
+    if (!input_concat || input_concat.getInputs().size() != 2 ||
+        input_concat.getAxis() != 3 ||
+        !isZeroWeight(input_concat.getInputs()[1])) {
+      return nullptr;
+    }
+    return getRawGridBeforeNormalize(scatter.getUpdates(), sample_width);
+  }
+
+  Value createPermutedRawGrid(tpu::GridSamplerOp op, Value raw_grid,
+                              PatternRewriter &rewriter) const {
+    auto raw_shape_ref = module::getShape(raw_grid);
+    std::vector<int64_t> raw_shape(raw_shape_ref.begin(), raw_shape_ref.end());
+    auto needs_reshape = raw_shape.size() == 3;
+    if (raw_shape.size() == 3) {
+      raw_shape.push_back(1);
+    } else if (raw_shape.size() != 4) {
+      return nullptr;
+    }
+    auto output_shape = module::getShape(op.getOutput());
+    if (raw_shape.size() != 4 || output_shape.size() != 4 ||
+        raw_shape[0] != output_shape[0] || raw_shape[1] != 1 ||
+        raw_shape[2] != output_shape[3] || raw_shape[3] != 1) {
+      return nullptr;
+    }
+    Value raw4 = raw_grid;
+    if (needs_reshape) {
+      auto raw4_type = module::getTypeLike(raw_grid, raw_shape);
+      raw4 = rewriter.create<tpu::ReshapeOp>(
+          NameLoc::get(rewriter.getStringAttr(
+              module::getName(op.getOperation(), 0).str() + "_raw_grid_4d")),
+          raw4_type, ValueRange{raw_grid});
+    }
+    std::vector<int64_t> order = {1, 3, 2, 0};
+    std::vector<int64_t> new_shape = {1, 1, raw_shape[2], raw_shape[0]};
+    auto new_type = module::getTypeLike(raw4, new_shape);
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
+    return rewriter
+        .create<tpu::PermuteOp>(
+            NameLoc::get(rewriter.getStringAttr(
+                module::getName(op.getOperation(), 0).str() +
+                "_raw_grid_permute")),
+            new_type, ValueRange{raw4, module::getNoneOp(op)}, attrs)
+        .getOutput();
+  }
+
+  Value createPermutedSamplerInput(tpu::GridSamplerOp op,
+                                   PatternRewriter &rewriter) const {
+    auto input_shape = module::getShape(op.getInput());
+    if (input_shape.size() != 4 || input_shape[2] != 1) {
+      return nullptr;
+    }
+    std::vector<int64_t> order = {2, 1, 3, 0};
+    std::vector<int64_t> new_shape = {1, input_shape[1], input_shape[3],
+                                      input_shape[0]};
+    auto new_type = module::getTypeLike(op.getInput(), new_shape);
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
+    return rewriter
+        .create<tpu::PermuteOp>(
+            NameLoc::get(rewriter.getStringAttr(
+                module::getName(op.getOperation(), 0).str() +
+                "_input_permute")),
+            new_type, ValueRange{op.getInput(), module::getNoneOp(op)}, attrs)
+        .getOutput();
+  }
+
+  void eraseIfUnused(Operation *op, PatternRewriter &rewriter) const {
+    if (!op || !op->use_empty() || isa<top::NoneOp>(op)) {
+      return;
+    }
+    SmallVector<Operation *> operands;
+    for (auto operand : op->getOperands()) {
+      if (auto def = operand.getDefiningOp()) {
+        operands.push_back(def);
+      }
+    }
+    rewriter.eraseOp(op);
+    for (auto def : operands) {
+      eraseIfUnused(def, rewriter);
+    }
+  }
+
   LogicalResult matchAndRewriteImpl(tpu::GridSamplerOp op,
                                     PatternRewriter &rewriter) const override {
     if (!op.getOutput().hasOneUse()) {
@@ -4492,6 +4734,41 @@ struct CanCutGridSamplerFusePattern
     }
     auto before_op = op.getInput().getDefiningOp();
     auto next_op = *op.getOutput().user_begin();
+
+    if (!isa<tpu::PermuteOp>(before_op) && isa<tpu::PermuteOp>(next_op)) {
+      auto next_permute = cast<tpu::PermuteOp>(next_op);
+      if (isSupportedDirectGridSampler(op, next_permute)) {
+        auto input_shape = module::getShape(op.getInput());
+        Value raw_grid = nullptr;
+        if (auto scatter = op.getGrid().getDefiningOp<tpu::ScatterNDOp>()) {
+          raw_grid = getRawGridFromScatter(scatter, input_shape[3]);
+        } else if (auto concat = op.getGrid().getDefiningOp<tpu::ConcatOp>()) {
+          raw_grid = getRawGridFromConcat(concat, input_shape[3]);
+        }
+        if (raw_grid) {
+          rewriter.setInsertionPoint(op);
+          auto permuted_grid = createPermutedRawGrid(op, raw_grid, rewriter);
+          if (!permuted_grid) {
+            return failure();
+          }
+          auto permuted_input = createPermutedSamplerInput(op, rewriter);
+          if (!permuted_input) {
+            return failure();
+          }
+          auto old_input = op.getInput();
+          auto old_grid = op.getGrid();
+          op->setOperand(0, permuted_input);
+          op->setOperand(1, permuted_grid);
+          op->getResult(0).setType(next_permute.getOutput().getType());
+          op->setAttr("need_permute", rewriter.getBoolAttr(true));
+
+          rewriter.replaceOp(next_op, ArrayRef<Value>{op.getResult()});
+          eraseIfUnused(old_grid.getDefiningOp(), rewriter);
+          eraseIfUnused(old_input.getDefiningOp(), rewriter);
+          return success();
+        }
+      }
+    }
 
     if (!isa<tpu::PermuteOp>(before_op) || !isa<tpu::PermuteOp>(next_op)) {
       auto before_cast = dyn_cast<tpu::CastOp>(before_op);
@@ -4607,6 +4884,45 @@ struct CanCutGridSamplerFusePattern
       }
       return success();
     }
+
+    auto before_permute = cast<tpu::PermuteOp>(before_op);
+    auto next_permute = cast<tpu::PermuteOp>(next_op);
+    if (isSupportedSplitGridSampler(op, before_permute, next_permute)) {
+      auto input_shape = module::getShape(before_permute.getInput());
+      Value raw_grid = nullptr;
+      if (auto scatter = op.getGrid().getDefiningOp<tpu::ScatterNDOp>()) {
+        raw_grid = getRawGridFromScatter(scatter, input_shape[2]);
+      } else if (auto concat = op.getGrid().getDefiningOp<tpu::ConcatOp>()) {
+        raw_grid = getRawGridFromConcat(concat, input_shape[2]);
+      }
+      if (raw_grid) {
+        rewriter.setInsertionPoint(op);
+        auto permuted_grid = createPermutedRawGrid(op, raw_grid, rewriter);
+        if (!permuted_grid) {
+          return failure();
+        }
+        auto old_grid = op.getGrid();
+        op->setOperand(0, before_permute.getInput());
+        op->setOperand(1, permuted_grid);
+        op->getResult(0).setType(next_permute.getOutput().getType());
+        op->setAttr("need_permute", rewriter.getBoolAttr(true));
+
+        bool hasOtherUsers = false;
+        for (auto *user : before_op->getResult(0).getUsers()) {
+          if (user != op.getOperation() && user != next_op) {
+            hasOtherUsers = true;
+            break;
+          }
+        }
+        if (!hasOtherUsers) {
+          rewriter.replaceOp(before_op, before_op->getOperand(0));
+        }
+        rewriter.replaceOp(next_op, ArrayRef<Value>{op.getResult()});
+        eraseIfUnused(old_grid.getDefiningOp(), rewriter);
+        return success();
+      }
+    }
+
     auto grid = op.getGrid();
     auto concat_tail = dyn_cast<tpu::ConcatOp>(grid.getDefiningOp());
     if (!concat_tail || concat_tail.getInputs().size() != 2) {
