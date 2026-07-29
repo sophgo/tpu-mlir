@@ -297,53 +297,20 @@ def _apply_config_defaults(data):
 def load_auto_config(model_path, trust_remote_code=True, **kwargs):
     """Read ``config.json`` directly and return a :class:`Config`.
 
-    Prefers ``transformers.AutoConfig.from_pretrained`` when ``transformers``
-    is importable, so that class-level defaults for *both* ``text_config`` and
-    ``vision_config`` (e.g. Gemma3's ``num_attention_heads``/``head_dim``/
-    ``rms_norm_eps`` which are absent from the on-disk minimal config) are
-    filled in natively -- exactly as a real ``AutoConfig`` load would.  The
-    resulting object is flattened with ``to_dict()`` so downstream code still
-    sees a plain (nested) dict.  Falls back to a direct ``json.load`` when
-    ``transformers`` is unavailable or the load raises.
+    Replaces ``transformers.AutoConfig.from_pretrained``.  Plain LLM configs
+    are fully serialized on disk, but VL families ship a *minimal*
+    ``vision_config`` whose missing fields ``AutoConfig`` fills from the
+    transformers vision-config class defaults; :func:`_apply_vision_defaults`
+    replicates that here.  ``trust_remote_code`` is accepted for API
+    compatibility but is a no-op.
     """
+    del trust_remote_code, kwargs  # accepted for drop-in compatibility
     config_path = model_path if os.path.isfile(model_path) else os.path.join(
         model_path, "config.json")
     if not os.path.isfile(config_path):
         raise FileNotFoundError(f"config.json not found for model path '{model_path}'")
-
-    try:
-        from transformers import AutoConfig  # type: ignore
-    except Exception:  # pragma: no cover - transformers optional
-        AutoConfig = None
-
-    if AutoConfig is not None:
-        try:
-            cfg = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
-            return cfg.to_dict()
-        except Exception:
-            # Fall through to the plain-json path below.
-            pass
-
     with open(config_path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def load_auto_config(model_path, trust_remote_code=True, **kwargs):
-    """Read ``config.json`` and return a :class:`Config`.
-
-    Replaces ``transformers.AutoConfig.from_pretrained``.  When ``transformers``
-    is installed, the config is loaded through ``AutoConfig`` first so that
-    class-level defaults for nested sub-configs (``text_config`` /
-    ``vision_config``) are filled in natively; this matters for families such
-    as Gemma3 whose on-disk ``text_config`` is minimal and relies on
-    ``Gemma3TextConfig`` defaults (``num_attention_heads``, ``head_dim``,
-    ``rms_norm_eps``, ...).  Otherwise the raw ``config.json`` dict is read
-    directly and :func:`_apply_vision_defaults` replicates the vision-config
-    defaults for known VL families.  ``trust_remote_code`` is forwarded to
-    ``AutoConfig`` when used and otherwise accepted for API compatibility.
-    """
-    del kwargs  # accepted for drop-in compatibility
-    data = _load_config_data(model_path)
+        data = json.load(f)
     _apply_vision_defaults(data)
     _apply_config_defaults(data)
     return Config(data)
