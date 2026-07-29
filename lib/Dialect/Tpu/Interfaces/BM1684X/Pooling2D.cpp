@@ -87,15 +87,6 @@ void tpu::Pool2DOp::codegen_global_bm1684x() {
         spec.rq_offset = getOffset().has_value()
                              ? (getOffset().value().convertToDouble())
                              : 0.;
-        // bm1684x2/sg2262 dropped the rq0 (fp32-scale requant) instruction;
-        // firmware emulates merge_requant with rq1 (int multiplier + rshift +
-        // zp). rq_offset is reused as the rq1 zero-point. Decompose rq_scale
-        // into (multiplier, rshift) the same way the symmetric mode-0 path
-        // does.
-        if (module::isBM1684X2() || module::isSG2262()) {
-          get_scale_and_shift(spec.rq_scale, spec.multiplier, spec.rshiftbits,
-                              32);
-        }
       }
     }
   }
@@ -194,15 +185,6 @@ void tpu::Pool2DOp::codegen_local_bm1684x_kernel(
       common.rq_offset = getOffset().has_value()
                              ? (getOffset().value().convertToDouble())
                              : -1.;
-      // bm1684x2/sg2262 dropped the rq0 (fp32-scale requant) instruction;
-      // firmware emulates merge_requant with rq1 (int multiplier + rshift +
-      // zp). rq_offset is reused as the rq1 zero-point. Decompose rq_scale
-      // into (multiplier, rshift) the same way the symmetric mode-0 path
-      // does.
-      if (module::isBM1684X2() || module::isSG2262()) {
-        get_scale_and_shift(common.rq_scale, common.multiplier,
-                            common.rshiftbits, 32);
-      }
     }
   }
 #if 0
@@ -253,15 +235,6 @@ int64_t tpu::Pool2DOp::dyn_codegen_local_bm1684x(void *buffer) {
       common.rq_offset = getOffset().has_value()
                              ? (getOffset().value().convertToDouble())
                              : -1.;
-      // bm1684x2/sg2262 dropped the rq0 (fp32-scale requant) instruction;
-      // firmware emulates merge_requant with rq1 (int multiplier + rshift +
-      // zp). rq_offset is reused as the rq1 zero-point. Decompose rq_scale
-      // into (multiplier, rshift) the same way the symmetric mode-0 path
-      // does.
-      if (module::isBM1684X2() || module::isSG2262()) {
-        get_scale_and_shift(common.rq_scale, common.multiplier,
-                            common.rshiftbits, 32);
-      }
     }
   }
 
@@ -298,15 +271,6 @@ int64_t tpu::Pool2DOp::dyn_codegen_global_bm1684x(void *buffer) {
         spec.rq_offset = getOffset().has_value()
                              ? (getOffset().value().convertToDouble())
                              : 0.;
-        // bm1684x2/sg2262 dropped the rq0 (fp32-scale requant) instruction;
-        // firmware emulates merge_requant with rq1 (int multiplier + rshift +
-        // zp). rq_offset is reused as the rq1 zero-point. Decompose rq_scale
-        // into (multiplier, rshift) the same way the symmetric mode-0 path
-        // does.
-        if (module::isBM1684X2() || module::isSG2262()) {
-          get_scale_and_shift(spec.rq_scale, spec.multiplier, spec.rshiftbits,
-                              32);
-        }
       }
     }
   }

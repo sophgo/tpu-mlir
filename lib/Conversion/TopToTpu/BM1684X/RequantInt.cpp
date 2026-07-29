@@ -66,14 +66,8 @@ void RequantIntLowering::LoweringQuantized(PatternRewriter &rewriter,
     std::vector<int32_t> quant;
     std::vector<int64_t> in_shape = module::getShape(op.getInput());
     std::vector<int64_t> quant_shape(in_shape.size(), 1l);
-    // 2-element compact (1,c,1,2) coeff layout [mult, (-shift&0xffff)|(zp<<16)]
-    // is shared by the BM1688 family AND BM1684X2: the per-channel requant BDC
-    // (atomic_rq_i32mode_gen_cmd) reads coeff as array4(1,c,1,2)
-    // CONTINUOUS_LAYOUT on these chips. BM1684X instead keeps the 3-element
-    // (1,c,1,3) layout.
     bool isBM1688 = module::isBM1688() || module::isSG2380() ||
-                    module::isCV184X() || module::isSGTPUV8() ||
-                    module::isBM1684X2();
+                    module::isCV184X() || module::isSGTPUV8();
     int numElementsPerChannel = isBM1688 ? 2 : 3;
     quant.resize(raw_multi.size() * numElementsPerChannel, 0);
     for (int i = 0; i < raw_multi.size(); ++i) {
