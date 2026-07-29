@@ -2621,6 +2621,11 @@ class LlmConverter(BaseConverter):
         for bmodel in self.all_bmodels_without_bytes:
             bmodel_list += [bmodel]
 
+        # PP distribute: split into num_device groups and combine separately
+        if self.distribute_strategy == 'pp' and self.num_device_pp > 1:
+            self._pp_combine(bmodel_list)
+            return
+
         combine_args = ['model_tool', '--combine', ' '.join(bmodel_list), '-o', self.out_bmodel]
         self.run_command(['bash', '-c', ' '.join(combine_args)])
         # Get the size of the combined bmodel
@@ -2632,108 +2637,15 @@ class LlmConverter(BaseConverter):
         get_info_args = ['model_tool', '--info', self.out_bmodel, '> ../model.log']
         self.run_command(['bash', '-c', ' '.join(get_info_args)])
 
-        # PP distribute: split into num_device groups and combine separately
-        if self.distribute_strategy == 'pp' and self.num_device_pp > 1:
-            self._pp_combine(bmodel_list)
-
     def _pp_combine(self, bmodel_list):
-        import re
-        import math
-
-        # Classify bmodels into categories
-        embedding_vit_group = []  # embedding_xxx and vit_xxx
-        block_models = {}  # layer_id -> list of bmodels (block + block_kv + block_cache)
-        add_group = []  # add operations for residual connections
-        remaining_group = []  # lm_head, greedy_head, sample_head, etc.
-
-        block_pattern = re.compile(r'block(?:_cache|_kv)?_(\d+)')
-        embedding_vit_pattern = re.compile(r'(embedding|vit)')
-        add_pattern = re.compile(r'add')
-        for bmodel in bmodel_list:
-            basename = os.path.basename(bmodel)
-            m = block_pattern.match(basename)
-            if m:
-                layer_id = int(m.group(1))
-                block_models.setdefault(layer_id, []).append(bmodel)
-            elif embedding_vit_pattern.search(basename):
-                embedding_vit_group.append(bmodel)
-            elif add_pattern.search(basename):
-                add_group.append(bmodel)
-            else:
-                remaining_group.append(bmodel)
-        # Split block layers into (num_device_pp - 2) groups
-        num_block_groups = self.num_device_pp - 2
-        sorted_layer_ids = sorted(block_models.keys())
-        total_layers = len(sorted_layer_ids)
-        layers_per_group = math.ceil(total_layers /
-                                     num_block_groups) if num_block_groups > 0 else total_layers
-
-        groups = []
-        # Group 0: embedding + vit
-        groups.append(embedding_vit_group)
-        # Groups 1 to num_device_pp-2: block layers
-        for g in range(num_block_groups):
-            start = g * layers_per_group
-            end = min((g + 1) * layers_per_group, total_layers)
-            group_bmodels = []
-            for lid in sorted_layer_ids[start:end]:
-                group_bmodels.extend(block_models[lid])
-            groups.append(group_bmodels)
-        if add_group:
-            if num_block_groups > 0:
-                groups[1].extend(add_group)  # Add residual connections to the first block group
-            else:
-                groups[0].extend(add_group)
-        # Last group: remaining (lm_head, greedy_head, sample_head, etc.)
-        groups.append(remaining_group)
-
-        # Generate per-group bmodel names that cpp_demo_pp can auto-detect.
-        # cpp_demo_pp distinguishes components by substring match on the
-        # filename: "embed_vit" -> embedding+vit, "block" -> transformer
-        # blocks, "lmhead" -> LM head (and friends). The block files are then
-        # loaded in lexicographic order, so we zero-pad the index.
-        # Layout:
-        #   groups[0]                 -> {base}_embed_vit{ext}
-        #   groups[1..num_block_grps] -> {base}_block_{i}{ext}
-        #   groups[-1]                -> {base}_lmhead{ext}
-        out_base, out_ext = os.path.splitext(self.out_bmodel)
-        pad = max(2, len(str(max(num_block_groups - 1, 0))))
-        group_names = []
-        group_names.append(f"{out_base}_embed_vit{out_ext}")
-        for n in range(num_block_groups):
-            group_names.append(f"{out_base}_block_{n:0{pad}d}{out_ext}")
-        group_names.append(f"{out_base}_lmhead{out_ext}")
-
-        assert len(group_names) == len(groups), (
-            f"PP group count mismatch: {len(group_names)} names vs "
-            f"{len(groups)} groups")
-
-        # Combine each group separately
-        generated_bmodels = []
-        for i, (group, group_out) in enumerate(zip(groups, group_names)):
-            if not group:
-                print(f"PP group {i} ({os.path.basename(group_out)}) is empty, "
-                      f"skipping.")
-                continue
-            combine_args = ['model_tool', '--combine', ' '.join(group), '-o', group_out]
-            self.run_command(['bash', '-c', ' '.join(combine_args)])
-            group_size = os.path.getsize(group_out)
-            print(f"PP group {i} bmodel size: {group_size / (1024.0 ** 3):.4f} GB, "
-                  f"models: {len(group)}, output: {group_out}")
-            generated_bmodels.append(group_out)
-
-        # Tar all PP bmodels into a single {base}_pp_xdev.tar archive so the
-        # whole pipeline-parallel bundle can be shipped / loaded as one file.
-        if generated_bmodels:
-            import tarfile
-            tar_path = f"{out_base}_pp.tar"
-            with tarfile.open(tar_path, "w") as tar:
-                for bmodel in generated_bmodels:
-                    tar.add(bmodel, arcname=os.path.basename(bmodel))
-            tar_size = os.path.getsize(tar_path)
-            print(f"PP tar size: {tar_size / (1024.0 ** 3):.4f} GB, "
-                  f"bmodels: {len(generated_bmodels)}, output: {tar_path}")
-            logger.info("PP tar created: %s (%d bmodels)", tar_path, len(generated_bmodels))
+        # PP distribute: group bmodels by num_device_pp (embedding+vit /
+        # blocks / lmhead), write {out_base}_combine.json next to the output
+        # bmodel, then combine each group and tar the results. The config can
+        # be edited and re-applied with `llm_combine.py --config <config>`.
+        from tools.llm_combine import combine_by_num_device, default_config_path
+        generated_bmodels = combine_by_num_device(bmodel_list, self.num_device_pp, self.out_bmodel)
+        logger.info("PP combine done: %d bmodels, config: %s", len(generated_bmodels),
+                    default_config_path(self.out_bmodel))
 
     def compile_all(self):
         ## ============= main compile ================
