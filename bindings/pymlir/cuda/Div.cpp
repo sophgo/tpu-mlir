@@ -102,3 +102,13 @@ void py_cuda::cudaDivOp(top::DivOp op) {
                    cuda::ACTIVE_RELU, 0, relu_limit);
   }
 }
+
+
+void py_cuda::cudaDivConstOp(top::DivConstOp op) {
+  auto out = op.getOutput();
+  int64_t n, c, h, w;
+  module::getNCHW(out, n, c, h, w, false);
+  cuda::divConst4DF32(getCudaData(op.getInput()),
+                      op.getConstVal().convertToDouble(), getCudaData(out),
+                      op.getDoRelu(), op.getIsReverse(), n, c, h, w);
+}

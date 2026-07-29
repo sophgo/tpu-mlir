@@ -2,6 +2,37 @@
 #include "cuda_helper.h"
 
 
+void py_cuda::cudaFAttentionOp(top::FAttentionOp op) {
+  int batch = op.getBatch();
+  int M_q = op.getMq();
+  int M_k = op.getMk();
+  int q_head = op.getQHead();
+  int kv_head = op.getKvHead();
+  int d = op.getDim();
+  (void)kv_head; // GQA support pending for top FAttention.
+  float scale = (float)op.getScale().convertToDouble();
+  int Hd = q_head * d;
+
+  auto scores = cuda_malloc(batch * q_head * M_q * M_k * sizeof(float));
+  cuda::bmAttentionQK(getCudaData(op.getQueries()), getCudaData(op.getKeys()),
+                      scores.get(), batch, q_head, M_q, M_k, d, scale);
+
+  cuda::bmSoftmax(scores.get(), nullptr, scores.get(), batch * q_head * M_q,
+                  M_k, 1, false);
+
+  auto context = cuda_malloc(batch * q_head * M_q * d * sizeof(float));
+  cuda::bmAttentionPV(scores.get(), getCudaData(op.getValues()), context.get(),
+                      batch, q_head, M_q, M_k, d);
+  scores.reset();
+
+  auto ctx_perm = cuda_malloc(batch * q_head * M_q * d * sizeof(float));
+  cuda::bmPermuteBMHD(context.get(), ctx_perm.get(), batch, q_head, M_q, d);
+  context.reset();
+
+  cudaMemcpy(getCudaData(op.getOutput()), ctx_perm.get(),
+             batch * M_q * Hd * sizeof(float), cudaMemcpyDeviceToDevice);
+}
+
 void py_cuda::cudaFAttentionOp(tpu::FAttentionOp op) {
   auto out_type = module::getStorageType(op.getOutput());
   bool is_bf16 = out_type.isBF16();

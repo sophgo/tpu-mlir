@@ -332,6 +332,9 @@ __device__ void d_copyElement(void *src, int sidx, void *dst, int didx,
   }
 }
 
+// -------------------------------------------------------------------------
+// ----- dequant math helpers
+
 __device__ void d_setValue(void *dst, int didx, int tbytes, float value) {
   switch (tbytes) {
   case 1:

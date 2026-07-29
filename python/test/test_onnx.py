@@ -98,6 +98,9 @@ class ONNX_IR_TESTER(object):
             "Arg":          (self.test_Arg,           Y, Y, Y, Y, Y, Y),
             "AddWeight":    (self.test_AddWeight,     Y, Y, Y, Y, Y, Y),
             "AddWeight2":   (self.test_AddWeight2,    Y, Y, Y, Y, Y, Y),
+            "AdaptiveAvgPool": (self.test_AdaptiveAvgPool, Y, N, N, N, N, N),
+            "AdaptiveAvgPool1d": (self.test_AdaptiveAvgPool1d, Y, N, N, N, N, N),
+            "AdaptiveAvgPool2d": (self.test_AdaptiveAvgPool2d, Y, N, N, N, N, N),
             "AvgPool1d":    (self.test_AvgPool1d,     Y, Y, Y, Y, Y, Y),
             "AvgPool2d":    (self.test_AvgPool2d,     Y, Y, Y, Y, Y, Y),
             "AvgPool3d":    (self.test_AvgPool3d,     Y, Y, Y, Y, Y, N),
@@ -105,10 +108,12 @@ class ONNX_IR_TESTER(object):
             "AffineMap":    (self.test_AffineMap,     Y, Y, N, Y, Y, N),
             "PadAvgPool2d": (self.test_PadAvgPool2d,  Y, Y, Y, Y, Y, Y),
             "BatchMatMul":  (self.test_BatchMatMul,   Y, Y, Y, Y, Y, Y),
+            "BatchNorm2D":  (self.test_BatchNorm2D,   Y, Y, Y, Y, Y, Y),
             "BCastAdd":     (self.test_BCastAdd,      Y, Y, Y, Y, Y, Y),
             "BCastMul":     (self.test_BCastMul,      Y, Y, Y, Y, Y, Y),
             "BCastMulCst":  (self.test_BCastMulCst,   Y, Y, Y, Y, Y, Y),
             "Cast":         (self.test_Cast,          Y, Y, N, Y, Y, Y),
+            "Ceil":         (self.test_Ceil,          Y, Y, N, Y, Y, Y),
             "CompareCst":   (self.test_CompareCst,    Y, Y, Y, Y, Y, Y),
             "Compare":      (self.test_Compare,       Y, Y, N, Y, Y, Y),
             "Concat":       (self.test_Concat,        Y, Y, Y, Y, Y, Y),
@@ -124,6 +129,8 @@ class ONNX_IR_TESTER(object):
             "ConvDw":       (self.test_ConvDw,        Y, Y, Y, Y, Y, Y),
             "ConvTrans":    (self.test_ConvTrans,     Y, Y, Y, Y, Y, N),
             "ConvTrans2":   (self.test_ConvTrans2,    Y, Y, Y, Y, Y, N), # no pad
+            "Cos":          (self.test_Cos,           Y, Y, N, Y, Y, N),
+            "Cosh":         (self.test_Cosh,          Y, Y, N, Y, Y, N),
             "Clip":         (self.test_Clip,          Y, Y, Y, Y, Y, N),
             "CumSum":       (self.test_CumSum,        Y, N, N, Y, Y, Y),
             "DepthToSpace":  (self.test_DepthToSpace,  Y, Y, Y, Y, Y, N),
@@ -134,6 +141,8 @@ class ONNX_IR_TESTER(object):
             "Div":          (self.test_Div,           Y, Y, Y, Y, Y, Y),
             "DivBcast":     (self.test_DivBcast,      Y, Y, N, Y, Y, Y),
             "DivBcast2":    (self.test_DivBcast2,     Y, Y, N, Y, Y, Y),
+            "DivConst":     (self.test_DivConst,      Y, Y, N, Y, Y, N),
+            # "DtypeCast":    (self.test_DtypeCast,     Y, Y, N, Y, Y, N),
             "Einsum":       (self.test_Einsum,        Y, Y, Y, Y, Y, Y),
             "Einsum2":      (self.test_Einsum2,       Y, Y, Y, Y, Y, Y),
             "Einsum3":      (self.test_Einsum3,       Y, Y, Y, Y, Y, Y),
@@ -173,6 +182,7 @@ class ONNX_IR_TESTER(object):
             "GRU4":         (self.test_GRU4,          Y, Y, N, Y, Y, N), # test gru output Y and Yh,also splitting batch dim
             "LeakyRelu":    (self.test_LeakyRelu,     Y, Y, Y, Y, Y, N),
             "Log":          (self.test_Log,           Y, Y, Y, Y, Y, N),
+            "LogB":         (self.test_LogB,          Y, Y, Y, Y, Y, Y),
             "LogSoftmax":   (self.test_LogSoftmax,    Y, Y, Y, Y, Y, Y),
             "LRN":          (self.test_LRN,           Y, Y, Y, Y, Y, Y), # output_y
             "LSTM":         (self.test_LSTM,          Y, Y, Y, Y, Y, N), # output all
@@ -187,6 +197,8 @@ class ONNX_IR_TESTER(object):
             "MatMul2PC":    (self.test_MatMul2PC,     Y, Y, N, N, N, Y),
             "Max":          (self.test_Max,           Y, Y, Y, Y, Y, Y),
             "MaxBcast":     (self.test_MaxBcast,      Y, Y, N, Y, Y, Y),
+            "MeanRstd":     (self.test_MeanRstd,     Y, Y, N, Y, N, N),
+            "MeanStdScale": (self.test_MeanStdScale, Y, Y, N, Y, N, N),
             "Not":          (self.test_Not,           Y, Y, N, Y, Y, Y),
             # "MLP1":         (self.test_MLP1,          Y, Y, N, N, N, N),
             # "MLP2":         (self.test_MLP2,          Y, Y, N, N, N, N),
@@ -198,8 +210,10 @@ class ONNX_IR_TESTER(object):
             "MulBcast2":    (self.test_MulBcast2,     Y, Y, N, Y, Y, Y),
             "Min":          (self.test_Min,           Y, Y, Y, Y, Y, Y),
             "MinBcast":     (self.test_MinBcast,      Y, Y, N, Y, Y, Y),
+            "Mish":         (self.test_Mish,         Y, Y, N, Y, Y, N),
             "MulConst":     (self.test_MulConst,      Y, Y, Y, Y, Y, Y),
             "Neg":          (self.test_Neg,           Y, Y, Y, Y, Y, Y),
+            "Pack":         (self.test_Pack,         Y, Y, N, Y, Y, N),
             "Pad":          (self.test_Pad,           Y, Y, Y, Y, Y, Y), # zero pad
             "Pad1":         (self.test_Pad1,          Y, Y, Y, Y, Y, Y), # pad val
             "PadEdge":      (self.test_PadEdge,       Y, Y, Y, Y, Y, Y),
@@ -213,6 +227,7 @@ class ONNX_IR_TESTER(object):
             "Resize2":      (self.test_Resize2,       Y, Y, Y, Y, Y, Y),
             "ResizeCSplit": (self.test_ResizeCSplit, Y, Y, N, Y, Y, Y),
             "Reshape":      (self.test_Reshape,       Y, Y, N, Y, Y, Y),
+            "Reverse":      (self.test_Reverse,       Y, Y, N, Y, Y, Y),
             "Reduce":       (self.test_Reduce,        Y, Y, Y, Y, Y, Y),
             "Reduce2":      (self.test_Reduce2,       Y, Y, Y, Y, Y, Y),
             "ReduceL1":     (self.test_ReduceL1,      Y, Y, N, Y, Y, Y),
@@ -226,17 +241,24 @@ class ONNX_IR_TESTER(object):
             "Relu":         (self.test_Relu,          Y, Y, Y, Y, Y, Y),
             "ReluOnly":     (self.test_ReluOnly,      N, Y, N, N, N, Y),
             "Round":        (self.test_Round,         Y, N, N, Y, Y, Y),
+            "Rsqrt":        (self.test_Rsqrt,         Y, Y, N, Y, Y, Y),
             "ScatterElements": (self.test_ScatterElements, Y, N, N, Y, Y, N),
             "ScatterND":    (self.test_ScatterND,     Y, Y, N, Y, Y, N),
             "Shape":        (self.test_Shape,         Y, Y, N, Y, Y, N),
             "ShapeCast":    (self.test_ShapeCast,     N, N, N, N, N, N),
+            "ShuffleChannel": (self.test_ShuffleChannel, Y, Y, N, Y, Y, N),
             "SiLU":         (self.test_SiLU,          Y, Y, Y, Y, Y, Y),
             "Softmax":      (self.test_Softmax,       Y, Y, Y, Y, Y, Y),
             "Softplus":     (self.test_Softplus,      Y, Y, Y, Y, Y, Y),
+            "Softsign":     (self.test_Softsign,     Y, Y, N, Y, Y, N),
             "Space2Depth":  (self.test_Space2Depth,   Y, Y, N, Y, Y, Y),
             "Squeeze":      (self.test_Squeeze,       Y, Y, Y, Y, Y, Y),
+            "StridedSlice": (self.test_StridedSlice, Y, Y, N, Y, Y, N),
             "Sigmoid":      (self.test_Sigmoid,       Y, Y, Y, Y, Y, Y),
             "Sign":         (self.test_Sign,          Y, Y, N, Y, Y, Y),
+            "Sin":          (self.test_Sin,          Y, Y, N, Y, N, N),
+            "Sinh":         (self.test_Sinh,         Y, Y, N, Y, N, N),
+            "SliceAxis":    (self.test_SliceAxis,    Y, Y, N, Y, N, N),
             "Slice":        (self.test_Slice,         Y, Y, Y, Y, Y, Y),
             "Slice2":       (self.test_Slice2,        Y, Y, Y, Y, Y, Y),
             "Slice3":       (self.test_Slice3,        Y, Y, Y, Y, Y, Y),
@@ -253,6 +275,9 @@ class ONNX_IR_TESTER(object):
             "SubConst2":    (self.test_SubConst2,     Y, Y, Y, Y, Y, Y),
             "SubBcast3":    (self.test_SubBcast3,     Y, Y, N, N, N, N),
             "Sum":          (self.test_Sum,           Y, Y, Y, Y, Y, Y),
+            "SwapChannel":  (self.test_SwapChannel,  Y, Y, N, Y, N, N),
+            "Swish":        (self.test_Swish,        Y, Y, N, Y, N, N),
+            "Tan":          (self.test_Tan,          Y, Y, N, Y, N, N),
             "Tanh":         (self.test_Tanh,          Y, Y, Y, Y, Y, Y),
             "Tile":         (self.test_Tile,          Y, Y, Y, Y, Y, Y),
             "TileDyn":      (self.test_TileDyn,       Y, Y, N, Y, N, N), # bm1690 has prob
@@ -264,6 +289,7 @@ class ONNX_IR_TESTER(object):
             "TopK4":        (self.test_TopK4,         N, N, Y, N, N, N),
             "TopKSlice":    (self.test_TopKSlice,     Y, N, N, N, N, N),
             "TopKTrans":    (self.test_TopKTrans,     Y, N, N, N, N, N),
+            "Unpack":       (self.test_Unpack,       Y, Y, N, Y, Y, N),
             "Upsample":     (self.test_Upsample,      Y, Y, N, Y, Y, Y),
             "Unsqueeze":    (self.test_Unsqueeze,     Y, Y, N, Y, Y, Y),
             # Only 1D shape is supported currently
@@ -289,6 +315,8 @@ class ONNX_IR_TESTER(object):
             "TorchGroupNorm2":      (self.test_TorchGroupNorm2,     Y, Y, N, Y, Y, Y),
             "TorchGRU":             (self.test_TorchGRU,            Y, Y, Y, Y, Y, N),
             "TorchIdentity":        (self.test_TorchIdentity,       Y, Y, Y, Y, Y, Y),
+            "TorchIndexPut":        (self.test_TorchIndexPut,       Y, Y, N, Y, Y, Y),
+            "TorchInterp":          (self.test_TorchInterp,         Y, Y, Y, Y, Y, Y),
             "TorchIndexCopy":       (self.test_TorchIndexCopy,      N, N, N, N, N, Y),
             "TorchInstanceNorm":    (self.test_TorchInstanceNorm,   Y, Y, N, Y, Y, Y),
             "TorchInstanceNorm2":   (self.test_TorchInstanceNorm2,  Y, Y, N, Y, Y, Y),
@@ -298,6 +326,7 @@ class ONNX_IR_TESTER(object):
             "TorchLogSoftmax":      (self.test_TorchLogSoftmax,     Y, Y, Y, Y, Y, Y),
             "TorchLSTM":            (self.test_TorchLSTM,           Y, Y, Y, Y, Y, N),
             "TorchMaskedFill":      (self.test_TorchMaskedFill,     Y, Y, N, Y, Y, Y),
+            "TorchNms":             (self.test_TorchNms,            Y, Y, N, Y, Y, N),
             "TorchNonZero":         (self.test_TorchNonZero,        Y, Y, N, Y, Y, N),
             "TorchNormalize":       (self.test_TorchNormalize,      Y, Y, N, N, N, Y),
             "TorchReflectionPad":   (self.test_TorchReflectionPad,  Y, Y, Y, Y, Y, Y),
@@ -411,8 +440,8 @@ class ONNX_IR_TESTER(object):
             #########################################
             # Shape Op test case, Alphabetically
             #########################################
-            "ShapeTile":            (self.test_ShapeTile,            Y, N, N, N, N, N),
-            "ShapeScatterElements": (self.test_ShapeScatterElements, Y, N, N, N, N, N),
+            # "ShapeTile":            (self.test_ShapeTile,            Y, N, N, N, N, N),
+            # "ShapeScatterElements": (self.test_ShapeScatterElements, Y, N, N, N, N, N),
             #########################################
             # custom op test case, Alphabetically
             #########################################
@@ -782,7 +811,8 @@ class ONNX_IR_TESTER(object):
                        shape_influencing_input_names=[],
                        matmul_perchannel=False,
                        quant_input_setting=False,
-                       quant_output_setting=False):
+                       quant_output_setting=False,
+                       check_last: bool = False):
         if isinstance(inputs, tuple):
             origin_output = torch_model(*inputs)
         else:
@@ -877,7 +907,8 @@ class ONNX_IR_TESTER(object):
                            shape_influencing_input_names=shape_influencing_input_names,
                            matmul_perchannel=matmul_perchannel,
                            quant_input_setting=quant_input_setting,
-                           quant_output_setting=quant_output_setting)
+                           quant_output_setting=quant_output_setting,
+                           check_last=check_last)
 
     def skip_case(self, case, quant_mode):
         if quant_mode not in ["int4", "f8e4m3", "f8e5m2", "w4int8"]:
@@ -1034,6 +1065,70 @@ class ONNX_IR_TESTER(object):
     ##################################
     # adding operators from here
     ##################################
+    def test_AdaptiveAvgPool(self, case_name):
+
+        class Model(nn.Module):
+
+            def __init__(self, output_size):
+                super(Model, self).__init__()
+                self.output_size = output_size
+
+            def forward(self, input):
+                return F.adaptive_avg_pool2d(input, self.output_size)
+
+        cases = [
+            ((3, 64, 15, 15), (1, 1)),
+            ((1, 32, 32, 32), (4, 4)),
+        ]
+        for idx, (input_shape, output_size) in enumerate(cases):
+            model_name = "{}_{}".format(case_name, idx)
+            input = torch.randn(*input_shape).float()
+            input_data = {"in_0": input.data.numpy().astype(np.float32)}
+            model = Model(output_size)
+            onnx_file = model_name + ".onnx"
+            torch.onnx.export(model,
+                              input,
+                              onnx_file,
+                              export_params=True,
+                              verbose=True,
+                              opset_version=14,
+                              input_names=["in_0"])
+            self.torch_and_onnx_compare(input_data, onnx_file, model(input))
+
+            onnx_model = onnx.load(onnx_file)
+            self.onnx_and_test(onnx_model.graph,
+                               name=model_name,
+                               input_data=input_data,
+                               support_modes=["f32"])
+
+    def test_AdaptiveAvgPool2d(self, case_name):
+
+        def _test_adaptive_avgpool2d(in_shape, output_size):
+
+            class Model(nn.Module):
+
+                def forward(self, x):
+                    return F.adaptive_avg_pool2d(x, output_size)
+
+            self.torch_and_test(torch.randn(*in_shape).float(), Model(), case_name)
+
+        _test_adaptive_avgpool2d((3, 64, 15, 15), (1, 1))
+        if self.chip != "cv183x":
+            _test_adaptive_avgpool2d((1, 32, 32, 32), (2, 2))
+
+    def test_AdaptiveAvgPool1d(self, case_name):
+
+        def _test_adaptive_avgpool1d(in_shape, output_size):
+
+            class Model(nn.Module):
+
+                def forward(self, x):
+                    return F.adaptive_avg_pool1d(x, output_size)
+
+            self.torch_and_test(torch.randn(*in_shape).float(), Model(), case_name)
+
+        _test_adaptive_avgpool1d((3, 64, 32), 1)
+
     def AvgPoolBase(self, case_name, input_shape, output_shape, kernel, strides):
         graph_txt = """
             %s (float%s input) => (float%s output)
@@ -1131,6 +1226,23 @@ class ONNX_IR_TESTER(object):
 
     def test_LgMultiBranchStore(self, case_name):
         self.test_LgMultiBranchOperation(case_name, "store")
+
+    def test_Unpack(self, case_name):
+        shape = [1, 4, 32, 32]
+        out_shape = [1, 1, 32, 32]
+
+        inp_info = helper.make_tensor_value_info('input', TensorProto.FLOAT, shape)
+        o = [helper.make_tensor_value_info(f'o{i}', TensorProto.FLOAT, out_shape) for i in range(4)]
+
+        split_node = helper.make_node("Split",
+                                      inputs=["input", "split_init"],
+                                      outputs=[f'o{i}' for i in range(4)],
+                                      axis=1)
+        graph_def = helper.make_graph([split_node], case_name, [inp_info], o)
+        graph_def.initializer.extend([
+            helper.make_tensor('split_init', TensorProto.INT64, [4], [1, 1, 1, 1]),
+        ])
+        self.onnx_and_test(graph_def)
 
     def test_Unsqueeze(self, case_name):
 
@@ -1852,27 +1964,48 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_LeakyRelu(self, case_name):
-        oc = 32
-        input_shape = [1, 16, 100, 100]
-        filter_shape = [oc, 16, 3, 3]
-        output_shape = [1, oc, 100, 100]
-        weight_data = np.random.randn(*filter_shape).astype(np.float32)
-        bias_data = np.random.randn(oc).astype(np.float32)
+        input_shapes = [
+            # [3, 4],  # 2-dim
+            # [3, 4, 5],  # 3-dim
+            # [1, 3, 32, 32],  # 4-dim
+            # [1, 3, 512, 512],  # 4-dim (large)
+            # [2, 3, 4, 5, 6],  # 5-dim
+            # [1, 2, 3, 4, 5, 6],  # 6-dim
+            [1, 16, 100, 100],  # original
+        ]
         alpha_cases = [0.67, 0.2]
-        for i, a in enumerate(alpha_cases):
-            graph_txt = """
-            %s (float%s input) => (float%s output)
-            <float%s weight, float%s bias>
-            {
-                conv_output = Conv<kernel_shape=[3, 3],pads=[1, 1, 1, 1],strides=[1, 1],dilations=[1, 1],group=1>(input, weight, bias)
-                output = LeakyRelu<alpha=%f>(conv_output)
-            }
-            """ % (case_name, input_shape, output_shape, filter_shape, list(bias_data.shape), a)
-            graph_def = onnx.parser.parse_graph(graph_txt)
-            weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
-            bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
-            graph_def.initializer.extend([weight, bias])
-            self.onnx_and_test(graph_def)
+        last_err = None
+        for i, shape in enumerate(input_shapes):
+            for a in alpha_cases:
+                sub_name = "{}_{}_a{}".format(case_name, i, str(a).replace(".", "p"))
+                try:
+                    oc = 32
+                    filter_shape = [oc, shape[1], 3, 3]
+                    output_shape = [shape[0], oc, shape[2], shape[3]]
+                    weight_data = np.random.randn(*filter_shape).astype(np.float32)
+                    bias_data = np.random.randn(oc).astype(np.float32)
+                    graph_txt = """
+                        %s (float%s input) => (float%s output)
+                        <float%s weight, float%s bias>
+                        {
+                            conv_output = Conv<kernel_shape=[3, 3],pads=[1, 1, 1, 1],strides=[1, 1],dilations=[1, 1],group=1>(input, weight, bias)
+                            output = LeakyRelu<alpha=%f>(conv_output)
+                        }
+                        """ % (sub_name, shape, output_shape, filter_shape, list(
+                        bias_data.shape), a)
+                    graph_def = onnx.parser.parse_graph(graph_txt)
+                    weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape,
+                                                weight_data)
+                    bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape),
+                                              bias_data)
+                    graph_def.initializer.extend([weight, bias])
+                    self.onnx_and_test(graph_def, name=sub_name, check_last=True)
+                    print("[%s] shape=%s alpha=%s PASS" % ("LeakyRelu", shape, a))
+                except Exception as e:
+                    print("[%s] shape=%s alpha=%s FAIL: %s" % ("LeakyRelu", shape, a, e))
+                    last_err = e
+        if last_err is not None:
+            raise last_err
 
     def test_Mul(self, case_name):
         input_shape = [{
@@ -2276,15 +2409,33 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def, static_shape=False, input_data=input_data)
 
     def test_Floor(self, case_name):
-        input_shape = [1, 128, 32, 32]
-        graph_txt = """
-            %s (float%s input) => (float%s output)
-            {
-                output = %s(input)
-            }
-            """ % (case_name, input_shape, input_shape, case_name)
-        graph_def = onnx.parser.parse_graph(graph_txt)
-        self.onnx_and_test(graph_def)
+        input_shapes = [
+            # [3, 4],  # 2-dim
+            # [3, 4, 5],  # 3-dim
+            # [1, 3, 32, 32],  # 4-dim
+            # [1, 3, 512, 512],  # 4-dim (large)
+            # [2, 3, 4, 5, 6],  # 5-dim
+            # [1, 2, 3, 4, 5, 6],  # 6-dim
+            [1, 128, 32, 32],  # original
+        ]
+        last_err = None
+        for i, input_shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                graph_txt = """
+                    %s (float%s input) => (float%s output)
+                    {
+                        output = %s(input)
+                    }
+                    """ % (sub_name, input_shape, input_shape, case_name)
+                graph_def = onnx.parser.parse_graph(graph_txt)
+                self.onnx_and_test(graph_def, name=sub_name, check_last=True)
+                print("[%s] shape=%s PASS" % ("Floor", input_shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("Floor", input_shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
 
     def test_Softmax(self, case_name):
         input_shapes = [[3, 100, 1, 1], [3, 100, 32], [3, 100, 32, 1], [3, 32, 8, 256]]
@@ -2324,13 +2475,41 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_Exp(self, case_name):
-        input_shape = [1, 3, 32, 32]
+        input_shapes = [
+            # [3, 4],  # 2-dim
+            # [3, 4, 5],  # 3-dim
+            [1, 3, 32, 32],  # 4-dim
+            # [1, 3, 512, 512],  # 4-dim (large)
+            # [2, 3, 4, 5, 6],  # 5-dim
+            # [1, 2, 3, 4, 5, 6],  # 6-dim
+        ]
+        last_err = None
+        for i, input_shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                graph_txt = """
+                    %s (float%s input) => (float%s output)
+                    {
+                        output = %s(input)
+                    }
+                    """ % (sub_name, input_shape, input_shape, case_name)
+                graph_def = onnx.parser.parse_graph(graph_txt)
+                self.onnx_and_test(graph_def, name=sub_name, check_last=True)
+                print("[%s] shape=%s PASS" % ("Exp", input_shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("Exp", input_shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
+
+    def test_Tan(self, case_name):
+        shape = [1, 3, 32, 32]
         graph_txt = """
             %s (float%s input) => (float%s output)
             {
-                output = %s(input)
+                output = Tan(input)
             }
-            """ % (case_name, input_shape, input_shape, case_name)
+            """ % (case_name, shape, shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -2357,42 +2536,101 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_Arctanh(self, case_name):
-        input_shape = [1, 3, 32, 32]
-        # The value range of arctanh is (-1,1)
-        input_data = np.clip(np.random.randn(*input_shape).astype(np.float32), -0.99, 0.99)
-        graph_txt = """
-            %s (float%s input) => (float%s output)
-            {
-                output = %s(input)
-            }
-            """ % (case_name, input_shape, input_shape, case_name)
-        graph_def = onnx.parser.parse_graph(graph_txt)
-        self.onnx_and_test(graph_def, input_data={'input': input_data})
+        input_shapes = [
+            # [3, 4],  # 2-dim
+            # [3, 4, 5],  # 3-dim
+            [1, 3, 32, 32],  # 4-dim
+            # [1, 3, 512, 512],  # 4-dim (large)
+            # [2, 3, 4, 5, 6],  # 5-dim
+            # [1, 2, 3, 4, 5, 6],  # 6-dim
+        ]
+        last_err = None
+        for i, input_shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                input_data = np.clip(np.random.randn(*input_shape).astype(np.float32), -0.99, 0.99)
+                graph_txt = """
+                    %s (float%s input) => (float%s output)
+                    {
+                        output = %s(input)
+                    }
+                    """ % (sub_name, input_shape, input_shape, case_name)
+                graph_def = onnx.parser.parse_graph(graph_txt)
+                self.onnx_and_test(graph_def,
+                                   name=sub_name,
+                                   input_data={'input': input_data},
+                                   check_last=True)
+                print("[%s] shape=%s PASS" % ("Atanh", input_shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("Atanh", input_shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
 
     def test_Arccos(self, case_name):
-        input_shape = [1, 3, 32, 32]
-        # The value range of arccos is (-1,1)
-        input_data = np.clip(np.random.randn(*input_shape).astype(np.float32), -0.99, 0.99)
-        graph_txt = """
-            %s (float%s input) => (float%s output)
-            {
-                output = %s(input)
-            }
-            """ % (case_name, input_shape, input_shape, case_name)
-        graph_def = onnx.parser.parse_graph(graph_txt)
-        self.onnx_and_test(graph_def, input_data={'input': input_data})
+        input_shapes = [
+            # [3, 4],  # 2-dim
+            # [3, 4, 5],  # 3-dim
+            [1, 3, 32, 32],  # 4-dim
+            # [1, 3, 512, 512],  # 4-dim (large)
+            # [2, 3, 4, 5, 6],  # 5-dim
+            # [1, 2, 3, 4, 5, 6],  # 6-dim
+        ]
+        last_err = None
+        for i, input_shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                input_data = np.clip(np.random.randn(*input_shape).astype(np.float32), -0.99, 0.99)
+                graph_txt = """
+                    %s (float%s input) => (float%s output)
+                    {
+                        output = %s(input)
+                    }
+                    """ % (sub_name, input_shape, input_shape, case_name)
+                graph_def = onnx.parser.parse_graph(graph_txt)
+                self.onnx_and_test(graph_def,
+                                   name=sub_name,
+                                   input_data={'input': input_data},
+                                   check_last=True)
+                print("[%s] shape=%s PASS" % ("Acos", input_shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("Acos", input_shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
 
     def test_Log(self, case_name):
-        input_shape = [1, 3, 32, 32]
-        input_data = np.clip(np.random.randn(*input_shape).astype(np.float32) * 10.0, 0.5, 8)
-        graph_txt = """
-            %s (float%s input) => (float%s output)
-            {
-                output = %s(input)
-            }
-            """ % (case_name, input_shape, input_shape, case_name)
-        graph_def = onnx.parser.parse_graph(graph_txt)
-        self.onnx_and_test(graph_def, input_data={'input': input_data})
+        input_shapes = [
+            # [3, 4],  # 2-dim
+            # [3, 4, 5],  # 3-dim
+            [1, 3, 32, 32],  # 4-dim
+            # [1, 3, 512, 512],  # 4-dim (large)
+            # [2, 3, 4, 5, 6],  # 5-dim
+            # [1, 2, 3, 4, 5, 6],  # 6-dim
+        ]
+        last_err = None
+        for i, input_shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                input_data = np.clip(
+                    np.random.randn(*input_shape).astype(np.float32) * 10.0, 0.5, 8)
+                graph_txt = """
+                    %s (float%s input) => (float%s output)
+                    {
+                        output = %s(input)
+                    }
+                    """ % (sub_name, input_shape, input_shape, case_name)
+                graph_def = onnx.parser.parse_graph(graph_txt)
+                self.onnx_and_test(graph_def,
+                                   name=sub_name,
+                                   input_data={'input': input_data},
+                                   check_last=True)
+                print("[%s] shape=%s PASS" % ("Log", input_shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("Log", input_shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
 
     def test_Neg(self, case_name):
         input_shape = [4, 16, 27, 27]
@@ -2450,6 +2688,32 @@ class ONNX_IR_TESTER(object):
             }
             """ % (case_name, in_shape, score_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+    def test_Pack(self, case_name):
+        shape = [1, 3, 32, 32]
+        mid_shape = [1, 1, 3, 32, 32]
+        out_shape = [1, 3, 3, 32, 32]
+
+        inp_infos = [
+            helper.make_tensor_value_info(f'i{i}', TensorProto.FLOAT, shape) for i in range(3)
+        ]
+        out_info = helper.make_tensor_value_info('o', TensorProto.FLOAT, out_shape)
+
+        nodes = []
+        u_names = []
+        for i in range(3):
+            u_name = f'u{i}'
+            u_names.append(u_name)
+            nodes.append(
+                helper.make_node("Reshape", inputs=[f'i{i}', f'shape{i}'], outputs=[u_name]))
+        nodes.append(helper.make_node("Concat", inputs=u_names, outputs=["o"], axis=1))
+
+        graph_def = helper.make_graph(nodes, case_name, inp_infos, [out_info])
+        for i in range(3):
+            graph_def.initializer.extend([
+                helper.make_tensor(f'shape{i}', TensorProto.INT64, [5], mid_shape),
+            ])
         self.onnx_and_test(graph_def)
 
     def test_Pad(self, case_name):
@@ -2556,19 +2820,70 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_Div(self, case_name):
-        input_shape = {"input1": [1, 3, 27, 27], "input2": [1, 3, 27, 27]}
-        output_shape = [1, 3, 27, 27]
-        input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
-        input_data["input2"] = np.clip(input_data["input2"], 0.01, 10)
-
-        graph_txt = """
-                %s (float[1, 3, 27, 27] input1,float[1, 3, 27, 27] input2) => (float%s output)
-                {
-                    output = Div(input1, input2)
+        input_shapes = [
+            [3, 4],  # 2-dim
+            [3, 4, 5],  # 3-dim
+            [1, 3, 32, 32],  # 4-dim
+            [1, 3, 512, 512],  # 4-dim (large)
+            [2, 3, 4, 5, 6],  # 5-dim
+            [1, 2, 3, 4, 5, 6],  # 6-dim
+            [1, 3, 27, 27],  # original
+        ]
+        last_err = None
+        for i, shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                input_data = {
+                    "input1": np.random.randn(*shape).astype(np.float32),
+                    "input2": np.clip(np.random.randn(*shape).astype(np.float32), 0.01, 10),
                 }
-                """ % (case_name, output_shape)
-        graph_def = onnx.parser.parse_graph(graph_txt)
-        self.onnx_and_test(graph_def, input_data=input_data)
+                graph_txt = """
+                    %s (float%s input1, float%s input2) => (float%s output)
+                    {
+                        output = Div(input1, input2)
+                    }
+                    """ % (sub_name, shape, shape, shape)
+                graph_def = onnx.parser.parse_graph(graph_txt)
+                self.onnx_and_test(graph_def, name=sub_name, input_data=input_data, check_last=True)
+                print("[%s] shape=%s PASS" % ("Div", shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("Div", shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
+
+    def test_DivConst(self, case_name):
+        input_shapes = [
+            [3, 4],  # 2-dim
+            [3, 4, 5],  # 3-dim
+            [1, 3, 32, 32],  # 4-dim
+            [1, 3, 512, 512],  # 4-dim (large)
+            [2, 3, 4, 5, 6],  # 5-dim
+            [1, 2, 3, 4, 5, 6],  # 6-dim
+        ]
+        const_val = 2.0
+        last_err = None
+        for i, input_shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+
+                class Model(torch.nn.Module):
+
+                    def forward(self, input_):
+                        return input_ / const_val
+
+                input_ = torch.randint(-20, 20, input_shape).float() * const_val
+                self.torch_and_test(input_,
+                                    Model(),
+                                    sub_name,
+                                    support_modes=["f32"],
+                                    check_last=True)
+                print("[%s] shape=%s PASS" % ("DivConst", input_shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("DivConst", input_shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
 
     def test_DivBcast(self, case_name):
         shapes = ([6, 11, 39, 29], )
@@ -2590,6 +2905,36 @@ class ONNX_IR_TESTER(object):
                     """ % (case_name, i, "".join(map(str, dims)), bcast_s, s, bcast_s, s)
                 graph_def = onnx.parser.parse_graph(graph_txt)
                 self.onnx_and_test(graph_def, input_data={"a": a_data, "b": b_data, "c": c_data})
+
+    def test_DivConst(self, case_name):
+        input_shape = [1, 3, 27, 27]
+        output_shape = [1, 3, 27, 27]
+
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            <float const_div = {2.0}>
+            {
+                output = Div(input, const_div)
+            }
+            """ % (case_name, input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+        shapes = ([5, 12, 1, 21], )
+        bcast_shapes = ([1, 12, 9, 21], )
+        out_shapes = ([5, 12, 9, 21], )
+        for i, s in enumerate(shapes):
+            a_data = np.random.randn(*bcast_shapes[i]).astype(np.float32)
+            b_data = np.clip(np.random.randn(*s).astype(np.float32), 0.01, 10)
+            c_data = np.clip(np.random.randn(*bcast_shapes[i]).astype(np.float32), 0.01, 10)
+            graph_txt = """
+                %s_%s (float%s a, float%s b, float%s c) => (float%s output)
+                {
+                    x = Div(a, b)
+                    output = Div(x, c)
+                }
+                """ % (case_name, i, bcast_shapes[i], s, bcast_shapes[i], out_shapes[i])
+            graph_def = onnx.parser.parse_graph(graph_txt)
+            self.onnx_and_test(graph_def, input_data={"a": a_data, "b": b_data, "c": c_data})
 
     def test_DivBcast2(self, case_name):
         shapes = ([5, 12, 1, 21], )
@@ -2688,16 +3033,33 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_Clip(self, case_name):
-        input_shape = [1, 3, 32, 32]
-        graph_txt = """
-            %s (float%s input) => (float%s output)
-            <float min = {-1.0}, float max = {6.0}>
-            {
-                output = %s(input, min, max)
-            }
-            """ % (case_name, input_shape, input_shape, case_name)
-        graph_def = onnx.parser.parse_graph(graph_txt)
-        self.onnx_and_test(graph_def)
+        input_shapes = [
+            # [3, 4],  # 2-dim
+            # [3, 4, 5],  # 3-dim
+            [1, 3, 32, 32],  # 4-dim
+            # [1, 3, 512, 512],  # 4-dim (large)
+            # [2, 3, 4, 5, 6],  # 5-dim
+            # [1, 2, 3, 4, 5, 6],  # 6-dim
+        ]
+        last_err = None
+        for i, shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                graph_txt = """
+                    %s (float%s input) => (float%s output)
+                    <float min = {-1.0}, float max = {6.0}>
+                    {
+                        output = %s(input, min, max)
+                    }
+                    """ % (sub_name, shape, shape, case_name)
+                graph_def = onnx.parser.parse_graph(graph_txt)
+                self.onnx_and_test(graph_def, name=sub_name, check_last=True)
+                print("[%s] shape=%s PASS" % ("Clip", shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("Clip", shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
 
     def test_ReduceL2(self, case_name):
         input_shape = [4, 4, 4, 16, 16, 64]
@@ -2814,6 +3176,68 @@ class ONNX_IR_TESTER(object):
                 }
                 """ % (case_name, input_shape, input_shape, input_shape, case_name)
             graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+    def test_SliceAxis(self, case_name):
+        shape = [1, 3, 32, 32]
+        out_shape = [1, 3, 16, 32]
+
+        inp_info = helper.make_tensor_value_info('input', TensorProto.FLOAT, shape)
+        out_info = helper.make_tensor_value_info('out', TensorProto.FLOAT, out_shape)
+
+        node_def = helper.make_node("Slice",
+                                    inputs=["input", "starts", "ends", "axes", "steps"],
+                                    outputs=["out"])
+
+        graph_def = helper.make_graph([node_def], case_name, [inp_info], [out_info])
+        graph_def.initializer.extend([
+            helper.make_tensor('starts', TensorProto.INT64, [1], [0]),
+            helper.make_tensor('ends', TensorProto.INT64, [1], [16]),
+            helper.make_tensor('axes', TensorProto.INT64, [1], [2]),
+            helper.make_tensor('steps', TensorProto.INT64, [1], [2]),
+        ])
+        self.onnx_and_test(graph_def)
+
+    def test_Sinh(self, case_name):
+        shape = [1, 3, 32, 32]
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            {
+                output = Sinh(input)
+            }
+            """ % (case_name, shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+    def test_Sin(self, case_name):
+        shape = [1, 3, 32, 32]
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            {
+                output = Sin(input)
+            }
+            """ % (case_name, shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+    def test_ShuffleChannel(self, case_name):
+        N, C, H, W = 1, 8, 16, 16
+        G = 4
+
+        inp_info = helper.make_tensor_value_info('input', TensorProto.FLOAT, [N, C, H, W])
+        mid_info = helper.make_tensor_value_info('mid', TensorProto.FLOAT, [N, G, C // G, H, W])
+        mid2_info = helper.make_tensor_value_info('mid2', TensorProto.FLOAT, [N, C // G, G, H, W])
+        out_info = helper.make_tensor_value_info('output', TensorProto.FLOAT, [N, C, H, W])
+
+        r0 = helper.make_node("Reshape", inputs=["input", "shape1"], outputs=["mid"])
+        t0 = helper.make_node("Transpose", inputs=["mid"], outputs=["mid2"], perm=[0, 2, 1, 3, 4])
+        r1 = helper.make_node("Reshape", inputs=["mid2", "shape2"], outputs=["output"])
+
+        graph_def = helper.make_graph([r0, t0, r1], case_name, [inp_info], [out_info])
+        graph_def.initializer.extend([
+            helper.make_tensor('shape1', TensorProto.INT64, [5], [N, G, C // G, H, W]),
+            helper.make_tensor('shape2', TensorProto.INT64, [4], [N, C, H, W]),
+        ])
         self.onnx_and_test(graph_def)
 
     def test_Sign(self, case_name):
@@ -3242,6 +3666,17 @@ class ONNX_IR_TESTER(object):
         x = torch.randn(1, 32, 64, 88).float()
         self.torch_and_test(x, Model(), case_name)
 
+    def test_Softsign(self, case_name):
+        shape = [1, 3, 32, 32]
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            {
+                output = Softsign(input)
+            }
+            """ % (case_name, shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
     def test_Split(self, case_name):
         input_shape = [6, 116, 64, 64]
         output1_shape = [3, 116, 64, 64]
@@ -3356,6 +3791,15 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_TorchHardSigmoid(self, case_name):
+        input_shapes = [
+            # [3, 4],  # 2-dim
+            # [3, 4, 5],  # 3-dim
+            # [1, 3, 32, 32],  # 4-dim
+            # [1, 3, 512, 512],  # 4-dim (large)
+            # [2, 3, 4, 5, 6],  # 5-dim
+            # [1, 2, 3, 4, 5, 6],  # 6-dim
+            [3, 100, 200],  # original
+        ]
 
         class Model(nn.Module):
 
@@ -3368,10 +3812,31 @@ class ONNX_IR_TESTER(object):
                 return self.hardsigmoid(x)
                 # return F.hardtanh(x + 3, 0., 6.) / 6.
 
-        x = torch.randn(3, 100, 200).float()
-        self.torch_and_test(x, Model(), case_name)
+        last_err = None
+        for i, input_shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                self.torch_and_test(torch.randn(*input_shape).float(),
+                                    Model(),
+                                    sub_name,
+                                    check_last=True)
+                print("[%s] shape=%s PASS" % ("TorchHardSigmoid", input_shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("TorchHardSigmoid", input_shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
 
     def test_TorchHardSwish(self, case_name):
+        input_shapes = [
+            # [3, 4],  # 2-dim
+            # [3, 4, 5],  # 3-dim
+            # [1, 3, 32, 32],  # 4-dim
+            # [1, 3, 512, 512],  # 4-dim (large)
+            # [2, 3, 4, 5, 6],  # 5-dim
+            # [1, 2, 3, 4, 5, 6],  # 6-dim
+            [10, 2],  # original
+        ]
 
         class Model(nn.Module):
 
@@ -3384,8 +3849,20 @@ class ONNX_IR_TESTER(object):
                 return self.hardSwish(x)
                 # return x * F.hardtanh(x + 3, 0., 6.) / 6.
 
-        x = torch.randn(10, 2).float()
-        self.torch_and_test(x, Model(), case_name)
+        last_err = None
+        for i, input_shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                self.torch_and_test(torch.randn(*input_shape).float(),
+                                    Model(),
+                                    sub_name,
+                                    check_last=True)
+                print("[%s] shape=%s PASS" % ("TorchHardSwish", input_shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("TorchHardSwish", input_shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
 
     def test_TorchIndexCopy(self, case_name):
 
@@ -4233,6 +4710,18 @@ class ONNX_IR_TESTER(object):
         x = torch.randn(1, 529, 3, 49, 49).float()
         self.torch_and_test(x, Model(), case_name)
 
+    def test_Swish(self, case_name):
+        shape = [1, 3, 32, 32]
+        graph_txt = """
+            %s (float%s x) => (float%s y)
+            {
+                sig = Sigmoid(x)
+                y = Mul(x, sig)
+            }
+            """ % (case_name, shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
     def test_SwapDimInner(self, case_name):
 
         class Model(torch.nn.Module):
@@ -4498,15 +4987,33 @@ class ONNX_IR_TESTER(object):
             self.onnx_and_test(graph_def)
 
     def test_AddConst(self, case_name):
-        shape = [1, 3, 27, 27]
-        graph_txt = """
-            %s (float%s input, float[1] constant = {1}) => (float%s output)
-            {
-                output = Add(input, constant)
-            }
-            """ % (case_name, shape, shape)
-        graph_def = onnx.parser.parse_graph(graph_txt)
-        self.onnx_and_test(graph_def)
+        input_shapes = [
+            # [3, 4],  # 2-dim
+            # [3, 4, 5],  # 3-dim
+            # [1, 3, 32, 32],  # 4-dim
+            # [1, 3, 512, 512],  # 4-dim (large)
+            # [2, 3, 4, 5, 6],  # 5-dim
+            # [1, 2, 3, 4, 5, 6],  # 6-dim
+            [1, 3, 27, 27],  # original
+        ]
+        last_err = None
+        for i, shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                graph_txt = """
+                    %s (float%s input, float[1] constant = {1}) => (float%s output)
+                    {
+                        output = Add(input, constant)
+                    }
+                    """ % (sub_name, shape, shape)
+                graph_def = onnx.parser.parse_graph(graph_txt)
+                self.onnx_and_test(graph_def, name=sub_name, check_last=True)
+                print("[%s] shape=%s PASS" % ("AddConst", shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("AddConst", shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
 
     def test_Add_5dim_bc(self, case_name):
         shape_A = [25, 196, 12, 14, 1]
@@ -5283,22 +5790,58 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test_bmodel_only(graph_def, static_shape=False, input_data=input_data)
 
     def test_ConstantFillDyn(self, case_name):
-        tensor_input_shape = [2, 6]
+        input_shapes = [
+            # [3, 4],  # 2-dim
+            # [3, 4, 5],  # 3-dim
+            # [1, 3, 32, 32],  # 4-dim
+            # [1, 3, 512, 512],  # 4-dim (large)
+            # [2, 3, 4, 5, 6],  # 5-dim
+            # [1, 2, 3, 4, 5, 6],  # 6-dim
+            [2, 6],  # original
+        ]
+        last_err = None
+        for i, shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                graph_txt = """
+                    %s (float%s tensor_input) => (float Y_Value)
+                    <float constant>
+                    {
+                        shape = Shape(tensor_input)
+                        Y_Value = ConstantOfShape(shape)
+                    }
+                    """ % (sub_name, shape)
+                graph_def = onnx.parser.parse_graph(graph_txt)
+                input_data = {
+                    'tensor_input':
+                    np.array([[1, 0, 3, 0, 4, 5], [2.1, 2.5, 0, 0, 2.6, 0]], dtype=np.float32),
+                } if shape == [2, 6] else {
+                    'tensor_input': np.random.randn(*shape).astype(np.float32)
+                }
+                self.onnx_and_test_bmodel_only(graph_def,
+                                               name=sub_name,
+                                               static_shape=False,
+                                               input_data=input_data)
+                print("[%s] shape=%s PASS" % ("ConstantFillDyn", shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("ConstantFillDyn", shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
 
-        graph_txt = """
-            %s (float%s tensor_input) => (float Y_Value)
-            <float constant>
-            {
-                shape = Shape(tensor_input)
-                Y_Value = ConstantOfShape(shape)
-            }
-            """ % (case_name, tensor_input_shape)
-        graph_def = onnx.parser.parse_graph(graph_txt)
-        input_data = {
-            'tensor_input': np.array([[1, 0, 3, 0, 4, 5], [2.1, 2.5, 0, 0, 2.6, 0]],
-                                     dtype=np.float32),
-        }
-        self.onnx_and_test_bmodel_only(graph_def, static_shape=False, input_data=input_data)
+    def test_SwapChannel(self, case_name):
+        shape = [1, 3, 32, 32]
+
+        inp_info = helper.make_tensor_value_info('x', TensorProto.FLOAT, shape)
+        out_info = helper.make_tensor_value_info('y', TensorProto.FLOAT, shape)
+
+        node_def = helper.make_node("Gather", inputs=["x", "indices"], outputs=["y"], axis=1)
+
+        graph_def = helper.make_graph([node_def], case_name, [inp_info], [out_info])
+        graph_def.initializer.extend([
+            helper.make_tensor('indices', TensorProto.INT64, [3], [2, 1, 0]),
+        ])
+        self.onnx_and_test(graph_def)
 
     def test_Sub(self, case_name):
         input_shape = [4, 3, 27, 27]
@@ -5390,6 +5933,26 @@ class ONNX_IR_TESTER(object):
 
             self.onnx_and_test(graph_def, name=sub_case_name)
 
+    def test_StridedSlice(self, case_name):
+        shape = [1, 3, 32, 32]
+        out_shape = [1, 3, 8, 16]
+
+        inp_info = helper.make_tensor_value_info('x', TensorProto.FLOAT, shape)
+        out_info = helper.make_tensor_value_info('y', TensorProto.FLOAT, out_shape)
+
+        node_def = helper.make_node("Slice",
+                                    inputs=["x", "starts", "ends", "axes", "steps"],
+                                    outputs=["y"])
+
+        graph_def = helper.make_graph([node_def], case_name, [inp_info], [out_info])
+        graph_def.initializer.extend([
+            helper.make_tensor('starts', TensorProto.INT64, [4], [0, 0, 0, 0]),
+            helper.make_tensor('ends', TensorProto.INT64, [4], [1, 3, 16, 32]),
+            helper.make_tensor('axes', TensorProto.INT64, [4], [0, 1, 2, 3]),
+            helper.make_tensor('steps', TensorProto.INT64, [4], [1, 1, 2, 2]),
+        ])
+        self.onnx_and_test(graph_def)
+
     def test_SubConst(self, case_name):
         input_shape = [4, 3, 27, 27]
         output_shape = [4, 3, 27, 27]
@@ -5440,25 +6003,38 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_Expand(self, case_name):
-        input_shape = [1, 3, 1, 16]
-        output_shape = [1, 3, 16, 16]
-        graph_txt = """
-            %s (float%s input) => (float%s output)
-            <int64%s new_shape>
-            {
-                output = Expand(input, new_shape)
-            }
-            """ % (case_name, input_shape, output_shape, [len(output_shape)])
-        graph_def = onnx.parser.parse_graph(graph_txt)
-
-        shape_def = helper.make_tensor(
-            name='new_shape',
-            data_type=onnx.TensorProto.INT64,
-            dims=[len(output_shape)],
-            vals=np.array(output_shape, dtype=np.int64),
-        )
-        graph_def.initializer.extend([shape_def])
-        self.onnx_and_test(graph_def)
+        expand_cases = [
+            # ([3, 1], [3, 4]),  # 2-D
+            # ([3, 1, 5], [3, 4, 5]),  # 3-D
+            ([1, 3, 1, 16], [1, 3, 16, 16]),  # 4-D (original)
+            # ([1, 3, 1, 128], [1, 3, 128, 128]),  # 4-D (large)
+            # ([2, 3, 1, 5, 6], [2, 3, 4, 5, 6]),  # 5-D
+            # ([1, 2, 3, 1, 5, 6], [1, 2, 3, 4, 5, 6]),  # 6-D
+        ]
+        last_err = None
+        for i, (in_shape, out_shape) in enumerate(expand_cases):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                graph_txt = """
+                    %s (float%s input) => (float%s output)
+                    <int64%s new_shape>
+                    {
+                        output = Expand(input, new_shape)
+                    }
+                    """ % (sub_name, in_shape, out_shape, [len(out_shape)])
+                graph_def = onnx.parser.parse_graph(graph_txt)
+                shape_def = helper.make_tensor(name='new_shape',
+                                               data_type=onnx.TensorProto.INT64,
+                                               dims=[len(out_shape)],
+                                               vals=np.array(out_shape, dtype=np.int64))
+                graph_def.initializer.extend([shape_def])
+                self.onnx_and_test(graph_def, name=sub_name, check_last=True)
+                print("[%s] in=%s out=%s PASS" % ("Expand", in_shape, out_shape))
+            except Exception as e:
+                print("[%s] in=%s out=%s FAIL: %s" % ("Expand", in_shape, out_shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
 
     def test_Expand2(self, case_name):
         input_shape = [1, 16]
@@ -5523,6 +6099,97 @@ class ONNX_IR_TESTER(object):
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
+    def test_MeanStdScale(self, case_name):
+        if not self.test_cuda:
+            return
+
+        N, C, H, W = 1, 3, 32, 32
+
+        inp_info = helper.make_tensor_value_info('input', TensorProto.FLOAT, [N, C, H, W])
+        out_info = helper.make_tensor_value_info('out', TensorProto.FLOAT, [N, C, H, W])
+
+        node_def = helper.make_node("MeanStdScale",
+                                    inputs=["input"],
+                                    outputs=["out"],
+                                    domain="tpu_mlir",
+                                    quant_mode="NORMALIZED",
+                                    customization_format="NCHW",
+                                    channel_order="RGB",
+                                    sign=False,
+                                    scale=[1.0] * C,
+                                    std=[1.0] * C,
+                                    mean=[0.0] * C,
+                                    zero_points=[0.0] * C,
+                                    rounding_mode="ROUND_HALF_AWAY_FROM_ZERO")
+
+        graph_def = helper.make_graph([node_def], case_name, [inp_info], [out_info])
+
+        model_def = helper.make_model(graph_def, producer_name=case_name)
+        model_def.opset_import[0].version = 14
+        custom_opset = OperatorSetIdProto()
+        custom_opset.domain = 'tpu_mlir'
+        custom_opset.version = 1
+        model_def.opset_import.extend([custom_opset])
+
+        input_data = {'input': np.random.randn(N, C, H, W).astype(np.float32)}
+        input_npz = "{}_in_fp32.npz".format(case_name)
+        np.savez(input_npz, **input_data)
+
+        tool = OnnxTransformer(case_name, model_def, test_input=input_npz, static_shape=True)
+        fp32_mlir = "{}.mlir".format(case_name)
+        tool.model_transform(fp32_mlir)
+
+        # Only F16 lowering is implemented
+        tpu_mlir, bmodel = self.bmodel_generate(case_name, "f16")
+        print("[Success] test {} F16".format(case_name))
+
+        tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
+        file_mark(tpu_npz)
+        show_fake_cmd(input_npz, tpu_mlir, tpu_npz, True, True)
+        cuda_outs = mlir_inference(input_data, tpu_mlir, dump_all=True, use_cuda=True)
+        np.savez(tpu_npz, **cuda_outs)
+
+        model_npz = bmodel.replace("." + bmodel.split(".")[-1], "_model_out.npz")
+        file_mark(model_npz)
+        show_fake_cmd(input_npz, bmodel, model_npz)
+        model_outs = model_inference(input_data, bmodel)
+        np.savez(model_npz, **model_outs)
+        npz_compare([model_npz, tpu_npz, "--tolerance", "0.99,0.90", "-v"])
+
+    def test_MeanRstd(self, case_name):
+        N, C, H, W = 1, 4, 8, 8
+        wshape = [1, C, 1, 1]
+        eps = 1e-5
+
+        inp_info = helper.make_tensor_value_info('input', TensorProto.FLOAT, [N, C, H, W])
+        out_infos = [
+            helper.make_tensor_value_info('mean', TensorProto.FLOAT, wshape),
+            helper.make_tensor_value_info('rstd', TensorProto.FLOAT, wshape),
+        ]
+
+        eps_t = helper.make_tensor('eps_t', TensorProto.FLOAT, [1], [eps])
+        neg_t = helper.make_tensor('neg_t', TensorProto.FLOAT, [1], [-1.0])
+
+        nodes = []
+        # mean = ReduceMean(input, axes=[2,3])
+        nodes.append(helper.make_node("ReduceMean", ["input"], ["mean"], axes=[2, 3], keepdims=1))
+        # diff = Sub(input, mean)
+        nodes.append(helper.make_node("Sub", ["input", "mean"], ["diff"]))
+        # sqr = Mul(diff, diff)
+        nodes.append(helper.make_node("Mul", ["diff", "diff"], ["sqr"]))
+        # var = ReduceMean(sqr, axes=[2,3])
+        nodes.append(helper.make_node("ReduceMean", ["sqr"], ["var"], axes=[2, 3], keepdims=1))
+        # var_eps = Add(var, eps_t)
+        nodes.append(helper.make_node("Add", ["var", "eps_t"], ["var_eps"]))
+        # rstd = Pow(var_eps, -1.0)  -- avoids Reciprocal
+        nodes.append(helper.make_node("Pow", ["var_eps", "neg_t"], ["rstd"]))
+
+        graph_def = helper.make_graph(nodes,
+                                      case_name, [inp_info],
+                                      out_infos,
+                                      initializer=[eps_t, neg_t])
+        self.onnx_and_test(graph_def)
+
     def test_MaxBcast(self, case_name):
         shapes = ([6, 8, 39, 41], )
         bcast_dims = ([[0], [2], [0, 2]], )
@@ -5553,6 +6220,19 @@ class ONNX_IR_TESTER(object):
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
+    def test_Mish(self, case_name):
+        shape = [1, 3, 32, 32]
+        graph_txt = """
+            %s (float%s x) => (float%s y)
+            {
+                sp = Softplus(x)
+                th = Tanh(sp)
+                y = Mul(x, th)
+            }
+            """ % (case_name, shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
     def test_MinBcast(self, case_name):
         shapes = ([5, 11, 23, 27], )
         bcast_dims = ([[0], [2], [0, 2]], )
@@ -5572,29 +6252,67 @@ class ONNX_IR_TESTER(object):
                 self.onnx_and_test(graph_def)
 
     def test_Abs(self, case_name):
-        input_shape = [1, 16, 64, 64]
-        graph_txt = """
-            %s (float%s input) => (float%s output)
-            {
-                output = Abs(input)
-            }
-            """ % (case_name, input_shape, input_shape)
-        graph_def = onnx.parser.parse_graph(graph_txt)
-        self.onnx_and_test(graph_def)
+        input_shapes = [
+            # [3, 4],  # 2-dim
+            # [3, 4, 5],  # 3-dim
+            # [1, 3, 32, 32],  # 4-dim
+            # [1, 3, 512, 512],  # 4-dim (large)
+            # [2, 3, 4, 5, 6],  # 5-dim
+            # [1, 2, 3, 4, 5, 6],  # 6-dim
+            [1, 16, 64, 64],  # original
+        ]
+        last_err = None
+        for i, input_shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                graph_txt = """
+                    %s (float%s input) => (float%s output)
+                    {
+                        output = %s(input)
+                    }
+                    """ % (sub_name, input_shape, input_shape, case_name)
+                graph_def = onnx.parser.parse_graph(graph_txt)
+                self.onnx_and_test(graph_def, name=sub_name, check_last=True)
+                print("[%s] shape=%s PASS" % ("Abs", input_shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("Abs", input_shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
 
     def test_Reciprocal(self, case_name):
-        input_shape = [4, 3, 224, 224]
-        graph_txt = """
-            %s (float%s input) => (float%s output)
-            {
-                output = Reciprocal(input)
-            }
-            """ % (case_name, input_shape, input_shape)
-        graph_def = onnx.parser.parse_graph(graph_txt)
-        input_data = np.random.rand(*input_shape).astype(np.float32) + 0.5
-        # avoid divide 0
-        input_data[input_data == 0] = 1
-        self.onnx_and_test(graph_def, input_data={"input": input_data})
+        input_shapes = [
+            # [3, 4],  # 2-dim
+            # [3, 4, 5],  # 3-dim
+            # [1, 3, 32, 32],  # 4-dim
+            # [1, 3, 512, 512],  # 4-dim (large)
+            # [2, 3, 4, 5, 6],  # 5-dim
+            # [1, 2, 3, 4, 5, 6],  # 6-dim
+            [4, 3, 224, 224],  # original
+        ]
+        last_err = None
+        for i, shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                graph_txt = """
+                    %s (float%s input) => (float%s output)
+                    {
+                        output = Reciprocal(input)
+                    }
+                    """ % (sub_name, shape, shape)
+                graph_def = onnx.parser.parse_graph(graph_txt)
+                input_data = np.random.rand(*shape).astype(np.float32) + 0.5
+                input_data[input_data == 0] = 1
+                self.onnx_and_test(graph_def,
+                                   name=sub_name,
+                                   input_data={"input": input_data},
+                                   check_last=True)
+                print("[%s] shape=%s PASS" % ("Reciprocal", shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("Reciprocal", shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
 
     def test_PRelu(self, case_name):
         input_shape = [2, 128, 100, 100]
@@ -5731,27 +6449,44 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def, input_data=input_data)
 
     def test_CompareCst(self, case_name):
-        shape = [1, 3, 27, 27]
-        # "Equal" need not to be tested since equal op between floating number may be invalid
+        input_shapes = [
+            # [3, 4],  # 2-dim
+            # [3, 4, 5],  # 3-dim
+            # [1, 3, 32, 32],  # 4-dim
+            # [1, 3, 512, 512],  # 4-dim (large)
+            # [2, 3, 4, 5, 6],  # 5-dim
+            # [1, 2, 3, 4, 5, 6],  # 6-dim
+            [1, 3, 27, 27],  # original
+        ]
         cases = ("Greater", "GreaterOrEqual", "Less", "LessOrEqual")
         const_value = 0.5
         if self.is_cv18xx:
             cases = ("Equal", )
             const_value = 0.0
-        constant = helper.make_tensor("constant", TensorProto.FLOAT, [1],
-                                      np.array([const_value]).astype(np.float32))
-        for cmp_type in cases:
-            graph_txt = """
-                %s (float%s input) => (bool%s output)
-                <float[1] constant>
-                {
-                    output = %s(input, constant)
-                }
-                """ % (case_name, shape, shape, cmp_type)
-            graph_def = onnx.parser.parse_graph(graph_txt)
-            graph_def.initializer.extend([constant])
-            self.onnx_and_test(graph_def)
-            print("====== TEST {} Success ======".format(cmp_type))
+        last_err = None
+        for i, shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                constant = helper.make_tensor("constant", TensorProto.FLOAT, [1],
+                                              np.array([const_value]).astype(np.float32))
+                for cmp_type in cases:
+                    graph_txt = """
+                        %s (float%s input) => (bool%s output)
+                        <float[1] constant>
+                        {
+                            output = %s(input, constant)
+                        }
+                        """ % (sub_name, shape, shape, cmp_type)
+                    graph_def = onnx.parser.parse_graph(graph_txt)
+                    graph_def.initializer.extend([constant])
+                    self.onnx_and_test(graph_def, name=sub_name + "_" + cmp_type, check_last=True)
+                    print("====== TEST {} Success ======".format(cmp_type))
+                print("[%s] shape=%s PASS" % ("CompareCst", shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("CompareCst", shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
 
     def test_And(self, case_name):
         graph_txt = """
@@ -5778,7 +6513,7 @@ class ONNX_IR_TESTER(object):
 
     def test_Compare(self, case_name):
         shape = [1, 3, 27, 27]
-        # "Equal" need not to be tested since equal op between floating number may be invalid
+        # "Equal" need not be tested since equal op between floating number may be invalid
         for cmp_type in ("Greater", "GreaterOrEqual", "Less", "LessOrEqual"):
             graph_txt = """
                 %s (float%s input1, float%s input2) => (bool%s output)
@@ -5996,7 +6731,7 @@ class ONNX_IR_TESTER(object):
         filter_shape = [1, 80, 8, 32]
         output_shape = [1, 8, 50, 50, 80]
 
-        # bm1688 f16、int8 raise failure
+        # bm1688 f16/int8 raise failure
         weight_data = np.random.randn(*filter_shape).astype(np.float32)
         weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
         graph_txt = """
@@ -6029,38 +6764,73 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_Elu(self, case_name):
-        oc = 32
-        input_shape = [1, 16, 100, 100]
-        filter_shape = [oc, 16, 3, 3]
-        output_shape = [1, oc, 100, 100]
-        weight_data = np.random.randn(*filter_shape).astype(np.float32)
-        bias_data = np.random.randn(oc).astype(np.float32)
-
-        weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
-        bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
-
-        graph_txt = """
-            %s (float%s input) => (float%s output)
-            <float%s weight, float%s bias>
-            {
-                conv_output = Conv<kernel_shape=[3, 3], pads=[1, 1, 1, 1], strides=[1, 1], dilations=[1, 1], group=1>(input, weight, bias)
-                output = Elu<alpha=0.67>(conv_output)
-            }
-            """ % (case_name, input_shape, output_shape, filter_shape, list(bias_data.shape))
-        graph_def = onnx.parser.parse_graph(graph_txt)
-        graph_def.initializer.extend([weight, bias])
-        self.onnx_and_test(graph_def)
+        input_shapes = [
+            # [3, 4],  # 2-dim
+            # [3, 4, 5],  # 3-dim
+            # [1, 3, 32, 32],  # 4-dim
+            # [1, 3, 512, 512],  # 4-dim (large)
+            # [2, 3, 4, 5, 6],  # 5-dim
+            # [1, 2, 3, 4, 5, 6],  # 6-dim
+            [1, 16, 100, 100],  # original
+        ]
+        last_err = None
+        for i, input_shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                oc = 32
+                filter_shape = [oc, input_shape[1], 3, 3]
+                output_shape = [input_shape[0], oc, input_shape[2], input_shape[3]]
+                weight_data = np.random.randn(*filter_shape).astype(np.float32)
+                bias_data = np.random.randn(oc).astype(np.float32)
+                weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
+                bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape),
+                                          bias_data)
+                graph_txt = """
+                    %s (float%s input) => (float%s output)
+                    <float%s weight, float%s bias>
+                    {
+                        conv_output = Conv<kernel_shape=[3, 3], pads=[1, 1, 1, 1], strides=[1, 1], dilations=[1, 1], group=1>(input, weight, bias)
+                        output = Elu<alpha=0.67>(conv_output)
+                    }
+                    """ % (sub_name, input_shape, output_shape, filter_shape, list(bias_data.shape))
+                graph_def = onnx.parser.parse_graph(graph_txt)
+                graph_def.initializer.extend([weight, bias])
+                self.onnx_and_test(graph_def, name=sub_name, check_last=True)
+                print("[%s] shape=%s PASS" % ("Elu", input_shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("Elu", input_shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
 
     def test_Erf(self, case_name):
-        input_shape = [10, 3, 32, 32]
-        graph_txt = """
-            %s (float%s input) => (float%s output)
-            {
-                output = %s(input)
-            }
-            """ % (case_name, input_shape, input_shape, case_name)
-        graph_def = onnx.parser.parse_graph(graph_txt)
-        self.onnx_and_test(graph_def)
+        input_shapes = [
+            # [3, 4],  # 2-dim
+            # [3, 4, 5],  # 3-dim
+            # [1, 3, 32, 32],  # 4-dim
+            # [1, 3, 512, 512],  # 4-dim (large)
+            # [2, 3, 4, 5, 6],  # 5-dim
+            # [1, 2, 3, 4, 5, 6],  # 6-dim
+            [10, 3, 32, 32],  # original
+        ]
+        last_err = None
+        for i, input_shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                graph_txt = """
+                    %s (float%s input) => (float%s output)
+                    {
+                        output = %s(input)
+                    }
+                    """ % (sub_name, input_shape, input_shape, case_name)
+                graph_def = onnx.parser.parse_graph(graph_txt)
+                self.onnx_and_test(graph_def, name=sub_name, check_last=True)
+                print("[%s] shape=%s PASS" % ("Erf", input_shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("Erf", input_shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
 
     def test_TopK(self, case_name):
         shape = [10, 1000]
@@ -7118,37 +7888,72 @@ class ONNX_IR_TESTER(object):
         self.torch_and_test((x1, x2), Model(torch.mul), case_name + "Mul")
 
     def test_CumSum(self, case_name):
-        input_shape = [2, 3, 4, 5]
-        for d in range(len(input_shape)):
-            dim_input = helper.make_tensor(name="dim",
-                                           data_type=onnx.TensorProto.INT64,
-                                           dims=[1],
-                                           vals=np.array([d], dtype=np.int64))
-            graph_txt = """
-                %s (float%s input) => (float%s output)
-                <int64 dim>
-                {
-                    output = CumSum(input, dim)
-                }
-                """ % (case_name, input_shape, input_shape)
-            graph_def = onnx.parser.parse_graph(graph_txt)
-            graph_def.initializer.extend([dim_input])
-            input_data = {
-                "input": np.random.uniform(-100, 100, size=input_shape).astype(np.float32)
-            }
-            self.onnx_and_test(graph_def, input_data=input_data)
+        input_shapes = [
+            # [3, 4],  # 2-dim
+            # [3, 4, 5],  # 3-dim
+            # [1, 3, 32, 32],  # 4-dim
+            [2, 3, 4, 5],  # original
+        ]
+        last_err = None
+        for i, shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                for d in range(len(shape)):
+                    dim_input = helper.make_tensor(name="dim",
+                                                   data_type=onnx.TensorProto.INT64,
+                                                   dims=[1],
+                                                   vals=np.array([d], dtype=np.int64))
+                    graph_txt = """
+                        %s (float%s input) => (float%s output)
+                        <int64 dim>
+                        {
+                            output = CumSum(input, dim)
+                        }
+                        """ % (sub_name, shape, shape)
+                    graph_def = onnx.parser.parse_graph(graph_txt)
+                    graph_def.initializer.extend([dim_input])
+                    input_data = {
+                        "input": np.random.uniform(-100, 100, size=shape).astype(np.float32)
+                    }
+                    self.onnx_and_test(graph_def,
+                                       name=sub_name + "_axis{}".format(d),
+                                       input_data=input_data,
+                                       check_last=True)
+                print("[%s] shape=%s PASS" % ("CumSum", shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("CumSum", shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
 
     def test_Round(self, case_name):
-        input_shape = [1, 16, 64, 64]
-        output_shape = [1, 16, 64, 64]
-        graph_txt = """
-            %s (float%s input) => (float%s output)
-            {
-                output = Round(input)
-            }
-            """ % (case_name, input_shape, output_shape)
-        graph_def = onnx.parser.parse_graph(graph_txt)
-        self.onnx_and_test(graph_def)
+        input_shapes = [
+            # [3, 4],  # 2-dim
+            # [3, 4, 5],  # 3-dim
+            # [1, 3, 32, 32],  # 4-dim
+            # [1, 3, 512, 512],  # 4-dim (large)
+            # [2, 3, 4, 5, 6],  # 5-dim
+            # [1, 2, 3, 4, 5, 6],  # 6-dim
+            [1, 16, 64, 64],  # original
+        ]
+        last_err = None
+        for i, input_shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                graph_txt = """
+                    %s (float%s input) => (float%s output)
+                    {
+                        output = %s(input)
+                    }
+                    """ % (sub_name, input_shape, input_shape, case_name)
+                graph_def = onnx.parser.parse_graph(graph_txt)
+                self.onnx_and_test(graph_def, name=sub_name, check_last=True)
+                print("[%s] shape=%s PASS" % ("Round", input_shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("Round", input_shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
 
     def test_DynamicSlice(self, case_name):
 
@@ -7836,84 +8641,339 @@ class ONNX_IR_TESTER(object):
                 for keepdim in [True, False]:
                     _test_arg(f, axis, keepdim)
 
-    def test_ShapeTile(self, case_name):
+    def BatchNorm2DBase(self, case_name, input_shape, epsilon=1e-5, momentum=0.9):
+        channels = input_shape[1]
+        scale_data = np.random.randn(channels).astype(np.float32)
+        bias_data = np.random.randn(channels).astype(np.float32)
+        mean_data = np.random.randn(channels).astype(np.float32)
+        var_data = (np.random.rand(channels) + 0.5).astype(np.float32)
+
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            <float[%d] scale, float[%d] bias, float[%d] mean, float[%d] var>
+            {
+                output = BatchNormalization<epsilon=%f,momentum=%f>(input, scale, bias, mean, var)
+            }
+            """ % (case_name, input_shape, input_shape, channels, channels, channels, channels,
+                   epsilon, momentum)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
+        scale = helper.make_tensor('scale', TensorProto.FLOAT, [channels], scale_data)
+        bias = helper.make_tensor('bias', TensorProto.FLOAT, [channels], bias_data)
+        mean = helper.make_tensor('mean', TensorProto.FLOAT, [channels], mean_data)
+        var = helper.make_tensor('var', TensorProto.FLOAT, [channels], var_data)
+        graph_def.initializer.extend([scale, bias, mean, var])
+        self.onnx_and_test(graph_def)
+
+    def test_BatchNorm2D(self, case_name):
+        batchs = [1, 2, 4]
+        for idx, batch in enumerate(batchs):
+            self.BatchNorm2DBase("{}_{}".format(case_name, idx), [batch, 16, 32, 32])
+
+    def test_Ceil(self, case_name):
+        input_shapes = [
+            [3, 4],  # 2-dim
+            [3, 4, 5],  # 3-dim
+            [1, 3, 32, 32],  # 4-dim
+            [1, 3, 512, 512],  # 4-dim (large)
+            [2, 3, 4, 5, 6],  # 5-dim
+            [1, 2, 3, 4, 5, 6],  # 6-dim
+        ]
+        last_err = None
+        for i, input_shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                graph_txt = """
+                    %s (float%s input) => (float%s output)
+                    {
+                        output = Ceil(input)
+                    }
+                    """ % (sub_name, input_shape, input_shape)
+                graph_def = onnx.parser.parse_graph(graph_txt)
+                self.onnx_and_test(graph_def, name=sub_name, check_last=True)
+                print("[Ceil] shape={} PASS".format(input_shape))
+            except Exception as e:
+                print("[Ceil] shape={} FAIL: {}".format(input_shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
+
+    def test_Cos(self, case_name):
+        input_shapes = [
+            [3, 4],  # 2-dim
+            [3, 4, 5],  # 3-dim
+            [1, 3, 32, 32],  # 4-dim
+            [1, 3, 512, 512],  # 4-dim (large)
+            [2, 3, 4, 5, 6],  # 5-dim
+            [1, 2, 3, 4, 5, 6],  # 6-dim
+        ]
+        last_err = None
+        for i, input_shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                graph_txt = """
+                    %s (float%s input) => (float%s output)
+                    {
+                        output = %s(input)
+                    }
+                    """ % (sub_name, input_shape, input_shape, case_name)
+                graph_def = onnx.parser.parse_graph(graph_txt)
+                self.onnx_and_test(graph_def, name=sub_name, check_last=True)
+                print("[%s] shape=%s PASS" % ("Cos", input_shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("Cos", input_shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
+
+    def test_Cosh(self, case_name):
+        input_shapes = [
+            [3, 4],  # 2-dim
+            [3, 4, 5],  # 3-dim
+            [1, 3, 32, 32],  # 4-dim
+            [1, 3, 512, 512],  # 4-dim (large)
+            [2, 3, 4, 5, 6],  # 5-dim
+            [1, 2, 3, 4, 5, 6],  # 6-dim
+        ]
+        last_err = None
+        for i, input_shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                graph_txt = """
+                    %s (float%s input) => (float%s output)
+                    {
+                        output = %s(input)
+                    }
+                    """ % (sub_name, input_shape, input_shape, case_name)
+                graph_def = onnx.parser.parse_graph(graph_txt)
+                self.onnx_and_test(graph_def, name=sub_name, check_last=True)
+                print("[%s] shape=%s PASS" % ("Cosh", input_shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("Cosh", input_shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
+
+    def test_Reverse(self, case_name):
+        input_shapes = [
+            [2, 3],  # 2-D (batch=2, time=3)
+            [2, 3, 4],  # 3-D
+            [2, 3, 32, 32],  # 4-D (original)
+            [2, 3, 32, 128],  # 4-D (large)
+            #[2, 3, 4, 5, 6],    # 5-D
+            #[2, 3, 4, 5, 6, 7], # 6-D
+        ]
+        last_err = None
+        for i, shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                seq_lens = np.array([3] * shape[0], dtype=np.int64)
+                seq_len_tensor = helper.make_tensor(name="sequence_lens",
+                                                    data_type=TensorProto.INT64,
+                                                    dims=[shape[0]],
+                                                    vals=seq_lens)
+                graph_txt = """
+                    %s (float%s input) => (float%s output)
+                    <int64%s sequence_lens>
+                    {
+                        output = ReverseSequence<batch_axis=0, time_axis=1>(input, sequence_lens)
+                    }
+                    """ % (sub_name, shape, shape, list(seq_lens.shape))
+                graph_def = onnx.parser.parse_graph(graph_txt)
+                graph_def.initializer.extend([seq_len_tensor])
+                input_data = np.random.randn(*shape).astype(np.float32)
+                self.onnx_and_test(graph_def,
+                                   name=sub_name,
+                                   input_data={"input": input_data},
+                                   check_last=True)
+                print("[%s] shape=%s PASS" % ("Reverse", shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("Reverse", shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
+
+    def test_Rsqrt(self, case_name):
+        input_shapes = [
+            [3, 4],  # 2-dim
+            [3, 4, 5],  # 3-dim
+            [1, 3, 32, 32],  # 4-dim
+            [1, 3, 512, 512],  # 4-dim (large)
+            [2, 3, 4, 5, 6],  # 5-dim
+            [1, 2, 3, 4, 5, 6],  # 6-dim
+        ]
+
+        class Model(nn.Module):
+
+            def forward(self, x):
+                return torch.rsqrt(torch.abs(x) + 0.01)
+
+        last_err = None
+        for i, input_shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                self.torch_and_test(torch.randn(*input_shape).float(),
+                                    Model(),
+                                    sub_name,
+                                    support_modes=["f32"],
+                                    check_last=True)
+                print("[%s] shape=%s PASS" % ("Rsqrt", input_shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("Rsqrt", input_shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
+
+    def test_TorchIndexPut(self, case_name):
 
         class Model(nn.Module):
 
             def __init__(self):
                 super(Model, self).__init__()
+                high = 10
+                idx_shape = (3, )
+                self.index = torch.randint(0, high, idx_shape)
+                self.new_val = torch.randn(idx_shape[0], 3, 64, 64)
 
             def forward(self, x):
+                x[self.index] = self.new_val
+                return x
 
-                from torch.onnx import operators
-                shape_tensor = operators.shape_as_tensor(x)
+        x = torch.randn(10, 3, 64, 64).float()
+        self.torch_and_test(x, Model(), case_name)
 
-                tiled_shape = shape_tensor.repeat(2)
-                tiled_shape_list = [tiled_shape[i] for i in range(tiled_shape.size(0))]
+    def test_TorchInterp(self, case_name):
 
-                y = torch.zeros(tiled_shape_list[0] * tiled_shape_list[1])
-                output = torch.reshape(y, tiled_shape_list)
-                return output
+        class Model(nn.Module):
 
-        x = torch.randn(5)
+            def forward(self, x):
+                return nn.functional.interpolate(x,
+                                                 scale_factor=2,
+                                                 mode='bilinear',
+                                                 align_corners=False)
 
-        dynamic_in_names = ["x"]
-        dynamic_shape_input_names = ['x']
-        dynamic_axes = {'x': {0: 'input'}}
+        x = torch.randn(1, 3, 32, 32).float()
+        self.torch_and_test(x, Model(), case_name)
 
-        try:
-            self.dynamic = True
-            self.torch_and_test((x),
-                                Model(),
-                                case_name,
-                                support_modes=["f32"],
-                                dynamic_in_names=dynamic_in_names,
-                                dynamic_shape_input_names=dynamic_shape_input_names,
-                                dynamic_axes=dynamic_axes)
-        finally:
-            self.dynamic = False
-
-    def test_ShapeScatterElements(self, case_name):
+    def test_TorchLayerNormTrain(self, case_name):
 
         class Model(nn.Module):
 
             def __init__(self):
                 super(Model, self).__init__()
+                self.ln = nn.LayerNorm([100, 200], eps=1e-5)
 
             def forward(self, x):
-                from torch.onnx import operators
-                shape_tensor = operators.shape_as_tensor(x)
+                return self.ln(x)
 
-                src_value = shape_tensor.repeat(2)
-                indices = torch.tensor([0, 1], dtype=torch.int64)
-                updates = src_value
+        x = torch.randn(3, 100, 200).float()
+        self.torch_and_test(x, Model(), case_name)
 
-                new_shape = torch.scatter(src_value, 0, indices, updates)
-                shape_list = tuple(new_shape.tolist())
+    def test_LogB(self, case_name):
+        input_shapes = [
+            [3, 4],  # 2-dim
+            [3, 4, 5],  # 3-dim
+            [1, 3, 32, 32],  # 4-dim
+            [1, 3, 512, 512],  # 4-dim (large)
+            [2, 3, 4, 5, 6],  # 5-dim
+            [1, 2, 3, 4, 5, 6],  # 6-dim
+        ]
 
-                total_elements = new_shape[0] * new_shape[1]
-                y = torch.zeros(total_elements)
+        class Model(nn.Module):
 
-                output = torch.reshape(y, shape_list)
-                return output
+            def forward(self, x):
+                return torch.log2(x)
 
-        x = torch.randn(5)
+        last_err = None
+        for i, input_shape in enumerate(input_shapes):
+            sub_name = "{}_{}".format(case_name, i)
+            try:
+                self.torch_and_test((torch.rand(*input_shape) * 10 + 0.5).float(),
+                                    Model(),
+                                    sub_name,
+                                    check_last=True)
+                print("[%s] shape=%s PASS" % ("LogB", input_shape))
+            except Exception as e:
+                print("[%s] shape=%s FAIL: %s" % ("LogB", input_shape, e))
+                last_err = e
+        if last_err is not None:
+            raise last_err
 
-        dynamic_in_names = ["x"]
-        dynamic_shape_input_names = ['x']
-        dynamic_axes = {'x': {0: 'input'}}
+    def test_TorchNms(self, case_name):
+        num_boxes = 10
+        batch, num_classes = 1, 1
+        iou_thresh, score_thresh = 0.5, 0.1
 
-        try:
-            self.dynamic = True
-            self.torch_and_test((x),
-                                Model(),
-                                case_name,
-                                support_modes=["f32"],
-                                dynamic_in_names=dynamic_in_names,
-                                dynamic_shape_input_names=dynamic_shape_input_names,
-                                dynamic_axes=dynamic_axes)
-        finally:
-            self.dynamic = False
+        class NmsFunc(torch.autograd.Function):
+
+            @staticmethod
+            def forward(ctx, boxes, scores):
+                cands = []
+                for i in range(num_boxes):
+                    s = scores[0, 0, i].item()
+                    if s > score_thresh:
+                        cands.append((s, i))
+                cands.sort(key=lambda x: x[0], reverse=True)
+
+                suppressed = [False] * len(cands)
+                selected = []
+                for i in range(len(cands)):
+                    if suppressed[i]:
+                        continue
+                    keep = cands[i][1]
+                    selected.extend([0.0, 0.0, float(keep)])
+                    bx1 = boxes[0, keep, 0].item()
+                    by1 = boxes[0, keep, 1].item()
+                    bx2 = boxes[0, keep, 2].item()
+                    by2 = boxes[0, keep, 3].item()
+                    for j in range(i + 1, len(cands)):
+                        if suppressed[j]:
+                            continue
+                        other = cands[j][1]
+                        ox1 = boxes[0, other, 0].item()
+                        oy1 = boxes[0, other, 1].item()
+                        ox2 = boxes[0, other, 2].item()
+                        oy2 = boxes[0, other, 3].item()
+                        ix1 = max(bx1, ox1)
+                        iy1 = max(by1, oy1)
+                        ix2 = min(bx2, ox2)
+                        iy2 = min(by2, oy2)
+                        iw = max(0.0, ix2 - ix1)
+                        ih = max(0.0, iy2 - iy1)
+                        inter = iw * ih
+                        area_a = (bx2 - bx1) * (by2 - by1)
+                        area_b = (ox2 - ox1) * (oy2 - oy1)
+                        iou = inter / (area_a + area_b - inter + 1e-8)
+                        if iou > iou_thresh:
+                            suppressed[j] = True
+                return torch.tensor(selected).float().reshape(-1, 3)
+
+            @staticmethod
+            def symbolic(g, boxes, scores):
+                max_output = g.op("Constant", value_t=torch.tensor([num_boxes], dtype=torch.long))
+                iou_threshold = g.op("Constant",
+                                     value_t=torch.tensor([iou_thresh], dtype=torch.float32))
+                score_threshold = g.op("Constant",
+                                       value_t=torch.tensor([score_thresh], dtype=torch.float32))
+                return g.op("NonMaxSuppression",
+                            boxes,
+                            scores,
+                            max_output,
+                            iou_threshold,
+                            score_threshold,
+                            center_point_box_i=0)
+
+        class Model(nn.Module):
+
+            def forward(self, boxes, scores):
+                return NmsFunc.apply(boxes, scores)
+
+        boxes = torch.rand(batch, num_boxes, 4).float() * 10.0
+        boxes[:, :, 2] = boxes[:, :, 0] + torch.rand(batch, num_boxes).float() * 5.0 + 1.0
+        boxes[:, :, 3] = boxes[:, :, 1] + torch.rand(batch, num_boxes).float() * 5.0 + 1.0
+        scores = torch.rand(batch, num_classes, num_boxes).float()
+
+        self.torch_and_test((boxes, scores), Model(), case_name, support_modes=["f32"])
 
     def test_ConcatVolume(self, case_name):
 

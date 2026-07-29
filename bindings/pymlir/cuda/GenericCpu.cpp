@@ -74,17 +74,60 @@ void py_cuda::cudaGenericCpuOp(tpu::GenericCpuOp op) {
     if (axis < 0) {
       axis += input_shape.size();
     }
-    int outer_dim = 1, inner_dim = 1;
-    for (size_t i = 0; i < input_shape.size(); ++i) {
-      if (i < axis) {
-        outer_dim *= input_shape[i];
-      } else if (i > axis) {
-        inner_dim *= input_shape[i];
-      }
-    }
     auto input_type = getCudaType(op.getInputs()[0]);
     auto index_type = getCudaType(op.getInputs()[1]);
-    cuda::gatherElements(indices, input, output, indices_shape[axis], input_shape[axis], outer_dim, inner_dim, index_type, input_type);
+    cuda::gatherElements(indices, input, output, input_shape.data(),
+                         indices_shape.data(), input_shape.size(), axis,
+                         index_type, input_type);
+  } else if (func_name == "gathernd_tf") {
+    auto param = op.getParam().value();
+    int batch_dims = param.get("batch_dims").cast<IntegerAttr>().getInt();
+    auto input = op.getInputs()[0];
+    auto indices = op.getInputs()[1];
+    auto output = op.getOutputs()[0];
+    auto in_shape = module::getShape(input);
+    auto idx_shape = module::getShape(indices);
+    int in_rank = in_shape.size();
+    int idx_rank = idx_shape.size();
+    int coord_dim = idx_shape[idx_rank - 1];
+
+    int in_strides_arr[8] = {};
+    int stride = 1;
+    for (int d = in_rank - 1; d >= 0; d--) {
+      in_strides_arr[d] = stride;
+      stride *= in_shape[d];
+    }
+
+    int idx_strides_arr[8] = {};
+    stride = 1;
+    for (int d = idx_rank - 2; d >= 0; d--) {
+      idx_strides_arr[d] = stride;
+      stride *= idx_shape[d];
+    }
+
+    int out_total = 1;
+    for (int d = batch_dims; d < idx_rank - 1; d++) {
+      out_total *= idx_shape[d];
+    }
+    for (int d = 0; d < batch_dims; d++) {
+      out_total *= idx_shape[d];
+    }
+
+    int copy_len = 1;
+    for (int d = batch_dims + coord_dim; d < in_rank; d++) {
+      copy_len *= in_shape[d];
+    }
+
+    cuda_ptr idx_f32;
+    void *idx_data = getCudaData(indices);
+    if (getCudaType(indices) != cuda::DT_F32) {
+      idx_f32 = newCudaData(indices, cuda::DT_F32);
+      idx_data = idx_f32.get();
+    }
+    cuda::bmGatherND(getCudaData(input), idx_data, getCudaData(output),
+                     (int *)in_shape.data(), in_strides_arr,
+                     (int *)idx_shape.data(), idx_strides_arr, batch_dims,
+                     idx_rank, coord_dim, out_total, copy_len);
   } else if (func_name == "grid_sampler") {
     auto param = op.getParam().value();
     auto mode = param.get("mode").cast<IntegerAttr>().getInt();
