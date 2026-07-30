@@ -62,7 +62,6 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
       LoweringF32(rewriter, op);
     return;
   }
-
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(op.getInput());
@@ -131,12 +130,36 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   double scale_w;
   int int32_multiplier, shift;
   int inner_dim = filter_size / p.oc;
+  bool w4 = op.getWeightBits().has_value() && op.getWeightBits().value() == 4;
+  bool mse_on = mse_quant_enabled() && w4 && fsign;
+  std::vector<int8_t> mse_L;
   for (int c = 0; c < p.oc; c++) { // per-channel quantization
     float *p_filter = filter_f32->data() + c * inner_dim;
+    bool quant_done = false;
     if (all_i8) {
       scale_w = 1.0 / times;
     } else if (filterOp.getScale().has_value() && weight_scale_v->size()) {
       scale_w = weight_scale_v->data()[c];
+    } else if (mse_on) {
+      // MSE-optimal int4 weight quant (port of llama.cpp make_qx_quants),
+      // stored as int8 (signed, -8..7), same encoding as LoweringINT4.
+      mse_L.resize(inner_dim);
+      float d =
+          make_qx_quants(inner_dim, 8, p_filter, mse_L.data(), 1, nullptr);
+      if (d == 0.f) {
+        scale_w = 1e-5f;
+        for (int t = 0; t < inner_dim; t++)
+          filter_i8->data()[c * inner_dim + t] = 0;
+      } else {
+        scale_w = fabsf(d);
+        float s = d > 0 ? 1.f : -1.f;
+        for (int t = 0; t < inner_dim; t++) {
+          int q = (int)(s * (mse_L[t] - 8));
+          q = std::max(-8, std::min(7, q));
+          filter_i8->data()[c * inner_dim + t] = (int8_t)q;
+        }
+      }
+      quant_done = true;
     } else {
       float w_max = findMaxabs(p_filter, inner_dim);
       scale_w = std::max(w_max / fqmax, 1e-5f);
@@ -146,13 +169,16 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     multiplier_v.push_back(int32_multiplier);
     rshift_v.push_back(shift);
 
-    if (fsign) {
-      for (int t = 0; t < inner_dim; t++) {
-        filter_i8->data()[c * inner_dim + t] = to_int8(p_filter[t] / scale_w);
-      }
-    } else {
-      for (int t = 0; t < inner_dim; t++) {
-        filter_u8->data()[c * inner_dim + t] = to_uint8(p_filter[t] / scale_w);
+    if (!quant_done) {
+      if (fsign) {
+        for (int t = 0; t < inner_dim; t++) {
+          filter_i8->data()[c * inner_dim + t] = to_int8(p_filter[t] / scale_w);
+        }
+      } else {
+        for (int t = 0; t < inner_dim; t++) {
+          filter_u8->data()[c * inner_dim + t] =
+              to_uint8(p_filter[t] / scale_w);
+        }
       }
     }
 
@@ -286,8 +312,9 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
   int bitwidth = 4;
   Value value;
   if (op.getInInt4Scale().has_value()) {
-    // // bool find = false; // causes significant performance degradation, reason pending analysisgnificant performance degradation; reason pending analysis
-    // for (auto user : op.getInput().getDefiningOp()->getUsers()) {
+    // // bool find = false; // causes significant performance degradation,
+    // reason pending analysisgnificant performance degradation; reason pending
+    // analysis for (auto user : op.getInput().getDefiningOp()->getUsers()) {
     //   if (isa<tpu::RequantFpOp>(user)) {
     //     find = true;
     //     operands.push_back(user->getResults()[0]);
@@ -295,18 +322,24 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
     //   }
     // }
     // if (!find) {
-    // // If an int4 input scale exists, the previous layer is int8, so the input tensor is int8 and requires requantization to int4revious layer is int8, hence the input tensor is also int8 and requires requantization to int4.
+    // // If an int4 input scale exists, the previous layer is int8, so the
+    // input tensor is int8 and requires requantization to int4revious layer is
+    // int8, hence the input tensor is also int8 and requires requantization to
+    // int4.
     in_scale = op.getInInt4Scale().value().convertToDouble();
     in_zp = op.getInInt4Zp().value().convertToDouble();
     module::getScaleAndZeroPoint(op.getInput(), in_int8_scale, in_int8_zp,
                                  asymmetric);
     auto output_type = getQuantIntType(op.getInput(), in_scale, in_zp, 4);
-    double scale = in_int8_scale / in_scale; // double scale = in_int8_scale / in_scale; // rq parameter for converting int8 to int48 to int4 rq parameter
+    double scale =
+        in_int8_scale /
+        in_scale; // double scale = in_int8_scale / in_scale; // rq parameter
+                  // for converting int8 to int48 to int4 rq parameter
     double offset = in_zp - in_int8_zp * scale;
     auto to_name = "to_b4_for_" + module::getName(op.getOperation()).str();
     value = do_requantFp(op.getInput(), scale, offset, output_type, to_name);
-    llvm::errs() << "conv input requantFp, to_name:" << to_name << "\n";
-    value.dump();
+    // llvm::errs() << "conv input requantFp, to_name:" << to_name << "\n";
+    // value.dump();
     operands.push_back(value);
     // }
   } else { // } else { // input tensor is also int4r is also int4
@@ -366,14 +399,38 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
   double scale_w;
   int int32_multiplier, shift;
   int inner_dim = filter_f32->size() / p.oc;
-  for (int c = 0; c < p.oc; c++) { // for (int c = 0; c < p.oc; c++) { // per-channel quantization}l quantization
+  bool mse_on = mse_quant_enabled() && fsign;
+  std::vector<float> saved_scale_w(p.oc, 0.f);
+  std::vector<int8_t> mse_L;
+  for (int c = 0; c < p.oc; c++) { // per-channel quantization
     float *p_filter = filter_f32->data() + c * inner_dim;
+    bool quant_done = false;
     if (filterOp.getScale().has_value() && weight_scale_v->size()) {
       scale_w = weight_scale_v->data()[c];
+    } else if (mse_on) {
+      // MSE-optimal symmetric int4 quant (port of llama.cpp make_qx_quants)
+      mse_L.resize(inner_dim);
+      float d =
+          make_qx_quants(inner_dim, 8, p_filter, mse_L.data(), 1, nullptr);
+      if (d == 0.f) {
+        scale_w = 1e-5f;
+        for (int t = 0; t < inner_dim; t++)
+          filter_i8->data()[c * inner_dim + t] = 0;
+      } else {
+        scale_w = fabsf(d);
+        float s = d > 0 ? 1.f : -1.f;
+        for (int t = 0; t < inner_dim; t++) {
+          int q = (int)(s * (mse_L[t] - 8));
+          q = std::max(-8, std::min(7, q));
+          filter_i8->data()[c * inner_dim + t] = (int8_t)q;
+        }
+      }
+      quant_done = true;
     } else {
       float w_max = findMaxabs(p_filter, inner_dim);
       scale_w = std::max(w_max / fqmax, 1e-5f);
     }
+    saved_scale_w[c] = scale_w;
     double scale_f;
     if (all_next_layer_is_int8) {
       scale_f = scale_w * in_scale / out_int8_scale;
@@ -383,13 +440,16 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
     get_scale_and_shift(scale_f, int32_multiplier, shift, 32);
     multiplier_v.push_back(int32_multiplier);
     rshift_v.push_back(shift);
-    if (fsign) {
-      for (int t = 0; t < inner_dim; t++) {
-        filter_i8->data()[c * inner_dim + t] = to_int4(p_filter[t] / scale_w);
-      }
-    } else {
-      for (int t = 0; t < inner_dim; t++) {
-        filter_u8->data()[c * inner_dim + t] = to_uint4(p_filter[t] / scale_w);
+    if (!quant_done) {
+      if (fsign) {
+        for (int t = 0; t < inner_dim; t++) {
+          filter_i8->data()[c * inner_dim + t] = to_int4(p_filter[t] / scale_w);
+        }
+      } else {
+        for (int t = 0; t < inner_dim; t++) {
+          filter_u8->data()[c * inner_dim + t] =
+              to_uint4(p_filter[t] / scale_w);
+        }
       }
     }
 
@@ -523,14 +583,8 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
       auto requant_name_loc = NameLoc::get(builder.getStringAttr(requant_name));
       multiplier_v.clear();
       rshift_v.clear();
-      for (int c = 0; c < p.oc; c++) { // for (int c = 0; c < p.oc; c++) { // per-channel quantization}annel quantization
-        float *p_filter = filter_f32->data() + c * inner_dim;
-        if (filterOp.getScale().has_value() && weight_scale_v->size()) {
-          scale_w = weight_scale_v->data()[c];
-        } else {
-          float w_max = findMaxabs(p_filter, inner_dim);
-          scale_w = std::max(w_max / fqmax, 1e-5f);
-        }
+      for (int c = 0; c < p.oc; c++) { // per-channel quantization
+        scale_w = saved_scale_w[c];
         double scale_f;
         if (i == 0)
           scale_f = scale_w * in_scale / out_int8_scale;

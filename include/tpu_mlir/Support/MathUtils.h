@@ -132,6 +132,20 @@ template <typename Dtype>
 float findMaxabs(const Dtype *pSrcData, int len);
 template <typename Dtype>
 void findMinMax(const Dtype *pSrcData, int len, Dtype *minVal, Dtype *maxVal);
+
+// MSE-optimal symmetric quantization (port of llama.cpp make_qx_quants).
+// Finds scale d and integer codes L (offset: L[i] in [0, 2*nmax-1], signed
+// value = L[i] - nmax in [-nmax, nmax-1]) minimizing weighted MSE of
+// x - d*(L-nmax). nmax = 8 for signed int4 (codes [-8,7]).
+// rmse_type: 0 = simple round, 1 = weight x^2, 2 = weight 1,
+//            3 = weight |x|, 4 = weight sqrt(|x|).
+// qw != nullptr overrides rmse_type with custom importance weights.
+// Returns d (may be negative if the extremal value is positive);
+// returns 0 for all-zero input.
+float make_qx_quants(int n, int nmax, const float *x, int8_t *L, int rmse_type,
+                     const float *qw);
+// Default-off unless env TPU_MLIR_USE_MSE is set.
+bool mse_quant_enabled();
 int calRightShiftNum(float fmax, double thBottom, double thTop, int numBits);
 template <typename T>
 void func_abs(int n, T *src, T *dst);

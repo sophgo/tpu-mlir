@@ -68,6 +68,7 @@ class SimpleTuner:
             self.threshold_table = CalibrationTable(args.calibration_table + ".1")
         self.module = pymlir.module()
         self.module.load(args.mlir_file)
+        self.module.set_progress_silent(True)
         self.parser = MlirParser(args.mlir_file)
         for op_name in self.parser.get_op_name_list():
             fuseop_list_append(op_name, self.fuseop_list)
@@ -89,6 +90,7 @@ class SimpleTuner:
         self.module_dq = pymlir.module()
         self.module_dq.load(args.mlir_file)
         self.module_dq.fake_quant_weight()
+        self.module_dq.set_progress_silent(True)
         self.load_net_input()
         self.dot = None
         #self.dot = gz.Digraph()

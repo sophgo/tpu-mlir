@@ -94,9 +94,12 @@ class CaliMathCpu:
             half_increased_bins = int((new_th - old_th) // old_step + 1)
             new_num_bins = half_increased_bins + old_num_bins
             if new_num_bins > 8000000:
-                warnings.warn("校准图片差异过大,如果方便请调整校准图片顺序或者替换校准图片", UserWarning)
+                warnings.warn(
+                    "Calibration images differ too much; please reorder or replace the calibration images if possible.",
+                    UserWarning)
                 hist, hist_edges = self.histogram(arr, new_th, bin_num)
                 return (hist, hist_edges, min(old_min, new_min), max(old_max, new_max), new_th)
+
             new_th = half_increased_bins * old_step + old_th
             hist, hist_edges = self.histogram(arr, new_th, new_num_bins)
             hist[0:new_num_bins - half_increased_bins] += old_hist
@@ -213,9 +216,12 @@ class CaliMathCuda:
             half_increased_bins = int((new_th - old_th) // old_step + 1)
             new_num_bins = half_increased_bins + old_num_bins
             if new_num_bins > 8000000:
-                warnings.warn("校准图片差异过大,如果方便请调整校准图片顺序或者替换校准图片", UserWarning)
+                warnings.warn(
+                    "Calibration images differ too much; please reorder or replace the calibration images if possible.",
+                    UserWarning)
                 hist, hist_edges = self.histogram(arr, new_th, bin_num)
                 return (hist, hist_edges, min(old_min, new_min), max(old_max, new_max), new_th)
+
             new_th = half_increased_bins * old_step + old_th
             hist, hist_edges = self.histogram(arr, new_th, new_num_bins)
             hist[0:new_num_bins - half_increased_bins] += old_hist

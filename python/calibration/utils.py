@@ -20,6 +20,7 @@ FLOAT_MAP = {
     "cv180x": "BF16",
     "bm1688": "F16",
     "bm1690": "F16",
+    "sg2262": "F16",
 }
 
 chip_support_mix_fp_type = {
@@ -31,7 +32,8 @@ chip_support_mix_fp_type = {
     "cv182x": ["BF16"],
     "cv181x": ["BF16"],
     "cv180x": ["BF16"],
-    "cv184x": ["BF16"]
+    "cv184x": ["BF16"],
+    "sg2262": ["F16", "BF16", "F32"],
 }
 
 calibration_methods = ['mse', 'max', 'kl', 'percentile9999', 'aciq_gauss', 'aciq_laplace']
@@ -211,7 +213,9 @@ def get_no_fused_tensors(parser: MlirParser, all_tensors: list):
                         try:
                             tensor_list.remove(fused_op)
                         except ValueError:
-                            warnings.warn(f"无法从 tensor_list 中移除 '{fused_op}'，因为它不存在。")
+                            warnings.warn(
+                                f"Cannot remove '{fused_op}' from tensor_list because it does not exist."
+                            )
         else:
             tensor_list.append(op)
     return tensor_list
@@ -460,6 +464,10 @@ def get_mix_prec(chip: str, mix_mode: str = 'wi8ai8_fp', fp_type: str = 'F32'):
         return 'INT8', fp_type
     elif mix_mode in ['wf8af8_fp']:
         return 'F8E4M3', fp_type
+    elif mix_mode in ['wf4af16dyn_wf8af16dyn']:
+        return 'F4F16DYN', 'F8E4M3F16DYN'
+    elif mix_mode in ['wf4abf16dyn_wf8abf16dyn']:
+        return 'F4BF16DYN', 'F8E4M3BF16DYN'
     elif mix_mode in ['wi4ai4_wi8ai8']:
         return 'INT4', 'INT8'
     elif mix_mode in ['wi4ai8_wi8ai8']:

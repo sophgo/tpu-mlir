@@ -14,7 +14,7 @@ import pymlir
 from calibration.kld_calibrator import ActivationCalibrator
 from calibration.data_selector import DataSelector
 from calibration.search_threshold import SearchThreshold
-from calibration.search_qtable import SearchQtable, SearchQtableFast
+from calibration.search_qtable import SearchQtable, SearchQtableFast, SearchQtable4Bit
 from calibration.smoothquant import SmoothQuant
 from calibration.softmax_correction import SoftmaxCorrecter
 from calibration.mix_precision import MixPrecSearcher
@@ -54,7 +54,7 @@ if __name__ == '__main__':
     parser.add_argument('--min_layer_cos', type=float, default=0.99, help='minimum cos of layer')
     parser.add_argument('--max_float_layers', type=int, default=5, help='num of float layers in search qtable')
     parser.add_argument('--chip', '--processor', default='bm1684x', type=str,
-                        choices=['bm1684x', 'bm1684', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'bm1688', 'bm1690', 'cv184x', 'sgtpuv8'],
+                        choices=['bm1684x', 'bm1684', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'bm1688', 'bm1690', 'cv184x', 'sgtpuv8', 'sg2262'],
                         help='chip platform name')
     parser.add_argument('--fp_type', default='auto', type=str,choices=['auto', 'F16', 'F32', 'BF16'],
                         help='float type of mix precision')
@@ -72,8 +72,10 @@ if __name__ == '__main__':
                         help="When custom_mode is selected, it is used to specify a custom operator type")
     parser.add_argument('--part_asymmetric', help='some pattern use asymmetric quantize', action='store_true')
     # parser.add_argument('--mix_mode', default='8_16', type=str, choices=['8_16', '4_8', 'w4a8'],
-    parser.add_argument('--mix_mode', default='wi8ai8_fp', type=str, choices=['wi8ai8_fp', 'wi4ai4_wi8ai8', 'wi4ai8_wi8ai8', 'wf8af8_fp'],
+    parser.add_argument('--mix_mode', default='wi8ai8_fp', type=str, choices=['wi8ai8_fp', 'wi4ai4_wi8ai8', 'wi4ai8_wi8ai8', 'wf8af8_fp', 'wf4af16dyn_wf8af16dyn', 'wf4abf16dyn_wf8abf16dyn'],
                         help='Specify the bit width for automatic mixed precision')
+    parser.add_argument('--q_group_size', default=64, type=int,
+                        help='quant group size for dynamic-quant (F4/F8) weight/activation grouping')
     parser.add_argument('--pre_qtable',type=str, default='', help='path to initial qtable for search_qtable')
     parser.add_argument('--cluster', help='auto allocate bit in search_qtable', action='store_true')
     parser.add_argument('-o', '--calibration_table', type=str,
@@ -83,6 +85,24 @@ if __name__ == '__main__':
     parser.add_argument('--debug_log', action='store_true', help='Enable DEBUG logging level')
     # yapf: enable
     args = parser.parse_args()
+
+    # INT4/W4A8 mix modes require a chip that supports INT4. If the selected
+    # chip lacks INT4 (e.g. the default bm1684x), fall back to bm1688 so the
+    # lowering does not abort on an unsupported INT4 mode.
+    _INT4_CAPABLE_CHIPS = {'bm1688', 'cv186x', 'bm1690'}
+    if args.mix_mode in ('wi4ai4_wi8ai8', 'wi4ai8_wi8ai8') and args.chip not in _INT4_CAPABLE_CHIPS:
+        print(f'WARNING: mix_mode {args.mix_mode} requires INT4 support, but chip '
+              f'{args.chip} does not support INT4; switching default chip to bm1688.')
+        args.chip = 'bm1688'
+
+    # F4/F8 (DYN) mix modes target sg2262. Switch the chip so the DYN fp4/fp8
+    # lowering does not abort on an unsupported chip.
+    if args.mix_mode in ('wf4af16dyn_wf8af16dyn', 'wf4abf16dyn_wf8abf16dyn') \
+            and args.chip != 'sg2262':
+        print(f'WARNING: mix_mode {args.mix_mode} targets sg2262; switching chip '
+              f'from {args.chip} to sg2262.')
+        args.chip = 'sg2262'
+
     dump_list = True if 'dump_list' in args.debug_cmd else False
     selector = DataSelector(args.dataset, args.input_num, args.data_list)
     tune_ds = None
@@ -143,17 +163,31 @@ if __name__ == '__main__':
             searcherQ.mix_prec.run()
         else:
             args._logger = logger('Search_Qtable', log_level=log_level)
-            searcherQ = SearchQtable(args, selector, tune_ds, quant_table)
-            if args.search == 'search_qtable' and args.mix_mode == 'wi4ai4_wi8ai8':
-                searcherQ.run_4_8()
-            elif args.search == 'search_qtable' and args.mix_mode == 'wi4ai8_wi8ai8':
-                searcherQ.run_w4a8()
+            searcherQ = SearchQtable4Bit(args, selector, tune_ds, quant_table)
+            if args.search == 'search_qtable' and args.mix_mode in [
+                    'wi4ai4_wi8ai8', 'wi4ai8_wi8ai8', 'wf4af16dyn_wf8af16dyn',
+                    'wf4abf16dyn_wf8abf16dyn'
+            ]:
+                searcherQ.run()
             elif args.search == 'fast_search':
                 searcherQ = SearchQtableFast(args, selector, tune_ds, quant_table)
                 searcherQ.run()
             elif args.search == 'search_qtable':
+                searcherQ = SearchQtable(args, selector, tune_ds, quant_table)
                 searcherQ.run()
     else:
+        # For wi4ai4 (int4_8) in the non-search flow, the cali table must carry a
+        # #int4_th section (int4 activation thresholds) so the int4 model built by
+        # bias correction / calibration has proper activation thresholds. Set
+        # debug_cmd['int4'] so the calibrator emits it. Also restrict cali_method
+        # to kl/mse -- those are the methods whose int4 thresholds are properly
+        # populated (avoids the percentile9999 int4 zero-threshold bug).
+        if args.mix_mode == 'wi4ai4_wi8ai8':
+            args.debug_cmd['int4'] = None
+            if args.cali_method[0].lower() not in ('kl', 'mse'):
+                print(f'WARNING: --bc/calibration for wi4ai4_wi8ai8 needs kl/mse int4 '
+                      f'thresholds; forcing cali_method kl (was {args.cali_method[0]}).')
+                args.cali_method = ['kl']
         # smoothquant
         if args.sq:
             args._logger = logger('SmoothQuant', log_level=log_level)

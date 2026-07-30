@@ -10,7 +10,8 @@ FLOAT_MAP = {
     "cv181x": "BF16",
     "cv180x": "BF16",
     "cv184x": "BF16",
-    "cv186x": "F16"
+    "cv186x": "F16",
+    "sg2262": "F16",
 }
 
 chip_support_mix_fp_type = {
@@ -22,7 +23,8 @@ chip_support_mix_fp_type = {
     "cv181x": ["BF16"],
     "cv180x": ["BF16"],
     "cv184x": ["BF16"],
-    "cv186x": ["F16", "BF16"]
+    "cv186x": ["F16", "BF16"],
+    "sg2262": ["F16", "BF16", "F32"],
 }
 
 

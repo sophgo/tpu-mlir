@@ -53,6 +53,12 @@ class SearchThreshold:
 
     def run_search_calitable(self):
 
+        if self.cali_table_name is not None and os.path.exists(self.cali_table_name):
+            self.mix_prec.logger.print_warning(
+                f'[search_threshold] {self.cali_table_name} already exists; '
+                'skip threshold search and use it as-is.')
+            return
+
         float_model = MixQuantModel(self.fp32_mlir, None, None, "F32")
         predictions_gt = []
         global_compare_layers, layers_rate, _ = self.mix_prec.extract_global_layers()

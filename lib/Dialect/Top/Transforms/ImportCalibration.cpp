@@ -36,7 +36,6 @@ public:
     }
     OpBuilder builder(mOp);
     std::map<std::string, cali_info> calibration_map;
-    std::map<std::string, cali_info> calibration_map_int4;
     std::map<std::string, f64_array_t> per_chan_scales_map;
     std::map<std::string, cali_info> calibration_map_fp8;
     std::ifstream infile(this->tableFile);
@@ -252,8 +251,8 @@ public:
             if (!isOpInt4(user) && !isa<ReturnOp>(user)) {
               if (calibration_map.find(name) != calibration_map.end()) {
                 auto &info = calibration_map[name];
-                module::getScaleAndZeroPoint(info.min, info.max, scale,
-                                             zeropoint);
+                scale = module::getScale(info.threshold, info.min < 0.0, 8);
+                zeropoint = 0;
                 op->setAttr("out_int8_scale", builder.getF64FloatAttr(scale));
                 op->setAttr("out_int8_zp",
                             builder.getF64FloatAttr((double)zeropoint));
@@ -337,13 +336,37 @@ public:
 
   bool isOpInt4(Operation *op) {
     auto opName = module::getName(op).str();
-    return std::find(int4_ops.begin(), int4_ops.end(), opName) !=
-           int4_ops.end();
+    if (!int4_ops.empty()) {
+      // "#int4_op" block present: honor the explicit allow-list.
+      return std::find(int4_ops.begin(), int4_ops.end(), opName) !=
+             int4_ops.end();
+    }
+    // No "#int4_op" block: infer int4-ness from the "#int4_th" block.
+    // Only structurally eligible ops (Conv/MatMul non-dw) whose input or
+    // output tensor carries int4 calibration data are treated as int4, so
+    // the int4 attribute setup below won't hit missing cali entries.
+    if (!module::isInt4Op(op)) {
+      return false;
+    }
+    if (op->getNumOperands() > 0) {
+      auto inName = module::getName(op->getOperands()[0]).str();
+      if (calibration_map_int4.find(inName) != calibration_map_int4.end()) {
+        return true;
+      }
+    }
+    if (op->getNumResults() > 0) {
+      auto outName = module::getName(op->getResults()[0]).str();
+      if (calibration_map_int4.find(outName) != calibration_map_int4.end()) {
+        return true;
+      }
+    }
+    return false;
   }
 
 private:
   std::vector<std::string> asym_op_names;
   std::vector<std::string> int4_ops;
+  std::map<std::string, cali_info> calibration_map_int4;
 };
 
 std::unique_ptr<OperationPass<ModuleOp>> createImportCalibrationTablePass() {

@@ -63,11 +63,12 @@ class MixQuantModel:
                  high_prec: str = None,
                  calib_table: str = None,
                  mix_table: str = None,
-                 using_cuda=False):
+                 using_cuda=False,
+                 q_group_size: int = 0):
         self.fp32_mlir = fp32_mlir
         self.chip = chip
         self.calib_table = None
-        self.mix_table = None
+        self.mix_table = mix_table
         self.mode = mode
         self.high_prec = high_prec
         if self.mode is None:
@@ -75,7 +76,6 @@ class MixQuantModel:
 
         if calib_table:
             self.calib_table = calib_table
-            self.mix_table = mix_table
 
         if pymlir.support_cuda and using_cuda:
             self.using_cuda = True
@@ -86,8 +86,16 @@ class MixQuantModel:
         if self.chip is not None:
             self.quanted_mlir_file = '{}.{}.tune.mlir'.format(fp32_mlir,
                                                               'mix' if mix_table else self.mode)
-            mlir_lowering(self.fp32_mlir, self.quanted_mlir_file, self.mode, self.chip, 1, 1,
-                          self.calib_table, False, self.mix_table)
+            mlir_lowering(self.fp32_mlir,
+                          self.quanted_mlir_file,
+                          self.mode,
+                          self.chip,
+                          1,
+                          1,
+                          self.calib_table,
+                          False,
+                          self.mix_table,
+                          q_group_size=q_group_size)
             self.module.load(self.quanted_mlir_file)
             self.module.set_progress_silent(True)
             self.parser = MlirParser(self.quanted_mlir_file)

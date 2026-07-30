@@ -121,6 +121,13 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
       LoweringF32(rewriter, op);
       return;
     }
+    auto filter_int8 =
+        std::make_shared<std::vector<int8_t>>(filter_f32->size());
+    bool w4 = op.getWeightBits().has_value() && op.getWeightBits().value() == 4;
+    bool mse_on = mse_quant_enabled() && w4;
+    std::vector<int8_t> mse_L;
+    std::vector<float> col_buf;
+    bool mse_done = false;
     double fqmax;
     if (filterOp.getScale().has_value()) {
       auto weight_scale_v = module::getF64Array(filterOp.getScale().value());
@@ -132,7 +139,40 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
         w_scale[0] = weight_scale_v->data()[0];
       }
     } else {
-      if (use_perchannel) {
+      if (use_perchannel && mse_on) {
+        // MSE-optimal per-output-feature int4 weight quant (port of
+        // make_qx_quants)
+        mse_L.resize(p.K);
+        for (int n = 0; n < p.N; n++) {
+          col_buf.resize(p.K);
+          for (int k = 0; k < p.K; k++)
+            col_buf[k] = right_transpose ? filter_f32->at(n * p.K + k)
+                                         : filter_f32->at(k * p.N + n);
+          float d =
+              make_qx_quants(p.K, 8, col_buf.data(), mse_L.data(), 1, nullptr);
+          if (d == 0.f) {
+            w_scale[n] = 1e-5;
+            for (int k = 0; k < p.K; k++) {
+              if (!right_transpose)
+                filter_int8->at(k * p.N + n) = 0;
+              else
+                filter_int8->at(n * p.K + k) = 0;
+            }
+          } else {
+            w_scale[n] = fabs(d);
+            float s = d > 0 ? 1.f : -1.f;
+            for (int k = 0; k < p.K; k++) {
+              int q = (int)(s * (mse_L[k] - 8));
+              q = std::max(-8, std::min(7, q));
+              if (!right_transpose)
+                filter_int8->at(k * p.N + n) = (int8_t)q;
+              else
+                filter_int8->at(n * p.K + k) = (int8_t)q;
+            }
+          }
+        }
+        mse_done = true;
+      } else if (use_perchannel) {
         if (!right_transpose) {
           for (int n = 0; n < p.N; n++) {
             float tmp = std::abs(filter_f32->data()[n]);
@@ -176,27 +216,27 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
       }
     }
 
-    auto filter_int8 =
-        std::make_shared<std::vector<int8_t>>(filter_f32->size());
-    if (use_perchannel) {
-      if (!right_transpose) {
-        for (size_t k = 0; k < p.K; k++) {
+    if (!mse_done) {
+      if (use_perchannel) {
+        if (!right_transpose) {
+          for (size_t k = 0; k < p.K; k++) {
+            for (size_t n = 0; n < p.N; n++) {
+              filter_int8->at(k * p.N + n) =
+                  to_int8(filter_f32->at(k * p.N + n) / w_scale[n]);
+            }
+          }
+        } else {
           for (size_t n = 0; n < p.N; n++) {
-            filter_int8->at(k * p.N + n) =
-                to_int8(filter_f32->at(k * p.N + n) / w_scale[n]);
+            for (size_t k = 0; k < p.K; k++) {
+              filter_int8->at(n * p.K + k) =
+                  to_int8(filter_f32->at(n * p.K + k) / w_scale[n]);
+            }
           }
         }
       } else {
-        for (size_t n = 0; n < p.N; n++) {
-          for (size_t k = 0; k < p.K; k++) {
-            filter_int8->at(n * p.K + k) =
-                to_int8(filter_f32->at(n * p.K + k) / w_scale[n]);
-          }
+        for (uint64_t t = 0; t < filter_f32->size(); t++) {
+          filter_int8->at(t) = to_int8(filter_f32->at(t) / w_scale[0]);
         }
-      }
-    } else {
-      for (uint64_t t = 0; t < filter_f32->size(); t++) {
-        filter_int8->at(t) = to_int8(filter_f32->at(t) / w_scale[0]);
       }
     }
 
@@ -417,9 +457,17 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
   double out_int8_zp =
       op.getOutInt8Zp().value_or(APFloat(0.0)).convertToDouble();
   int64_t in_zp = 0, out_zp = 0;
-  double in_scale = 1, out_scale = 1, w_scale = 1;
+  double in_scale = 1, out_scale = 1;
 
   int64_t left_num_dims = module::getShape(op.getInput()).size();
+  bool use_perfeature = false;
+  auto per_channel_attr = op->getAttr("matmulPerchannelQuant");
+  if (per_channel_attr && per_channel_attr.isa<mlir::BoolAttr>()) {
+    use_perfeature = per_channel_attr.cast<mlir::BoolAttr>().getValue();
+  }
+  std::vector<double> w_scale_v;
+  std::vector<int64_t> scales_v, shifts_v;
+  double w_scale = 1.0; // per-tensor weight scale (used when !use_perfeature)
   if (auto filterOp = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp())) {
     auto filter_f32 = filterOp.read<float>();
     int bitwidth = 4;
@@ -462,18 +510,114 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
       LoweringF32(rewriter, op);
       return;
     }
-    if (filterOp.getScale().has_value()) {
-      auto weight_scale_v = module::getF64Array(filterOp.getScale().value());
-      w_scale = weight_scale_v->data()[0];
-    } else {
-      double w_max = findMaxabs(filter_f32->data(), filter_f32->size());
-      w_scale = w_max / 7.0;
-    }
-
+    bool right_transpose = op.getRightTranspose();
     auto filter_int8 =
         std::make_shared<std::vector<int8_t>>(filter_f32->size());
-    for (uint64_t t = 0; t < filter_f32->size(); t++) {
-      filter_int8->at(t) = to_int8(filter_f32->at(t) / w_scale);
+    bool has_weight_scale = filterOp.getScale().has_value();
+    bool mse_on = mse_quant_enabled();
+
+    if (use_perfeature) {
+      // ===== per-output-feature weight quant (opt-in via
+      // matmulPerchannelQuant) =====
+      w_scale_v.assign(p.N, 1.0);
+      if (has_weight_scale) {
+        auto weight_scale_attr =
+            module::getF64Array(filterOp.getScale().value());
+        if ((int)weight_scale_attr->size() >= p.N) {
+          for (int n = 0; n < p.N; n++)
+            w_scale_v[n] = weight_scale_attr->data()[n];
+        } else {
+          for (int n = 0; n < p.N; n++)
+            w_scale_v[n] = weight_scale_attr->data()[0];
+        }
+      }
+
+      std::vector<int8_t> mse_L;
+      std::vector<float> col_buf;
+      if (!has_weight_scale && mse_on) {
+        // MSE-optimal per-output-feature symmetric int4 quant
+        // (port of llama.cpp make_qx_quants)
+        mse_L.resize(p.K);
+        for (int n = 0; n < p.N; n++) {
+          col_buf.resize(p.K);
+          for (int k = 0; k < p.K; k++)
+            col_buf[k] = right_transpose ? filter_f32->at(n * p.K + k)
+                                         : filter_f32->at(k * p.N + n);
+          float d =
+              make_qx_quants(p.K, 8, col_buf.data(), mse_L.data(), 1, nullptr);
+          if (d == 0.f) {
+            w_scale_v[n] = 1e-5;
+            for (int k = 0; k < p.K; k++) {
+              if (!right_transpose)
+                filter_int8->at(k * p.N + n) = 0;
+              else
+                filter_int8->at(n * p.K + k) = 0;
+            }
+          } else {
+            w_scale_v[n] = fabs(d);
+            float s = d > 0 ? 1.f : -1.f;
+            for (int k = 0; k < p.K; k++) {
+              int q = (int)(s * (mse_L[k] - 8));
+              q = std::max(-8, std::min(7, q));
+              if (!right_transpose)
+                filter_int8->at(k * p.N + n) = (int8_t)q;
+              else
+                filter_int8->at(n * p.K + k) = (int8_t)q;
+            }
+          }
+        }
+      } else {
+        for (int n = 0; n < p.N; n++) {
+          if (!has_weight_scale) {
+            double w_max = 0;
+            for (int k = 0; k < p.K; k++) {
+              double v = right_transpose ? filter_f32->at(n * p.K + k)
+                                         : filter_f32->at(k * p.N + n);
+              if (fabs(v) > w_max)
+                w_max = fabs(v);
+            }
+            w_scale_v[n] = w_max / 7.0;
+          }
+          for (int k = 0; k < p.K; k++) {
+            double fv = right_transpose ? filter_f32->at(n * p.K + k)
+                                        : filter_f32->at(k * p.N + n);
+            if (!right_transpose)
+              filter_int8->at(k * p.N + n) = to_int8(fv / w_scale_v[n]);
+            else
+              filter_int8->at(n * p.K + k) = to_int8(fv / w_scale_v[n]);
+          }
+        }
+      }
+    } else {
+      // ===== per-tensor weight quant (default) =====
+      if (has_weight_scale) {
+        auto weight_scale_v = module::getF64Array(filterOp.getScale().value());
+        w_scale = weight_scale_v->data()[0];
+        for (uint64_t t = 0; t < filter_f32->size(); t++)
+          filter_int8->at(t) = to_int8(filter_f32->at(t) / w_scale);
+      } else if (mse_on) {
+        // per-tensor MSE: run make_qx_quants on the whole weight tensor
+        // (K*N elements) to get a single optimal scale.
+        std::vector<int8_t> mse_L(filter_f32->size());
+        float d = make_qx_quants((int)filter_f32->size(), 8, filter_f32->data(),
+                                 mse_L.data(), 1, nullptr);
+        if (d == 0.f) {
+          w_scale = 1e-5;
+          std::fill(filter_int8->begin(), filter_int8->end(), 0);
+        } else {
+          w_scale = fabs(d);
+          float s = d > 0 ? 1.f : -1.f;
+          for (uint64_t t = 0; t < filter_f32->size(); t++) {
+            int q = (int)(s * (mse_L[t] - 8));
+            filter_int8->at(t) = (int8_t)std::max(-8, std::min(7, q));
+          }
+        }
+      } else {
+        double w_max = findMaxabs(filter_f32->data(), filter_f32->size());
+        w_scale = w_max / 7.0;
+        for (uint64_t t = 0; t < filter_f32->size(); t++)
+          filter_int8->at(t) = to_int8(filter_f32->at(t) / w_scale);
+      }
     }
 
     i32_array_t bias_int32;
@@ -493,8 +637,9 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
       }
 
       if (p.with_bias) {
+        double wsc = use_perfeature ? w_scale_v[j] : w_scale;
         bias_int32->data()[j] =
-            std::round(bias_fp32->at(j) / (w_scale * in_scale) - bias_w_xz);
+            std::round(bias_fp32->at(j) / (wsc * in_scale) - bias_w_xz);
       } else if (in_zp) {
         bias_int32->data()[j] = -bias_w_xz;
       }
@@ -523,13 +668,60 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
       llvm::errs() << "directly output int4\n";
 
     bool with_bias = p.with_bias || in_zp != 0;
-    float scale_f;
-    if (all_next_layer_is_int8) {
-      scale_f = w_scale * in_scale / out_int8_scale;
+
+    if (use_perfeature) {
+      // per-output-feature requant with common-shift search (mirrors
+      // LoweringINT8 use_perchannel branch)
+      std::vector<float> scale_fv(p.N);
+      for (int n = 0; n < p.N; n++) {
+        if (all_next_layer_is_int8)
+          scale_fv[n] = (float)(w_scale_v[n] * in_scale / out_int8_scale);
+        else
+          scale_fv[n] = (float)(in_scale * w_scale_v[n] / out_scale);
+      }
+      int common_shift = -1;
+      for (int shift_limit = 32; shift_limit > 0; shift_limit--) {
+        std::vector<int64_t> tm, ts;
+        int max_shift = 0;
+        for (size_t n = 0; n < p.N; n++) {
+          int scale_ = 1, shift_ = 0;
+          get_scale_and_shift(scale_fv[n], scale_, shift_, shift_limit);
+          tm.push_back(scale_);
+          ts.push_back(shift_);
+          max_shift = shift_ > max_shift ? shift_ : max_shift;
+        }
+        bool overflow = false;
+        for (size_t n = 0; n < p.N; n++) {
+          long long multi = ((long long)tm[n]) << (max_shift - ts[n]);
+          if (multi > 0x80000000ll) {
+            overflow = true;
+            tm[n] = 0x7fffffff;
+            ts[n] = max_shift;
+          } else {
+            tm[n] = tm[n] << (max_shift - ts[n]);
+            ts[n] = max_shift;
+          }
+        }
+        if (!overflow) {
+          common_shift = max_shift;
+          scales_v.swap(tm);
+          shifts_v.swap(ts);
+          break;
+        }
+      }
+      if (common_shift < 0) {
+        llvm_unreachable("found overflow in per-feature quant");
+      }
     } else {
-      scale_f = in_scale * w_scale / out_scale;
+      // per-tensor requant
+      float scale_f;
+      if (all_next_layer_is_int8)
+        scale_f = (float)(w_scale * in_scale / out_int8_scale);
+      else
+        scale_f = (float)(in_scale * w_scale / out_scale);
+      get_scale_and_shift(scale_f, scale, shift, 32);
     }
-    get_scale_and_shift(scale_f, scale, shift, 32);
+
     auto filter_type = op.getRight().getType().cast<RankedTensorType>();
     auto new_type =
         RankedTensorType::get(filter_type.getShape(), rewriter.getI8Type());
@@ -583,6 +775,48 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
     attrs.push_back(attr);
   }
 
+  // helper: per-output-feature requant (multiplier, shift) for a given
+  // output scale, using a common-shift search like LoweringINT8 perchannel.
+  auto compute_perfeature_requant = [&](double out_sc,
+                                        std::vector<int64_t> &out_scales,
+                                        std::vector<int64_t> &out_shifts) {
+    std::vector<float> sf(p.N);
+    for (int n = 0; n < p.N; n++)
+      sf[n] = (float)(in_scale * w_scale_v[n] / out_sc);
+    int common_shift = -1;
+    for (int shift_limit = 32; shift_limit > 0; shift_limit--) {
+      std::vector<int64_t> tm, ts;
+      int max_shift = 0;
+      for (int n = 0; n < p.N; n++) {
+        int scale_ = 1, shift_ = 0;
+        get_scale_and_shift(sf[n], scale_, shift_, shift_limit);
+        tm.push_back(scale_);
+        ts.push_back(shift_);
+        max_shift = shift_ > max_shift ? shift_ : max_shift;
+      }
+      bool overflow = false;
+      for (int n = 0; n < p.N; n++) {
+        long long multi = ((long long)tm[n]) << (max_shift - ts[n]);
+        if (multi > 0x80000000ll) {
+          overflow = true;
+          tm[n] = 0x7fffffff;
+          ts[n] = max_shift;
+        } else {
+          tm[n] = tm[n] << (max_shift - ts[n]);
+          ts[n] = max_shift;
+        }
+      }
+      if (!overflow) {
+        common_shift = max_shift;
+        out_scales.swap(tm);
+        out_shifts.swap(ts);
+        break;
+      }
+    }
+    if (common_shift < 0)
+      llvm_unreachable("found overflow in per-feature quant");
+  };
+
   if (!all_next_layer_is_int8 && !all_next_layer_is_int4) {
     // to int32, and then requant to int8
     auto convType = RankedTensorType::get(module::getShape(op.getOutput()),
@@ -613,18 +847,21 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
     for (int i = 0; i < 2; i++) {
       Type newType;
       std::string w_name, requant_name;
+      double cur_out_scale;
       if (i == 0) {
         w_name = "w_quant_int8_for_" + module::getName(op.getOperation()).str();
         requant_name =
             "requant_int8_for_" + module::getName(op.getOperation()).str();
         cur_op.swap(int8_op);
         newType = getQuantIntType(op.getOutput(), out_int8_scale, out_int8_zp);
+        cur_out_scale = out_int8_scale;
       } else {
         w_name = "w_quant_int4_for_" + module::getName(op.getOperation()).str();
         requant_name =
             "requant_int4_for_" + module::getName(op.getOperation()).str();
         cur_op.swap(int4_op);
         newType = getQuantInt4Type(op.getOutput(), asymmetric);
+        cur_out_scale = out_scale;
       }
       auto requant_name_loc = NameLoc::get(builder.getStringAttr(requant_name));
       // requant
@@ -633,19 +870,41 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
       if (module::isBM1688() || module::isSG2380() || module::isCV184X() ||
           module::isSGTPUV8()) {
         quant_w_size = 2;
-        quant.resize(quant_w_size, 0);
-        quant[i * 2] = scale;
-        quant[i * 2 + 1] =
-            ((-(int32_t)shift) & 0xffff) | (((int32_t)out_zp & 0xffff) << 16);
       } else {
         quant_w_size = 3;
-        quant.resize(quant_w_size, 0);
-        quant[i * 3] = scale;
-        quant[i * 3 + 1] = -shift;
-        quant[i * 3 + 2] = out_zp;
       }
-      auto quant_type = RankedTensorType::get({1, 1, 1, 1, quant_w_size},
-                                              rewriter.getI32Type());
+      if (use_perfeature) {
+        std::vector<int64_t> pf_scales, pf_shifts;
+        compute_perfeature_requant(cur_out_scale, pf_scales, pf_shifts);
+        quant.resize(p.N * quant_w_size, 0);
+        for (int n = 0; n < p.N; n++) {
+          if (quant_w_size == 2) {
+            quant[n * 2] = pf_scales[n];
+            quant[n * 2 + 1] = ((-(int32_t)pf_shifts[n]) & 0xffff) |
+                               (((int32_t)out_zp & 0xffff) << 16);
+          } else {
+            quant[n * 3] = pf_scales[n];
+            quant[n * 3 + 1] = -pf_shifts[n];
+            quant[n * 3 + 2] = out_zp;
+          }
+        }
+      } else {
+        quant.resize(quant_w_size, 0);
+        if (quant_w_size == 2) {
+          quant[0] = scale;
+          quant[1] =
+              ((-(int32_t)shift) & 0xffff) | (((int32_t)out_zp & 0xffff) << 16);
+        } else {
+          quant[0] = scale;
+          quant[1] = -shift;
+          quant[2] = out_zp;
+        }
+      }
+      std::vector<int64_t> quant_shape = {1, 1, 1, 1, quant_w_size};
+      if (use_perfeature)
+        quant_shape[1] = p.N;
+      auto quant_type =
+          RankedTensorType::get(quant_shape, rewriter.getI32Type());
       auto quant_value = top::WeightOp::create(op, w_name, quant, quant_type);
 
       auto newValue =
@@ -666,23 +925,49 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
     rewriter.replaceOp(op, matmul_int32_out);
     set_cal_attr(matmul_int32_out.getOperation(), "cal_i4");
   } else {
-    attrs.push_back(
-        rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(shift)));
-    attrs.push_back(
-        rewriter.getNamedAttr("multipliers", rewriter.getI64ArrayAttr(scale)));
-
     auto newType = getQuantInt4Type(op.getOutput(), asymmetric);
     if (all_next_layer_is_int8) {
       newType = getQuantIntType(op.getOutput(), out_int8_scale, out_int8_zp);
     }
-    auto noneOp_multi = module::getNoneOp(op);
-    operands.push_back(noneOp_multi);
-    // buffer
-    operands.push_back(module::getNoneOp(op));
-    auto newOp =
-        rewriter.create<tpu::MatMulOp>(op->getLoc(), newType, operands, attrs);
-    rewriter.replaceOp(op, {newOp.getOutput()});
-    set_cal_attr(newOp.getOperation(), "cal_i4");
+    if (use_perfeature) {
+      attrs.push_back(rewriter.getNamedAttr(
+          "quant_mode",
+          tpu::RequantModeAttr::get(op->getContext(),
+                                    tpu::RequantMode::MultiplierShift)));
+      attrs.push_back(
+          rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(shifts_v)));
+      attrs.push_back(rewriter.getNamedAttr(
+          "multipliers", rewriter.getI64ArrayAttr(scales_v)));
+      std::vector<int64_t> shape(left_num_dims, 1);
+      shape[left_num_dims - 1] = p.N;
+      std::vector<int32_t> scales32;
+      for (auto s : scales_v)
+        scales32.push_back((int)s);
+      auto multi_type = RankedTensorType::get(shape, rewriter.getI32Type());
+      auto multi =
+          top::WeightOp::create(op, "multi_int32", scales32, multi_type);
+      operands.push_back(multi);
+      // buffer
+      operands.push_back(module::getNoneOp(op));
+      auto newOp = rewriter.create<tpu::MatMulOp>(op->getLoc(), newType,
+                                                  operands, attrs);
+      newOp.setFuseRqAttr(rewriter.getBoolAttr(true));
+      rewriter.replaceOp(op, {newOp.getOutput()});
+      set_cal_attr(newOp.getOperation(), "cal_i4");
+    } else {
+      attrs.push_back(
+          rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(shift)));
+      attrs.push_back(rewriter.getNamedAttr("multipliers",
+                                            rewriter.getI64ArrayAttr(scale)));
+      auto noneOp_multi = module::getNoneOp(op);
+      operands.push_back(noneOp_multi);
+      // buffer
+      operands.push_back(module::getNoneOp(op));
+      auto newOp = rewriter.create<tpu::MatMulOp>(op->getLoc(), newType,
+                                                  operands, attrs);
+      rewriter.replaceOp(op, {newOp.getOutput()});
+      set_cal_attr(newOp.getOperation(), "cal_i4");
+    }
   }
 }
 void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,

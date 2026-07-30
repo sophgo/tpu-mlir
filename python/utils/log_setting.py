@@ -68,3 +68,9 @@ class logger:
         tmpStr = " ".join(tmp)
         print(tmpStr)
         logging.info(tmpStr)
+
+    def print_warning(self, *para):
+        tmp = [str(item) for item in para]
+        tmpStr = " ".join(tmp)
+        print("WARNING:", tmpStr)
+        logging.warning(tmpStr)

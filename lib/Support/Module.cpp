@@ -1888,6 +1888,7 @@ void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
                         .convertToDouble();
             zeropoint = int64_t(
                 convOp.getOutInt8Zp().value_or(APFloat(0.0)).convertToDouble());
+            sign = true; // default to signed input/output. may be wrong
             return;
           }
         } else {
@@ -1900,6 +1901,7 @@ void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
               zeropoint = int64_t(matmulOp.getOutInt8Zp()
                                       .value_or(APFloat(0.0))
                                       .convertToDouble());
+              sign = true; // default to signed input/output. may be wrong
               return;
             }
           }

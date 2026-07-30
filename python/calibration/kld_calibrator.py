@@ -426,7 +426,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                         else:
                             self.mse[out].append(th_mses[8])
                         if 4 in bits:
-                            if out not in self.mse:
+                            if out not in self.mse4:
                                 self.mse4[out] = []
                                 self.mse4[out].append(th_mses[4])
                             else:
