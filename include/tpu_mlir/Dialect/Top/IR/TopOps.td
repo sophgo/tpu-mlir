@@ -245,6 +245,7 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
   mlir::LogicalResult update(const std::vector<T>& data, size_t count);
   mlir::Value clone_bf16(mlir::Operation * OwnerOp, std::string name = "");
   mlir::Value clone_f16(mlir::Operation * OwnerOp);
+  mlir::Value clone_f32(mlir::Operation * OwnerOp);
   mlir::Value clone_int(mlir::Operation *OwnerOp);
   mlir::Value clone_f8e4m3(mlir::Operation *OwnerOp, bool per_channel_scale = false, bool channel_first_dim = true);
   mlir::Value clone_f8e5m2(mlir::Operation *OwnerOp);

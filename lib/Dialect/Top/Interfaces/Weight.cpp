@@ -347,6 +347,45 @@ Value WeightOp::clone_bf16(Operation *OwnerOp, std::string name) {
   return newOp.getResult();
 };
 
+Value WeightOp::clone_f32(Operation *OwnerOp) {
+  auto type = getType().cast<RankedTensorType>();
+  auto dtype = type.getElementType();
+  if (dtype.isF32()) {
+    return getResult();
+  }
+  ASSERT_THIS(dtype.isBF16() || dtype.isF16());
+  auto data = read<uint16_t>();
+  auto count = data->size();
+  auto data_f32 = std::make_shared<std::vector<float>>(count);
+
+#pragma omp parallel for schedule(static, omp_schedule(count))
+  for (uint32_t i = 0; i < count; i++) {
+    data_f32->at(i) =
+        dtype.isF16() ? f16_to_f32(data->at(i)) : bf16_to_f32(data->at(i));
+  }
+  auto ctx = OwnerOp->getContext();
+  OpBuilder builder(ctx);
+  builder.setInsertionPoint(OwnerOp);
+  // if the weightop will be used by 2 ops, it need to create a new WeightOp
+  std::string new_name = module::getName(getOperation()).str() + "_f32";
+  auto new_type = RankedTensorType::get(type.getShape(), builder.getF32Type());
+  if (!module::getWeightInMemFlag()) {
+    auto ret =
+        module::weightFile().addTensor(new_name, data_f32->data(), new_type);
+    ASSERT_THIS(succeeded(ret));
+  }
+  auto nameAttr = builder.getStringAttr(new_name);
+  auto attrs = getOperation()->getAttrs();
+  auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
+                                             ValueRange{}, attrs);
+  if (module::getWeightInMemFlag()) {
+    std::string inline_bytes((char *)data_f32->data(),
+                             data_f32->size() * sizeof(float));
+    newOp.setInlineBytesAttr(builder.getStringAttr(inline_bytes));
+  }
+  return newOp.getResult();
+};
+
 Value WeightOp::clone_f16(Operation *OwnerOp) {
   auto type = getType().cast<RankedTensorType>();
   auto dtype = type.getElementType();

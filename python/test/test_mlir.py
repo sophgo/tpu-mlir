@@ -140,6 +140,7 @@ class MLIR_IR_TESTER(object):
             "fp8matmul": (self.test_fp8matmul, Y, Y, Y),
             "slice": (self.test_slice, Y, Y, Y),
             "a16matmul": (self.test_a16matmul, Y, Y, Y),
+            "a16matmul_bias": (self.test_a16matmul_bias, Y, Y, Y),
             "a16gather": (self.test_a16gather, Y, Y, Y),
             "chunk_gated_delta_rule": (self.test_chunk_gated_delta_rule, Y, Y, Y),
             "recurrent_gated_delta_rule": (self.test_recurrent_gated_delta_rule, Y, Y, Y),
@@ -1503,6 +1504,85 @@ class MLIR_IR_TESTER(object):
             np.savez(f"{case_name}_input.npz", **inputs)
 
         # Deploy for each quantization mode (A16MatMul only supports F16/BF16 lowering)
+        saved_modes = self.quant_modes
+        self.quant_modes = [m for m in self.quant_modes if m in ["f16", "bf16"]]
+        self._deploy_test_case(case_name)
+        self.quant_modes = saved_modes
+
+    def test_a16matmul_bias(self, case_name):
+        """Test A16MatMul with F32 bias to verify chip-specific bias dtype handling.
+
+        BM1684X requires bias_dtype == io_dtype (BF16 in BF16 mode).
+        BM1688 batch_matmul_float_local_v2 requires bias_dtype == DT_FP32.
+        N=16 triggers A16MatMulToMatMul conversion (N % NPU_NUM != 0),
+        matching OvisOCR2 in_proj_a shape.
+        """
+        B = 1
+        S = 512
+        K = 1024
+        N = 16
+        q_group_size = 128
+        weight_bits = 8
+
+        weight_packed_dim = K
+        scale_dim = K // q_group_size
+
+        input_shapes = [
+            [B, S, K],
+        ]
+        output_shapes = [
+            [B, S, N],
+        ]
+
+        weight_shape = [N, weight_packed_dim]
+        scale_shape = [N, scale_dim]
+        zp_shape = [N, scale_dim]
+        bias_shape = [1, 1, N]
+
+        input_types = ["F32"]
+        block_mlir = MLIRImporter(input_shapes, output_shapes, case_name, Platform.LLM, input_types)
+        input_ops = self._create_input_ops(block_mlir, input_shapes)
+        ip = block_mlir.insert_point
+
+        in0_op = input_ops[0]
+
+        qweight_op = block_mlir.create_weight_op("qweight", weight_shape, "UINT8")
+        scale_op = block_mlir.create_weight_op("scales", scale_shape, "F32")
+        zp_op = block_mlir.create_weight_op("qzeros", zp_shape, "UINT8")
+        bias_op = block_mlir.create_weight_op("bias", bias_shape, "F32")
+
+        out = top.A16MatMulOp(self._T(block_mlir, output_shapes[0]),
+                              in0_op,
+                              qweight_op,
+                              scale_op,
+                              zp_op,
+                              bias_op,
+                              right_transpose=True,
+                              q_group_size=q_group_size,
+                              weight_bits=weight_bits,
+                              loc=self._L(block_mlir, "a16matmul_bias0"),
+                              ip=ip).output
+
+        block_mlir.create_return_op([out])
+
+        inputs = {
+            "in0": rand_data(input_shapes[0], 'float32', -1, 1),
+        }
+        weights = {
+            "qweight": rand_data(weight_shape, 'uint8', 0, 255),
+            "scales": rand_data(scale_shape, 'float32', -1, 1),
+            "qzeros": rand_data(zp_shape, 'uint8', 0, 15),
+            "bias": rand_data(bias_shape, 'float32', -5, 5),
+        }
+
+        mlir_txt = block_mlir.print_module()
+        with open(f"{case_name}.mlir", "w") as f:
+            f.write(mlir_txt)
+
+        np.savez(f"{case_name}_top_f32_all_origin_weight.npz", **weights)
+        if not self.no_check:
+            np.savez(f"{case_name}_input.npz", **inputs)
+
         saved_modes = self.quant_modes
         self.quant_modes = [m for m in self.quant_modes if m in ["f16", "bf16"]]
         self._deploy_test_case(case_name)

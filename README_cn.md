@@ -29,13 +29,9 @@
 
 **TPU-MLIR** 提供完整的工具链，将主流框架下预训练的神经网络转换为可在 SOPHGO TPU 上高效运行的 `bmodel` 文件。基于 [MLIR](https://mlir.llvm.org/) 构建，提供统一 IR、清晰的下降流水线，以及完善的量化、校准与部署工具。
 
-```
-┌──────────────────┐    model_transform.py    ┌──────────┐    model_deploy.py    ┌──────────┐
-│ ONNX / PyTorch / │ ───────────────────────► │   MLIR   │ ────────────────────► │  bmodel  │
-│  TFLite / Caffe  │      (前端导入)          │  (Top →  │  (lowering、量化、    │  TPU 部署 │
-│   HuggingFace    │                          │   Tpu)   │   layer-group …)      │          │
-└──────────────────┘                          └──────────┘                       └──────────┘
-```
+<p align="center">
+  <img src="./docs/assets/tpumlir_workflow.png" alt="TPU-MLIR 编译工作流" width="800" />
+</p>
 
 ## 🚀 主要特性
 

@@ -6763,7 +6763,12 @@ public:
     std::vector<Value> operands;
     operands.push_back(input_value);
     operands.push_back(new_weight_value);
-    operands.push_back(bias_value);
+    if (module::isBM1688()) {
+      auto wOp = bias_value.getDefiningOp<top::WeightOp>();
+      operands.push_back(wOp.clone_f32(op));
+    } else {
+      operands.push_back(bias_value);
+    }
     operands.push_back(module::getNoneOp(op)); // multi
     operands.push_back(module::getNoneOp(op)); // buffer
 

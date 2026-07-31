@@ -29,13 +29,9 @@
 
 **TPU-MLIR** converts pre-trained neural networks from mainstream frameworks into `bmodel` files that run efficiently on TPUs. Built on top of [MLIR](https://mlir.llvm.org/), it provides a unified IR, a clean lowering pipeline, and a rich set of tools for quantization, calibration, and deployment.
 
-```
-┌──────────────────┐    model_transform.py    ┌──────────┐    model_deploy.py    ┌──────────┐
-│ ONNX / PyTorch / │ ───────────────────────► │   MLIR   │ ────────────────────► │  bmodel  │
-│  TFLite / Caffe  │     (front-end import)   │  (TOP →  │  (lowering, quant,    │  on TPU  │
-│   HuggingFace    │                          │   TPU)   │   layer-group, …)     │          │
-└──────────────────┘                          └──────────┘                       └──────────┘
-```
+<p align="center">
+  <img src="./docs/assets/tpumlir_workflow.png" alt="TPU-MLIR compilation workflow" width="800" />
+</p>
 
 ## 🚀 Highlights
 

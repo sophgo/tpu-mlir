@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 784 724" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <style>@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap');</style>
+          <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+          <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
+          <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker>
+        </defs>
+
+        <rect width="100%" height="100%" fill="#f5f5f5"/>
+
+        <!-- Zone: TPU-MLIR compiler (before arrows and nodes) -->
+        <rect x="264" y="120" width="192" height="376" rx="8"
+              fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+        <rect x="268" y="124" width="88" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="312" y="133" fill="rgba(45,49,66,0.40)" font-size="7" font-family="'Geist Mono', monospace"
+              text-anchor="middle" letter-spacing="0.14em">TPU-MLIR COMPILER</text>
+
+        <!-- Arrows first (behind boxes) -->
+        <!-- Main pipeline (top to bottom) -->
+        <line x1="360" y1="104" x2="360" y2="152" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <line x1="360" y1="216" x2="360" y2="240" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <line x1="360" y1="304" x2="360" y2="328" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <line x1="360" y1="392" x2="360" y2="416" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <line x1="360" y1="480" x2="360" y2="504" stroke="#eb6c36" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+        <line x1="360" y1="568" x2="360" y2="592" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+        <!-- Optional: calibration feeds INT8 deploy -->
+        <path d="M 440,272 H 632 Q 640,272 640,280 V 328"
+              fill="none" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+        <line x1="560" y1="360" x2="440" y2="360" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+
+        <!-- Optional: LLM one-shot path -->
+        <line x1="440" y1="72" x2="560" y2="72" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+        <path d="M 640,104 V 136 Q 640,144 648,144 H 736 Q 744,144 744,152 V 528 Q 744,536 736,536 H 440"
+              fill="none" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+
+        <!-- Arrow labels (masked, 8px gap above connector) -->
+        <rect x="472" y="340" width="56" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="500" y="349" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">CALI TABLE</text>
+
+        <rect x="648" y="124" width="64" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="680" y="133" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">ONE-SHOT LLM</text>
+
+        <!-- Node: Framework Models (input) -->
+        <rect x="280" y="40" width="160" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="280" y="40" width="160" height="64" rx="6" fill="rgba(79,93,117,0.10)" stroke="#7a8399" stroke-width="1"/>
+        <rect x="288" y="48" width="28" height="12" rx="2" fill="transparent" stroke="rgba(122,131,153,0.40)" stroke-width="0.8"/>
+        <text x="302" y="57" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">SRC</text>
+        <text x="360" y="74" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Framework Models</text>
+        <text x="360" y="90" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">onnx · torch · tflite · hf</text>
+
+        <!-- Node: Model Transform (backend) -->
+        <rect x="280" y="152" width="160" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="280" y="152" width="160" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <rect x="288" y="160" width="32" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+        <text x="304" y="169" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">TOOL</text>
+        <text x="360" y="186" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Model Transform</text>
+        <text x="360" y="202" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">model_transform.py</text>
+
+        <!-- Node: Top MLIR (store) -->
+        <rect x="280" y="240" width="160" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="280" y="240" width="160" height="64" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+        <rect x="288" y="248" width="20" height="12" rx="2" fill="transparent" stroke="rgba(79,93,117,0.50)" stroke-width="0.8"/>
+        <text x="298" y="257" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">IR</text>
+        <text x="360" y="274" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Top MLIR</text>
+        <text x="360" y="290" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">framework-neutral graph</text>
+
+        <!-- Node: Model Deploy (backend) -->
+        <rect x="280" y="328" width="160" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="280" y="328" width="160" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <rect x="288" y="336" width="32" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+        <text x="304" y="345" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">TOOL</text>
+        <text x="360" y="362" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Model Deploy</text>
+        <text x="360" y="378" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">model_deploy.py</text>
+
+        <!-- Node: Tpu MLIR (store) -->
+        <rect x="280" y="416" width="160" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="280" y="416" width="160" height="64" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+        <rect x="288" y="424" width="20" height="12" rx="2" fill="transparent" stroke="rgba(79,93,117,0.50)" stroke-width="0.8"/>
+        <text x="298" y="433" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">IR</text>
+        <text x="360" y="450" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Tpu MLIR</text>
+        <text x="360" y="466" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">chip-specific graph</text>
+
+        <!-- Node: bmodel (focal) -->
+        <rect x="280" y="504" width="160" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="280" y="504" width="160" height="64" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1"/>
+        <rect x="288" y="512" width="28" height="12" rx="2" fill="transparent" stroke="rgba(235,108,54,0.50)" stroke-width="0.8"/>
+        <text x="302" y="521" fill="#eb6c36" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">BIN</text>
+        <text x="360" y="538" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">bmodel</text>
+        <text x="360" y="554" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">f32 / bf16 / f16 / int8</text>
+
+        <!-- Node: TPU Runtime (external) -->
+        <rect x="280" y="592" width="160" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="280" y="592" width="160" height="64" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/>
+        <rect x="288" y="600" width="28" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.22)" stroke-width="0.8"/>
+        <text x="302" y="609" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">TPU</text>
+        <text x="360" y="626" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">TPU Runtime</text>
+        <text x="360" y="642" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">bm1684x · bm1688 · cv186ah</text>
+
+        <!-- Node: Run Calibration (optional) -->
+        <rect x="560" y="328" width="160" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="560" y="328" width="160" height="64" rx="6" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.20)" stroke-width="1" stroke-dasharray="4,3"/>
+        <rect x="568" y="336" width="32" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.22)" stroke-width="0.8"/>
+        <text x="584" y="345" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">INT8</text>
+        <text x="640" y="362" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Run Calibration</text>
+        <text x="640" y="378" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">run_calibration.py</text>
+
+        <!-- Node: LLM Convert (optional) -->
+        <rect x="560" y="40" width="160" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="560" y="40" width="160" height="64" rx="6" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.20)" stroke-width="1" stroke-dasharray="4,3"/>
+        <rect x="568" y="48" width="28" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.22)" stroke-width="0.8"/>
+        <text x="582" y="57" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">OPT</text>
+        <text x="640" y="74" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">LLM Convert</text>
+        <text x="640" y="90" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">llm_convert.py · 1-shot</text>
+
+        <!-- Legend strip -->
+        <line x1="40" y1="676" x2="744" y2="676" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+        <text x="40" y="692" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">LEGEND</text>
+
+        <rect x="40" y="700" width="14" height="10" rx="2" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1"/>
+        <text x="60" y="708" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Focal output</text>
+
+        <rect x="140" y="700" width="14" height="10" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="160" y="708" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Compiler tool</text>
+
+        <rect x="248" y="700" width="14" height="10" rx="2" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+        <text x="268" y="708" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">IR artifact</text>
+
+        <rect x="344" y="700" width="14" height="10" rx="2" fill="rgba(79,93,117,0.10)" stroke="#7a8399" stroke-width="1"/>
+        <text x="364" y="708" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Input models</text>
+
+        <rect x="444" y="700" width="14" height="10" rx="2" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/>
+        <text x="464" y="708" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Runtime target</text>
+
+        <line x1="552" y1="705" x2="580" y2="705" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+        <text x="588" y="708" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Optional path</text>
+
+        <line x1="660" y1="705" x2="688" y2="705" stroke="#eb6c36" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+        <text x="696" y="708" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Primary output</text>
+      </svg>
