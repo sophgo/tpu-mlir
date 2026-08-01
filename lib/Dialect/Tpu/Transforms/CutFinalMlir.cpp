@@ -46,9 +46,10 @@ std::vector<Value> collectValuesByName(ModuleOp submodule,
   // sort values w.r.t. inputOp > globalOp > localOp.
   std::sort(results.begin(), results.end(), [&](Value a, Value b) {
     auto getOpPriority = [](Operation *op) -> int {
-      return isa<top::InputOp>(op)
-                 ? 0
-                 : !module::isOpInGroup(op) ? 1 : isa<tpu::StoreOp>(op) ? 2 : 3;
+      return isa<top::InputOp>(op)      ? 0
+             : !module::isOpInGroup(op) ? 1
+             : isa<tpu::StoreOp>(op)    ? 2
+                                        : 3;
     };
     return getOpPriority(a.getDefiningOp()) < getOpPriority(b.getDefiningOp());
   });
@@ -741,7 +742,7 @@ class CutFinalMlirPass : public CutFinalMlirBase<CutFinalMlirPass> {
 public:
   CutFinalMlirPass() = default;
   void runOnOperation() override {
-    assert(module::isBM1684XFamily());
+    assert(module::isBM1684XFamily() || module::isBM1684X2());
     parse_config_file();
     record_weight_addrs(module::getAllModules()->at(0));
     run(module::getAllModules()->at(0));

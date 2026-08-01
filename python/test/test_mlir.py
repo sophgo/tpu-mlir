@@ -20,7 +20,7 @@ import os
 import shlex
 import subprocess
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-from utils.tpu_info import get_tpu_info
+from utils.tpu_info import get_tpu_info, get_core_num
 
 import numpy as np
 
@@ -155,6 +155,9 @@ class MLIR_IR_TESTER(object):
             # C2C operators tests
             "c2c_broadcast": (self.test_c2c_broadcast, N, N, Y),
             "c2c_all_reduce": (self.test_c2c_all_reduce, N, N, Y),
+            # CoreParallel multi-result-operand regression (dab12f87f)
+            "core_parallel_multi_result_operand":
+            (self.test_core_parallel_multi_result_operand, Y, Y, Y),
         }
         self.c2c_ops = ["c2c_broadcast", "c2c_all_reduce"]
         # currently test_mlir.py only supports fp quant mode
@@ -2465,6 +2468,96 @@ class MLIR_IR_TESTER(object):
         #         f"degenerate {num_device}*in_device{dev} case " \
         #         f"(per-device inputs must be distinct)"
         # print(f"[OK] {case_name}: all_reduce reference semantics validated")
+
+    def test_core_parallel_multi_result_operand(self, case_name):
+        """Regression test for the CoreParallel multi-result-operand bug
+        (commit dab12f87f).
+
+        Graph (the SAM ViT-base-decoder gating pattern):
+          s  = Sigmoid(x)        # scalar mask, in (0, 1)
+          c  = s - 1             # negative complement (SubConst, is_reverse=false)
+          ma = s * W_a           # broadcast mul, W_a splittable on channel
+          mb = c * W_b           # broadcast mul, W_b splittable on channel
+        W_a, W_b are [1, 256, 1, 1]. Under multi-core (num_core >= 2) the
+        layer-group pass fuses Load + Sigmoid + SubConst into ONE tpu.Group
+        yielding BOTH results (#0 = s, #1 = c), and CoreParallel wraps each
+        Mul. Each Mul's broadcast operand is therefore a Group result #%index,
+        not the single-result producer the buggy code path assumed.
+
+        Before the fix, forAll() pushed value.getDefiningOp() for the non-split
+        (broadcast) operand, and createComputeOp then took
+        getDefiningOp()->getResult(0). For the multi-result GroupOp this picked
+        result #0 regardless of which result the Mul consumed, so the
+        CoreParallel-wrapped `mb` computed s * W_b instead of c * W_b. Since
+        s > 0 and c = s - 1 < 0, the buggy `mb` is anti-parallel to the
+        reference -- a cosine of exactly -1, independent of x. The deploy
+        correctness check (bmodel vs tpu reference) catches it, so this test
+        needs no IR-text assertions -- only the final result comparison, like
+        the other test_mlir cases.
+        """
+        input_shapes = [
+            [1],  # scalar mask x
+        ]
+        weight_shapes = [
+            [1, 256, 1, 1],  # W_a, splittable on axis 1
+            [1, 256, 1, 1],  # W_b, splittable on axis 1
+        ]
+        output_shapes = [
+            [1, 256, 1, 1],  # ma = s * W_a
+            [1, 256, 1, 1],  # mb = c * W_b
+        ]
+
+        block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
+            case_name, input_shapes, weight_shapes, output_shapes, ["F32"])
+
+        in0_op = input_ops[0]
+
+        # s = sigmoid(x); c = s - 1 (SubConst is_reverse=false => input - const,
+        # i.e. s - 1, which is negative so the buggy result is anti-parallel
+        # to the reference -> cosine -1).
+        s_out = top.SigmoidOp(self._T(block_mlir, input_shapes[0]),
+                              in0_op,
+                              loc=self._L(block_mlir, "sigmoid"),
+                              ip=ip).output
+        c_out = top.SubConstOp(self._T(block_mlir, input_shapes[0]),
+                               s_out,
+                               const_val=1.0,
+                               is_reverse=False,
+                               loc=self._L(block_mlir, "sub1"),
+                               ip=ip).output
+
+        # Two broadcast Muls, each against a splittable [1,256,1,1] weight.
+        # Having BOTH muls is what makes layer-group emit a 2-result Group:
+        # the Sigmoid and the (1 - Sigmoid) are each consumed cross-group.
+        ma_out = top.MulOp(self._T(block_mlir, output_shapes[0]), [s_out, weight_ops[0]],
+                           loc=self._L(block_mlir, "mul_a"),
+                           ip=ip).output
+        mb_out = top.MulOp(self._T(block_mlir, output_shapes[1]), [c_out, weight_ops[1]],
+                           loc=self._L(block_mlir, "mul_b"),
+                           ip=ip).output
+
+        block_mlir.create_return_op([ma_out, mb_out])
+
+        self._save_mlir_and_data(
+            case_name,
+            block_mlir,
+            input_shapes,
+            weight_shapes,
+            input_descs=[self.Desc('float32', -2, 2)],
+            weight_descs=[self.Desc('float32', -1, 1),
+                          self.Desc('float32', -1, 1)])
+
+        # The bug only manifests under multi-core: CoreParallel early-returns
+        # when num_core < 2, so on a single-core chip the graph deploys fine
+        # and the case passes trivially. Use the chip's native core count
+        # (bm1688 -> 2, bm1684x2 -> 4, bm1684x -> 1) so the test is generic and
+        # does not depend on the caller remembering to pass --num_core.
+        saved_num_core = self.num_core
+        self.num_core = get_core_num(self.chip)
+        try:
+            self._deploy_test_case(case_name, tolerance=(0.99, 0.98))
+        finally:
+            self.num_core = saved_num_core
 
 
 def test_one_case_in_all(tester: MLIR_IR_TESTER, case: str, error_cases: List,

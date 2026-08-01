@@ -173,7 +173,15 @@ tpu::CoreParallelOp forAll(IndexingMapsInterface op, int offset = 0,
           nameLoc, TypeRange(outTypes.value()), value, attrs);
       splitOps.push_back(new_op.getOperation());
     } else {
-      splitOps.push_back(value.getDefiningOp());
+      // The operand is not split (e.g. a broadcast/scalar operand whose affine
+      // map does not reference the split dim, or an operand used in full), so
+      // every core reuses the original value. Push nullptr so that
+      // createComputeOp falls back to op->getOperand(index) (== value).
+      // Do NOT push value.getDefiningOp() here: createComputeOp would then
+      // take getDefiningOp()->getResult(0), which is only equal to value when
+      // the defining op has a single result. For a multi-result producer such
+      // as tpu::GroupOp it picks the wrong result (e.g. %g#0 instead of %g#1).
+      splitOps.push_back(nullptr);
     }
     operandsStride.push_back(
         getValidStride(valueMap, ArrayRef(iterationShape)));
