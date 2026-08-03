@@ -7,6 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "fattention_decode.h"
 #include "fattention_flex.h"
 #include "fattention_prefill.h"
 #include "fattention_v1.h"
@@ -79,6 +80,10 @@ void fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
   }
   block_kh = kv_head / safe_core_num;
   if (block_kh == 0) {
+    block_kh = 1;
+  }
+  if (is_decode && head_rep > 2) {
+    func = is_fp16 ? fattention_decode_f16 : fattention_decode_bf16;
     block_kh = 1;
   }
   block_qh = block_kh * head_rep;
