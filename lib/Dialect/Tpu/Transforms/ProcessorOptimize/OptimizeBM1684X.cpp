@@ -5172,11 +5172,18 @@ public:
       while (w_size > max_weight_size) {
         split_num *= 2;
         w_size /= 2;
+        if (module::isBM1688() && split_num >= 16) {
+          return failure();
+        }
         if (w_shape[dim - 1] / split_num < BM168x::NPU_NUM ||
             w_shape[dim - 1] % split_num != 0) {
           return failure();
         }
       }
+    }
+    const auto hidden_size = module::getShape(prevMatMulOp.getRight()).back();
+    if (hidden_size % split_num != 0) {
+      return failure();
     }
     if (split_num == 1) {
       return failure();

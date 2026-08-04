@@ -769,8 +769,8 @@ LogicalResult tpu::MatMulOp::LocalGenSupport() {
       Lshape[0] == Rshape[0] && Lshape[1] != Rshape[1] &&
       Lshape[2] == Rshape[2] && Lshape[3] == Rshape[3])
     return failure();
-  if (((left_num_dims == 4 && Lshape[1] < Lshape[2]) ||
-       (left_num_dims == 5 && Lshape[1] < Lshape[3])) &&
+  if (((left_num_dims == 4 && Lshape[1] <= Lshape[2]) ||
+       (left_num_dims == 5 && Lshape[1] <= Lshape[3])) &&
       right_num_dims == 2) {
     // GROUP_SMALL_C
     return success();

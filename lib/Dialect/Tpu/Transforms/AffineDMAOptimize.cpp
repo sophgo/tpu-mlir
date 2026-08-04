@@ -626,6 +626,10 @@ estimateAffineDmaQuality(AffineMap indexingMap, ArrayRef<int64_t> iShape,
   }
 
   constexpr int64_t MAX_AFFINE_DMA_ENTRIES = 16;
+  // Allow denser BM1688 transfers to trade a few more descriptors for removing
+  // a full global Permute; small transfers still use the conservative limit.
+  constexpr int64_t BM1688_EXTENDED_DMA_ENTRIES = 32;
+  constexpr int64_t BM1688_EXTENDED_MIN_BYTES = 3072;
   constexpr int64_t MAX_EST_ENTRIES = 200000;
 
   std::vector<FreeTensorDmaInfo> free_tensor_dma_infos;
@@ -754,7 +758,10 @@ estimateAffineDmaQuality(AffineMap indexingMap, ArrayRef<int64_t> iShape,
                         : 0;
 
   // Reject if too many entries or avg transfer too small
-  if (total_entries > MAX_AFFINE_DMA_ENTRIES)
+  const bool use_bm1688_extended_limit =
+      module::isBM1688() && total_entries <= BM1688_EXTENDED_DMA_ENTRIES &&
+      avg_bytes_per_entry >= BM1688_EXTENDED_MIN_BYTES;
+  if (total_entries > MAX_AFFINE_DMA_ENTRIES && !use_bm1688_extended_limit)
     return false;
   return avg_bytes_per_entry >= min_continuous_bytes;
 }
