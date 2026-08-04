@@ -85,7 +85,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
   bool fsign = (fmin < 0 || with_bias == true);
   float fqmax = fsign ? 127 : 255;
   f64_array_t weight_scale_v;
-  if (filterOp.getScale().has_value() && weight_scale_v->size()) {
+  if (filterOp.getScale().has_value()) {
     weight_scale_v = module::getF64Array(filterOp.getScale().value());
   }
 
@@ -192,8 +192,13 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
   int int32_multiplier, rshift;
   for (int c = 0; c < param.oc; c++) { // per-channel quant
     float *p_filter = filter_f32->data() + c * inner_dim;
-    float w_max = findMaxabs(p_filter, inner_dim);
-    double scale_w = std::max(w_max / fqmax, 1e-5f);
+    double scale_w;
+    if (filterOp.getScale().has_value()) {
+      scale_w = weight_scale_v->data()[c];
+    } else {
+      float w_max = findMaxabs(p_filter, inner_dim);
+      scale_w = std::max(w_max / fqmax, 1e-5f);
+    }
     double scale_f = scale_w * in_scale / out_scale;
     get_scale_and_shift(scale_f, int32_multiplier, rshift, 32);
     if (module::isBM1684X()) {
