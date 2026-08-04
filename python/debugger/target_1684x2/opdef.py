@@ -295,6 +295,9 @@ class CdmaCmd(BaseTpuCmd, Cdma):
                 return (f'%D{self.cmd_id}C{ci} = "{self.op_name}"' +
                         (f"(%msg{msg_id})" if has_msg_id else "") + attribute)
             else:
+                op_name = self.op_name
+                if op_name and op_name != "none":
+                    return f'%D{self.cmd_id}C{ci} = "{op_name}"'
                 return self.description
         res_name, res_type_t = zip(*((x.name, x.type_str) for x in self.results))
         opd_name, opd_type_t = zip(*((x.name, x.type_str) for x in self.operands))

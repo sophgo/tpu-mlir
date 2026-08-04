@@ -1490,8 +1490,8 @@ def sCDMA_sys_converter(context: "BM1684X2Context", reg: sCDMA_sys_reg):
     constant_value_l32 = reg.constant_value_l32
     attr = {}
     if reg.cmd_special_function in (3, 4, 5, 6):
-        msg_id = constant_value_l32 & 0x1FF
-        cnt = (constant_value_l32 >> 16) & 0x7F
+        msg_id = constant_value_l32 & 0xFF
+        cnt = (constant_value_l32 >> 8) & 0xF
         attr = dict(msg_id=msg_id, cnt=cnt)
     elif reg.cmd_special_function == 2:
         const_value = reg.constant_value_h32 << 32 | constant_value_l32

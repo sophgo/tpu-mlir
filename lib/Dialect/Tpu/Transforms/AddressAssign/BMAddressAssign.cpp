@@ -304,6 +304,14 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
         continue;
       }
       module::setAddress(bcastOp.getOutput(), addr);
+    } else if (auto allReduceOp = dyn_cast<tpu::C2CAllReduceOp>(op)) {
+      // Output shares address with recv buffer (in-place all-reduce).
+      auto addr =
+          module::getAddress(module::getOriValue(allReduceOp.getRecv()));
+      if (addr == 0) {
+        continue;
+      }
+      module::setAddress(allReduceOp.getOutput(), addr);
     } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
       auto addr = module::getAddress(module::getOriValue(sliceOp.getInput()));
       if (addr == 0) {
@@ -1525,6 +1533,9 @@ bool BMAddressAssign::isInPlaceOp(Operation *op) {
     return true;
   } else if (auto bcastOp = dyn_cast<tpu::C2CBroadcastOp>(op)) {
     return !module::isNone(bcastOp.getInput());
+  } else if (isa<tpu::C2CAllReduceOp>(op)) {
+    // In-place on recv: output address aliases recv buffer.
+    return true;
   } else if (auto insertOp = dyn_cast<tpu::InsertOp>(op)) {
     return true;
   }
