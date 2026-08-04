@@ -35,6 +35,61 @@ import gc
 pymlir.set_mem_mode("force_value_mem")
 
 
+class FloatOpClassifier:
+    """Unified float-op set (fixed + pattern + shape + custom) and the two
+    search-skip predicates derived from the lowering semantics.
+
+    The lowering uses the *producer's* cali-table threshold at the
+    float->quantized boundary (``getQuantInt8Type`` in
+    ``lib/Conversion/TopToTpu/TopLowering.cpp`` reads the producer's
+    ``CalibratedQuantizedType``), and a float lowering preserves that type on
+    its output. Hence a float op's threshold is only dead when its output
+    never reaches a quantized op; it is *not* dead just because the op itself
+    is float. The two searches therefore need different skip rules.
+    """
+
+    def __init__(self, parser, qtable, fixed_float_ops=None):
+        self.parser = parser
+        self.qtable = qtable
+        self._fixed = set(fixed_float_ops or [])
+        self._reach_cache = {}
+
+    def is_float(self, name):
+        return name in self._fixed or (self.qtable is not None and self.qtable.exists(name))
+
+    def _reaches_quantized(self, name, on_stack):
+        # True iff a non-float op is reachable from `name`'s output through any
+        # consumer chain. Float consumers are traversed because transparent
+        # float ops (Reshape/Permute/Slice/...) carry the producer's
+        # CalibratedQuantizedType forward (Forward/BackwardCalibartion).
+        if name in self._reach_cache:
+            return self._reach_cache[name]
+        if name in on_stack:
+            return False
+        on_stack.add(name)
+        result = False
+        for consumer in self.parser.get_next_op_by_op_name(name):
+            if not self.is_float(consumer):
+                result = True
+                break
+            if self._reaches_quantized(consumer, on_stack):
+                result = True
+                break
+        on_stack.discard(name)
+        self._reach_cache[name] = result
+        return result
+
+    def skip_threshold_search(self, name):
+        # Skip iff op is float AND its threshold is dead (no quantized consumer
+        # reachable -> the float->quantized boundary cast never fires).
+        return self.is_float(name) and not self._reaches_quantized(name, set())
+
+    def skip_sensitive_search(self, name):
+        # Skip iff op is float (pre-decided; demotion high_prec<->low_prec is
+        # undefined for an op the lowering already keeps float).
+        return self.is_float(name)
+
+
 class SearchQtableBase:
 
     def __init__(self, args, selector, tune_ds, qtable=None):
@@ -62,6 +117,10 @@ class SearchQtableBase:
         # q_group_size for dynamic-quant (F4/F8) weight/activation grouping;
         # 0 leaves int8/int4 (non-DYN) paths untouched.
         self.q_group_size = getattr(self.args, 'q_group_size', 0)
+        # Default classifier (fixed-float empty); run() upgrades it once the
+        # search baseline model is available. Pattern/shape/custom float are
+        # covered via the qtable from the start.
+        self.classifier = FloatOpClassifier(self.parser, self.qtable, [])
 
     def search_layer_type_no_need_quant(self, layer_names, float_outputs_cos, global_compare_layers,
                                         layers_rate, predictions_gt):
@@ -168,7 +227,7 @@ class SearchQtableBase:
         sensitive_layer_analysis_dict = {}
         new_cali_table_name = self.cali_table_name
         for layer_idx, layer_name in enumerate(layer_names):
-            if self.qtable.exists(layer_name):
+            if self.classifier.skip_threshold_search(layer_name):
                 continue
             layer_type = self.parser.get_op_type_by_op_name(layer_name)
             pbar.set_postfix_str(f"{layer_idx}/{len(layer_names)} {layer_name}")
@@ -283,9 +342,14 @@ class SearchQtableBase:
                         "layer {}, layer type is {}, best_th = {}, best_method = {}, best_cos_loss = {}"
                         .format(layer_name, layer_type, best_th, modified_layers[layer_name][3],
                                 modified_layers[layer_name][1]))
-                    sensitive_layer_analysis_dict[layer_name] = [
-                        modified_layers[layer_name][1], layer_type
-                    ]
+                    # Float ops still pass through here when their threshold is
+                    # live (feeds a quantized op); their threshold gets tuned
+                    # above, but they are already float, so exclude them from
+                    # the demotion ranking to avoid wasting a float-layer slot.
+                    if not self.classifier.is_float(layer_name):
+                        sensitive_layer_analysis_dict[layer_name] = [
+                            modified_layers[layer_name][1], layer_type
+                        ]
                     ret = True
             fp_layer_list.append(layer_name)
             gc.collect()
@@ -627,6 +691,7 @@ class SearchQtable(SearchQtableBase):
         #step3: check layer names
         float_ops = self.mix_prec.get_fixed_float_layers(int8_model, global_compare_layers,
                                                          layers_rate, predictions_gt)
+        self.classifier = FloatOpClassifier(self.parser, self.qtable, float_ops)
         layer_names = self.check_layer_names(all_op_names, int8_model, layer_th_dicts,
                                              quantize_method_list)
         self.mix_prec.logger.print_info("all layer number: {}".format(len(layer_names)))
@@ -795,7 +860,7 @@ class SearchQtable4Bit(SearchQtableBase):
         strategy.before_search(self)
         pbar = tqdm(total=len(layer_names), desc=strategy.desc)
         for layer_idx, layer_name in enumerate(layer_names):
-            if self.qtable.exists(layer_name):
+            if self.classifier.skip_sensitive_search(layer_name):
                 continue
             layer_type = self.parser.get_op_type_by_op_name(layer_name)
             pbar.set_postfix_str(f"{layer_idx}/{len(layer_names)} {layer_name}")
@@ -1182,6 +1247,15 @@ class SearchQtable4Bit(SearchQtableBase):
                                                            predictions_gt)
             target_outputs_cos = baseline_outputs_cos
             self.mix_prec.logger.print_info(f'current int8 cos:{target_outputs_cos}')
+            # Discover fixed-float Conv/MatMul on the int8 baseline (I8/U8
+            # dtypes are reliable here; f8 baselines are not, see get_fixed_float_layers)
+            # so the sensitive search can skip them. The best-th stages above
+            # already ran with the __init__ default (fixed empty); only the
+            # sensitive search needs the upgraded classifier.
+            fixed_float_ops = self.mix_prec.get_fixed_float_layers(baseline_model,
+                                                                   global_compare_layers,
+                                                                   layers_rate, predictions_gt)
+            self.classifier = FloatOpClassifier(self.parser, self.qtable, fixed_float_ops)
             baseline_model.clean()
             if os.path.exists(int8_cali_table):
                 os.remove(int8_cali_table)
@@ -1386,6 +1460,7 @@ class SearchQtableFast(SearchQtableBase):
                                                    layers_rate, predictions_gt)
         float_ops = self.mix_prec.get_fixed_float_layers(int8_model, global_compare_layers,
                                                          layers_rate, predictions_gt)
+        self.classifier = FloatOpClassifier(self.parser, self.qtable, float_ops)
         if int8_outputs_cos > self.args.expected_cos:
             float_model.clean()
             int8_model.clean()
@@ -1404,9 +1479,9 @@ class SearchQtableFast(SearchQtableBase):
             layer for layer in all_op_names
             if self.parser.get_op_type_by_op_name(layer) in sensitive_op_type
         ]
-        if self.qtable is not None:
-            layer_names = [layer for layer in layer_names if not self.qtable.exists(layer)]
-        layer_names = [layer for layer in layer_names if layer not in float_ops]
+        layer_names = [
+            layer for layer in layer_names if not self.classifier.skip_sensitive_search(layer)
+        ]
         self.mix_prec.logger.print_info("all search layer number: {}".format(len(layer_names)))
 
         self.sensitive_layer = []
