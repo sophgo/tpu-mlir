@@ -139,6 +139,9 @@ void BMCodegen::init(ModuleOp m, const std::string &filename, bool bmodel_only,
 void BMCodegen::run(ModuleOp s, bool embed_debug_info, bool gdma_check) {
   // record the line number of operation in module.
   DynCodegenInit();
+  if (module::getDeviceNum() > 1 && module::isCV84X6()) {
+    static_cast<backend::CV84X6 *>(bm168x)->dl_tpu_reset_c2c_msg_id();
+  }
   // patterns for easy codegen by dynamic
   DoPatternsForDynamic(s);
 

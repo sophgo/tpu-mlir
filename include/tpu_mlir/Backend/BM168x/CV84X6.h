@@ -14,6 +14,8 @@
 
 typedef void (*tpu_sync_all)();
 typedef void (*tpu_core_context_setup)(int, int, int);
+typedef void (*tpu_reset_c2c_msg_id)();
+typedef void (*store_external_cmd_end)();
 typedef void (*gen_riscv_code_begin)();
 typedef void (*gen_riscv_code_end)();
 
@@ -35,6 +37,8 @@ public:
 
   tpu_sync_all dl_tpu_sync_all;
   tpu_core_context_setup dl_tpu_core_context_setup;
+  tpu_reset_c2c_msg_id dl_tpu_reset_c2c_msg_id;
+  store_external_cmd_end dl_store_external_cmd_end;
   gen_riscv_code_begin dl_gen_riscv_code_begin;
   gen_riscv_code_end dl_gen_riscv_code_end;
 

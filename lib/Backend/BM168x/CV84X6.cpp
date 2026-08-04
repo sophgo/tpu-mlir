@@ -15,6 +15,8 @@ void CV84X6::load_functions() {
   BM1684X::load_functions();
   CAST_FUNCTION(tpu_sync_all);
   CAST_FUNCTION(tpu_core_context_setup);
+  CAST_FUNCTION(tpu_reset_c2c_msg_id);
+  CAST_FUNCTION(store_external_cmd_end);
   CAST_FUNCTION(tensor_normal_decompress_gen_cmd);
   CAST_FUNCTION(tensor_racu_decompress_gen_cmd);
   CAST_FUNCTION(tensor_racu_compress_gen_cmd);
@@ -35,6 +37,7 @@ void CV84X6::after_codegen(int64_t flops) {
     useCore(i);
     dl_store_cmd_end();
   }
+  dl_store_external_cmd_end();
   // useCore(0); // Reset buffer swapping.
   useCode0 = false;
   // dl_gen_riscv_code_end();
