@@ -69,6 +69,7 @@ from .Qwen3VLConverter import Qwen3VLConverter
 from .Qwen2_5OConverter import Qwen2_5OConverter
 from .LocateAnythingConverter import LocateAnythingConverter
 from .FalconPerceptionConverter import FalconPerceptionConverter
+from .Step3VLConverter import Step3VLConverter
 
 __all__ = [
     # Core
@@ -97,4 +98,5 @@ __all__ = [
     'Qwen2_5OConverter',
     'LocateAnythingConverter',
     'FalconPerceptionConverter',
+    'Step3VLConverter',
 ]

@@ -93,7 +93,11 @@ LLM_CONVERTERS = [
         "default_max_shape": (256, 256),
         "pixel_multiple": 16,
     }),
-    (("unlimited-ocr", "unlimitedocr", "deepseek2-ocr", "deepseek2ocr"), "llm.UnlimitedOCRConverter", "UnlimitedOCRConverter", {}),
+    (("step_robotics", ), "llm.Step3VLConverter", "Step3VLConverter", {
+        "default_max_shape": (728, 728),
+    }),
+    (("unlimited-ocr", "unlimitedocr", "deepseek2-ocr", "deepseek2ocr"),
+     "llm.UnlimitedOCRConverter", "UnlimitedOCRConverter", {}),
 ]
 
 
