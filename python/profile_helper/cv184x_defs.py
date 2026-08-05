@@ -168,8 +168,10 @@ def get_dma_info(monitor_info, reg_info):
             dma_info["src_start_addr_l32"])
 
     # step2: get custom information
-    src_type = MEMTYPE(dma_info['src_start_addr_l32'] >> 31).name
-    dst_type = MEMTYPE(dma_info['dst_start_addr_l32'] >> 31).name
+    src_tag = (dma_info['src_start_addr_h13'] >> 8) & 0x1F
+    dst_tag = (dma_info['dst_start_addr_h13'] >> 8) & 0x1F
+    src_type = MEMTYPE.LMEM.name if src_tag == 31 else MEMTYPE.DDR.name
+    dst_type = MEMTYPE.LMEM.name if dst_tag == 31 else MEMTYPE.DDR.name
     data_type = DATATYPE(reg_info.src_data_format)
 
     dma_info["Engine Id"] = 1
