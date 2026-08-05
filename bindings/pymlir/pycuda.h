@@ -49,6 +49,7 @@ public:
   py_cuda();
   ~py_cuda();
   void load(std::string filename);
+  void set_progress_silent(bool silent) {}
 
   // only can set input data
   void set_tensor(

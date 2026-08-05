@@ -163,14 +163,25 @@ class MixQuantModel:
         return outputs
 
     def clean(self):
-        try:
-            del self.module
-            del self.parser
-            if self.chip is not None:
-                os.remove(self.quanted_mlir_file)
-                os.remove(self.weight_file)
-        except:
-            pass
+        for attr in ('module', 'parser'):
+            try:
+                delattr(self, attr)
+            except Exception:
+                pass
+        if self.chip is not None:
+            paths = [
+                getattr(self, 'quanted_mlir_file', None),
+                getattr(self, 'weight_file', None),
+            ]
+            for path in paths:
+                if not path:
+                    continue
+                try:
+                    os.remove(path)
+                except FileNotFoundError:
+                    pass
+                except Exception:
+                    pass
 
 
 class MixPrecSearcher:

@@ -122,6 +122,7 @@ PYBIND11_MODULE(pymlir, m) {
   py::class_<py_cuda>(m, "cuda", "MLIR Cuda")
       .def(py::init<>())
       .def("load", &py_cuda::load, "load mlir to cuda")
+      .def("set_progress_silent", &py_cuda::set_progress_silent)
       .def("set_tensor", &py_cuda::set_tensor)
       .def("invoke", &py_cuda::invoke, py::arg("dump_all")=false, py::arg("extra_outputs")=std::vector<std::string>())
       .def("get_tensor", &py_cuda::get_tensor, "get one tensor data")
