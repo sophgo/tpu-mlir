@@ -74,14 +74,13 @@ void setupMultiCoreCodegen() {
 
 std::string BMCodegen::getKernelModuleName(bool is_rvti) {
   // chip support rvti first
-  if (module::isBM1690E()) {
-    if (is_rvti) {
-      return backend::BM1690E::LIB_RVTI_KERNEL_NAME.str();
-    }
-    return backend::BM1690E::LIB_KERNEL_NAME.str();
-  }
   if (is_rvti) {
-    llvm_unreachable("Only BM1690E support RVTI kernel module.");
+    if (module::isBM1690E()) {
+      return backend::BM1690E::LIB_RVTI_KERNEL_NAME.str();
+    } else if (module::isBM1684X2()) {
+      return backend::BM1684X2::LIB_RVTI_KERNEL_NAME.str();
+    }
+    llvm_unreachable("Only BM1690E and BM1684X2 support RVTI kernel module.");
     return "";
   }
   if (module::isBM1684X()) {
@@ -94,6 +93,8 @@ std::string BMCodegen::getKernelModuleName(bool is_rvti) {
     return backend::BM1690::LIB_KERNEL_NAME.str();
   } else if (module::isBM1684X2()) {
     return backend::BM1684X2::LIB_KERNEL_NAME.str();
+  } else if (module::isBM1690E()) {
+    return backend::BM1690E::LIB_KERNEL_NAME.str();
   }
   return ""; // no kernel module
 }

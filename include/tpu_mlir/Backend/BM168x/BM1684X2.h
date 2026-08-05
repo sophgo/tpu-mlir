@@ -71,6 +71,8 @@ public:
   // specific global info
   static constexpr llvm::StringRef LIB_KERNEL_NAME =
       "libbm1684x2_kernel_module.so";
+  static constexpr llvm::StringRef LIB_RVTI_KERNEL_NAME =
+      "libbm1684x2rv_kernel_module.so";
 
 protected:
   BM1684X2() {

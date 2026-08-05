@@ -98,6 +98,8 @@ def deploy_case_bmodel(case_name: str,
         deploy_cmd.append("--addr_mode basic")
     if rvti:
         deploy_cmd.append("--rvti")
+        deploy_cmd.append("--quant_input")
+        deploy_cmd.append("--quant_output")
     if disable_lg:
         deploy_cmd.append("--disable_layer_group")
     if not disable_hp:

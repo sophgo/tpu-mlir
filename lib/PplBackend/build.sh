@@ -184,9 +184,11 @@ for chip in bm1684x bm1688 bm1690 sg2260e bm1684x2; do
 done
 
 # dyn rvti (ppl-compile uses --chip sg2260e --rv; cmake uses -DCHIP sg2260erv)
-read -u 3
-( trap 'echo >&3' EXIT; build_dyn_chip "sg2260e" "sg2260erv" --rv ) &
-pids+=($!); labels+=("rvti_sg2260erv")
+for chip in sg2260e bm1684x2; do
+  read -u 3
+  ( trap 'echo >&3' EXIT; build_dyn_chip "$chip" "${chip}rv" --rv ) &
+  pids+=($!); labels+=("rvti_${chip}rv")
+done
 
 # static
 read -u 3
