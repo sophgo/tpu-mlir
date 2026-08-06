@@ -195,6 +195,8 @@ class ONNX_IR_TESTER(object):
             "MatMul":       (self.test_MatMul,        Y, Y, Y, Y, Y, Y),
             "MatMul2":      (self.test_MatMul2,       Y, Y, Y, Y, Y, Y),
             "MatMul2PC":    (self.test_MatMul2PC,     Y, Y, N, N, N, Y),
+            "MatMulRelu":       (self.test_MatMulRelu,       Y, Y, Y, Y, Y, Y),
+            "MatMulRelu_asym":  (self.test_MatMulRelu_asym,  Y, Y, Y, Y, Y, Y),
             "Max":          (self.test_Max,           Y, Y, Y, Y, Y, Y),
             "MaxBcast":     (self.test_MaxBcast,      Y, Y, N, Y, Y, Y),
             "MeanRstd":     (self.test_MeanRstd,     Y, Y, N, Y, N, N),
@@ -934,6 +936,7 @@ class ONNX_IR_TESTER(object):
                       version=14,
                       dynamic=False,
                       matmul_perchannel=False,
+                      asymmetric=False,
                       dynamic_shape_input_names=[],
                       shape_influencing_input_names=[],
                       quant_input_setting=False,
@@ -1007,12 +1010,12 @@ class ONNX_IR_TESTER(object):
             if quant_mode == "int8" or quant_mode == "int4" or quant_mode == "w4int8":
                 tpu_mlir, bmodel = self.bmodel_generate(model_name,
                                                         quant_mode,
-                                                        False,
+                                                        asymmetric,
                                                         matmul_perchannel,
                                                         quant_input_setting=quant_input_setting,
                                                         quant_output_setting=quant_output_setting)
                 self.inference_and_compare(tpu_mlir, bmodel, input_npz, quant_mode, model_name,
-                                           False)
+                                           asymmetric)
             else:
                 tpu_mlir, bmodel = self.bmodel_generate(model_name,
                                                         quant_mode,
@@ -2178,6 +2181,56 @@ class ONNX_IR_TESTER(object):
 
     def test_MatMul2PC(self, case_name):
         return self.test_MatMul2(case_name, per_channel=True)
+
+    def test_MatMulRelu(self, case_name):
+        M = 50
+        K = 100
+        N = 25
+        input_shape = [4, 10, M, K]
+        weight_shape = [K, N]
+        bias_shape = [N]
+        output_shape = [4, 10, M, N]
+        weight_data = np.random.randn(*weight_shape).astype(np.float32)
+        bias_data = np.random.randn(*bias_shape).astype(np.float32)
+        graph_txt = """
+                %s (float%s input) => (float%s output)
+                <float%s weight, float%s bias>
+                {
+                    x1 = MatMul(input, weight)
+                    x2 = Add(x1, bias)
+                    output = Relu(x2)
+                }
+                """ % (case_name, input_shape, output_shape, weight_shape, bias_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        weight = helper.make_tensor('weight', TensorProto.FLOAT, weight_shape, weight_data)
+        bias = helper.make_tensor('bias', TensorProto.FLOAT, bias_shape, bias_data)
+        graph_def.initializer.extend([weight, bias])
+        self.onnx_and_test(graph_def, matmul_perchannel=True)
+
+    def test_MatMulRelu_asym(self, case_name):
+        M = 50
+        K = 100
+        N = 25
+        input_shape = [4, 10, M, K]
+        weight_shape = [K, N]
+        bias_shape = [N]
+        output_shape = [4, 10, M, N]
+        weight_data = np.random.randn(*weight_shape).astype(np.float32)
+        bias_data = np.random.randn(*bias_shape).astype(np.float32)
+        graph_txt = """
+                %s (float%s input) => (float%s output)
+                <float%s weight, float%s bias>
+                {
+                    x1 = MatMul(input, weight)
+                    x2 = Add(x1, bias)
+                    output = Relu(x2)
+                }
+                """ % (case_name, input_shape, output_shape, weight_shape, bias_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        weight = helper.make_tensor('weight', TensorProto.FLOAT, weight_shape, weight_data)
+        bias = helper.make_tensor('bias', TensorProto.FLOAT, bias_shape, bias_data)
+        graph_def.initializer.extend([weight, bias])
+        self.onnx_and_test(graph_def, matmul_perchannel=True, asymmetric=True)
 
     # def test_MatMul3(self, case_name):
     #     M = 50

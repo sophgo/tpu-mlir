@@ -1385,6 +1385,8 @@ def matmul_int(input: Tensor,
                keep_dims: bool = True,
                input_zp: Union[int, List[int]] = None,
                right_zp: Union[int, List[int]] = None,
+               do_relu: bool = False,
+               relu_limit: float = -1.0,
                out_dtype: str = None,
                out_name: str = None):
     assert not isinstance(input_zp, list), "not supported yet"
@@ -1403,8 +1405,8 @@ def matmul_int(input: Tensor,
         "output_transpose": Attr(output_transpose, "bool"),
         "hdim_is_batch": Attr(False, "bool"),
         "keep_dims": Attr(keep_dims, "bool"),
-        "do_relu": Attr(False, "bool"),
-        "relu_limit": Attr(-1.0, "float64")
+        "do_relu": Attr(do_relu, "bool"),
+        "relu_limit": Attr(relu_limit, "float64")
     }
 
     output = Tensor(dtype=o_dtype, name=out_name)

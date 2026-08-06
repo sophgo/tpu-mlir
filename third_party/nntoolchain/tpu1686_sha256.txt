@@ -13,15 +13,11 @@ Date:   Wed Jul 29 15:31:55 2026 +0800
     
     Change-Id: I4cdbf568bae3501e5eba768a7faaf8ca21709c3d
 === bm1684x ===
-commit 20075eaca1446f319b874d3051e3395059b355a1
-Author: xu.yang <xu.yang@sophgo.com>
-Date:   Fri Jun 26 11:50:08 2026 +0800
+commit 4ab63b3c2e
+Author: yujia liu <yujia.liu@sophgo.com>
+Date:   2026-08-06 16:35:33 +0800
 
-    Revert "fix: softmax_f16 branch"
-    
-    This reverts commit 1553c4f02a8dc2153c81c2c83091dcad5f472d51.
-    
-    Change-Id: I9574bf4367eb66a08b5639122572364097c6288b
+    fix: matmul+relu for jira mlir-932
 === bm1688 ===
 commit 20075eaca1446f319b874d3051e3395059b355a1
 Author: xu.yang <xu.yang@sophgo.com>
