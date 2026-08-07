@@ -1,17 +1,13 @@
 === bm1684x2 ===
-commit b853c35aa6bbc6aa37676607bae9c94429694664
-Author: yifan.chen <yifan.chen@sophgo.com>
-Date:   Wed Jul 29 15:31:55 2026 +0800
+commit 2800478b6b664254649efa4ea0c6acf596d08060
+Author: zhibin.xin <zhibin.xin@sophgo.com>
+Date:   Thu Aug 6 16:53:55 2026 +0800
 
-    fix: handle non-integer offset in bm1684x2 requant mode==1
+    fix: remove global softmax opt in bm1684x2
     
-    - mode==1 perlayer path on BM1684X2/SG2262 now checks offset integrality;
-      non-integer offset falls back to fp32 arithmetic (cast to FP32, fp_mul_C,
-      fp_add_C, cast to top) so the fractional part participates in final rounding
-    - global layer allocates FP32 buffer for mode==1 + non-integer offset on
-      BM1684X2/SG2262, enabling the local-layer fallback
+    - no perf improvement and may lead to tpu hang
     
-    Change-Id: I4cdbf568bae3501e5eba768a7faaf8ca21709c3d
+    Change-Id: I8e4f3ce35f855754ef34270ca3a8a056b6a59274
 === bm1684x ===
 commit 4ab63b3c2e
 Author: yujia liu <yujia.liu@sophgo.com>

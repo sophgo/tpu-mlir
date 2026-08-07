@@ -25,9 +25,9 @@ cp bmcompiler/libbackend/libbackend_bm1684.so /workspace/tpu-mlir/third_party/nn
 # if debug, add -d
 ```
 
-## tpu-runtime 2026-05-22
+## tpu-runtime 2026-08-07
 
-build from tpu-runtime 43a13605f667a2ceae45c8a3dda1ab7dc2192556
+build from tpu-runtime defd5b66215557e4579224535b0cfcba887ab159
 
 ```bash
 pushd libsophon
