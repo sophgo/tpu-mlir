@@ -4,7 +4,7 @@
 Quantization and optimization
 =================================
 
-In deploying neuron network, the accuracy and throughput (inference speed) are critical targets. To achieve high accuracy and high speed, for some networks, mix precision inference is essential.
+In deploying neural networks, the accuracy and throughput (inference speed) are critical targets. To achieve high accuracy and high speed, for some networks, mix precision inference is essential.
 
 The mixed-precision method of TPU-MLIR is searching layers in neural network that are not suitable for low-bit quantization to generate a quantize table, which is used to specify these layers to use higher-bit quantization in the model_deploy stage.
 This chapter will first introduce the current full int8 symmetric quantization of TPU-MLIR, and then explain how to use the existing quantize table automatic generation tools in TPU-MLIR.
@@ -21,7 +21,7 @@ the generated quantized model has good accuracy will be provided in detailed gui
 run_calibration Process Introduction
 ---------------------------------------
 
-The quantization part of the following figure (:ref:calibration) shows the overall process of the current ``run_calibration`` , which includes the automatic mixed-precision module ``search_qtable`` , the automatic calibration method selection module ``search_threshold`` , cross-layer weight equalization module ``weight_equalization``,
+The quantization part of the following figure (:ref:`calibration`) shows the overall process of the current ``run_calibration`` , which includes the automatic mixed-precision module ``search_qtable`` , the automatic calibration method selection module ``search_threshold`` , cross-layer weight equalization module ``weight_equalization``,
 and bias correction module ``bias_correction``, etc. In the following sections, we will provide the usage details of the above methods based on actual situations.
 
 .. _calibration:
@@ -36,7 +36,7 @@ run_calibration Parameter Introduction
 
 The table below provides an introduction to the parameters of the ``run_calibration`` command.
 
-.. list-table:: run_calibration.py parameter
+.. list-table:: run_calibration.py parameters
    :widths: 25 60
    :header-rows: 1
 
@@ -45,65 +45,67 @@ The table below provides an introduction to the parameters of the ``run_calibrat
    * - mlir_file
      - mlir file
    * - sq
-     - open SmoothQuant
+     - enable SmoothQuant
    * - smc
-     - open softmax_correction
+     - enable softmax_correction
    * - we
-     - open weight_equalization
+     - enable weight_equalization
    * - bc
-     - open bias_correction
+     - enable bias_correction
    * - dataset
      - calibration dataset
    * - data_list
      - sample list
    * - input_num
-     - number of calibration sample
+     - number of calibration samples
    * - inference_num
-     - the number of images required for the inference process with search_qtable and search_threshold is set to 30 by default
+     - number of images used for inference during search_qtable and search_threshold; default is 30
    * - bc_inference_num
-     - the number of images required for the inference process with bias correction is set to 30 by default
+     - number of images used for inference during bias correction; default is 30
    * - tune_list
-     - the list of sample used for tuning
+     - the list of samples used for tuning
    * - tune_num
-     - the number of images for tuning
+     - the number of images for tuning, default is 5
    * - histogram_bin_num
      - specify the number of histogram bins for KLD calculation, default is 2048
    * - expected_cos
-     - expect the similarity between the mixed-precision model output of search_qtable and the floating-point model output, with a value range of [0,1], default is 0.99
+     - the expected cosine similarity between the search_qtable mixed-precision model output and the floating-point model output, with a value range of [0,1], default is 0.99
    * - min_layer_cos
      - the lower bound of similarity between the quantized output and the floating-point output of the layer in bias_correction; compensation is required for the layer when it falls below this threshold, with a value range of [0,1], default is 0.99
    * - max_float_layers
      - set the number of floating-point layers for search_qtable, default is 5
+   * - eval_config
+     - path to an eval_config.json that lets search_qtable decide float layers by an end-to-end / custom metric (topx, coco_mAP, custom) instead of cosine similarity; when omitted, cosine similarity is used (default behavior)
    * - processor
      - processor type, default is bm1684x
    * - cali_method
-     - select the calibration mode; if this parameter is not added, the default is KLD calibration. "percentile9999" uses the 99.99 percentile as the threshold. "max" uses the absolute maximum value as the threshold. "use_torch_observer_for_cali" uses torch's observer for calibration. "mse" uses octav for calibration.
+     - select the calibration mode; if this parameter is not added, the default is KLD calibration. "percentile9999" uses the 99.99 percentile as the threshold. "max" uses the absolute maximum value as the threshold. "mse" uses octav for calibration. "aciq_laplace" and "aciq_gauss" use the ACIQ method (Laplace / Gauss prior) to derive the threshold. The "use_mse", "use_max", "use_kl" and "use_percentile9999" variants reuse a previously generated threshold of the corresponding method.
    * - fp_type
      - search_qtable floating-point layer data type
    * - post_process
      - post-processing path
    * - global_compare_layers
-     - specify the global contrastive layers, for example, layer1,layer2 or layer1:0.3,layer2:0.7.
+     - specify the global comparison layers, for example, layer1,layer2 or layer1:0.3,layer2:0.7.
    * - search
-     - specify the search type, which includes search_qtable, search_threshold, and false. The default is false, which means search is not enabled
+     - specify the search type, which includes search_qtable, search_threshold, fast_search, mix_search, and false. The default is false, which means search is not enabled
    * - transformer
-     - whether it is a transformer model, in search_qtable, if it is a transformer model, a specific acceleration strategy can be assigned, default is False
+     - whether the model is a transformer; if so, search_qtable applies a dedicated acceleration strategy. Default is False
    * - quantize_method_list
-     - the calibration method used for searching in search_qtable, default is MSE, with selectable range being MSE, KL, MAX, Percentile9999
+     - the calibration method used for searching in search_qtable, default is MSE; the selectable options are MSE, KL, MAX, Percentile9999
    * - benchmark_method
      - specify the similarity calculation method of search_threshold, with the default being cosine similarity (cos)
    * - kurtosis_analysis
-     - Specify the generation of the kurtosis of the activation values for each layer
+     - generate the kurtosis of the activation values for each layer
    * - part_quantize
-     - Specify partial quantization of the model. The calibration table (cali_table) will be automatically generated alongside the quantization table (qtable). Available modes include N_mode, H_mode, or custom_mode, with H_mode generally delivering higher accuracy
+     - specify partial quantization of the model. The calibration table (cali_table) will be automatically generated alongside the quantization table (qtable). Available modes include N_mode, H_mode, or custom_mode, with H_mode generally delivering higher accuracy
    * - custom_operator
-     - Specify the operators to be quantized, which should be used in conjunction with the aforementioned custom_mode
+     - specify the operator types to be quantized; use together with the aforementioned custom_mode
    * - part_asymmetric
-     - When symmetric quantization is enabled, if specific subnets in the model match a defined pattern, the corresponding operators will automatically switch to asymmetric quantization
+     - when symmetric quantization is enabled, if specific subnets in the model match a defined pattern, the corresponding operators will automatically switch to asymmetric quantization
    * - mix_mode
-     - Specify the mixed-precision types for the search_qtable. Currently supported options are 8_16 and 4_8
+     - specify the mixed-precision scheme for search_qtable; supported options are wi8ai8_fp (default), wi4ai4_wi8ai8, wi4ai8_wi8ai8, wf8af8_fp, wf4af16dyn_wf8af16dyn, wf4abf16dyn_wf8abf16dyn
    * - cluster
-     - Specify that a clustering algorithm is used to detect sensitive layers during the search_qtable process
+     - specify that a clustering algorithm is used to detect sensitive layers during the search_qtable process
    * - quantize_table
      - the mixed-precision quantization table from search_qtable
    * - o
@@ -113,12 +115,12 @@ The table below provides an introduction to the parameters of the ``run_calibrat
    * - debug_log
      - log output level
 
-The Use of run_calibration Parameters Introduction
---------------------------------------------------------
+Tips for Using the run_calibration Parameters
+----------------------------------------------
 
 Based on the user's needs and their understanding of the model itself and quantization, we have provided targeted ways to use the ``run_calibration`` parameters in different situations.
 
-.. list-table:: applicable scenarios for run_calibration parameter
+.. list-table:: applicable scenarios for run_calibration parameters
    :widths: 8 25 8 8 25
    :header-rows: 1
 
@@ -146,7 +148,7 @@ Based on the user's needs and their understanding of the model itself and quanti
      - after model quantization, the accuracy on the bm1684 processor does not meet the requirements
      - /
      - /
-     - open sq, smc, we and bc methods
+     - enable sq, smc, we and bc methods
 
 case 1: When you perform the initial quantization on your model, which is the first time you use the ``run_calibration`` command, you may not be clear
 about the calibration method that is best suited for your current model and you may not be sensitive to the quantization speed.
@@ -164,11 +166,11 @@ which records the quantization information for different calibration methods. Th
        --inference_num 30 \
        -o cali_table
 
-Notes:1.At this point, it is necessary to select the processor parameter, which corresponds to the processor platform on which the model is intended to be deployed. The current default is bm1684x.
+Notes: 1. At this point, you need to specify the processor parameter, which corresponds to the processor platform on which the model is intended to be deployed. The current default is bm1684x.
 2. ``inference_num`` corresponds to the number of inference data required for the ``search_threshold`` process (this data will be extracted from the dataset you provide).
 The larger the ``inference_num``, the more accurate the ``search_threshold`` result, but the longer the quantization time required. Here, the default for ``inference_num`` is set to 30, which can be customized according to the actual situation.
 
-case2: When quantizing your model for the first time, you already know which calibration method is suitable for the model or you want to try specific method/methods. At this point, you can directly choose a fixed calibration method based on the ``cali_method`` parameter. The specific operation is as follows:
+case2: When quantizing your model for the first time, you already know which calibration method is suitable for the model or you want to try a specific method or methods. At this point, you can directly choose a fixed calibration method based on the ``cali_method`` parameter. The specific operation is as follows:
 
 .. code-block:: shell
 
@@ -178,13 +180,13 @@ case2: When quantizing your model for the first time, you already know which cal
        --cali_method mse \
        -o cali_table
 
-Notes:1.when the ``cali_method`` parameter is not specified, the default KLD calibration method will be used. 2.currently, the ``cali_method`` supports other five options: ``mse``, ``max``, ``percentile9999``, ``aciq_gauss`` and ``aciq_laplace``.
+Notes: 1. When the ``cali_method`` parameter is not specified, the default KLD calibration method will be used. 2. Currently, the ``cali_method`` supports five other options: ``mse``, ``max``, ``percentile9999``, ``aciq_gauss`` and ``aciq_laplace``.
 
 case3: When you are sensitive to quantization time and wish to generate the calibration table ``cali_table`` as quickly as possible, but you are unsure how to choose a calibration method, it is recommended to select a fixed calibration method based on the ``cali_method`` parameter.
 In comparison to the quantization speed of TPU-MLIR V1.8, the V1.9 version shows a 100% speed improvement for individual calibration methods, resulting in an average time reduction of around 50%. The acceleration effect is significant.
 In the V1.9 version, ``mse`` is the fastest calibration method on average. When selecting a calibration method, you can consider the following empirical conclusions:
 
-1.For non-transformer models without attention structure, ``mse`` is a suitable calibration method. Here is a specific operation guide:
+1.For non-transformer models without an attention structure, ``mse`` is a suitable calibration method. Here is a specific operation guide:
 
 .. code-block:: shell
 
@@ -203,7 +205,7 @@ You can also choose the default ``KLD`` calibration method. Here is a specific o
        --input_num 100 \
        -o cali_table
 
-If neither of the above two methods meets the accuracy requirements, you may need to consider adopting a mixed precision strategy or a hybrid threshold method. More detailed information on these approaches can be found in the subsequent section.
+If neither of the above two methods meets the accuracy requirements, you may need to consider adopting a mixed-precision strategy or a hybrid threshold method. More detailed information on these approaches can be found in the subsequent section.
 
 2.When your model is a transformer model that includes an attention structure, you can choose the ``mse`` calibration method. If the ``mse`` calibration method does not produce satisfactory results, you can then consider trying the ``max`` calibration method. Here is a specific operation guide:
 
@@ -215,9 +217,9 @@ If neither of the above two methods meets the accuracy requirements, you may nee
        --cali_method max \
        -o cali_table
 
-If the ``max`` method also fails to meet the requirements, at this point, you may need to adopt a mixed precision strategy. You can then try the mixed precision methods that will be introduced later.
+If the ``max`` method also fails to meet the requirements, you may need to adopt a mixed-precision strategy. You can then try the mixed precision methods that will be introduced later.
 
-Apart from the overall selection rules mentioned above, here are some specific details for choosing calibration methods:1.If your model is a YOLO series object detection model, it is recommended to use the default KLD calibration method, for yolo26 series models, it is recommended to use ``mse`` or ``percentile9999`` calibration method.2.If your model is a multi-output classification model,
+Apart from the overall selection rules mentioned above, here are some specific details for choosing calibration methods: 1. If your model is a YOLO series object detection model, it is recommended to use the default KLD calibration method. For yolo26 series models, it is recommended to use the ``mse`` or ``percentile9999`` calibration method. 2. If your model is a multi-output classification model,
 it is also recommended to use the default KLD calibration method.
 
 case4: When your model is deployed on the bm1684 processor and the full int8 quantized model obtained through the methods mentioned above has poor accuracy,
@@ -257,21 +259,21 @@ If you choose a fixed calibration method using ``cali_method`` , for example, us
 
 If you are using the default KLD calibration method, simply remove the ``cali_method`` parameter.
 
-Notes:1.Make sure to specify the processor parameter as bm1684. 2.The ``bc_inference_num`` parameter is the number of data samples required when using the ``bc`` quantization method (these samples will be extracted from the dataset you provide), so the number of images should not be too few.
-3.The ``sq``, ``smc``, ``we`` and ``bc`` methods can be used independently. If you choose only the ``we`` method, simply omit the ``sq``, ``smc`` and ``bc`` parameters in the operation. 4. Shape calculation ops will be found and set as float in model_name_shape_ops qtable saved in the current directory, the content of this file can be merged by hand with following mix-precision setting files.
+Notes: 1. Make sure to specify the processor parameter as bm1684. 2. The ``bc_inference_num`` parameter is the number of data samples required when using the ``bc`` quantization method (these samples will be extracted from the dataset you provide), so the number of images should not be too few.
+3. The ``sq``, ``smc``, ``we`` and ``bc`` methods can be used independently. If you choose only the ``we`` method, simply omit the ``sq``, ``smc`` and ``bc`` parameters in the operation. 4. Shape-calculation ops are detected and set to float in the ``model_name_shape_ops`` qtable saved in the current directory; the contents of this file can be merged by hand with the following mixed-precision setting files.
 
 Overview of TPU-MLIR Mixed Precision Quantization
 ==================================================
 
-TPU-MLIR provides model mixed precision quantization methods, with its core step being the acquisition of a ``quantize_table`` ,hereafter referred to as ``qtable`` that records operator names and their quantization types.
+TPU-MLIR provides mixed-precision model quantization methods; the core step is obtaining a ``quantize_table`` (hereafter referred to as ``qtable``), which records operator names and their quantization types.
 
 TPU-MLIR provides two paths for obtaining the qtable:
 For typical models, TPU-MLIR provides an experience-based ``pattern-match`` method.
-For special or atypical models, TPU-MLIR provides mixed precision quantization methods ``search_qtable`` and ``fp_forward`` tools to generate the qtable.
-The following four section will provide detailed introductions to these four mixed precision methods.
+For special or atypical models, TPU-MLIR provides the mixed-precision tools ``search_qtable`` and ``fp_forward`` to generate the qtable.
+The following sections provide detailed introductions to these mixed-precision methods.
 
 pattern-match
-=====================
+---------------------
 
 The ``pattern-match`` method is integrated into ``run_calibration`` and does not require explicit parameter specification.
 Currently, there are two type of models for which experience ``qtable`` is provided: one is the YOLO series, and the other is the Transformer series (e.g., BERT).
@@ -280,7 +282,7 @@ After obtaining the ``cali_table`` , if the model matches an existing pattern, a
 Before calibration, purpose of every op is judged, if it is calculating shape or position, it is treated as special pattern, and will be set float and included in qtable.
 
 YOLO Series Automatic Mixed Precision Method
------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Currently ``pattern-match`` method supported YOLO  models include YOLOV5, V6, V7, V8, V9, V10, V11, V12 and yolo26.
 
@@ -300,7 +302,7 @@ Example of YOLOv8 model output:
   The qtable has been generated in: path/to/cali_table/qtable !!!
 
 Transformer Series Automatic Mixed Precision Method
--------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Currently ``pattern-match`` method supported Transformer series models include BERT, EVA, DeIT, Swin, CSWin, ViT, and DETR.
 
@@ -311,8 +313,8 @@ For Swin, Permute before Reshape→LayerNorm, Add and Depth2Space operators will
 For DETR, all operators except Conv, Scale, Reshape, and MatMul after LayerNorm/Reshape will be set as non-quantized.
 These operators are set as non-quantized to generate the qtable.
 
-1. search_qtable
-=====================
+search_qtable
+---------------------
 
 ``search_qtable`` is a mixed precision feature integrated into ``run_calibration``. When full int8 quantization precision does not meet the requirements, mixed precision method are needed, meaning that some operators are set to perform floating-point operations.
 This section takes ``mobilenet-v2`` as example to introduce how to use ``search_qtable``.
@@ -323,7 +325,7 @@ This section requires the tpu_mlir python package.
 
 
 Install tpu_mlir
-------------------
+~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
 
@@ -332,7 +334,7 @@ Install tpu_mlir
    $ pip install tpu_mlir-*-py3-none-any.whl[all]
 
 Prepare working directory
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. include:: get_resource.rst
 Preparation and Usage Instructions for Single-Input Model Calibration Dataset (Taking mobilenet-v2 as an Example) :
@@ -390,10 +392,10 @@ multi-input Model:
    $ mkdir workspace && cd workspace
 
 Accuracy test of float and int8 models
----------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Step 1: To F32 mlir
-~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: shell
 
@@ -420,7 +422,7 @@ multi-input Model:
         --mlir bert_base_squad_uncased-2.11.0.mlir
 
 Step 2: Gen calibration table
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Here, we use the ``mse`` method for calibration.
 
@@ -444,7 +446,7 @@ multi-input Model:
         -o bert_base_squad_uncased-2.11.0.calitable
 
 Step 3: To F32 bmodel
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: shell
 
@@ -452,10 +454,10 @@ Step 3: To F32 bmodel
        --mlir mobilenet_v2.mlir \
        --quantize F32 \
        --processor bm1684 \
-       --model mobilenet_v2_1684_f32.bmodel
+       --model mobilenet_v2_bm1684_f32.bmodel
 
 Step 4: To INT8 model
-~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: shell
 
@@ -467,7 +469,7 @@ Step 4: To INT8 model
        --model mobilenet_v2_bm1684_int8_sym.bmodel
 
 Step 5: Accuracy test
-~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^
 
 ``classify_mobilenet_v2`` is a python program, to run ``mobilenet-v2`` model.
 
@@ -510,12 +512,12 @@ The classification information is displayed on the output image. The right label
 .. _mix precision:
 
 To Mix Precision Model
------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 After int8 conversion, do these commands as below.
 
 Step 1: Execute the ``search_qtable`` command
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The ``search_qtable`` feature is currently integrated into the ``run_calibration`` process. Therefore, to use it, you only need to add the relevant parameters to the ``run_calibration`` command.
 The parameters related to ``search_qtable`` in ``run_calibration`` are explained as follows:
@@ -571,10 +573,7 @@ The parameters related to ``search_qtable`` in ``run_calibration`` are explained
      - global compare layers, for example: ``layer1,layer2`` or ``layer1:0.3,layer2:0.7``
    * - search
      - Yes
-     - Specify the search type, which includes ``search_qtable``, ``search_threshold``, ``mix_search``， ``fast_search`` or false. You need to select ``search_qtable``
-   * - transformer
-     - N
-     - Is it a transformer model? In ``search_qtable``, if it is a transformer model, a specific acceleration strategy can be assigned. The default is False
+     - Specify the search type, which includes ``search_qtable``, ``search_threshold``, ``mix_search``, ``fast_search`` or false. You need to select ``search_qtable``
    * - quantize_method_list
      - N
      - the calibration method used for searching in ``search_qtable``, default is MSE, with selectable range being mse, kl, max, percentile9999, combine them with separator ','
@@ -597,7 +596,7 @@ The parameters related to ``search_qtable`` in ``run_calibration`` are explained
        return data
 
 ``search_qtable`` can customize the calibration method with mixed thresholds, controlled by the parameter ``quantize_method_list``. By default, only the ``MSE`` calibration method is used for the search. If you want to use a mixed search with KLD and MSE, set the parameter ``quantize_method_list`` to ``KL,MSE``.
-``search_qtable`` has an acceleration strategy for transformer models. If the model is a transformer model with an attention structure, you can set the parameter ``transformer`` to True.
+``search_qtable`` has an acceleration strategy for transformer models. If the model is a transformer model with an attention structure, ``search_qtable`` automatically detects it and applies the dedicated acceleration strategy.
 Use ``search_qtable`` to search for layers with significant loss. Note that it is recommended to use bad cases for the search.
 
 In this example, 100 images are used for quantization, 30 images are used for inference, and a mixed search using KLD and MSE calibration methods is performed. Execute the command as follows:
@@ -611,7 +610,6 @@ In this example, 100 images are used for quantization, 30 images are used for in
        --expected_cos 0.99 \
        --quantize_method_list KL,MSE \
        --search search_qtable \
-       --transformer False \
        --processor bm1684 \
        --post_process post_process_func.py \
        --quantize_table mobilenet_v2_qtable \
@@ -638,7 +636,7 @@ The final output after execution is printed as follows:
     success search qtable
 
 Above, int8 outputs_cos represents the cosine similarity between network outputs of int8 model and float model; mix model outputs_cos represents the cosine similarity between network outputs of mix model and float model; total time represents the search time is 667 seconds.
-In addition，this program generates a quantization table ``mobilenet_v2_qtable``, the context is as below:
+In addition, this program generates a quantization table ``mobilenet_v2_qtable``, the content is as below:
 
 .. code-block:: shell
 
@@ -695,7 +693,7 @@ the optimal threshold will be updated to a new quantization table
 called when generating the mixed-precision model.
 
 Step 2: Gen mix precision model
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: shell
 
@@ -708,7 +706,7 @@ Step 2: Gen mix precision model
        --model mobilenet_v2_bm1684_int8_mix.bmodel
 
 Step 3: Test accuracy of mix model
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: shell
 
@@ -726,8 +724,91 @@ The classification information is displayed on the output image. The right label
 
    Execution Performance of classify_mobilenet_v2 in the Mixed Precision Model
 
-2. fp_forward
-==============================
+
+.. raw:: latex
+
+   \FloatBarrier
+
+Other search modes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Besides the default ``search_qtable`` flow above, ``run_calibration`` provides
+a faster search mode and an alternative decision metric.
+
+**fast_search**
+
+``fast_search`` is a lighter-weight mixed-precision search, enabled with
+``--search fast_search`` (it currently supports only the ``wi8ai8_fp`` mix
+mode). Instead of tuning every op's threshold across all calibration methods,
+it runs an iterative round loop: in each round it ranks the candidate layers
+by sensitivity and promotes the five most sensitive layers to float, then
+re-evaluates. The loop stops once the target is met (``cos > expected_cos``,
+or the end-to-end metric reaches ``expected_acc``), the improvement stalls, or
+the float-layer budget (about 20% of the ops) is reached. It is much faster
+than ``search_qtable`` but selects float layers more coarsely, so it is a good
+choice when ``search_qtable`` is too slow. All other parameters (``dataset``,
+``input_num``, ``expected_cos``, ``quantize_table``, ``calibration_table``,
+``processor``) are used the same way:
+
+.. code-block:: shell
+
+   $ run_calibration.py mobilenet_v2.mlir \
+       --dataset ../ILSVRC2012 \
+       --input_num 100 \
+       --expected_cos 0.9999 \
+       --search fast_search \
+       --processor bm1684x \
+       --quantize_table mobilenet_v2_qtable \
+       --calibration_table mobilenet_v2_cali_table
+
+**eval_config**
+
+.. note::
+
+   End-to-end evaluation runs the model over ``sample_num`` images on every
+   search trial, which is compute-intensive. It is strongly recommended to run
+   the search in the **CUDA docker image** (``sophgo/tpuc_dev:*-cuda``) for
+   acceptable speed. For setting up the CUDA docker environment, refer to
+   Chapter 7 "Calibration" of the TPU-MLIR Developer Manual.
+
+By default the search decides which layers to keep in float by comparing the
+mixed-precision output with the float output using cosine similarity
+(``expected_cos``). With ``--eval_config <json>`` the search instead decides by
+an end-to-end task metric: ``topx`` (top1/top5), ``coco_mAP``, or a user
+``custom`` metric, compared against a target accuracy ``expected_acc``. The
+JSON configures the metric and the evaluation data, for example:
+
+.. code-block:: json
+
+   {
+     "eval_metric": "topx",
+     "direction": "higher_better",
+     "expected_acc": 0.70,
+     "metric_index": 0,
+     "score_plugin": "topx",
+     "sample_num": 100,
+     "dataset": "/data/imagenet/val",
+     "use_end2end_in_search": false
+   }
+
+``use_end2end_in_search`` controls whether the expensive per-op sensitivity
+sweep also uses the end-to-end metric; when false (default) only the
+float-layer count decisions use it and the per-op sweep stays on cosine
+similarity. Setting it to true is very time-consuming, because the end-to-end
+metric is then evaluated for every op in the per-op sweep; in practice the
+cosine-similarity metric is accurate enough for ranking per-op sensitivity, so
+it is recommended to keep ``use_end2end_in_search`` false. ``eval_config``
+works with both ``search_qtable`` and ``fast_search``. A ready-to-use sample
+config is provided at ``python/samples/eval_config_topx.json``. To build your
+own metric, refer to ``python/samples/count_detected_objects.py``, a worked
+example based on the ``custom_eval_template.py`` template: it subclasses the
+plugin base class and implements the ``init`` / ``update`` / ``get_result``
+hooks to count detected objects per sample and return the total as the
+search's decision score, and its matching ``eval_config`` points
+``score_plugin`` at that file.
+
+fp_forward
+------------------------------
 
 
 For specific neural networks, some layers may not be suitable for quantization due to significant differences in data distribution. The "Local Non-Quantization" allows you to add certain layers before, after, or between other layers to a mixed-precision table. These layers will not be quantized when generating a mixed-precision model.
@@ -837,7 +918,7 @@ example of multi-input calibration dataset
 
 For multi-input models, the calibration dataset can be saved in npz file, each npz contains one sample, and key of npz complies with model inputs, following is open_clip as example.
 
-.. open_clip.png:
+.. _open_clip.png:
 .. figure:: ../assets/open_clip.png
    :align: center
 

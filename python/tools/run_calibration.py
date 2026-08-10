@@ -51,6 +51,9 @@ if __name__ == '__main__':
     parser.add_argument('--histogram_bin_num', type=int, default=2048,
                         help='Specify histogram bin numer for kld calculate')
     parser.add_argument('--expected_cos', type=float, default=0.99, help='expected net output cos')
+    parser.add_argument('--eval_config', type=str, default='',
+                        help='path to eval_config.json for end-to-end/custom metrics (topx, '
+                             'coco_mAP, custom). When omitted, defaults to cos (current behavior).')
     parser.add_argument('--min_layer_cos', type=float, default=0.99, help='minimum cos of layer')
     parser.add_argument('--max_float_layers', type=int, default=5, help='num of float layers in search qtable')
     parser.add_argument('--chip', '--processor', default='bm1684x', type=str,

@@ -8,13 +8,10 @@
 # ==============================================================================
 
 import os
-import sys
 import time
-import datetime
 import pymlir
 import numpy as np
 import copy
-import logging
 import collections
 from utils.mlir_parser import *
 from sklearn.cluster import KMeans
@@ -23,14 +20,16 @@ from sklearn.metrics import silhouette_score
 from calibration.mix_precision import MixQuantModel
 from calibration.mix_precision import MixPrecSearcher
 from calibration.kld_calibrator import CalibrationTable, ActivationCalibrator
+from calibration.search_loop import (SearchLoop, SearchState, PerOpThresholdTry,
+                                     LowPrecSensitivityTry, ClusterAcceptanceTry,
+                                     FastSensitivityTry)
+from calibration.cali_eval import CosEval
+from calibration.eval_config import EvalConfig  # noqa: F401 (used in _make_eval)
 from pathlib import Path
 from utils.net_dot_log import net_dot_log
-from utils.log_setting import logger, setup_logger
 from utils.mlir_parser import MlirParser
-from utils.misc import parse_debug_cmd
 from tqdm import tqdm
 from .utils import *
-import gc
 
 pymlir.set_mem_mode("force_value_mem")
 
@@ -121,6 +120,387 @@ class SearchQtableBase:
         # search baseline model is available. Pattern/shape/custom float are
         # covered via the qtable from the start.
         self.classifier = FloatOpClassifier(self.parser, self.qtable, [])
+        # End-to-end eval config (Phase 4). Default = cos path, no behavior
+        # change. Loaded from JSON via --eval_config on run_calibration.py.
+        self.eval_config = EvalConfig.from_json(getattr(args, 'eval_config', '') or None)
+        # MixModelInference runner — built lazily on first end-to-end eval;
+        # None when eval_config.eval_metric == 'cos' (current behavior).
+        self._eval_runner = None
+        # float_model reference — stored when built in run(), reused by
+        # _get_eval_runner() to avoid building a second F32 model (which can
+        # crash the TPU simulator when other models are still loaded).
+        self._float_model = None
+
+    # ---- decision-metric helpers ----
+    #
+    # The decision metric at each call site is chosen by an explicit ``metric``
+    # argument, resolved by ``_resolve_metric`` to one of two families:
+    #   'cos'     -> compare against args.expected_cos (cheap; per-op sweeps).
+    #   'end2end' -> run the configured plugin (topx/coco_mAP/custom) and
+    #                compare against eval_config.expected_acc. The concrete
+    #                number (top1 / mAP / custom) is selected by the plugin +
+    #                metric_index, transparently to the search.
+    #
+    # ``metric`` values a call site may pass:
+    #   'config' (default) -> use the configured eval_metric (cos or end2end).
+    #                         Count-decision points pass this, so expected_acc
+    #                         drives float-layer selection whenever eval_metric
+    #                         is an end2end metric -- independent of the flag.
+    #   'cos'              -> force cos (cheap per-op sweep / cos-only compares).
+    #   'sweep'            -> per-op sweep scope: end2end only when
+    #                         use_end2end_in_search is set, else cos.
+
+    def _resolve_metric(self, metric):
+        """Map a call-site ``metric`` request to the concrete family
+        ('cos' | 'end2end')."""
+        if metric == 'cos':
+            return 'cos'
+        if metric == 'sweep':
+            return 'end2end' if self.eval_config.use_end2end_everywhere else 'cos'
+        # 'config' (default): follow eval_metric.
+        return 'end2end' if self.eval_config.is_end_to_end else 'cos'
+
+    def _log_run_banner(self, routine):
+        """One-time banner at the start of a search routine: names the routine,
+        the configured decision metric, the threshold that will gate float-layer
+        selection, and the per-op sweep scope. Makes the running routine + the
+        active metric obvious in the log."""
+        cfg = self.eval_config
+        if cfg.is_end_to_end:
+            decision = "{} (plugin={}, metric_idx={}) vs expected_acc={} [{}]".format(
+                cfg.eval_metric, cfg.eval_metric, cfg.metric_index, cfg.expected_acc, cfg.direction)
+            sweep = "end2end({})".format(cfg.eval_metric) if cfg.use_end2end_everywhere else "cos"
+        else:
+            decision = "cos vs expected_cos={}".format(self.args.expected_cos)
+            sweep = "cos"
+        self.mix_prec.logger.print_info(
+            "==== SEARCH ROUTINE: {} | mix_mode={} | decision-metric: {} | per-op-sweep: {} | "
+            "use_end2end_in_search={} ====".format(routine, self.args.mix_mode, decision, sweep,
+                                                   cfg.use_end2end_in_search))
+
+    def _run_end2end_score(self, model, cos_result, phase=''):
+        """Run the configured end2end plugin (topx -> top1/top5, coco_mAP ->
+        mAP/mAP50, custom -> user) on the eval dataset and return
+        ``get_result()[metric_index]``. Plugin-agnostic: the search never needs
+        to know which concrete metric it is."""
+        runner = self._get_eval_runner()
+        # Forward static trial context to the plugin's begin_model hook
+        # (tier-3 model-aware / HIL plugins); harmless no-op for built-ins.
+        runner.set_model(model,
+                         ctx_extra={
+                             'cali_table': self.cali_table_name,
+                             'phase': phase or 'trial',
+                         })
+        n = self.eval_config.sample_num or self.mix_prec.num_sample
+        _tag = (' ' + phase) if phase else ''
+        # Echo the exact eval args the SEARCH-INTERNAL runner uses, so this
+        # eval can be diffed against the deploy-time model_eval.py (which may
+        # score the SAME model differently if dataset/label/preprocess differ).
+        _ra = getattr(runner, 'args', None)
+        _ds = getattr(_ra, 'dataset', '') if _ra is not None else ''
+        _lbl = getattr(_ra, 'label_file', '') if _ra is not None else ''
+        _dims = getattr(getattr(runner, 'img_proc', None), 'net_input_dims', None)
+        _use_cuda = getattr(runner, 'use_cuda', None)
+        self.mix_prec.logger.print_info(
+            "[EVAL{tag} BEGIN] search-internal eval | metric={m} (plugin={pl}, metric_idx={mi}) | "
+            "n={n} | dataset={ds} | label_file={lbl} | net_input_dims={dims} | cuda={cu}".format(
+                tag=_tag,
+                m=self.eval_config.eval_metric,
+                pl=self.eval_config.eval_metric,
+                mi=self.eval_config.metric_index,
+                n=n,
+                ds=_ds,
+                lbl=_lbl,
+                dims=_dims,
+                cu=_use_cuda))
+        _log_every = 100  # running-accuracy progression cadence
+
+        def _progress_cb(idx, _cnt):
+            # Running-accuracy progression, mirroring model_eval.py's idx/top1
+            # lines so the search-eval curve can be compared to the deploy curve.
+            if (idx + 1) % _log_every != 0 or not _cnt:
+                return
+            sc = getattr(runner, 'score', None)
+            if sc is not None and hasattr(sc, 'c1') and hasattr(sc, 'c5'):
+                self.mix_prec.logger.print_info(
+                    "[EVAL{tag}] progress idx:{i} running_top1:{t1:.4f} "
+                    "running_top5:{t5:.4f}".format(tag=_tag,
+                                                   i=_cnt,
+                                                   t1=sc.c1 / _cnt,
+                                                   t5=sc.c5 / _cnt))
+            else:
+                self.mix_prec.logger.print_info("[EVAL{tag}] progress idx:{i}".format(tag=_tag,
+                                                                                      i=_cnt))
+
+        # run_eval_trial owns reset -> begin_model -> [drive|self] ->
+        # get_result -> end_model (single shared driver; honors 'self' mode).
+        result = runner.run_eval_trial(n, progress_cb=_progress_cb)
+        # Capture the raw plugin result tuple for a full labeled report before
+        # reducing to the single decision scalar via metric_index.
+        _raw = result
+        if isinstance(result, (tuple, list)):
+            result = result[self.eval_config.metric_index]
+        if isinstance(_raw, (tuple, list)) and len(_raw) >= 2:
+            # Name the two tuple elements per metric: topx -> top1/top5,
+            # coco_mAP -> mAP@0.5 / mAP@0.5:0.95 (get_result returns that order).
+            if self.eval_config.eval_metric == 'coco_mAP':
+                _p, _s = 'mAP@0.5', 'mAP@0.5:0.95'
+            elif self.eval_config.eval_metric == 'topx':
+                _p, _s = 'top1', 'top5'
+            else:
+                _p, _s = 'primary', 'secondary'
+            self.mix_prec.logger.print_info(
+                "[EVAL{tag} RESULT] metric={m} idx={mi} -> {pn}={t1:.4f} "
+                "{sn}={t5:.4f}  (cos={cos:.4f})".format(tag=_tag,
+                                                        m=self.eval_config.eval_metric,
+                                                        mi=self.eval_config.metric_index,
+                                                        pn=_p,
+                                                        sn=_s,
+                                                        t1=float(_raw[0]),
+                                                        t5=float(_raw[1]),
+                                                        cos=cos_result))
+        self.mix_prec.logger.print_info(
+            "[EVAL{tag}] metric={m} (plugin={pl}, idx={mi}, n={n}) -> score={sc:.4f}  "
+            "(cos={cos:.4f})".format(tag=_tag,
+                                     m=self.eval_config.eval_metric,
+                                     pl=self.eval_config.eval_metric,
+                                     mi=self.eval_config.metric_index,
+                                     n=n,
+                                     sc=result,
+                                     cos=cos_result))
+        return result
+
+    def _eval_model(self, model, cos_result, metric='config', phase=''):
+        """Decision-point eval. Returns ``cos_result`` when the resolved metric
+        is cos; otherwise runs the configured end2end plugin and returns its
+        score. The caller still runs cos first (for predictions_gt / baseline
+        cos); this overrides the *decision metric*, not the cos computation.
+
+        ``phase`` is a short label naming the calling stage (e.g.
+        'int8-baseline', 'adjust-binsearch', 'fast-round') — printed in the
+        debug line so the running routine is traceable.
+
+        IMPORTANT: pass the SAME ``metric`` to the paired ``_is_good_enough``
+        call, so the score and its threshold agree (never compare an end2end
+        top1/mAP against the cos threshold, or vice versa)."""
+        resolved = self._resolve_metric(metric)
+        if resolved == 'cos':
+            self.mix_prec.logger.print_info("[EVAL{}] metric=cos -> score={:.4f}".format(
+                (' ' + phase) if phase else '', cos_result))
+            return cos_result
+        return self._run_end2end_score(model, cos_result, phase=phase)
+
+    def _is_good_enough(self, score, metric='config', phase=''):
+        """Check whether ``score`` meets the success threshold for the resolved
+        metric. cos: ``score > expected_cos``. end2end: compare against
+        ``expected_acc`` per ``direction`` (higher_better: >=, else <=).
+
+        Logs exactly what is compared (metric, operator, threshold) and the
+        verdict, so the decision routine is auditable from the log.
+
+        Must be called with the same ``metric`` as the ``_eval_model`` that
+        produced ``score``."""
+        resolved = self._resolve_metric(metric)
+        if resolved == 'cos':
+            ok = score > self.args.expected_cos
+            self.mix_prec.logger.print_info(
+                "[JUDGE{}] cos {:.4f} > expected_cos {:.4f} ? -> {}".format(
+                    (' ' + phase) if phase else '', score, self.args.expected_cos,
+                    'GOOD' if ok else 'not-yet'))
+            return ok
+        target = self.eval_config.expected_acc
+        if self.eval_config.direction == 'higher_better':
+            ok = score >= target
+            op = '>='
+        else:
+            ok = score <= target
+            op = '<='
+        self.mix_prec.logger.print_info("[JUDGE{}] {} {:.4f} {} expected_acc {:.4f} ? -> {}".format(
+            (' ' + phase) if phase else '', self.eval_config.eval_metric, score, op, target,
+            'GOOD' if ok else 'not-yet'))
+        return ok
+
+    def _make_eval(self,
+                   gcl,
+                   lr,
+                   gt,
+                   mode='threshold',
+                   cluster=False,
+                   target_cos_threshold=None,
+                   desc='cos'):
+        """Factory: returns the right EvalStrategy per eval_config + search mode.
+
+        mode='threshold'  -> per-op threshold tuning (normal/int4)
+        mode='sensitivity' -> 4bit sensitivity sweep (measurement-only)
+        mode='cluster'     -> cluster acceptance + one-by-one retry
+        mode='fast'        -> fast-search inner sweep (measurement-only)
+
+        Default (eval_config.eval_metric == 'cos') returns CosEval configured
+        for the mode; passing --eval_config <json> with eval_metric='topx' /
+        'coco_mAP' / 'custom' + use_end2end_in_search=true returns
+        End2EndEval instead. When use_end2end_in_search=false (default),
+        only the cluster-acceptance mode returns End2EndEval; threshold /
+        sensitivity / fast modes still use CosEval.
+        """
+        from calibration.cali_eval import CosEval, End2EndEval
+        # When use_end2end_in_search is false, threshold/sensitivity/fast
+        # modes use cos even when end2end is configured — only cluster
+        # acceptance always uses end2end.
+        use_e2e = self.eval_config.use_end2end_everywhere or mode in ('cluster', 'cluster_retry')
+        if not (self.eval_config.is_end_to_end and use_e2e):
+            # cos path — produces the same eval objects as pre-Phase-4.
+            if mode == 'threshold':
+                return CosEval(target='best',
+                               direction='lower_better',
+                               mix_prec=self.mix_prec,
+                               global_compare_layers=gcl,
+                               layers_rate=lr,
+                               predictions_gt=gt,
+                               expected=self.args.expected_cos,
+                               num_sample=self.mix_prec.num_sample,
+                               loss_methods=['cos'],
+                               record_loss=cluster,
+                               cluster=cluster)
+            if mode == 'sensitivity':
+                return CosEval(target=None,
+                               direction='lower_better',
+                               mix_prec=self.mix_prec,
+                               global_compare_layers=gcl,
+                               layers_rate=lr,
+                               predictions_gt=gt,
+                               expected=self.args.expected_cos,
+                               num_sample=self.mix_prec.num_sample,
+                               loss_methods=['cos', 'snr'],
+                               record_loss=True)
+            if mode == 'fast':
+                return CosEval(target=None,
+                               direction='lower_better',
+                               mix_prec=self.mix_prec,
+                               global_compare_layers=gcl,
+                               layers_rate=lr,
+                               predictions_gt=gt,
+                               expected=self.args.expected_cos,
+                               num_sample=self.mix_prec.num_sample,
+                               loss_methods=['cos', 'snr'],
+                               record_loss=True,
+                               sample_num=1)
+            if mode in ('cluster', 'cluster_retry'):
+                # target_semantics='floor': cluster-acceptance loop keeps
+                # demoting clusters to int4 until one's cos drops below
+                # target_cos_threshold (= baseline * expected_cos), at which
+                # point ENOUGH stops the main loop. cluster_retry uses
+                # use_enough=False (one-by-one retry tries every op).
+                return CosEval(target=target_cos_threshold,
+                               direction='higher_better',
+                               mix_prec=self.mix_prec,
+                               global_compare_layers=gcl,
+                               layers_rate=lr,
+                               predictions_gt=gt,
+                               expected=self.args.expected_cos,
+                               num_sample=self.mix_prec.num_sample,
+                               use_enough=(mode == 'cluster'),
+                               target_semantics='floor')
+            raise ValueError(f"unknown cos eval mode: {mode}")
+
+        # end-to-end path (Phase 4). Build the MixModelInference runner once
+        # and reuse across trials (parse-once-reuse-per-trial pattern).
+        # The (target, target_semantics, direction) per mode mirror the cos
+        # branch so each search phase gets the right judge behavior:
+        #   threshold  -> per-op-best (KEEP if new best, else WITHDRAW)
+        #   sensitivity -> measurement loop (always KEEP)
+        #   fast        -> measurement loop (always KEEP)
+        #   cluster     -> floor (KEEP if >= target_cos_threshold, ENOUGH if <)
+        # Pass a factory (callable) instead of building the runner eagerly.
+        # The runner is built lazily on first _compute_score call, so
+        # MixModelInference (which initializes cv2/oneDNN via preprocess())
+        # doesn't interfere with TPU model lowering during setup.
+        runner_factory = self._get_eval_runner
+        common = dict(
+            runner_factory=runner_factory,
+            metric_index=self.eval_config.metric_index,
+            num_sample=self.eval_config.sample_num or self.mix_prec.num_sample,
+            logger=self.mix_prec.logger,
+        )
+        if mode == 'threshold':
+            # Per-op-best: judge compares trial score vs state.per_op_best[op].
+            # direction from config (top1/mAP: higher_better; perplexity: lower_better).
+            return End2EndEval(target='best',
+                               target_semantics='ceiling',
+                               direction=self.eval_config.direction,
+                               **common)
+        if mode in ('sensitivity', 'fast'):
+            # Measurement loop: always KEEP, record score into loss_dict.
+            # No target, no ENOUGH — the outer loop (cluster-acceptance or
+            # fast-search round) decides acceptance.
+            return End2EndEval(target=None,
+                               target_semantics='ceiling',
+                               direction=self.eval_config.direction,
+                               **common)
+        if mode in ('cluster', 'cluster_retry'):
+            # Floor: keep demoting clusters to int4 until the metric drops
+            # below the target. For end2end, use expected_acc from the config
+            # (Option B, validated > 0) — the user sets the minimum acceptable
+            # top1/mAP directly. direction forced to higher_better because the
+            # floor is a minimum-acceptable threshold.
+            # cluster_retry: use_enough=False so the one-by-one retry tries
+            # every op instead of stopping on the first failure.
+            target = self.eval_config.expected_acc if self.eval_config.expected_acc > 0 \
+                     else target_cos_threshold
+            return End2EndEval(target=target,
+                               target_semantics='floor',
+                               direction='higher_better',
+                               use_enough=(mode == 'cluster'),
+                               **common)
+        raise ValueError(f"unknown end2end eval mode: {mode}")
+
+    def _get_eval_runner(self):
+        """Build (once) the MixModelInference runner for end-to-end eval.
+
+        Reuses the float_model already built in run() for img_proc + plugin
+        setup (its parser/module provide batch_size, input dims, preprocess
+        config). The per-trial model is swapped via ``runner.set_model``
+        inside ``End2EndEval._compute_score``.
+        """
+        if self._eval_runner is not None:
+            return self._eval_runner
+        from calibration.cali_eval import MixModelInference
+        import types
+        cfg = self.eval_config
+        # Reuse the float_model from run() — avoids building a second F32
+        # model which can crash the TPU simulator when other models are
+        # still loaded (e.g. the int4 informational model with
+        # int4_model.clean() commented out). The float_model's parser
+        # provides batch_size, input_num, and input op config — the same
+        # info a newly-built baseline would provide.
+        if self._float_model is None:
+            from calibration.mix_precision import MixQuantModel
+            self._float_model = MixQuantModel(self.fp32_mlir, self.chip, None, 'F32')
+        _ptype = cfg.postprocess_type or cfg.score_plugin
+        # coco_mAP detection aligns with model_eval.py --dataset_type coco:
+        # it runs with debug_cmd 'not_use_preprocess' so common_inference uses
+        # the plugin's own preproc (letterbox + /255, which fills ratio_list for
+        # box un-scaling), matching the yolov5s convert reference. Classification
+        # (topx) keeps the default img_proc preprocess (debug_cmd empty).
+        _debug_cmd = {'not_use_preprocess': None} if _ptype == 'coco_mAP' else {}
+        args = types.SimpleNamespace(model_file=self.fp32_mlir,
+                                     chip=self.chip,
+                                     postprocess_type=_ptype,
+                                     dataset=cfg.dataset or '',
+                                     data_list=cfg.data_list or '',
+                                     label_file=cfg.score_plugin_args.get('label_file', ''),
+                                     count=cfg.sample_num or 0,
+                                     debug_cmd=_debug_cmd,
+                                     batch_size=1,
+                                     net_input_dims=[],
+                                     cuda=False,
+                                     eval_config_dir=getattr(cfg, '_config_dir', '') or '',
+                                     **{
+                                         k: v
+                                         for k, v in cfg.score_plugin_args.items()
+                                         if k not in ('label_file', 'batch_size')
+                                     })
+        self._eval_runner = MixModelInference(args, self._float_model)
+        return self._eval_runner
 
     def search_layer_type_no_need_quant(self, layer_names, float_outputs_cos, global_compare_layers,
                                         layers_rate, predictions_gt):
@@ -145,8 +525,13 @@ class SearchQtableBase:
                 else:
                     fp_list.append(layer_name)
             mix_table = self.mix_prec._gen_mix_table(fp_list, self.qtable)
-            mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec, self.high_prec,
-                                      self.cali_table_name, mix_table)
+            mix_model = MixQuantModel(self.fp32_mlir,
+                                      self.chip,
+                                      self.low_prec,
+                                      self.high_prec,
+                                      self.cali_table_name,
+                                      mix_table,
+                                      using_cuda=True)
             mix_model.module.set_progress_silent(True)
             similarity = self.mix_prec.run_model(mix_model,
                                                  False,
@@ -155,6 +540,10 @@ class SearchQtableBase:
                                                  predictions_gt,
                                                  sample_num=1,
                                                  loss_methods=['cos'])
+            similarity = self._eval_model(mix_model,
+                                          similarity,
+                                          metric='cos',
+                                          phase='op-type-sweep')
             self.mix_prec.logger.print_info(f"op_type : {op_type}, similarity : {similarity}")
             if similarity < min_similarity:
                 min_similarity = similarity
@@ -167,17 +556,6 @@ class SearchQtableBase:
             f"sensitive_op_type : {sensitive_op_type}, please pay attention to these types of operations"
         )
         return sensitive_op_type
-
-    def compare_loss(self, layer_name, loss_dict, outputs_cos, outputs_snr):
-        existing_cos = loss_dict[layer_name][0]
-        existing_snr = loss_dict[layer_name][1]
-
-        if outputs_cos < existing_cos:
-            existing_cos = outputs_cos
-        if outputs_snr < existing_snr:
-            existing_snr = outputs_snr
-
-        loss_dict[layer_name] = [existing_cos, existing_snr]
 
     def search_best_threshold_per_op(self,
                                      layer_names,
@@ -202,6 +580,40 @@ class SearchQtableBase:
         ``set_th_fn``. When ``isolate`` is True the current op is quantized while the
         rest are kept at ``high_prec_type`` (the int8 routine); when False the full
         model (``_gen_mix_table([])``) is used for every op (int4 stage 2 / w4a8 stage 1).
+
+        Implemented on the unified ``SearchLoop`` + ``PerOpThresholdTry`` +
+        ``CosEval`` abstraction.
+        """
+        if not layer_names:
+            self.mix_prec.logger.print_info(
+                "Layer names are empty. All operators skipped in search phase.")
+            raise RuntimeError("Layer names are empty. All operators skipped in search phase.")
+        return self._search_best_threshold_per_op_unified(layer_names, quantize_method_list,
+                                                          layer_th_dicts, global_compare_layers,
+                                                          layers_rate, predictions_gt, low_prec,
+                                                          high_prec, chip, set_th_fn, isolate,
+                                                          high_prec_type, cluster, desc)
+
+    def _search_best_threshold_per_op_unified(self,
+                                              layer_names,
+                                              quantize_method_list,
+                                              layer_th_dicts,
+                                              global_compare_layers,
+                                              layers_rate,
+                                              predictions_gt,
+                                              low_prec=None,
+                                              high_prec=None,
+                                              chip=None,
+                                              set_th_fn=None,
+                                              isolate=True,
+                                              high_prec_type=None,
+                                              cluster=None,
+                                              desc='search_best_th'):
+        """Implementation of ``search_best_threshold_per_op`` using
+        ``SearchLoop`` + ``PerOpThresholdTry`` + ``CosEval(target='best')``.
+
+        Produces the triple ``(sensitive_layer_analysis_dict,
+        new_cali_table_name, loss_dict)``.
         """
         if low_prec is None:
             low_prec = self.low_prec
@@ -213,148 +625,41 @@ class SearchQtableBase:
             set_th_fn = self.set_layer_new_th
         if cluster is None:
             cluster = self.args.cluster
-        if not layer_names:
-            self.mix_prec.logger.print_info(
-                "Layer names are empty. All operators skipped in search phase.")
-            sys.exit(1)
-        num_quantize_method = len(quantize_method_list)
-        total = len(layer_names) * num_quantize_method
-        pbar = tqdm(total=total, desc=desc)
-        loss_dict = collections.defaultdict(list)
-        fp_layer_list = list(layer_names)
-        modified_layers = {}
-        last_tried_method = quantize_method_list[0]
-        sensitive_layer_analysis_dict = {}
-        new_cali_table_name = self.cali_table_name
-        for layer_idx, layer_name in enumerate(layer_names):
-            if self.classifier.skip_threshold_search(layer_name):
-                continue
-            layer_type = self.parser.get_op_type_by_op_name(layer_name)
-            pbar.set_postfix_str(f"{layer_idx}/{len(layer_names)} {layer_name}")
-            self.mix_prec.logger.print_info("start to handle layer: {}, type: {}".format(
-                layer_name, layer_type))
-            fp_layer_list.remove(layer_name)
-            if isolate:
-                mix_table = self.mix_prec._gen_mix_table(fp_layer_list,
-                                                         self.qtable,
-                                                         high_prec_type=high_prec_type)
-            else:
-                mix_table = self.mix_prec._gen_mix_table([],
-                                                         self.qtable,
-                                                         high_prec_type=high_prec_type)
-            ret = False
-            while not ret:
-                if layer_name not in modified_layers:
-                    last_tried_method = quantize_method_list[0]
-                    modified_layers[layer_name] = [
-                        1,
-                        float('inf'), layer_th_dicts[last_tried_method][layer_name][1],
-                        last_tried_method
-                    ]
-                    method = last_tried_method
-                    new_th = layer_th_dicts[last_tried_method][layer_name][1]
-                    new_cali_table_name = set_th_fn(layer_name, new_th)
-                    last_tried_method = method
-                    self.mix_prec.logger.print_info(
-                        "adjust layer {} th, with method {}, and threshlod {}".format(
-                            layer_name, method, new_th))
-                    mixmodel = MixQuantModel(self.fp32_mlir,
-                                             chip,
-                                             low_prec,
-                                             high_prec,
-                                             new_cali_table_name,
-                                             mix_table,
-                                             using_cuda=True)
-                    mixmodel.module.set_progress_silent(True)
-                    if not cluster:
-                        outputs_cos = 1 - self.mix_prec.run_model(
-                            mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
-                    else:
-                        result = self.mix_prec.run_model(mixmodel,
-                                                         False,
-                                                         global_compare_layers,
-                                                         layers_rate,
-                                                         predictions_gt,
-                                                         loss_methods=['cos', 'snr'])
-                        outputs_cos = 1 - result['cos']
-                        outputs_snr = result['snr']
-                        loss_dict[layer_name].extend([outputs_cos, outputs_snr])
-                    self.mix_prec.logger.print_info("outputs_cos_los = {}".format(outputs_cos))
-                    pbar.set_postfix_str(
-                        f"{layer_idx}/{len(layer_names)} {layer_name} | m={method} cos={1-outputs_cos:.4f}"
-                    )
-                    mixmodel.clean()
-                    del mixmodel
-                    pbar.update(1)
-                elif modified_layers[layer_name][0] < num_quantize_method:
-                    method_idx = modified_layers[layer_name][0]
-                    method = quantize_method_list[method_idx]
-                    if outputs_cos < modified_layers[layer_name][1]:
-                        modified_layers[layer_name][1] = outputs_cos
-                        modified_layers[layer_name][2] = layer_th_dicts[last_tried_method][
-                            layer_name][1]
-                        modified_layers[layer_name][3] = last_tried_method
-                    new_th = layer_th_dicts[method][layer_name][1]
-                    new_cali_table_name = set_th_fn(layer_name, new_th)
-                    last_tried_method = method
-                    self.mix_prec.logger.print_info(
-                        "adjust layer {} th, with method {}, and threshlod {}".format(
-                            layer_name, method, new_th))
-                    modified_layers[layer_name][0] += 1
-                    mixmodel = MixQuantModel(self.fp32_mlir,
-                                             chip,
-                                             low_prec,
-                                             high_prec,
-                                             new_cali_table_name,
-                                             mix_table,
-                                             using_cuda=True)
-                    mixmodel.module.set_progress_silent(True)
-                    if not cluster:
-                        outputs_cos = 1 - self.mix_prec.run_model(
-                            mixmodel, False, global_compare_layers, layers_rate, predictions_gt)
-                    else:
-                        result = self.mix_prec.run_model(mixmodel,
-                                                         False,
-                                                         global_compare_layers,
-                                                         layers_rate,
-                                                         predictions_gt,
-                                                         loss_methods=['cos', 'snr'])
-                        outputs_cos = 1 - result['cos']
-                        outputs_snr = result['snr']
-                        self.compare_loss(layer_name, loss_dict, outputs_cos, outputs_snr)
-                    self.mix_prec.logger.print_info("outputs_cos_los = {}".format(outputs_cos))
-                    pbar.set_postfix_str(
-                        f"{layer_idx}/{len(layer_names)} {layer_name} | m={method} cos={1-outputs_cos:.4f}"
-                    )
-                    mixmodel.clean()
-                    del mixmodel
-                    pbar.update(1)
-                elif modified_layers[layer_name][0] == num_quantize_method:
-                    if outputs_cos < modified_layers[layer_name][1]:
-                        modified_layers[layer_name][1] = outputs_cos
-                        modified_layers[layer_name][2] = layer_th_dicts[last_tried_method][
-                            layer_name][1]
-                        modified_layers[layer_name][3] = last_tried_method
-                    best_th = modified_layers[layer_name][2]
-                    modified_layers[layer_name][0] += 1
-                    new_cali_table_name = set_th_fn(layer_name, best_th)
-                    self.mix_prec.logger.print_info(
-                        "layer {}, layer type is {}, best_th = {}, best_method = {}, best_cos_loss = {}"
-                        .format(layer_name, layer_type, best_th, modified_layers[layer_name][3],
-                                modified_layers[layer_name][1]))
-                    # Float ops still pass through here when their threshold is
-                    # live (feeds a quantized op); their threshold gets tuned
-                    # above, but they are already float, so exclude them from
-                    # the demotion ranking to avoid wasting a float-layer slot.
-                    if not self.classifier.is_float(layer_name):
-                        sensitive_layer_analysis_dict[layer_name] = [
-                            modified_layers[layer_name][1], layer_type
-                        ]
-                    ret = True
-            fp_layer_list.append(layer_name)
-            gc.collect()
-        pbar.close()
-        return sensitive_layer_analysis_dict, new_cali_table_name, loss_dict
+
+        state = SearchState(fp32_mlir=self.fp32_mlir,
+                            chip=chip,
+                            cali_table_name=self.cali_table_name,
+                            qtable=self.qtable,
+                            predictions_gt=predictions_gt,
+                            expected_cos=self.args.expected_cos,
+                            num_sample=self.mix_prec.num_sample,
+                            searcher=self)
+
+        try_s = PerOpThresholdTry(state=state,
+                                  ops=layer_names,
+                                  methods=quantize_method_list,
+                                  layer_th_dicts=layer_th_dicts,
+                                  set_th_fn=set_th_fn,
+                                  isolate=isolate,
+                                  mix_prec=self.mix_prec,
+                                  qtable=self.qtable,
+                                  high_prec_type=high_prec_type,
+                                  chip=chip,
+                                  low_prec=low_prec,
+                                  high_prec=high_prec,
+                                  classifier=self.classifier,
+                                  parser=self.parser)
+
+        eval_s = self._make_eval(global_compare_layers,
+                                 layers_rate,
+                                 predictions_gt,
+                                 mode='threshold',
+                                 cluster=cluster)
+
+        SearchLoop(try_s, eval_s, desc=desc, show_pbar=True).run(state)
+
+        loss_dict = eval_s.loss_dict if cluster else collections.defaultdict(list)
+        return try_s.sensitive_layer_analysis_dict, state.cali_table_name, loss_dict
 
     def cluster_4_8(self, loss_dict):
         layer_names = list(loss_dict.keys())
@@ -406,6 +711,16 @@ class SearchQtableBase:
             fp_type = mix_mode
         qtable.append_custom(fp_layer_list, [fp_type] * len(fp_layer_list))
         qtable.dump(self.mix_prec.quantize_table)
+        # metric-aware summary: name the actual decision metric so top1/mAP
+        # values are not mislabeled as "cos". The legacy "int8 outputs_cos" /
+        # "mix model outputs_cos" lines are kept below for the shell CSV grep.
+        metric_name = self.eval_config.eval_metric if self.eval_config.is_end_to_end else 'cos'
+        threshold = (self.eval_config.expected_acc
+                     if self.eval_config.is_end_to_end else self.args.expected_cos)
+        self.mix_prec.logger.print_info(
+            "==== SEARCH RESULT: decision-metric={} | baseline(int8)={:.6f} | "
+            "final(mix)={:.6f} | threshold={} | float_layers={} ====".format(
+                metric_name, all_int8_cos, outputs_cos, threshold, len(fp_layer_list)))
         self.mix_prec.logger.print_info(
             "float layer number: {}, mix model outputs_cos: {:.6f}".format(
                 len(fp_layer_list), outputs_cos))
@@ -572,24 +887,49 @@ class SearchQtable(SearchQtableBase):
 
         return best_eps
 
-    def adjust_qtable(self, outputs_cos, layer_names_quant, sensitive_layer_analysis_dict,
-                      new_cali_table_name, global_compare_layers, layers_rate, predictions_gt):
-        if outputs_cos < self.args.expected_cos and (len(layer_names_quant) //
-                                                     5) > self.args.max_float_layers:
+    def adjust_qtable(self,
+                      outputs_cos,
+                      layer_names_quant,
+                      sensitive_layer_analysis_dict,
+                      new_cali_table_name,
+                      global_compare_layers,
+                      layers_rate,
+                      predictions_gt,
+                      initial_fp_layers=None):
+        # Float-layer COUNT binary search. All eval/judge here use the
+        # configured metric ('config'): cos -> expected_cos; end2end -> top1/
+        # mAP/custom vs expected_acc. So expected_acc sizes the float set when
+        # eval_metric is an end2end metric, regardless of use_end2end_in_search.
+        # ``initial_fp_layers`` is the validated float set (from step5) that
+        # produced the entry ``outputs_cos``; it is the correct answer for the
+        # fall-through cases (initial mix already good enough, or no room to
+        # expand) -- returning it keeps the emitted qtable consistent with the
+        # score that was actually measured.
+        if not self._is_good_enough(outputs_cos, metric='config', phase='adjust-entry') and (
+                len(layer_names_quant) // 5) > self.args.max_float_layers:
             base_float_layers = self.args.max_float_layers
             self.args.max_float_layers = len(layer_names_quant) // 5
             set_fp_layer_list = self.analysis_sensitive_layers(sensitive_layer_analysis_dict, False)
             total_fp_layers_analysis = set_fp_layer_list
             mix_table = self.mix_prec._gen_mix_table(total_fp_layers_analysis, self.qtable)
-            mixmodel = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec, self.high_prec,
-                                     new_cali_table_name, mix_table)
+            mixmodel = MixQuantModel(self.fp32_mlir,
+                                     self.chip,
+                                     self.low_prec,
+                                     self.high_prec,
+                                     new_cali_table_name,
+                                     mix_table,
+                                     using_cuda=True)
             mixmodel.module.set_progress_silent(True)
             outputs_cos = self.mix_prec.run_model(mixmodel, False, global_compare_layers,
                                                   layers_rate, predictions_gt)
+            outputs_cos = self._eval_model(mixmodel,
+                                           outputs_cos,
+                                           metric='config',
+                                           phase='adjust-max-fp')
             self.mix_prec.logger.print_info(
                 "float layer number: {}, mix model outputs_cos: {}".format(
                     self.args.max_float_layers, outputs_cos))
-            if outputs_cos > self.args.expected_cos:
+            if self._is_good_enough(outputs_cos, metric='config', phase='adjust-max-fp'):
                 lower_bound = base_float_layers
                 upper_bound = len(layer_names_quant) // 5
 
@@ -599,24 +939,42 @@ class SearchQtable(SearchQtableBase):
                         sensitive_layer_analysis_dict, False)
                     total_fp_layers_analysis = set_fp_layer_list
                     mix_table = self.mix_prec._gen_mix_table(total_fp_layers_analysis, self.qtable)
-                    mixmodel = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec,
-                                             self.high_prec, new_cali_table_name, mix_table)
+                    mixmodel = MixQuantModel(self.fp32_mlir,
+                                             self.chip,
+                                             self.low_prec,
+                                             self.high_prec,
+                                             new_cali_table_name,
+                                             mix_table,
+                                             using_cuda=True)
                     mixmodel.module.set_progress_silent(True)
                     outputs_cos = self.mix_prec.run_model(mixmodel, False, global_compare_layers,
                                                           layers_rate, predictions_gt)
+                    outputs_cos = self._eval_model(mixmodel,
+                                                   outputs_cos,
+                                                   metric='config',
+                                                   phase='adjust-binsearch')
                     self.mix_prec.logger.print_info(
                         "float layer number: {}, mix model outputs_cos: {}".format(
                             self.args.max_float_layers, outputs_cos))
 
-                    if outputs_cos > self.args.expected_cos:
+                    if self._is_good_enough(outputs_cos, metric='config', phase='adjust-binsearch'):
                         upper_bound = self.args.max_float_layers - 1
                     else:
                         lower_bound = self.args.max_float_layers + 1
             return total_fp_layers_analysis, outputs_cos
+        # Fall-through: the outer float-count search did NOT run -- either the
+        # initial mix already met the target, or there was no room to expand
+        # (len//5 <= max_float_layers). Return the VALIDATED initial float set
+        # (the one that produced ``outputs_cos``), not every analyzed sensitive
+        # layer. Returning all of them would over-float the emitted qtable to
+        # nearly the whole network (inconsistent with the measured score).
+        if initial_fp_layers is not None:
+            return initial_fp_layers, outputs_cos
         return list(sensitive_layer_analysis_dict), outputs_cos
 
     def run(self):
         t0 = time.time()
+        self._log_run_banner("SearchQtable (normal)")
 
         #step1: generate op th dict of defined methods(KL, Max, Percentile9999, MSE)
         all_op_names = self.parser.get_op_name_list()
@@ -660,20 +1018,30 @@ class SearchQtable(SearchQtableBase):
         mix_table = None if self.qtable is None else self.mix_prec._gen_mix_table([], self.qtable)
         float_model = MixQuantModel(self.fp32_mlir, None, None, "F32")
         float_model.module.set_progress_silent(True)
-        int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec, self.high_prec,
-                                   self.cali_table_name, mix_table)
+        self._float_model = float_model  # reuse in _get_eval_runner()
+        int8_model = MixQuantModel(self.fp32_mlir,
+                                   self.chip,
+                                   self.low_prec,
+                                   self.high_prec,
+                                   self.cali_table_name,
+                                   mix_table,
+                                   using_cuda=True)
         int8_model.module.set_progress_silent(True)
         float_outputs_cos = 1.0
         layer_cos_list, predictions_gt = [], []
         global_compare_layers, layers_rate, _ = self.mix_prec.extract_global_layers()
         _ = self.mix_prec.run_model(float_model, True, global_compare_layers, layers_rate,
                                     predictions_gt)
+        self.mix_prec.enable_print()
         outputs_cos = self.mix_prec.run_model(int8_model, False, global_compare_layers, layers_rate,
                                               predictions_gt)
-        if outputs_cos > self.args.expected_cos:
+        outputs_cos = self._eval_model(int8_model,
+                                       outputs_cos,
+                                       metric='config',
+                                       phase='int8-baseline')
+        if self._is_good_enough(outputs_cos, metric='config', phase='int8-baseline'):
             float_model.clean()
             int8_model.clean()
-            self.mix_prec.enable_print()
             if mix_table is None:
                 self.mix_prec.logger.print_info(
                     f'job success, current int8 cos:{outputs_cos} is higher than expected_cos:{self.args.expected_cos},no need for mix precsion'
@@ -725,7 +1093,6 @@ class SearchQtable(SearchQtableBase):
                                                                                              t1))
 
         #step5: analysis sensitive layers
-        self.mix_prec.enable_print()
         if self.args.cluster:
             selected_fp_layers = self.cluster(loss_dict, 2)
             mix_table = self.mix_prec._gen_mix_table(selected_fp_layers, self.qtable)
@@ -747,15 +1114,19 @@ class SearchQtable(SearchQtableBase):
         mixmodel.module.set_progress_silent(True)
         outputs_cos = self.mix_prec.run_model(mixmodel, False, global_compare_layers, layers_rate,
                                               predictions_gt)
+        outputs_cos = self._eval_model(mixmodel, outputs_cos, metric='config', phase='initial-mix')
         self.mix_prec.logger.print_info("float layer number: {}, mix model outputs_cos: {}".format(
             self.args.max_float_layers, outputs_cos))
 
         if not self.args.cluster:
-            final_fp_layers, outputs_cos = self.adjust_qtable(outputs_cos, layer_names_quant,
+            final_fp_layers, outputs_cos = self.adjust_qtable(outputs_cos,
+                                                              layer_names_quant,
                                                               sensitive_layer_analysis_dict,
                                                               new_cali_table_name,
-                                                              global_compare_layers, layers_rate,
-                                                              predictions_gt)
+                                                              global_compare_layers,
+                                                              layers_rate,
+                                                              predictions_gt,
+                                                              initial_fp_layers=set_fp_layer_list)
             self.print_log_info(final_fp_layers, all_int8_cos, outputs_cos, t0)
         else:
             self.print_log_info(selected_fp_layers, all_int8_cos, outputs_cos, t0)
@@ -855,46 +1226,39 @@ class SearchQtable4Bit(SearchQtableBase):
 
     def search_sensitive_layer_low_prec(self, layer_names, global_compare_layers, layers_rate,
                                         predictions_gt, strategy):
-        loss_dict = collections.defaultdict(list)
+        return self._search_sensitive_layer_low_prec_unified(layer_names, global_compare_layers,
+                                                             layers_rate, predictions_gt, strategy)
+
+    def _search_sensitive_layer_low_prec_unified(self, layer_names, global_compare_layers,
+                                                 layers_rate, predictions_gt, strategy):
+        """Implementation of ``search_sensitive_layer_low_prec`` using
+        ``SearchLoop`` + ``LowPrecSensitivityTry`` + ``CosEval(target=None)``
+        (measurement loop).
+        """
         keep_int8_layers = copy.deepcopy(layer_names)
         strategy.before_search(self)
-        pbar = tqdm(total=len(layer_names), desc=strategy.desc)
-        for layer_idx, layer_name in enumerate(layer_names):
-            if self.classifier.skip_sensitive_search(layer_name):
-                continue
-            layer_type = self.parser.get_op_type_by_op_name(layer_name)
-            pbar.set_postfix_str(f"{layer_idx}/{len(layer_names)} {layer_name}")
-            self.mix_prec.logger.print_info("start to handle layer: {}, type: {}".format(
-                layer_name, layer_type))
-            keep_int8_layers.remove(layer_name)
-            strategy.before_trial(self, layer_name)
-            try:
-                mix_table = self.mix_prec._gen_mix_table(
-                    mix_ops=keep_int8_layers,
-                    qtable=self.qtable,
-                    high_prec_type=strategy.qtable_keep_mode(self))
-                mix_model = strategy.make_trial_model(self, mix_table)
-                mix_model.module.set_progress_silent(True)
-                result = self.mix_prec.run_model(mix_model,
-                                                 False,
-                                                 global_compare_layers,
-                                                 layers_rate,
-                                                 predictions_gt,
-                                                 loss_methods=['cos', 'snr'])
-                outputs_cos = 1 - result['cos']
-                outputs_snr = result['snr']
-                if layer_name not in loss_dict:
-                    loss_dict[layer_name].extend([outputs_cos, outputs_snr])
-                else:
-                    self.compare_loss(layer_name, loss_dict, outputs_cos, outputs_snr)
-            finally:
-                strategy.rollback_trial(self, layer_name)
-                keep_int8_layers.append(layer_name)
-            self.mix_prec.logger.print_info("layer {}, outputs_cos:{}, outputs_snr:{}".format(
-                layer_name, outputs_cos, outputs_snr))
-            pbar.update(1)
-        pbar.close()
-        return loss_dict
+        state = SearchState(fp32_mlir=self.fp32_mlir,
+                            chip=self.chip,
+                            cali_table_name=self.cali_table_name,
+                            qtable=self.qtable,
+                            predictions_gt=predictions_gt,
+                            expected_cos=self.args.expected_cos,
+                            num_sample=self.mix_prec.num_sample,
+                            searcher=self)
+        try_s = LowPrecSensitivityTry(state=state,
+                                      ops=layer_names,
+                                      keep_int8_layers=keep_int8_layers,
+                                      strategy=strategy,
+                                      mix_prec=self.mix_prec,
+                                      qtable=self.qtable,
+                                      classifier=self.classifier,
+                                      parser=self.parser)
+        eval_s = self._make_eval(global_compare_layers,
+                                 layers_rate,
+                                 predictions_gt,
+                                 mode='sensitivity')
+        SearchLoop(try_s, eval_s, desc=strategy.desc, show_pbar=True).run(state)
+        return eval_s.loss_dict
 
     def remove_lines_from_file(self, file_path, lines_to_remove):
         """
@@ -916,9 +1280,6 @@ class SearchQtable4Bit(SearchQtableBase):
         # Write the filtered results back to the file (overwriting existing content)
         with open(file_path, 'w') as f:
             f.writelines(filtered_lines)
-
-    def _sort_cluster_by_loss(self, cluster, loss_dict):
-        return sorted(cluster, key=lambda op_name: loss_dict[op_name][0])
 
     def _strip_int4_op_block(self):
         """Remove any existing ``#int4_op`` block (header + op names) from the
@@ -950,22 +1311,27 @@ class SearchQtable4Bit(SearchQtableBase):
             self.cali_table_name = Path(self.fp32_mlir).stem + '_cali_table'
             self.args.calibration_table = self.cali_table_name
         if os.path.exists(self.cali_table_name):
-            self._table_pre_existed = True
-            # a pre-existing table may carry a stale #int4_op block from a
-            # previous search run; strip it so the search starts clean.
             self._strip_int4_op_block()
-            self.mix_prec.logger.print_warning(
-                f'[search_best_th] {self.cali_table_name} already exists; '
-                'skip best-threshold search and use it as-is.')
-            return
+            if self.args.mix_mode == 'wi4ai4_wi8ai8':
+                int4_th = self._parse_int4_th(self.cali_table_name)
+                if not int4_th:
+                    self.mix_prec.logger.print_warning(
+                        f'[search_best_th] {self.cali_table_name} has no #int4_th block; '
+                        'removing and regenerating.')
+                    os.remove(self.cali_table_name)
+                else:
+                    self._table_pre_existed = True
+                    self.mix_prec.logger.print_warning(
+                        f'[search_best_th] {self.cali_table_name} already exists; '
+                        'skip best-threshold search and use it as-is.')
+                    return
+            else:
+                self._table_pre_existed = True
+                self.mix_prec.logger.print_warning(
+                    f'[search_best_th] {self.cali_table_name} already exists; '
+                    'skip best-threshold search and use it as-is.')
+                return
         self._table_pre_existed = False
-        calibrator_args = copy.deepcopy(self.args)
-        if self.args.mix_mode == 'wi4ai4_wi8ai8':
-            calibrator_args.debug_cmd = copy.deepcopy(self.args.debug_cmd)
-            calibrator_args.debug_cmd['int4'] = None
-        calibrator = ActivationCalibrator(calibrator_args, self.selector, self.tune_ds)
-        calibrator.calibration_method = [self.args.cali_method[0]]
-        calibrator.run()
 
     def _collect_candidate_ops(self, is_w4a8):
         all_op_names = self.parser.get_op_name_list()
@@ -1079,6 +1445,11 @@ class SearchQtable4Bit(SearchQtableBase):
         layer_th_dicts = calibrator.gen_multiple_thresholds(ops, methods)
         del calibrator
         suffix = '' if (is_int4_mode or calibrator_args.tune_num <= 0) else '_tune'
+        if not os.path.exists(self.cali_table_name):
+            first_method_table = f'{self.cali_table_name}_{methods[0]}{suffix}'
+            if os.path.exists(first_method_table):
+                import shutil
+                shutil.copyfile(first_method_table, self.cali_table_name)
         layer_th_dicts4 = {}
         if is_int4_mode:
             for method in methods:
@@ -1120,21 +1491,15 @@ class SearchQtable4Bit(SearchQtableBase):
                     desc='search_best_th_stage1_w4a8')
                 self._commit_scratch_table()
         elif is_int4_mode:
-            # wi4ai4: drop Stage 1. The 8-bit ths for Conv/MatMul don't affect the
-            # int4 model (those ops use #int4_th), so tuning them only risked
-            # regressing the int8 baseline reference. Only Stage 2: tune #int4_th in
-            # the full INT4 model on bm1688. The default cali_method is appended to
-            # the candidate methods so the baseline th is always an option (can't
-            # regress below the default).
+            all_ops = get_no_fused_tensors(self.parser, self.parser.get_op_name_list())
+            methods1 = self._stage1_methods()
+            layer_th_dicts, layer_th_dicts4 = self._gen_per_method_thresholds(all_ops,
+                                                                              methods1,
+                                                                              is_int4_mode=True)
             methods2 = self._stage2_methods()
             default_method = self.args.cali_method[0].lower()
             if default_method not in methods2:
                 methods2 = methods2 + [default_method]
-            _, layer_th_dicts4 = self._gen_per_method_thresholds(candidate_ops,
-                                                                 methods2,
-                                                                 is_int4_mode=True)
-            # Fallback: if the default method's #int4_th wasn't generated, parse the
-            # baseline table (which carries it from _ensure_cali_table).
             if default_method not in layer_th_dicts4:
                 layer_th_dicts4[default_method] = self._parse_int4_th(self.cali_table_name)
             ld4_sel = {m: layer_th_dicts4[m] for m in methods2 if m in layer_th_dicts4}
@@ -1184,6 +1549,7 @@ class SearchQtable4Bit(SearchQtableBase):
         return in_c == out_c == group
 
     def run(self):
+        self._log_run_banner("SearchQtable4Bit")
         is_int4_mode = self.args.mix_mode == 'wi4ai4_wi8ai8'
         is_w4a8 = self.args.mix_mode == 'wi4ai8_wi8ai8'
         is_f4f8 = self.args.mix_mode in ('wf4af16dyn_wf8af16dyn', 'wf4abf16dyn_wf8abf16dyn')
@@ -1201,9 +1567,11 @@ class SearchQtable4Bit(SearchQtableBase):
             and 'F32' in chip_support_mix_fp_type[self.args.chip]) else FLOAT_MAP[self.args.chip]
         float_model = MixQuantModel(self.fp32_mlir, self.chip, None, fp_type)
         float_model.module.set_progress_silent(True)
+        self._float_model = float_model  # reuse in _get_eval_runner()
         global_compare_layers, layers_rate, _ = self.mix_prec.extract_global_layers()
         _ = self.mix_prec.run_model(float_model, True, global_compare_layers, layers_rate,
                                     predictions_gt)
+        self.mix_prec.enable_print()
         mix_table = None if self.qtable is None else self.mix_prec._gen_mix_table([], self.qtable)
         if not is_f4f8 and not getattr(self, '_table_pre_existed', False):
             candidate_ops = self._collect_candidate_ops(is_w4a8)
@@ -1296,6 +1664,12 @@ class SearchQtable4Bit(SearchQtableBase):
         all_op_names = self.parser.get_op_name_list()
         strategy = self._get_search_strategy()
         layer_names = self._collect_candidate_ops(is_w4a8)
+        # Filter out float ops (pattern/shape/fixed) — they should never be
+        # in keep_int8_layers because (1) skip_sensitive_search skips them
+        # during the sweep, and (2) leaving them in corrupts the mix_table
+        # (appended as INT8 overrides the pattern/shape F16 setting via
+        # QuantizeTable.dump's custom-wins-over-pattern logic).
+        layer_names = [op for op in layer_names if not self.classifier.skip_sensitive_search(op)]
         loss_dict = self.search_sensitive_layer_low_prec(layer_names, global_compare_layers,
                                                          layers_rate, predictions_gt, strategy)
 
@@ -1310,63 +1684,43 @@ class SearchQtable4Bit(SearchQtableBase):
         keep_int8_layers = copy.deepcopy(layer_names)
         accepted_outputs_cos = target_outputs_cos
         target_cos_threshold = target_outputs_cos * self.args.expected_cos
-        try_cluster_one_by_one = 'cluster_one_by_one' in self.debug_cmd
-        for cluster in sorted_clusters:
-            for op_name in cluster:
-                strategy.before_trial(self, op_name)
-                keep_int8_layers.remove(op_name)
-            high_prec_type = strategy.qtable_keep_mode(self)
-            mix_table = self.mix_prec._gen_mix_table(mix_ops=keep_int8_layers,
-                                                     qtable=self.qtable,
-                                                     high_prec_type=high_prec_type)
-            mix_model = strategy.make_trial_model(self, mix_table)
-            mix_model.module.set_progress_silent(True)
-            result = self.mix_prec.run_model(mix_model,
-                                             False,
-                                             global_compare_layers,
-                                             layers_rate,
-                                             predictions_gt,
-                                             loss_methods=['cos', 'snr'])
-            outputs_snr = result['snr']
-            trial_outputs_cos = result['cos']
-            print(
-                f'Cluster: {cluster}, outputs_cos: {trial_outputs_cos}, outputs_snr: {outputs_snr} target_output_cos {target_outputs_cos}'
-            )
-            if trial_outputs_cos < target_cos_threshold:
-                for op_name in cluster:
-                    strategy.rollback_trial(self, op_name)
-                    keep_int8_layers.append(op_name)
-                if try_cluster_one_by_one:
-                    sorted_cluster = self._sort_cluster_by_loss(cluster, loss_dict)
-                    self.mix_prec.logger.print_info(
-                        f'Cluster {cluster} failed, try ops one by one: {sorted_cluster}')
-                    for op_name in sorted_cluster:
-                        strategy.before_trial(self, op_name)
-                        keep_int8_layers.remove(op_name)
-                        mix_table = self.mix_prec._gen_mix_table(mix_ops=keep_int8_layers,
-                                                                 qtable=self.qtable,
-                                                                 high_prec_type=high_prec_type)
-                        mix_model = strategy.make_trial_model(self, mix_table)
-                        mix_model.module.set_progress_silent(True)
-                        result = self.mix_prec.run_model(mix_model,
-                                                         False,
-                                                         global_compare_layers,
-                                                         layers_rate,
-                                                         predictions_gt,
-                                                         loss_methods=['cos', 'snr'])
-                        single_outputs_snr = result['snr']
-                        single_outputs_cos = result['cos']
-                        print(
-                            f'Layer: {op_name}, outputs_cos: {single_outputs_cos}, outputs_snr: {single_outputs_snr} target_output_cos {target_outputs_cos}'
-                        )
-                        if single_outputs_cos < target_cos_threshold:
-                            strategy.rollback_trial(self, op_name)
-                            keep_int8_layers.append(op_name)
-                            continue
-                        accepted_outputs_cos = single_outputs_cos
-                break
-            accepted_outputs_cos = trial_outputs_cos
-        self.mix_prec.enable_print()
+        cluster_state = SearchState(fp32_mlir=self.fp32_mlir,
+                                    chip=self.chip,
+                                    cali_table_name=self.cali_table_name,
+                                    qtable=self.qtable,
+                                    predictions_gt=predictions_gt,
+                                    expected_cos=self.args.expected_cos,
+                                    num_sample=self.mix_prec.num_sample,
+                                    target_cos_threshold=target_cos_threshold,
+                                    baseline_cos=target_outputs_cos,
+                                    searcher=self,
+                                    ctx=dict(gcl=global_compare_layers,
+                                             lr=layers_rate,
+                                             gt=predictions_gt))
+        cluster_try = ClusterAcceptanceTry(
+            state=cluster_state,
+            sorted_clusters=sorted_clusters,
+            keep_int8_layers=keep_int8_layers,
+            strategy=strategy,
+            mix_prec=self.mix_prec,
+            qtable=self.qtable,
+            classifier=self.classifier,
+            parser=self.parser,
+            loss_dict=loss_dict,
+            target_cos_threshold=target_cos_threshold,
+            retry_eval_factory=lambda: self._make_eval(global_compare_layers,
+                                                       layers_rate,
+                                                       predictions_gt,
+                                                       mode='cluster_retry',
+                                                       target_cos_threshold=target_cos_threshold))
+        cluster_eval = self._make_eval(global_compare_layers,
+                                       layers_rate,
+                                       predictions_gt,
+                                       mode='cluster',
+                                       target_cos_threshold=target_cos_threshold)
+        SearchLoop(cluster_try, cluster_eval, desc='cluster_accept',
+                   show_pbar=False).run(cluster_state)
+        accepted_outputs_cos = cluster_try.accepted_outputs_cos
         keep_int8_num = len(keep_int8_layers)
         mixed_num = len(layer_names) - keep_int8_num
         if is_f4f8:
@@ -1402,44 +1756,46 @@ class SearchQtableFast(SearchQtableBase):
 
     def search_sensitive_layer(self, layer_names, global_compare_layers, layers_rate,
                                predictions_gt):
-        loss_dict = collections.defaultdict(list)
+        return self._search_sensitive_layer_fast_unified(layer_names, global_compare_layers,
+                                                         layers_rate, predictions_gt)
+
+    def _search_sensitive_layer_fast_unified(self, layer_names, global_compare_layers, layers_rate,
+                                             predictions_gt):
+        """Implementation of ``search_sensitive_layer`` using ``SearchLoop`` +
+        ``FastSensitivityTry`` + ``CosEval(target=None, sample_num=1)``
+        (measurement loop).
+        """
         fp_layer_list = copy.deepcopy(self.sensitive_layer)
         fp_layer_list += [layer for layer in layer_names if layer not in self.sensitive_layer]
-        pbar = tqdm(total=len(layer_names),
-                    desc=f"round_{self.iteration_count} layer_search",
-                    position=1,
-                    leave=True)
-        for layer_idx, layer_name in enumerate(layer_names):
-            fp_layer_list.remove(layer_name)
-            layer_type = self.parser.get_op_type_by_op_name(layer_name)
-            pbar.set_postfix_str(f"{layer_idx}/{len(layer_names)} {layer_name}")
-            self.mix_prec.logger.print_info("start to handle layer: {}, type: {}".format(
-                layer_name, layer_type))
-            mix_table = self.mix_prec._gen_mix_table(fp_layer_list, self.qtable)
-            int8_mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec, self.high_prec,
-                                           self.cali_table_name, mix_table)
-            result = self.mix_prec.run_model(int8_mix_model,
-                                             False,
-                                             global_compare_layers,
-                                             layers_rate,
-                                             predictions_gt,
-                                             sample_num=1,
-                                             loss_methods=['cos', 'snr'])
-            outputs_cos = 1 - result['cos']
-            outputs_snr = result['snr']
-            if layer_name not in loss_dict:
-                loss_dict[layer_name].extend([outputs_cos, outputs_snr])
-            else:
-                self.compare_loss(layer_name, loss_dict, outputs_cos, outputs_snr)
-            self.mix_prec.logger.print_info("layer {}, outputs_cos:{}, outputs_snr:{}".format(
-                layer_name, outputs_cos, outputs_snr))
-            fp_layer_list.append(layer_name)
-            pbar.update(1)
-        pbar.close()
-        return loss_dict
+        state = SearchState(fp32_mlir=self.fp32_mlir,
+                            chip=self.chip,
+                            cali_table_name=self.cali_table_name,
+                            qtable=self.qtable,
+                            predictions_gt=predictions_gt,
+                            expected_cos=self.args.expected_cos,
+                            num_sample=self.mix_prec.num_sample,
+                            searcher=self)
+        try_s = FastSensitivityTry(state=state,
+                                   ops=layer_names,
+                                   fp_layer_list=fp_layer_list,
+                                   mix_prec=self.mix_prec,
+                                   qtable=self.qtable,
+                                   chip=self.chip,
+                                   low_prec=self.low_prec,
+                                   high_prec=self.high_prec,
+                                   cali_table_name=self.cali_table_name,
+                                   parser=self.parser)
+        eval_s = self._make_eval(global_compare_layers, layers_rate, predictions_gt, mode='fast')
+        SearchLoop(try_s,
+                   eval_s,
+                   desc=f"round_{self.iteration_count} layer_search",
+                   show_pbar=True,
+                   pbar_position=1).run(state)
+        return eval_s.loss_dict
 
     def run(self):
         t0 = time.time()
+        self._log_run_banner("SearchQtableFast")
         if self.cali_table_name is None:
             self.cali_table_name = Path(self.fp32_mlir).stem + '_cali_table'
             self.args.calibration_table = self.cali_table_name
@@ -1450,21 +1806,31 @@ class SearchQtableFast(SearchQtableBase):
         layer_cos_list, predictions_gt = [], []
         float_model = MixQuantModel(self.fp32_mlir, self.chip, None,
                                     self.high_prec)  # assume for float mix
+        self._float_model = float_model  # reuse in _get_eval_runner()
         mix_table = None if self.qtable is None else self.mix_prec._gen_mix_table([], self.qtable)
-        int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec, self.high_prec,
-                                   self.cali_table_name, mix_table)
+        int8_model = MixQuantModel(self.fp32_mlir,
+                                   self.chip,
+                                   self.low_prec,
+                                   self.high_prec,
+                                   self.cali_table_name,
+                                   mix_table,
+                                   using_cuda=True)
         global_compare_layers, layers_rate, _ = self.mix_prec.extract_global_layers()
         _ = self.mix_prec.run_model(float_model, True, global_compare_layers, layers_rate,
                                     predictions_gt)
+        self.mix_prec.enable_print()
         int8_outputs_cos = self.mix_prec.run_model(int8_model, False, global_compare_layers,
                                                    layers_rate, predictions_gt)
+        int8_outputs_cos = self._eval_model(int8_model,
+                                            int8_outputs_cos,
+                                            metric='config',
+                                            phase='fast-int8-baseline')
         float_ops = self.mix_prec.get_fixed_float_layers(int8_model, global_compare_layers,
                                                          layers_rate, predictions_gt)
         self.classifier = FloatOpClassifier(self.parser, self.qtable, float_ops)
-        if int8_outputs_cos > self.args.expected_cos:
+        if self._is_good_enough(int8_outputs_cos, metric='config', phase='fast-int8-baseline'):
             float_model.clean()
             int8_model.clean()
-            self.mix_prec.enable_print()
             self.mix_prec.logger.print_info(
                 f'job success, current int8 cos:{int8_outputs_cos} is higher than expected_cos:{self.args.expected_cos},no need for mix precsion'
             )
@@ -1495,7 +1861,13 @@ class SearchQtableFast(SearchQtableBase):
                           position=0,
                           leave=True)
         outer_pbar.set_postfix_str(f"{int8_outputs_cos:.4f}")
-        while int8_outputs_cos < self.args.expected_cos:
+        # Enter the round loop only if the plain int8 model does not yet meet
+        # the configured target (cos > expected_cos, or end2end top1/mAP >=
+        # expected_acc). Each round promotes the top-5 most sensitive ops to
+        # float; the loop stops when the target is met (config metric),
+        # convergence stalls, or the layer budget is hit.
+        outputs_cos = int8_outputs_cos
+        while not self._is_good_enough(int8_outputs_cos, metric='config', phase='fast-loop-entry'):
             self.iteration_count += 1
             loss_dict = self.search_sensitive_layer(layer_names, global_compare_layers, layers_rate,
                                                     predictions_gt)
@@ -1515,12 +1887,25 @@ class SearchQtableFast(SearchQtableBase):
             ]
 
             mix_table = self.mix_prec._gen_mix_table(self.sensitive_layer, self.qtable)
-            int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.low_prec, self.high_prec,
-                                       self.cali_table_name, mix_table)
+            int8_model = MixQuantModel(self.fp32_mlir,
+                                       self.chip,
+                                       self.low_prec,
+                                       self.high_prec,
+                                       self.cali_table_name,
+                                       mix_table,
+                                       using_cuda=True)
             outputs_cos = self.mix_prec.run_model(int8_model, False, global_compare_layers,
                                                   layers_rate, predictions_gt)
+            outputs_cos = self._eval_model(int8_model,
+                                           outputs_cos,
+                                           metric='config',
+                                           phase='fast-round')
             outer_pbar.update(1)
             outer_pbar.set_postfix_str(f"{outputs_cos:.4f}")
+            # Stop as soon as the current mixed model meets the target (config
+            # metric): top1/mAP >= expected_acc, or cos > expected_cos.
+            if self._is_good_enough(outputs_cos, metric='config', phase='fast-round'):
+                break
             if (outputs_cos - cos_sim < eps and outputs_cos - cos_sim < 0.001) or len(
                     self.sensitive_layer) > 0.2 * len(all_op_names):
                 break

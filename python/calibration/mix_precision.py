@@ -713,10 +713,29 @@ class MixPrecSearcher:
             for name in list(self.ref_activations[idx].keys()):
                 data.append(self.ref_activations[idx][name][0])
             outputs = model.infer(data, global_compare_layers)
-        for op in model.module.all_tensor_names:
-            qinfo = model.module.get_tensor_qinfo(op)
+        # get_tensor_qinfo / all_tensor_names are CPU pymlir.module APIs and
+        # are not exposed on pymlir.cuda. When the eval model runs on CUDA,
+        # load the same lowered mlir into a throwaway CPU module purely to
+        # read per-tensor dtypes (float layer discovery), then discard it.
+        qinfo_module = model.module
+        cpu_module = None
+        if not hasattr(qinfo_module, 'all_tensor_names'):
+            self.logger.print_info(
+                "pycuda don't have the attribute, create cpu model to get float layer "
+                "and create cuda model to eval.")
+            cpu_module = pymlir.module()
+            cpu_module.load(model.quanted_mlir_file)
+            cpu_module.set_progress_silent(True)
+            for k, v in zip(cpu_module.input_names, data):
+                cpu_module.set_tensor(k, v, v.shape)
+            cpu_module.invoke()
+            qinfo_module = cpu_module
+        for op in qinfo_module.all_tensor_names:
+            qinfo = qinfo_module.get_tensor_qinfo(op)
             if qinfo.dtype != "I8" and qinfo.dtype != "U8" and qinfo.dtype != "F8E4" and qinfo.dtype != "U16" and qinfo.dtype != "I16" and qinfo.dtype != "I32" and qinfo.dtype != "U32":
                 float_ops.append(op)
+        if cpu_module is not None:
+            del cpu_module
         return float_ops
 
     def get_full_op_list(self, float_model, int8_model, fp_op_names, int8_op_names):

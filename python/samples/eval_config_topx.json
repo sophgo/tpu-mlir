@@ -1,0 +1,16 @@
+{
+  "eval_metric": "topx",
+  "direction": "higher_better",
+  "expected_acc": 0.7,
+  "metric_index": 0,
+  "score_plugin": "topx",
+  "score_plugin_args": {
+    "label_file": "/data/imagenet/val/labels.txt",
+    "batch_size": 1
+  },
+  "input_source": "calibration",
+  "sample_num": 50,
+  "dataset": "/data/imagenet/val",
+  "data_list": "",
+  "postprocess_type": "topx"
+}

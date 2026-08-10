@@ -1,0 +1,52 @@
+{
+  "_comment_top": "Default eval config — cos path (current search behavior).",
+  "_comment_usage": "Pass via --eval_config <path>. When this file is used as-is, behavior is identical to omitting --eval_config (cos eval, expected_cos from --expected_cos).",
+  "_comment_template": "To switch to end-to-end eval: change eval_metric to 'topx' / 'coco_mAP' / 'custom', set expected_acc + direction, and fill in the end-to-end fields below. See python/calibration/end2end_topx_example.py for a runnable reference.",
+
+  "eval_metric": "cos",
+  "_comment_eval_metric": "cos | topx | coco_mAP | custom. cos = current intermediate-tensor comparison (default). topx/coco_mAP/custom = end-to-end task-level metric on final outputs.",
+
+  "direction": "lower_better",
+  "_comment_direction": "End-to-end/custom only (cos path infers per search mode: lower_better for threshold/sensitivity, higher_better for cluster). higher_better for top1/mAP/cos; lower_better for cos_loss/mse/perplexity.",
+
+  "expected_acc": 0.0,
+  "_comment_expected_acc": "End-to-end cluster-acceptance floor (Option B). When >0, used as the minimum acceptable metric (e.g. top1 >= 0.85 keeps demoting clusters to int4 until top1 drops below 0.85). When 0, falls back to target_cos_threshold (cos-based, baseline*expected_cos). The GT/baseline for the cos path is still computed as before (FP32 ref tensors on calibration set); this only affects the end2end cluster-acceptance judge.",
+
+  "metric_index": 0,
+  "_comment_metric_index": "End-to-end only. Which tuple element of score.get_result() to use (topx returns (top1, top5); 0=top1, 1=top5).",
+
+  "use_end2end_in_search": false,
+  "_comment_use_end2end_in_search": "End-to-end only. When true, threshold tuning + sensitivity sweep + op-type sensitivity + adjust_qtable + round eval also use end2end as the decision metric. When false (default), only the cluster-acceptance loop uses end2end; all other decision points use cos. Set to true to fully drive the search by end2end accuracy.",
+
+  "sample_num": 0,
+  "_comment_sample_num": "End-to-end only. Samples per trial. 0 = use mix_prec.num_sample (calibration set size). Recommend small (e.g. 50) for search; full dataset for final validation.",
+
+  "_comment_e2e_section": "=== End-to-end / custom fields below — ignored when eval_metric == 'cos' ===",
+
+  "score_plugin": null,
+  "_comment_score_plugin": "End-to-end only. Name of base_class subclass in eval/postprocess_and_score_calc/. Shorthand: defaults to eval_metric when not set (topx -> topx).",
+
+  "score_plugin_args": {
+    "label_file": "",
+    "batch_size": 1
+  },
+  "_comment_score_plugin_args": "End-to-end only. Passed to the plugin's init() (e.g. topx reads label_file). Add any plugin-specific fields here. NOTE: batch_size here is a plugin hint only — the ACTUAL inference batch size is derived from the model (MlirParser.get_batch_size(), usually 1 for search models) and overrides this value. Set the model's batch size at model_transform time, not here.",
+
+  "input_source": "calibration",
+  "_comment_input_source": "End-to-end only. 'calibration' = reuse ref_activations (fast, needs parallel labels); 'full' = re-preprocess dataset per sample (slow, exact, matches model_eval.py).",
+
+  "dataset": null,
+  "_comment_dataset": "End-to-end only, input_source='full'. Dataset root directory (e.g. /data/imagenet/val).",
+
+  "data_list": null,
+  "_comment_data_list": "End-to-end only, input_source='full'. Optional image list file.",
+
+  "postprocess_type": null,
+  "_comment_postprocess_type": "End-to-end only. Mirrors model_eval.py's --postprocess_type. Shorthand: defaults to score_plugin when not set.",
+
+  "eval_func": null,
+  "_comment_eval_func": "Custom path only (eval_metric='custom'). 'path/to/file.py::func_name' — fn(outputs, gt, idx, ctx) -> float. See python/calibration/end2end_topx_example.py docstring for the template.",
+
+  "gt_provider": null,
+  "_comment_gt_provider": "Custom path only. Optional 'path/to/file.py::func_name' — fn(idx) -> label. When null, the score plugin reads --label_file directly."
+}

@@ -67,7 +67,7 @@ run_calibration参数介绍
    * - tune_list
      - tuning用到的样本列表
    * - tune_num
-     - tuning的图像数量
+     - tuning的图像数量,默认为5
    * - histogram_bin_num
      - 指定 kld 计算的直方图 bin 数量,默认为2048
    * - expected_cos
@@ -76,10 +76,12 @@ run_calibration参数介绍
      - bias_correction中该层量化输出与浮点输出的相似度下限,当低于该下限时需要对该层进行补偿,取值范围[0,1],默认为0.99
    * - max_float_layers
      - search_qtable 设置浮点层数量,默认为5
+   * - eval_config
+     - search_qtable端到端/自定义决策指标(topx、coco_mAP、custom)的配置文件(eval_config.json)路径;不指定时默认使用余弦相似度(即当前行为)
    * - processor
      - 处理器类型,默认为bm1684x
    * - cali_method
-     - 选择校准模式;不添加该参数默认为KLD校准。“percentile9999”采用99.99分位作为门限。“max”采用绝对值最大值作为门限。“use_torch_observer_for_cali”采用torch的observer进行校准。"mse"采用octav进行校准。
+     - 选择校准模式;不添加该参数默认为KLD校准。“percentile9999”采用99.99分位作为门限。“max”采用绝对值最大值作为门限。“mse”采用octav进行校准。“aciq_laplace”和“aciq_gauss”采用ACIQ方法(分别基于Laplace/Gauss先验)推导门限。“use_mse”、“use_max”、“use_kl”、“use_percentile9999”则复用对应方法已生成的门限。
    * - fp_type
      - search_qtable浮点层数据类型
    * - post_process
@@ -87,7 +89,7 @@ run_calibration参数介绍
    * - global_compare_layers
      - 指定全局对比层，例如 layer1,layer2 或 layer1:0.3,layer2:0.7
    * - search
-     - 指定搜索类型,其中包括search_qtable,search_threshold,false。其中默认为false,不开启搜索
+     - 指定搜索类型,其中包括search_qtable,search_threshold,fast_search,mix_search,false。其中默认为false,不开启搜索
    * - transformer
      - 是否是transformer模型,search_qtable中如果是transformer模型可分配指定加速策略,默认为False
    * - quantize_method_list
@@ -103,7 +105,7 @@ run_calibration参数介绍
    * - part_asymmetric
      - 指定当开启对称量化后,模型某些子网符合特定pattern时,将对应位置算子改为非对称量化
    * - mix_mode
-     - 指定search_qtable特定的混精类型,目前支持8_16和4_8两种
+     - 指定search_qtable的混精方案,支持wi8ai8_fp(默认)、wi4ai4_wi8ai8、wi4ai8_wi8ai8、wf8af8_fp、wf4af16dyn_wf8af16dyn、wf4abf16dyn_wf8abf16dyn
    * - cluster
      - 指定search_qtable寻找敏感层时采用聚类算法
    * - quantize_table
@@ -266,7 +268,7 @@ TPU-MLIR支持两种获取 ``qtable`` 的获取路径,对于典型模型,TPU-MLI
 在后续四个章节中会详细介绍上述四种方法工具
 
 pattern-match
-=====================
+---------------------
 
 ``pattern-match`` 方法集成于 ``run_calibration`` 中,不需要显示指定参数,当前共有两类模型提供经验 ``qtable`` ,一类为 YOLO 系列,另一类为 BERT 等 Transformer 系列。
 在获得 ``cali_table`` 后,如果模型匹配上现有pattern,则会在 ``path/to/cali_table/`` 文件夹下生成qtable。
@@ -274,7 +276,7 @@ pattern-match
 另外模型中涉及索引和坐标的计算往往不适合进行量化，也当作一种特殊的pattern处理，因此 ``pattern-match`` 方法会自动识别模型中涉及索引和坐标计算的算子,并将这些算子设置为不量化,添加到qtable中。
 
 YOLO系列自动混精度方法
--------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 当前共支持YOLOV5,V6,V7,V8,V9,V10,11,12,yolo26系列模型。
 
@@ -291,7 +293,7 @@ YOLO系列模型较为经典,使用广泛,在官方支持的模型导出时,通�
   The qtable has been generated in: path/to/cali_table/qtable !!!
 
 transformer系列自动混精度方法
--------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 当前共支持BERT, EVA, DeIT, Swin, CSWin, ViT, DETR系列模型。
 
@@ -299,7 +301,7 @@ transformer系列自动混精度方法
 Swin会识别Add,Depth2Space和Reshape->LayerNorm前的Permute算子；DeIT会识别非Conv,Scale,Reshape及非LayerNorm/Reshape后的MatMul外所有算子。将这些算子设置为不量化,生成qtable。
 
 search_qtable
-=====================
+---------------------
 
 ``search_qtable`` 是集成于 ``run_calibration`` 中的混精功能,当全int8量化精度无法满足需求时,需要采用混合精度方法,也就是将部分算子设置为浮点运算。
 本节以检测网络 ``mobilenet-v2`` 网络模型为例, 介绍如何使用 ``search_qtable``。
@@ -309,7 +311,7 @@ search_qtable
 本节需要安装TPU-MLIR。
 
 安装TPU-MLIR
-------------------
+~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
 
@@ -318,7 +320,7 @@ search_qtable
    $ pip install tpu_mlir-*-py3-none-any.whl[all]
 
 准备工作目录
-------------------
+~~~~~~~~~~~~~~~~~~
 
 .. include:: get_resource.rst
 单输入模型校准数据集准备与使用说明（以mobilenet-v2为例）：
@@ -368,12 +370,12 @@ search_qtable
    $ mkdir workspace && cd workspace
 
 测试Float和INT8对称量化模型分类效果
------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 如上述章节介绍的转模型方法, 这里不做参数说明, 只有操作过程。
 
 步骤1: 转成FP32 mlir
-~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: shell
 
@@ -403,7 +405,7 @@ search_qtable
 
 
 步骤2: 生成calibration table
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 这里我们采用 ``mse`` 方法进行校准。
 
@@ -427,7 +429,7 @@ search_qtable
         -o bert_base_squad_uncased-2.11.0.calitable
 
 步骤3: 转FP32 bmodel
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: shell
 
@@ -438,7 +440,7 @@ search_qtable
        --model mobilenet_v2_bm1684_f32.bmodel
 
 步骤4: 转对称量化模型
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: shell
 
@@ -450,7 +452,7 @@ search_qtable
        --model mobilenet_v2_bm1684_int8_sym.bmodel
 
 步骤5: 验证FP32模型和INT8对称量化模型
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``classify_mobilenet_v2`` 是已经写好的验证程序，可以用来对 ``mobilenet_v2`` 网络进行验证。执行过程如下，FP32模型：
 
@@ -492,12 +494,12 @@ INT8对称量化模型：
 .. _mix precision:
 
 转成混精度量化模型
------------------------
+~~~~~~~~~~~~~~~~~~~~~~~
 
 在转int8对称量化模型的基础上, 执行如下步骤。
 
 步骤1: 执行search_qtable命令
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``search_qtable`` 功能目前集成于 ``run_calibration`` 流程中,因此在使用时只需要在 ``run_calibration`` 命令中添加相关参数即可。 ``run_calibration`` 中与 ``search_qtable`` 相关参数说明如下:
 
@@ -554,9 +556,6 @@ INT8对称量化模型：
    * - search
      - 是
      - 指定搜索类型,其中包括 ``search_qtable``, ``search_threshold`` ,false。这里需要选择 ``search_qtable``
-   * - transformer
-     - 否
-     - 是否是transformer模型,search_qtable中如果是transformer模型可分配指定加速策略,默认是False
    * - quantize_method_list
      - 否
      - search_qtable用来搜索的校准方法,默认仅使用MSE校准方法,可选择 ``MSE``, ``KL``, ``MAX``, ``Percentile9999``
@@ -590,7 +589,6 @@ INT8对称量化模型：
        --expected_cos 0.99 \
        --quantize_method_list KL,MSE \
        --search search_qtable \
-       --transformer False \
        --processor bm1684 \
        --post_process post_process_func.py \
        --quantize_table mobilenet_v2_qtable \
@@ -664,7 +662,7 @@ INT8对称量化模型：
 该量化表存储在当前工程目录下，在生成混精度模型时需要调用新量化表。
 
 步骤2: 生成混精度量化模型
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: shell
 
@@ -677,7 +675,7 @@ INT8对称量化模型：
        --model mobilenet_v2_bm1684_int8_mix.bmodel
 
 步骤3: 验证混精度模型
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: shell
 
@@ -696,13 +694,60 @@ INT8对称量化模型：
    classify_mobilenet_v2 混精模型执行效果
 
 
+.. raw:: latex
+
+   \FloatBarrier
+
+其他搜索模式
+^^^^^^^^^^^^
+
+除上述默认的 ``search_qtable`` 流程外，``run_calibration`` 还提供了一种更快的搜索模式，以及一种可替换的决策指标。
+
+**fast_search**
+
+``fast_search`` 是一种更轻量的混精搜索，通过 ``--search fast_search`` 启用（目前仅支持 ``wi8ai8_fp`` 混精模式）。它不再对每个算子在所有校准方法上逐一调门限，而是采用迭代式的多轮搜索：每一轮按敏感度对候选层排序，将最敏感的 5 个层设为浮点，然后重新评估。当达到目标（``cos > expected_cos``，或端到端指标达到 ``expected_acc``）、精度提升停滞、或浮点层预算（约占算子总数的 20%）用尽时，循环停止。它比 ``search_qtable`` 快很多，但对浮点层的选择更粗略，适合在 ``search_qtable`` 过慢时使用。其余参数（``dataset``、``input_num``、``expected_cos``、``quantize_table``、``calibration_table``、``processor``）用法相同：
+
+.. code-block:: shell
+
+   $ run_calibration.py mobilenet_v2.mlir \
+       --dataset ../ILSVRC2012 \
+       --input_num 100 \
+       --expected_cos 0.9999 \
+       --search fast_search \
+       --processor bm1684x \
+       --quantize_table mobilenet_v2_qtable \
+       --calibration_table mobilenet_v2_cali_table
+
+**eval_config**
+
+.. note::
+
+   端到端评估会在每一次搜索试验中对 ``sample_num`` 张图片跑一遍模型，计算量较大。强烈建议在 **CUDA docker 镜像**（``sophgo/tpuc_dev:*-cuda``）中运行搜索以获得可接受的速度。CUDA docker 环境的搭建请参考《TPU-MLIR 开发手册》第 7 章 “Calibration”。
+
+默认情况下，搜索通过余弦相似度（``expected_cos``）比较混精输出与浮点输出来决定哪些层保留为浮点。使用 ``--eval_config <json>`` 后，搜索改为按端到端任务指标决策：``topx``（top1/top5）、``coco_mAP`` 或用户自定义 ``custom`` 指标，与目标精度 ``expected_acc`` 比较。该 JSON 配置指标与评估数据，例如：
+
+.. code-block:: json
+
+   {
+     "eval_metric": "topx",
+     "direction": "higher_better",
+     "expected_acc": 0.70,
+     "metric_index": 0,
+     "score_plugin": "topx",
+     "sample_num": 100,
+     "dataset": "/data/imagenet/val",
+     "use_end2end_in_search": false
+   }
+
+``use_end2end_in_search`` 控制耗时的逐算子敏感度扫描是否也使用端到端指标；为 false（默认）时仅在浮点层数量的决策点使用端到端指标，逐算子扫描仍使用余弦相似度。将其设为 true 非常耗时，因为逐算子扫描中每个算子都要做一次端到端评估；实践中余弦相似度指标对逐算子敏感度排序已足够准确，因此建议保持 ``use_end2end_in_search`` 为 false。``eval_config`` 对 ``search_qtable`` 和 ``fast_search`` 均适用。``python/samples/eval_config_topx.json`` 提供了一份可直接使用的示例配置。若要自定义指标，可参考 ``python/samples/count_detected_objects.py`` —— 一个基于 ``custom_eval_template.py`` 模板的实例：它继承插件基类并实现 ``init`` / ``update`` / ``get_result`` 接口，统计每张样本检测到的目标数并返回总数作为搜索的决策分数，其配套 ``eval_config`` 将 ``score_plugin`` 指向该文件。
+
 fp_forward
-================
+----------------
 
 对于特定网络，部分层由于数据分布差异大，量化成INT8会大幅降低模型精度，使用局部不量化功能，可以一键将部分层之前、之后、之间添加到混精度表中，在生成混精度模型时，这部分层将不被量化。
 
 使用方法
-------------------
+~~~~~~~~~~~~~~~~~~
 本节将沿用第三章提到的yolov5s网络的例子，介绍如何使用局部不量化功能，快速生成混精度模型。
 
 生成FP32和INT8模型的过程与第三章相同，下面仅介绍精度测试方案与混精度流程。
@@ -775,7 +820,7 @@ INT8模型mAP为： 34.70%
 
 
 参数说明
-------------------
+~~~~~~~~~~~~~~~~~~
 .. list-table:: fp_forward 参数功能
    :widths: 23 8 50
    :header-rows: 1

@@ -146,6 +146,7 @@ latex_elements = {
     # Each section starts on a new page: \newcommand{\sectionbreak}{\clearpage}
     # Left-align all text: \usepackage[document]{ragged2e}
     'preamble':r'''
+    \usepackage{placeins}
     \usepackage{tocloft}
     \renewcommand\cftfignumwidth{4em}
     \renewcommand\cfttabnumwidth{4em}

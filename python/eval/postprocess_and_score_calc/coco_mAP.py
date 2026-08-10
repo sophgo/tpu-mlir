@@ -397,12 +397,23 @@ def cal_coco_result(annotations_file, result_json_file):
     cocoEval.evaluate()
     cocoEval.accumulate()
     cocoEval.summarize()
+    # COCOeval.stats layout: stats[0]=AP@[IoU=0.50:0.95] (averaged),
+    # stats[1]=AP@[IoU=0.50]. Return (mAP@0.5, mAP@0.5:0.95) so callers that
+    # index [0] get the IoU=0.5 mAP as the primary metric, [1] the averaged
+    # mAP. Enables coco_mAP as a search decision metric (End2EndEval reduces
+    # get_result()[metric_index]); model_eval.py ignores the return value.
+    return (float(cocoEval.stats[1]), float(cocoEval.stats[0]))
 
 
 class coco_mAP(base_class):
 
     def init(self, args):
         self.args = args
+        self.json_dict = []
+        self.ratio_list = []
+
+    def reset(self):
+        # Clear per-trial detection accumulators; args kept from init().
         self.json_dict = []
         self.ratio_list = []
 
@@ -473,8 +484,13 @@ class coco_mAP(base_class):
             os.remove('./result_json_file')
         with open('./result_json_file', 'w') as file:
             json.dump(self.json_dict, file, default=convert)
-        # eval coco
-        cal_coco_result(self.args.coco_annotation, './result_json_file')
+        # No detections at all (e.g. a heavily-degraded quant trial): COCOeval
+        # would error on an empty result set. Return zero mAP so the search
+        # treats it as a failed (below-floor) trial instead of crashing.
+        if len(self.json_dict) == 0:
+            return (0.0, 0.0)
+        # eval coco -> (mAP@0.5, mAP@0.5:0.95)
+        return cal_coco_result(self.args.coco_annotation, './result_json_file')
 
     def print_info(self):
         pass
