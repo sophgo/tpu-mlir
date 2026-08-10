@@ -61,7 +61,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
       LoweringF16(rewriter, op);
     return;
   }
-  if (p.do_relu && !module::isBM1684X()) {
+  if (p.do_relu && !(module::isBM1684X() || module::isBM1688())) {
     use_perchannel = false;
   }
   // note: trick for imgToCol pattern
