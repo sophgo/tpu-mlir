@@ -304,7 +304,8 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
             in_type_len; // depthwise_oaddr
       sz += BM168x::EU_BYTES * ceiling_func(kernel_len, Arch::NPU_NUM) *
             2; // serial_addr / param_addr
-      sz += kernel_len * ceiling_func(kernel_len, Arch::NPU_NUM) *
+      sz += align_up(kernel_len, eu_num) *
+            ceiling_func(kernel_len * (in_cslice), Arch::NPU_NUM) *
             in_type_len; // depthwise_waddr
     }
   }
