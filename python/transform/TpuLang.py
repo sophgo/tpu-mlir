@@ -6876,8 +6876,6 @@ def matmulrq_int_op(
                                right_zp=0,
                                out_dtype="int32",
                                out_name=matmul_out_name)
-    shift = shift if isinstance(shift, List) else [shift]
-    shift = [-sft for sft in shift]
     requantized_output = requant_int(matmul_output,
                                      multiplier,
                                      shift,

@@ -16,6 +16,7 @@ from utils.timer import Timer
 from typing import Union
 import random
 import torch
+from mlir.ir import Context, Module
 from utils.regression_logger import run_in_log_wrapper
 
 
@@ -270,7 +271,7 @@ class TPULANG_IR_TESTER(object):
             "Lut": (self.test_Lut, Y, Y),
             "LayerNorm": (self.test_LayerNorm, Y, Y),
             "MatMul": (self.test_MatMul, Y, Y),
-            "MatMulRQ_OP": (self.test_MatMulRQ_OP, Y, N),
+            "MatMulRQ_OP": (self.test_MatMulRQ_OP, Y, Y),
             "MatMulRQ_Int_Group": (self.test_MatMulRQ_Int_Group, Y, N),
             "Max": (self.test_Max, Y, Y),
             "Maxpool": (self.test_Maxpool, Y, Y),
@@ -2402,6 +2403,48 @@ class TPULANG_IR_TESTER(object):
 
     def test_MatMulRQ_OP(self, case_name):
 
+        def assert_origin_rshift(model_name, expected_rshift):
+            """Assert the public shift is converted once in origin MLIR."""
+            if self.no_save:
+                return
+            with open(f"{model_name}_origin.mlir", encoding="utf-8") as origin_file:
+                with Context() as ctx:
+                    ctx.allow_unregistered_dialects = True
+                    module = Module.parse(origin_file.read())
+                    main_func = next(op for op in module.body.operations
+                                     if op.operation.name == "func.func")
+                    requant_rshifts = [
+                        str(op.operation.attributes["rshift"])
+                        for op in main_func.operation.regions[0].blocks[0].operations
+                        if op.operation.name == "top.RequantInt"
+                    ]
+            assert requant_rshifts == [f"[{expected_rshift}]"], \
+                f"unexpected MatMulRQ origin rshift: {requant_rshifts}"
+
+        def assert_final_rshifts(model_name, expected_rshift):
+            """Assert the fused MatMul keeps the signed shift direction."""
+            if self.no_save:
+                return
+
+            def walk_operations(operation):
+                for region in operation.regions:
+                    for block in region.blocks:
+                        for child in block.operations:
+                            yield child
+                            yield from walk_operations(child)
+
+            with open(f"{model_name}_int8_final.mlir", encoding="utf-8") as final_file:
+                with Context() as ctx:
+                    ctx.allow_unregistered_dialects = True
+                    module = Module.parse(final_file.read())
+                    matmul_rshifts = [
+                        str(op.operation.attributes["rshifts"])
+                        for op in walk_operations(module.operation)
+                        if op.operation.name == "tpu.MatMul"
+                    ]
+            assert matmul_rshifts == [f"[{expected_rshift}]"], \
+                f"unexpected MatMulRQ final rshifts: {matmul_rshifts}"
+
         @tpulang(self.chip)
         def _test_matmul(shape_x: List[int],
                          shape_y: List[int],
@@ -2436,8 +2479,9 @@ class TPULANG_IR_TESTER(object):
                                               offset=offset,
                                               requant_mode=requant_mode,
                                               round_mode=round_mode)
-                self.compile_and_check(self.unique_name(case_name), [x], [matmul],
-                                       is_quantized=is_quantized)
+                model_name = self.unique_name(case_name)
+                self.compile_and_check(model_name, [x], [matmul], is_quantized=is_quantized)
+                assert_origin_rshift(model_name, 23)
 
         _test_matmul([2, 197, 768], [2, 768, 768], [2, 1, 768],
                      idtype="int8",
@@ -2447,6 +2491,47 @@ class TPULANG_IR_TESTER(object):
                      has_bias=True,
                      requant_mode=2,
                      round_mode='half_up')
+
+        @tpulang(self.chip)
+        def _test_fixed_shift(shift, expected_origin, expected_final, expected_output, suffix):
+            if self.no_save:
+                return
+            input_data = np.array([[16, 32, 48, 64]], dtype=np.int8)
+            right_data = np.eye(4, dtype=np.int8)
+            bias_data = np.zeros((1, 4), dtype=np.int32)
+            x = tpul.Tensor(dtype="int8", shape=[1, 4], data=input_data)
+            y = tpul.Tensor(dtype="int8", shape=[4, 4], data=right_data, ttype="coeff")
+            z = tpul.Tensor(dtype="int32", shape=[1, 4], data=bias_data, ttype="coeff")
+            matmul = tpul.matmulrq_int_op(x,
+                                          y,
+                                          z,
+                                          out_dtype="int8",
+                                          multiplier=[1, 1, 1, 1],
+                                          shift=shift,
+                                          offset=0,
+                                          requant_mode=2,
+                                          round_mode="half_up",
+                                          rq_axis=-1)
+            model_name = self.unique_name(case_name + suffix)
+            tpul.compile(model_name, [x], [matmul],
+                         cmp=False,
+                         mlir_inference=False,
+                         bmodel_inference=False,
+                         log_level="quiet")
+            assert_origin_rshift(model_name, expected_origin)
+            assert_final_rshifts(model_name, expected_final)
+            from tools.model_runner import model_inference
+            result = model_inference({x.name: input_data},
+                                     f"{model_name}_int8.bmodel",
+                                     dump_all=False,
+                                     mute=True,
+                                     log_level="quiet")
+            actual = next(iter(result.values()))
+            expected = np.array([expected_output], dtype=actual.dtype)
+            np.testing.assert_array_equal(actual, expected)
+
+        _test_fixed_shift(-2, 2, 2, [4, 8, 12, 16], "_NegativeShift")
+        _test_fixed_shift(2, -2, -2, [64, 127, 127, 127], "_PositiveShift")
 
     #######################################################################
     # Maxpool
