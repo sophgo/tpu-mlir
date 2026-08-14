@@ -1401,7 +1401,9 @@ void GroupMethod::dynamic_programming_kernel(
     if (shape_secs_search_strategy == SHAPE_SECS_ALWAYS_BETTER) {
       lg_info.shape_secs_search_level = 1;
     }
-    assert(is_layer_group_valid(lg_info, true, &cost_table[j][j]));
+    bool _cluster_valid =
+        is_layer_group_valid(lg_info, true, &cost_table[j][j]);
+    assert(_cluster_valid);
 
     GROUP_DEBUG_WITH_TYPE("lg_cost", lg_info, [&]() {
       llvm::dbgs() << DEBUGGER_DEFAULT_INFO("cluster_cost", "record",
