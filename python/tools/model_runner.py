@@ -224,23 +224,24 @@ def link_cmodel_so(chip: str, is_rvti: bool = False):
 
 
 def link_bmlib_so(chip: str):
-    # libbmlib.so.0 ships as a real file (the default, non-BM1684X2 variant) and
-    # is also the SONAME pyruntime_bm links against; libbmlib_bm1684x2.so.0 is the
-    # BM1684X2 variant. To switch between them without destroying the default
-    # real file, relocate it once to libbmlib.so.0.orig and keep libbmlib.so.0 as
-    # a symlink pointing at whichever variant is needed. Otherwise running
-    # BM1684X2 first would overwrite the real file with a symlink and leave every
-    # other chip stuck on the BM1684X2 library.
+    # libbmlib.so.0 is the SONAME pyruntime_bm links against. It ships as a
+    # symlink to the default variant libbmlib_bm1684x.so.0 and is switched to
+    # libbmlib_bm1684x2.so.0 when running BM1684X2 models. Both variants ship
+    # as real files, so switching never destroys the default library.
     lib_dir = os.path.join(TPUC_ROOT, "lib")
     link_so_0 = os.path.join(lib_dir, "libbmlib.so.0")
-    default_so = os.path.join(lib_dir, "libbmlib.so.0.orig")
-    bm1684x2_so = os.path.join(lib_dir, "libbmlib_bm1684x2.so.0")
-    # one-time relocation of the shipped real file into a stable name
-    if not os.path.islink(link_so_0) and os.path.isfile(link_so_0):
-        os.rename(link_so_0, default_so)
-    target = bm1684x2_so if chip == "BM1684X2" else default_so
-    cur = os.readlink(link_so_0) if os.path.islink(link_so_0) else ""
-    if cur != target:
+    variant = "libbmlib_bm1684x2.so.0" if chip == "BM1684X2" else "libbmlib_bm1684x.so.0"
+    target = os.path.join(lib_dir, variant)
+    # A stale install dir (built before the variant files shipped) has no valid
+    # target to point at; keep the existing library instead of creating a
+    # dangling link (or a symlink loop) that breaks every chip.
+    if not os.path.exists(target):
+        print(f"warning: {target} does not exist, keep {link_so_0} unchanged")
+        return
+    # Compare resolved paths so the shipped relative symlink is recognized as
+    # already correct and never rewritten to an absolute one.
+    cur = os.path.realpath(link_so_0) if os.path.lexists(link_so_0) else ""
+    if cur != os.path.realpath(target):
         cmd = f'ln -sf "{target}" "{link_so_0}"'
         print(cmd)
         os.system(cmd)

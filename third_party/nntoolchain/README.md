@@ -35,10 +35,10 @@ mkdir -p build && cd build
 cmake -G Ninja -DPLATFORM=cmodel -DCMAKE_BUILD_TYPE=Debug ../ # release version has problem
 ninja
 cp -P tpu-runtime/libbmrt.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
-cp -P bmlib/libbmlib.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
+cp -P bmlib/libbmlib.so.0 /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmlib_bm1684x.so.0
 cp -P tpu-bmodel/libmodel_combine.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
 # libsopn need branch BM1684X2
-cp -P bmlib/libbmlib.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmlib_bm1684x2.so.0
+cp -P bmlib/libbmlib.so.0 /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmlib_bm1684x2.so.0
 popd
 ```
 

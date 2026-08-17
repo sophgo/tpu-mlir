@@ -11,7 +11,7 @@ install(FILES nntoolchain/lib/libbackend_bm1684.so
               nntoolchain/lib/libbackend_bm1684x2.so
               nntoolchain/lib/libbmlib.so
               nntoolchain/lib/libbmlib.so.0
-              nntoolchain/lib/libbmlib_bm1684x2.so
+              nntoolchain/lib/libbmlib_bm1684x.so.0
               nntoolchain/lib/libbmlib_bm1684x2.so.0
               nntoolchain/lib/libcmodel_bm1684.so
               nntoolchain/lib/libcmodel_cv184x.so
