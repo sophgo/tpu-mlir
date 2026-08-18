@@ -14,6 +14,7 @@
 #include "tpu_mlir/Support/LutFunc.h"
 #include "tpu_mlir/Support/RewriterConfigUtils.h"
 #include <cmath>
+#include <limits>
 
 using namespace llvm;
 using namespace tpu_mlir::backend;
@@ -3811,6 +3812,13 @@ static tpu::SliceOp create_slice_op(PatternRewriter &rewriter, Operation *op,
 
 // Conv merge requant
 class ConvMergeRequant : public OpRewriterPatternEx<tpu::Conv2DOp> {
+private:
+  enum class ConvInt32OverflowRisk { None, Bias, Accumulator, Unknown };
+
+  static ConvInt32OverflowRisk get_conv_int32_overflow_risk(tpu::Conv2DOp op);
+  static void rewrite_conv_bias_overflow(tpu::Conv2DOp op,
+                                         PatternRewriter &rewriter);
+
 public:
   using OpRewriterPatternEx::OpRewriterPatternEx;
   ConvMergeRequant(mlir::MLIRContext *context, int benifit)
@@ -3829,6 +3837,28 @@ public:
 
     if (op->hasOneUse() == false) {
       return failure();
+    }
+
+    auto *user = *op.getOutput().getUsers().begin();
+    const bool has_requant_user =
+        isa<tpu::RequantIntOp>(user) || isa<tpu::RequantIntAxisOp>(user);
+    if (has_requant_user && op.getWithBias() && !op.getCoeffMerged() &&
+        !op.getDoRelu() &&
+        module::getStorageType(op.getFilter()).isInteger(8) &&
+        module::getStorageType(op.getOutput()).isInteger(32) &&
+        module::getStorageType(op.getBias()).isInteger(32) &&
+        op.getUseWinograd().value_or(0) == 0 &&
+        !op.getDoLeakyRelu().value_or(false)) {
+      const auto risk = get_conv_int32_overflow_risk(op);
+      if (risk == ConvInt32OverflowRisk::Accumulator) {
+        op.emitError("BM1688 convolution accumulator may overflow INT32 before "
+                     "bias; splitting bias cannot preserve the result");
+        return failure();
+      }
+      if (risk == ConvInt32OverflowRisk::Bias) {
+        rewrite_conv_bias_overflow(op, rewriter);
+        return success();
+      }
     }
 
     std::vector<int64_t> rshift_v;
@@ -3894,6 +3924,81 @@ public:
     return failure();
   }
 };
+
+ConvMergeRequant::ConvInt32OverflowRisk
+ConvMergeRequant::get_conv_int32_overflow_risk(tpu::Conv2DOp op) {
+  auto filter_op = dyn_cast<top::WeightOp>(op.getFilter().getDefiningOp());
+  auto bias_op = dyn_cast<top::WeightOp>(op.getBias().getDefiningOp());
+  if (!filter_op || !bias_op || !module::isUniformQuantized(op.getInput())) {
+    return ConvInt32OverflowRisk::Unknown;
+  }
+
+  auto input_qtype = module::getUniformQuantizedType(op.getInput());
+  int64_t input_min = std::min<int64_t>(input_qtype.getStorageTypeMin(), 0);
+  int64_t input_max = std::max<int64_t>(input_qtype.getStorageTypeMax(), 0);
+  auto filter_stype = module::getStorageType(op.getFilter());
+  auto filter_data = filter_op.read<int8_t>();
+  auto bias_data = bias_op.read<int32_t>();
+  auto output_shape = module::getShape(op.getOutput());
+  if (output_shape.size() < 2 || output_shape[1] <= 0 ||
+      filter_data->size() % output_shape[1] != 0 ||
+      bias_data->size() != output_shape[1]) {
+    return ConvInt32OverflowRisk::Unknown;
+  }
+
+  const int64_t int32_min = std::numeric_limits<int32_t>::min();
+  const int64_t int32_max = std::numeric_limits<int32_t>::max();
+  const int64_t kernel_size = filter_data->size() / output_shape[1];
+  const int64_t kernel_zp = op.getKernelZp();
+  bool bias_overflow = false;
+  for (int64_t oc = 0; oc < output_shape[1]; ++oc) {
+    int64_t dot_min = 0;
+    int64_t dot_max = 0;
+    for (int64_t k = 0; k < kernel_size; ++k) {
+      const auto raw = filter_data->at(oc * kernel_size + k);
+      const int64_t weight =
+          (filter_stype.isUnsignedInteger(8) ? static_cast<uint8_t>(raw)
+                                             : raw) -
+          kernel_zp;
+      const int64_t product0 = input_min * weight;
+      const int64_t product1 = input_max * weight;
+      dot_min += std::min(product0, product1);
+      dot_max += std::max(product0, product1);
+    }
+    if (dot_min < int32_min || dot_max > int32_max) {
+      return ConvInt32OverflowRisk::Accumulator;
+    }
+    const int64_t with_bias_min = dot_min + bias_data->at(oc);
+    const int64_t with_bias_max = dot_max + bias_data->at(oc);
+    bias_overflow |= with_bias_min < int32_min || with_bias_max > int32_max;
+  }
+  return bias_overflow ? ConvInt32OverflowRisk::Bias
+                       : ConvInt32OverflowRisk::None;
+}
+
+void ConvMergeRequant::rewrite_conv_bias_overflow(tpu::Conv2DOp op,
+                                                  PatternRewriter &rewriter) {
+  auto bias_op = cast<top::WeightOp>(op.getBias().getDefiningOp());
+  auto bias_data = bias_op.read<int32_t>();
+  auto output_shape = module::getShape(op.getOutput());
+  auto bias_type =
+      RankedTensorType::get({1, output_shape[1], 1, 1}, rewriter.getI32Type());
+  auto broadcast_bias =
+      top::WeightOp::create(op, "bias_add", *bias_data, bias_type);
+
+  rewriter.setInsertionPoint(op);
+  auto *new_conv_op = rewriter.clone(*op);
+  auto new_conv = cast<tpu::Conv2DOp>(new_conv_op);
+  new_conv_op->setOperand(2, module::getNoneOp(op));
+  new_conv_op->setAttr("with_bias", rewriter.getBoolAttr(false));
+  module::setLocSuffix(new_conv_op, "no_bias");
+
+  rewriter.setInsertionPointAfter(new_conv_op);
+  auto add = rewriter.create<tpu::AddOp>(
+      op.getLoc(), op.getOutput().getType(),
+      ValueRange{new_conv.getOutput(), broadcast_bias});
+  rewriter.replaceOp(op, add.getOutput());
+}
 
 class ConvMergePattern : public OpRewriterPatternEx<tpu::Conv2DOp> {
 public:
