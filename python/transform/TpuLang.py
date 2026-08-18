@@ -97,8 +97,10 @@ class TpuLang:
         caller_args = inspect.getargvalues(caller_frame)
         args_info = {
             'args': caller_args.args,
-            'values': {k: simplify_value(caller_args.locals[k])
-                       for k in caller_args.args}
+            'values': {
+                k: simplify_value(caller_args.locals[k])
+                for k in caller_args.args
+            }
         }
 
         op = Operator(op_name,
@@ -1345,6 +1347,8 @@ def matmul(input: Tensor,
            right_transpose: bool = False,
            output_transpose: bool = False,
            keep_dims: bool = True,
+           do_relu: bool = False,
+           relu_limit: float = -1.0,
            out_dtype: str = None,
            out_name: str = None):
     o_dtype = input.dtype if out_dtype is None else out_dtype
@@ -1363,8 +1367,8 @@ def matmul(input: Tensor,
         "output_transpose": Attr(output_transpose, "bool"),
         "hdim_is_batch": Attr(False, "bool"),
         "keep_dims": Attr(keep_dims, "bool"),
-        "do_relu": Attr(False, "bool"),
-        "relu_limit": Attr(-1.0, "float64")
+        "do_relu": Attr(do_relu, "bool"),
+        "relu_limit": Attr(relu_limit, "float64")
     }
 
     output = Tensor(dtype=o_dtype, name=out_name)
@@ -6860,10 +6864,19 @@ def matmulrq_int_op(
         offset: Union[int, List[int]] = None,
         requant_mode: int = 2,  # Default to "MultiplierShift"
         round_mode: str = 'half_away_from_zero',
-        rq_axis=-1):
+        rq_axis=-1,
+        do_relu: bool = False,
+        relu_limit: float = -1.0):
     assert input_transpose == False and output_transpose == False
     assert out_dtype == "int8" or out_dtype == "int16"
     assert rq_axis == -1 or (rq_axis == len(input.shape) - 1)
+    if do_relu:
+        assert out_dtype == "int8", \
+            "do_relu only supports int8 output on this path"
+        assert offset == 0, \
+            "do_relu only supports symmetric requant (offset == 0) for now"
+        assert requant_mode == 2, \
+            "do_relu only supports MultiplierShift requant mode for now"
     matmul_out_name = out_name + "_matmul" if out_name else "matmul_output"
     matmul_output = matmul_int(input,
                                right,
@@ -6874,6 +6887,8 @@ def matmulrq_int_op(
                                keep_dims=True,
                                input_zp=0,
                                right_zp=0,
+                               do_relu=do_relu,
+                               relu_limit=relu_limit,
                                out_dtype="int32",
                                out_name=matmul_out_name)
     requantized_output = requant_int(matmul_output,

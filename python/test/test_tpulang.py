@@ -271,7 +271,9 @@ class TPULANG_IR_TESTER(object):
             "Lut": (self.test_Lut, Y, Y),
             "LayerNorm": (self.test_LayerNorm, Y, Y),
             "MatMul": (self.test_MatMul, Y, Y),
+            "MatMul_Relu": (self.test_MatMul_Relu, Y, Y),
             "MatMulRQ_OP": (self.test_MatMulRQ_OP, Y, Y),
+            "MatMulRQ_Relu": (self.test_MatMulRQ_Relu, Y, Y),
             "MatMulRQ_Int_Group": (self.test_MatMulRQ_Int_Group, Y, N),
             "Max": (self.test_Max, Y, Y),
             "Maxpool": (self.test_Maxpool, Y, Y),
@@ -2532,6 +2534,124 @@ class TPULANG_IR_TESTER(object):
 
         _test_fixed_shift(-2, 2, 2, [4, 8, 12, 16], "_NegativeShift")
         _test_fixed_shift(2, -2, -2, [64, 127, 127, 127], "_PositiveShift")
+
+    def test_MatMulRQ_Relu(self, case_name):
+        """MatMulRQ with fused do_relu"""
+
+        def assert_fused_relu(model_name):
+            if self.no_save:
+                return
+
+            def walk_operations(operation):
+                for region in operation.regions:
+                    for block in region.blocks:
+                        for child in block.operations:
+                            yield child
+                            yield from walk_operations(child)
+
+            with open(f"{model_name}_int8_final.mlir", encoding="utf-8") as final_file:
+                with Context() as ctx:
+                    ctx.allow_unregistered_dialects = True
+                    module = Module.parse(final_file.read())
+                    matmuls = [
+                        op.operation for op in walk_operations(module.operation)
+                        if op.operation.name == "tpu.MatMul"
+                    ]
+            assert len(matmuls) >= 1, "no tpu.MatMul found in final mlir"
+            for op in matmuls:
+                assert str(op.attributes["do_relu"]) == "true", \
+                    f"do_relu lost after fusion: {op.attributes}"
+                assert str(op.attributes["fuse_rq"]) == "true", \
+                    f"fuse_rq lost after fusion: {op.attributes}"
+
+        @tpulang(self.chip)
+        def _test_matmulrq_relu(shape_x: List[int],
+                                shape_y: List[int],
+                                bias_shape: List[int] = None,
+                                has_bias=False):
+            x_data = rand_data(shape_x, "int8")
+            y_data = rand_data(shape_y, "int8")
+            x = tpul.Tensor(dtype="int8", shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype="int8", shape=shape_y, data=y_data, ttype="coeff")
+            z = None
+            if has_bias:
+                bias = rand_data(bias_shape, "int32")
+                z = tpul.Tensor(dtype="int32", shape=bias_shape, data=bias, ttype="coeff")
+            multiplier = [random.randint(1000, 10000) for _ in range(shape_y[-1])]
+            matmul = tpul.matmulrq_int_op(x,
+                                          y,
+                                          z,
+                                          out_dtype="int8",
+                                          multiplier=multiplier,
+                                          shift=[-23],
+                                          offset=0,
+                                          requant_mode=2,
+                                          round_mode='half_up',
+                                          rq_axis=-1,
+                                          do_relu=True)
+            model_name = self.unique_name(case_name)
+            self.compile_and_check(model_name, [x], [matmul], is_quantized=True)
+            assert_fused_relu(model_name)
+
+        _test_matmulrq_relu([2, 197, 768], [2, 768, 768], [2, 1, 768], has_bias=True)
+
+        x_small = tpul.Tensor(dtype="int8", shape=[1, 4], data=np.ones((1, 4), np.int8))
+        y_small = tpul.Tensor(dtype="int8",
+                              shape=[4, 4],
+                              data=np.eye(4, dtype=np.int8),
+                              ttype="coeff")
+
+        def expect_assert_error(**kwargs):
+            try:
+                tpul.matmulrq_int_op(x_small, y_small, **kwargs)
+            except AssertionError:
+                return
+            raise RuntimeError("expected AssertionError for {}".format(kwargs))
+
+        expect_assert_error(out_dtype="int16",
+                            multiplier=[1, 1, 1, 1],
+                            shift=[-2],
+                            offset=0,
+                            requant_mode=2,
+                            do_relu=True)
+        expect_assert_error(out_dtype="int8",
+                            multiplier=[1, 1, 1, 1],
+                            shift=[-2],
+                            offset=128,
+                            requant_mode=2,
+                            do_relu=True)
+        expect_assert_error(out_dtype="int8",
+                            multiplier=[1, 1, 1, 1],
+                            shift=[-2],
+                            offset=0,
+                            requant_mode=1,
+                            do_relu=True)
+
+    def test_MatMul_Relu(self, case_name):
+        """Float MatMul with do_relu"""
+
+        @tpulang(self.chip)
+        def _test_matmul_relu(shape_x: List[int],
+                              shape_y: List[int],
+                              bias_shape: List[int] = None,
+                              dtype="float32",
+                              has_bias=False,
+                              relu_limit=-1.0):
+            left = rand_data(shape_x, dtype)
+            right = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=left)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=right, ttype="coeff")
+            z = None
+            if has_bias:
+                bias = rand_data(bias_shape, "float32")
+                z = tpul.Tensor(dtype="float32", shape=bias_shape, data=bias, ttype="coeff")
+            matmul = tpul.matmul(x, y, z, do_relu=True, relu_limit=relu_limit)
+            self.compile_and_check(self.unique_name(case_name), [x], [matmul],
+                                   is_quantized=dtype != "float32")
+
+        _test_matmul_relu([1, 3, 28, 10], [1, 3, 10, 8])
+        _test_matmul_relu([1, 3, 28, 10], [1, 3, 10, 8], dtype="float16")
+        _test_matmul_relu([2, 197, 768], [2, 768, 768], [2, 1, 768], has_bias=True, relu_limit=6.0)
 
     #######################################################################
     # Maxpool
