@@ -1,13 +1,13 @@
 === bm1684x2 ===
-commit 2800478b6b664254649efa4ea0c6acf596d08060
-Author: zhibin.xin <zhibin.xin@sophgo.com>
-Date:   Thu Aug 6 16:53:55 2026 +0800
+commit 8949518ba3eb0a8376407d0264e0307edbf80564
+Author: pengchao.hu <pengchao.hu@sophgo.com>
+Date:   Tue Aug 18 19:39:43 2026 +0800
 
-    fix: remove global softmax opt in bm1684x2
+    fix: a16matmul will fail in some shape
     
-    - no perf improvement and may lead to tpu hang
+    - test in 1684x2
     
-    Change-Id: I8e4f3ce35f855754ef34270ca3a8a056b6a59274
+    Change-Id: I0c4639828b8c594f35ab7152f10c9c0d1ba5f916
 === bm1684x ===
 commit 4ab63b3c2e
 Author: yujia liu <yujia.liu@sophgo.com>
