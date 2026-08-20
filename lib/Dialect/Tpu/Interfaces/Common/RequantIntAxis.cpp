@@ -70,7 +70,8 @@ LogicalResult tpu::RequantIntAxisOp::inference(InferenceParameter &p) {
       if (module::isBM1684X()) {
         return -static_cast<int32_t>(packed);
       }
-      return -static_cast<int32_t>(static_cast<int16_t>(packed & 0xffff));
+      return std::abs(
+          static_cast<int32_t>(static_cast<int16_t>(packed & 0xffff)));
     };
 
     if (fuse_rq_axis) {
