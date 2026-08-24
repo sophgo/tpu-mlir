@@ -76,3 +76,41 @@ broke bm1688 int8 matmul (wrong bmodel output / codegen crash). The
 fused do_relu path (requant_mode==3) is unaffected.
 
 Change-Id: I292db1a970000000000000000000000000000001
+=== bm1690 ===
+commit 44b4477699e7487fa762d6b5622cbf3e7dfa3004
+Author: junliang.liu <junliang.liu@sophgo.com>
+Date:   Fri Aug 21 16:06:40 2026 +0800
+
+    [fix][sg2262][tvgen] support TV_GEN_ENABLE_DENORMAL and TV_GEN_ENABLE_SATURATE together
+    
+    Previously the two env vars mapped to the same mutually-exclusive
+    CORNER_LEVEL, so enabling both silently dropped saturate (denormal won),
+    leaving param.saturate=1 paired with NaN/Inf inputs and causing miscompares.
+    
+    Add a dedicated ALL_COVER_SATURATE level that merges both distributions
+    (denormal special values + extra MaxNormal weight for saturate). Only the
+    combined branch is new; single-flag paths keep the exact same rand()
+    sequence, so enabling only one flag reproduces the previous results
+    bit-for-bit.
+    
+    Change-Id: I7d7e89b568426daad3c11e7233fac0993c5c85b5
+    Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+=== bm1690e ===
+commit 44b4477699e7487fa762d6b5622cbf3e7dfa3004
+Author: junliang.liu <junliang.liu@sophgo.com>
+Date:   Fri Aug 21 16:06:40 2026 +0800
+
+    [fix][sg2262][tvgen] support TV_GEN_ENABLE_DENORMAL and TV_GEN_ENABLE_SATURATE together
+    
+    Previously the two env vars mapped to the same mutually-exclusive
+    CORNER_LEVEL, so enabling both silently dropped saturate (denormal won),
+    leaving param.saturate=1 paired with NaN/Inf inputs and causing miscompares.
+    
+    Add a dedicated ALL_COVER_SATURATE level that merges both distributions
+    (denormal special values + extra MaxNormal weight for saturate). Only the
+    combined branch is new; single-flag paths keep the exact same rand()
+    sequence, so enabling only one flag reproduces the previous results
+    bit-for-bit.
+    
+    Change-Id: I7d7e89b568426daad3c11e7233fac0993c5c85b5
+    Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
