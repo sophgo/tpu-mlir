@@ -86,6 +86,12 @@ void fattention_prefill(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v,
     for (int _h = 0; _h < kv_head; _h += block_kh) {
       int real_kv_h = min(block_kh, kv_head - _h);
       int real_q_h = real_kv_h * head_rep;
+      // Persistent Q buffer, hoisted outside the _mt loop so a prefetch issued
+      // in the trailing block_k of tile n (which loads tile n+core_num's Q) is
+      // still live when the next _mt iteration consumes it. Reused across _mt
+      // iterations within the same head group; not carried across head groups
+      auto qi_tensor_buf = make_tensor<T>(q_shape, q_shape);
+      bool q_prefetched = false;
       // Each core owns a round-robin subset of M tiles.
       for (int _mt = core_index; _mt < m_tiles; _mt += core_num) {
         int _m = _mt * block_m;
@@ -95,9 +101,12 @@ void fattention_prefill(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v,
         // _h is a kv_head index; the Q global's head axis is q_head, so
         // offset by _h * head_rep.
         dim4 qi_offset = {_m, _h * head_rep, 0, 0};
-        auto qi_tensor = make_tensor<T>(q_shape, qi_real_local_shape);
-        dma::load_transpose_nc(
-            qi_tensor, q_sub_global.sub_view(qi_real_global_shape, qi_offset));
+        auto qi_tensor = qi_tensor_buf.view(qi_real_local_shape);
+        if (!q_prefetched) {
+          dma::load_transpose_nc(
+              qi_tensor, q_sub_global.sub_view(qi_real_global_shape, qi_offset));
+        }
+        q_prefetched = false;
 
         dim4 mi_real_shape = {real_q_h, real_m, 1, 1};
         dim4 li_real_shape = {real_q_h, real_m, 1, 1};
@@ -108,6 +117,12 @@ void fattention_prefill(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v,
         tiu::fill(mi_sub_tensor, neg_inf);
         tiu::zero(li_sub_tensor);
         tiu::zero(acc_sub_tensor);
+        // Persistent K buffer for this M tile, reused across _k iterations. On
+        // every non-last block_k, the next block_k's K is prefetched into this
+        // buffer over the softmax/PV BDC work in the second parallel zone; the
+        // next _k iteration then skips its K load via k_prefetched.
+        auto ki_tensor_buf = make_tensor<T>(kv_shape, kv_shape);
+        bool k_prefetched = false;
         // Causal K boundaries (hoisted out of the inner loop):
         //   [0, K_unmasked_end)        : fully unmasked
         //   [K_unmasked_end, K_end)    : straddling, needs the mask template
@@ -118,7 +133,6 @@ void fattention_prefill(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v,
         int K_unmasked_end = min(kvm, max(0, _m + kv_q_off + 1));
         int K_end = min(kvm, max(0, _m + real_m + kv_q_off));
         for (int _k = 0; _k < K_end; _k += block_m) {
-          ppl::enable_pipeline();
           int real_k = min(block_m, K_end - _k);
           // Block needs the mask iff it crosses the causal diagonal.
           bool block_no_mask = (_k + real_k) <= K_unmasked_end;
@@ -134,11 +148,15 @@ void fattention_prefill(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v,
           int shift_k = D < 0 ? -D : 0;
           dim4 mask_offset = {0, shift_m, 0, shift_k};
 
-          auto ki_tensor = make_tensor<T>(kv_shape, kvi_real_local_shape);
+          auto ki_tensor = ki_tensor_buf.view(kvi_real_local_shape);
           auto vi_tensor = make_tensor<T>(kv_shape, kvi_real_local_shape);
-          dma::load_transpose_nc(
-              ki_tensor,
-              k_sub_global.sub_view(kvi_real_global_shape, kvi_offset));
+          if (!k_prefetched) {
+            dma::load_transpose_nc(
+                ki_tensor,
+                k_sub_global.sub_view(kvi_real_global_shape, kvi_offset));
+          }
+          k_prefetched = false;
+          ppl::parallel_start();
           dma::load_transpose_nc(
               vi_tensor,
               v_sub_global.sub_view(kvi_real_global_shape, kvi_offset));
@@ -165,6 +183,45 @@ void fattention_prefill(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v,
                       true, false);
           }
           tiu::fmul(qk_sub_tensor, qk_sub_tensor, sqrt_d);
+          ppl::parallel_end();
+          ppl::parallel_start();
+          // On the last block_k, Q is no longer read after the QK matmul above,
+          // so prefetch the next Q tile into the shared Q buffer here. On non-last
+          // block_k, K is no longer read after the QK matmul, so prefetch the next
+          // block_k's K into the shared K buffer. Either GDMA overlaps with the
+          // softmax/PV BDC work in this zone; the consuming iteration then skips
+          // its load via the corresponding *_prefetched flag. The next tile this
+          // core owns is _mt + core_num (round-robin stride), NOT _mt + 1.
+          if (_k + block_m >= K_end) {
+            int next_mt = _mt + core_num;
+            if (next_mt < m_tiles) {
+              int next_m = next_mt * block_m;
+              int next_real_m = min(block_m, qm - next_m);
+              dim4 qi_next_local_shape = {real_q_h, next_real_m, 1, d};
+              dim4 qi_next_global_shape = {next_real_m, real_q_h, 1, d};
+              dim4 qi_next_offset = {next_m, _h * head_rep, 0, 0};
+              auto qi_next_view = qi_tensor_buf.view(qi_next_local_shape);
+              dma::load_transpose_nc(
+                  qi_next_view,
+                  q_sub_global.sub_view(qi_next_global_shape, qi_next_offset));
+              q_prefetched = true;
+            }
+          } else {
+            // non-last block_k: prefetch the next block_k's K (K is dead in this
+            // zone after the QK matmul above). K_end is the per-tile causal
+            // boundary, so next_real_k is bounded by it, not by kvm. Consumed by
+            // the next _k iteration.
+            int next_k = _k + block_m;
+            int next_real_k = min(block_m, K_end - next_k);
+            dim4 kvi_next_local_shape = {real_kv_h, next_real_k, 1, d};
+            dim4 kvi_next_global_shape = {next_real_k, real_kv_h, 1, d};
+            dim4 kvi_next_offset = {next_k, _h, 0, 0};
+            auto ki_next_view = ki_tensor_buf.view(kvi_next_local_shape);
+            dma::load_transpose_nc(
+                ki_next_view,
+                k_sub_global.sub_view(kvi_next_global_shape, kvi_next_offset));
+            k_prefetched = true;
+          }
           if (!block_no_mask) {
             tiu::fadd(qk_sub_tensor, qk_sub_tensor, mask_tensor);
           }
@@ -213,6 +270,7 @@ void fattention_prefill(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v,
             tiu::fmm2(pv_tensor_batch, p_tensor_batch, vi_tensor_batch);
           }
           tiu::fadd(acc_sub_tensor, acc_sub_tensor, pv_tensor);
+          ppl::parallel_end();
         }
 
         auto qkvo_tensor_a16 = make_tensor<T>(acc_shape, acc_real_shape);

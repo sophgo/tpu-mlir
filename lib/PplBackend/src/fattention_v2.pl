@@ -74,17 +74,31 @@ void flash_attention_v2(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v, T *ptr_mask,
     dim4 lse_sub_reshape = {qm, q_head, 1, 1};
     auto lse_sub_global =
         lse_global_tensor.sub_view(lse_sub_shape, sub_offset).view(lse_sub_reshape);
+    // Persistent Q buffer, hoisted outside the _h loop so a prefetch issued in
+    // the trailing block_k of head group n's last block_m (which loads head
+    // group n+1's first block_m's Q) is still live when the next _h iteration
+    // consumes it. Reused across _m iterations within a head group too.
+    auto qi_tensor_buf = make_tensor<T>(q_shape, q_shape);
+    bool q_prefetched = false;
     for (int _h = q_head_start; _h < q_head_end; _h += block_qh) {
       int real_q_h = min(block_qh, q_head_end - _h);
       int real_kv_h = real_q_h / head_rep;
+      // On the last block_k, Q is no longer read after the QK matmul, so we
+      // prefetch the next Q tile into qi_tensor_buf over the softmax/PV BDC
+      // work in the second parallel zone: the next block_m (same head group),
+      // or the next head group's first block_m on the last block_m. The
+      // consuming iteration then skips its Q load via q_prefetched.
       for (int _m = 0; _m < qm; _m += block_m) {
         int real_m = min(block_m, qm - _m);
         dim4 qi_real_local_shape = {real_q_h, real_m, 1, d};
         dim4 qi_real_global_shape = {real_m, real_q_h, 1, d};
         dim4 qi_offset = {_m, _h, 0, 0};
-        auto qi_tensor = make_tensor<T>(q_shape, qi_real_local_shape);
-        dma::load_transpose_nc(
-            qi_tensor, q_sub_global.sub_view(qi_real_global_shape, qi_offset));
+        auto qi_tensor = qi_tensor_buf.view(qi_real_local_shape);
+        if (!q_prefetched) {
+          dma::load_transpose_nc(
+              qi_tensor, q_sub_global.sub_view(qi_real_global_shape, qi_offset));
+        }
+        q_prefetched = false;
 
         dim4 mi_real_shape = {real_q_h, real_m, 1, 1};
         dim4 li_real_shape = {real_q_h, real_m, 1, 1};
@@ -95,8 +109,13 @@ void flash_attention_v2(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v, T *ptr_mask,
         tiu::fill(mi_sub_tensor, neg_inf);
         tiu::zero(li_sub_tensor);
         tiu::zero(acc_sub_tensor);
+        // Persistent K buffer for this block_m, reused across _k iterations. On
+        // every non-last block_k, the next block_k's K is prefetched into this
+        // buffer over the softmax/PV BDC work in the second parallel zone; the
+        // next _k iteration then skips its K load via k_prefetched.
+        auto ki_tensor_buf = make_tensor<T>(kv_shape, kv_shape);
+        bool k_prefetched = false;
         for (int _k = 0; _k < kvm; _k += block_k) {
-          ppl::enable_pipeline();
           int real_k = min(block_k, kvm - _k);
           dim4 kvi_real_local_shape = {real_kv_h, real_k, 1, d};
           dim4 kvi_real_global_shape = {real_k, real_kv_h, 1, d};
@@ -105,11 +124,15 @@ void flash_attention_v2(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v, T *ptr_mask,
           dim4 mask_real_shape = {1, real_m, 1, real_k};
           dim4 mask_offset = {_b, _m, 0, _k};
 
-          auto ki_tensor = make_tensor<T>(kv_shape, kvi_real_local_shape);
+          auto ki_tensor = ki_tensor_buf.view(kvi_real_local_shape);
           auto vi_tensor = make_tensor<T>(kv_shape, kvi_real_local_shape);
-          dma::load_transpose_nc(
-              ki_tensor,
-              k_sub_global.sub_view(kvi_real_global_shape, kvi_offset));
+          if (!k_prefetched) {
+            dma::load_transpose_nc(
+                ki_tensor,
+                k_sub_global.sub_view(kvi_real_global_shape, kvi_offset));
+          }
+          k_prefetched = false;
+          ppl::parallel_start();
           dma::load_transpose_nc(
               vi_tensor,
               v_sub_global.sub_view(kvi_real_global_shape, kvi_offset));
@@ -136,6 +159,56 @@ void flash_attention_v2(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v, T *ptr_mask,
                       true, false);
           }
           tiu::fmul(qk_sub_tensor, qk_sub_tensor, sqrt_d);
+          ppl::parallel_end();
+          ppl::parallel_start();
+          // On the last block_k, Q is no longer read after the QK matmul above,
+          // so prefetch the next Q tile into the shared Q buffer here. On non-last
+          // block_k, K is no longer read after the QK matmul, so prefetch the next
+          // block_k's K into the shared K buffer. Either GDMA overlaps with the
+          // softmax/PV BDC work in this zone; the consuming iteration then skips
+          // its load via the corresponding *_prefetched flag.
+          if (_k + block_k >= kvm) {
+            if (_m + block_m < qm) {
+              // next block_m within the same head group
+              int next_m = _m + block_m;
+              int next_real_m = min(block_m, qm - next_m);
+              dim4 qi_next_local_shape = {real_q_h, next_real_m, 1, d};
+              dim4 qi_next_global_shape = {next_real_m, real_q_h, 1, d};
+              dim4 qi_next_offset = {next_m, _h, 0, 0};
+              auto qi_next_view = qi_tensor_buf.view(qi_next_local_shape);
+              dma::load_transpose_nc(
+                  qi_next_view,
+                  q_sub_global.sub_view(qi_next_global_shape, qi_next_offset));
+              q_prefetched = true;
+            } else if (_h + block_qh < q_head_end) {
+              // last block_m of this head group: prefetch the next head
+              // group's first block_m's Q (head group n -> head group n+1).
+              int next_h = _h + block_qh;
+              int next_real_q_h = min(block_qh, q_head_end - next_h);
+              int next_real_m = min(block_m, qm);  // first block_m, full tile
+              dim4 qi_next_local_shape = {next_real_q_h, next_real_m, 1, d};
+              dim4 qi_next_global_shape = {next_real_m, next_real_q_h, 1, d};
+              dim4 qi_next_offset = {0, next_h, 0, 0};
+              auto qi_next_view = qi_tensor_buf.view(qi_next_local_shape);
+              dma::load_transpose_nc(
+                  qi_next_view,
+                  q_sub_global.sub_view(qi_next_global_shape, qi_next_offset));
+              q_prefetched = true;
+            }
+          } else {
+            // non-last block_k: prefetch the next block_k's K (K is dead in this
+            // zone after the QK matmul above). Consumed by the next _k iteration.
+            int next_k = _k + block_k;
+            int next_real_k = min(block_k, kvm - next_k);
+            dim4 kvi_next_local_shape = {real_kv_h, next_real_k, 1, d};
+            dim4 kvi_next_global_shape = {next_real_k, real_kv_h, 1, d};
+            dim4 kvi_next_offset = {next_k, _h / head_rep, 0, 0};
+            auto ki_next_view = ki_tensor_buf.view(kvi_next_local_shape);
+            dma::load_transpose_nc(
+                ki_next_view,
+                k_sub_global.sub_view(kvi_next_global_shape, kvi_next_offset));
+            k_prefetched = true;
+          }
           if (has_mask) {
             // broadcast add (bc dim n)
             auto mask_tensor_fp32 =
@@ -190,6 +263,7 @@ void flash_attention_v2(T *ptr_out, T *ptr_q, T *ptr_k, T *ptr_v, T *ptr_mask,
             tiu::fmm2(pv_tensor_batch, p_tensor_batch, vi_tensor_batch);
           }
           tiu::fadd(acc_sub_tensor, acc_sub_tensor, pv_tensor);
+          ppl::parallel_end();
         }
 
         // lse = mi + log(li). mi/li are fp32 [real_q_h, real_m, 1, 1], computed
