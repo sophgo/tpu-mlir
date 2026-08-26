@@ -1213,7 +1213,13 @@ public:
              qmode == module::Mode::F4F16DYN ||
              qmode == module::Mode::F4BF16DYN ||
              qmode == module::Mode::MXF4F16DYN ||
-             qmode == module::Mode::MXF4BF16DYN) {
+             qmode == module::Mode::MXF4BF16DYN ||
+             qmode == module::Mode::NVF4F16DYN_E4M3 ||
+             qmode == module::Mode::NVF4BF16DYN_E4M3 ||
+             qmode == module::Mode::NVF4F16DYN_UE5M3 ||
+             qmode == module::Mode::NVF4BF16DYN_UE5M3 ||
+             qmode == module::Mode::NVF4F16DYN_FIXONE ||
+             qmode == module::Mode::NVF4BF16DYN_FIXONE) {
       if (op.getWeightBits() == 4 || (group_size > 0 && K % group_size != 0)) {
         return failure();
       }
@@ -1624,6 +1630,15 @@ void ConvertTopToTpu::runOnOperation() {
         else if (op_mode == module::Mode::MXF4F16DYN ||
                  op_mode == module::Mode::MXF4BF16DYN)
           dq_type = "MXF4";
+        else if (op_mode == module::Mode::NVF4F16DYN_E4M3 ||
+                 op_mode == module::Mode::NVF4BF16DYN_E4M3)
+          dq_type = "NVF4";
+        else if (op_mode == module::Mode::NVF4F16DYN_UE5M3 ||
+                 op_mode == module::Mode::NVF4BF16DYN_UE5M3)
+          dq_type = "NVF4_UE5M3";
+        else if (op_mode == module::Mode::NVF4F16DYN_FIXONE ||
+                 op_mode == module::Mode::NVF4BF16DYN_FIXONE)
+          dq_type = "NVF4_FIXONE";
         else {
           if (module::isBF16Modes())
             dq_type = "BF16";
@@ -1631,6 +1646,32 @@ void ConvertTopToTpu::runOnOperation() {
             dq_type = "F16";
         }
         op->setAttr("dq_type", builder.getStringAttr(dq_type));
+        // NVF4 E4M3/UE5M3: derive a per-op tensor-wide global_scale from
+        // calibration min/max and attach it as an op attr. Runtime paths
+        // (host MatMul/A16MatMul, CUDA wrappers) read this attr; when absent
+        // (no --calibration_table supplied), they fall back to the existing
+        // tensorAbsMax scan. NVF4_FIXONE is excluded — its gs ≡ 1.0.
+        if (op_mode == module::Mode::NVF4F16DYN_E4M3 ||
+            op_mode == module::Mode::NVF4BF16DYN_E4M3 ||
+            op_mode == module::Mode::NVF4F16DYN_UE5M3 ||
+            op_mode == module::Mode::NVF4BF16DYN_UE5M3) {
+          float fp8_max = (op_mode == module::Mode::NVF4F16DYN_UE5M3 ||
+                           op_mode == module::Mode::NVF4BF16DYN_UE5M3)
+                              ? 114688.0f
+                              : 448.0f;
+          auto attach_gs = [&](mlir::Value operand, const char *attr_name) {
+            if (!module::isCalibratedType(operand))
+              return;
+            auto qtype = module::getCalibratedType(operand);
+            float amax =
+                std::max(std::fabs(qtype.getMin()), std::fabs(qtype.getMax()));
+            float gs = fp8_max * 6.0f / amax;
+            op->setAttr(attr_name,
+                        builder.getFloatAttr(builder.getF32Type(), gs));
+          };
+          attach_gs(op->getOperand(0), "nvf4_global_scale_left");
+          attach_gs(op->getOperand(1), "nvf4_global_scale_right");
+        }
         int group_size = module::getQuantGroupSize();
         if (LoweringConfig::group_map.find(name) !=
             LoweringConfig::group_map.end()) {

@@ -101,6 +101,30 @@ void py_cuda::cudaMatMulOp(tpu::MatMulOp op) {
   }
   if (module::isDynamicQuantize() && !module::isWeight(op.getRight()) &&
       dynamic_quantize_type != "F16" && dynamic_quantize_type != "BF16") {
+    // NVF4 variants need a tensor-wide global_scale. If TopToTpu lowered with
+    // --calibration_table, read the precomputed gs from the op attr. Otherwise
+    // scan the whole tensor (matches host semantics — batch*batch_low*M*K).
+    // FIXONE keeps gs=1.0 (no amax scan, no attr).
+    float gs_left = 1.0f, gs_right = 1.0f;
+    if (dynamic_quantize_type == "NVF4" ||
+        dynamic_quantize_type == "NVF4_UE5M3") {
+      if (auto gs_left_attr = op->getAttr("nvf4_global_scale_left")) {
+        gs_left = gs_left_attr.cast<FloatAttr>().getValueAsDouble();
+        gs_right = op->getAttr("nvf4_global_scale_right")
+                       .cast<FloatAttr>()
+                       .getValueAsDouble();
+      } else if (dynamic_quantize_type == "NVF4") {
+        float amax_left = cuda::tensorAbsMax((float *)op_input, batch_size * batch_elem_left);
+        float amax_right = cuda::tensorAbsMax((float *)op_right, batch_size * batch_elem_right);
+        gs_left = 448.0f * 6.0f / amax_left;
+        gs_right = 448.0f * 6.0f / amax_right;
+      } else {
+        float amax_left = cuda::tensorAbsMax((float *)op_input, batch_size * batch_elem_left);
+        float amax_right = cuda::tensorAbsMax((float *)op_right, batch_size * batch_elem_right);
+        gs_left = 114688.0f * 6.0f / amax_left;
+        gs_right = 114688.0f * 6.0f / amax_right;
+      }
+    }
     for (size_t b = 0; b < batch_size; b++) {
       auto cur_in = (float *)op_input + b*batch_elem_left;
       auto cur_right = (float *)op_right + b*batch_elem_right;
@@ -119,6 +143,15 @@ void py_cuda::cudaMatMulOp(tpu::MatMulOp op) {
           left_transpose, right_transpose, out_transpose, q_group_size);
       } else if (dynamic_quantize_type == "MXF4") {
         cuda::mmMXF4DynamicQuantize(cur_in, cur_right, cur_out, p.M, p.K, p.N,
+          left_transpose, right_transpose, out_transpose, q_group_size);
+      } else if (dynamic_quantize_type == "NVF4") {
+        cuda::mmNVF4E4M3DynamicQuantize(cur_in, cur_right, cur_out, p.M, p.K, p.N,
+          left_transpose, right_transpose, out_transpose, q_group_size, gs_left, gs_right);
+      } else if (dynamic_quantize_type == "NVF4_UE5M3") {
+        cuda::mmNVF4UE5M3DynamicQuantize(cur_in, cur_right, cur_out, p.M, p.K, p.N,
+          left_transpose, right_transpose, out_transpose, q_group_size, gs_left, gs_right);
+      } else if (dynamic_quantize_type == "NVF4_FIXONE") {
+        cuda::mmNVF4FixoneDynamicQuantize(cur_in, cur_right, cur_out, p.M, p.K, p.N,
           left_transpose, right_transpose, out_transpose, q_group_size);
       }
     }

@@ -426,5 +426,55 @@ __device__ float f32_to_f4e2m1(float val, float step) {
   return copysignf(nearest, val);
 }
 
+// FP8 UE5M3 (unsigned, 5-bit exponent bias=15, 3-bit mantissa, no sign bit).
+// Max finite value = (1 + 6/8) * 2^(31-15-1) = 1.75 * 2^16 = 114688.
+__device__ uint8_t f32_to_f8ue5m3(float src) {
+  if (src <= 0.0f || isnan(src))
+    return 0;
+
+  int exp;
+  float mant = frexpf(src, &exp);  // src = mant * 2^exp, mant in [0.5, 1.0)
+  int biased_exp = exp + 14;
+
+  if (biased_exp >= 31) {
+    return 0xFE;  // saturate to max (e5=31, m3=6)
+  }
+
+  if (biased_exp <= 0) {
+    // Subnormal or zero (x < 2^-14)
+    int m3 = (int)roundf(src * 8.0f / ldexpf(1.0f, -14));
+    if (m3 <= 0)
+      return 0;
+    if (m3 > 7)
+      m3 = 7;
+    return (uint8_t)m3;  // e5=0
+  }
+
+  int m3 = (int)roundf((mant - 0.5f) * 16.0f);
+  if (m3 >= 8) {
+    m3 = 0;
+    biased_exp++;
+    if (biased_exp >= 31)
+      return 0xFE;
+  }
+  if (m3 < 0)
+    m3 = 0;
+
+  return (uint8_t)((biased_exp << 3) | m3);
+}
+
+__device__ float f8ue5m3_to_f32(uint8_t src) {
+  int e = (src >> 3) & 0x1F;
+  int m = src & 0x07;
+
+  if (e == 0 && m == 0)
+    return 0.0f;
+  if (e == 31 && m == 7)
+    return __int_as_float(0x7FC00000);  // NaN
+  if (e == 0)
+    return (m / 8.0f) * ldexpf(1.0f, -14);  // subnormal
+  return (1.0f + m / 8.0f) * ldexpf(1.0f, e - 15);  // normal
+}
+
 } // namespace cuda
 } // namespace tpu_mlir

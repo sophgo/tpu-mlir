@@ -994,6 +994,16 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
         auto q_group_size =
             rewriter.getNamedAttr("q_group_size", op.getQGroupSizeAttr());
         attrs.push_back(q_group_size);
+        // Carry over calibration-derived global_scale attrs (set on
+        // top::MatMulOp in TopToTpuPass) so A16MatMul host/CUDA runtime
+        // paths can read them. Without this copy the attrs are dropped
+        // because this attrs vector is built fresh, not from op->getAttrs().
+        for (const char *attr_name :
+             {"nvf4_global_scale_left", "nvf4_global_scale_right"}) {
+          if (auto attr = op->getAttr(attr_name)) {
+            attrs.push_back(rewriter.getNamedAttr(attr_name, attr));
+          }
+        }
 
         bool right_transpose = op.getRightTranspose();
         if (right_transpose) {
@@ -1067,6 +1077,16 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
         auto q_group_size =
             rewriter.getNamedAttr("q_group_size", op.getQGroupSizeAttr());
         attrs.push_back(q_group_size);
+        // Carry over calibration-derived global_scale attrs (set on
+        // top::MatMulOp in TopToTpuPass) so A16MatMul host/CUDA runtime
+        // paths can read them. Without this copy the attrs are dropped
+        // because this attrs vector is built fresh, not from op->getAttrs().
+        for (const char *attr_name :
+             {"nvf4_global_scale_left", "nvf4_global_scale_right"}) {
+          if (auto attr = op->getAttr(attr_name)) {
+            attrs.push_back(rewriter.getNamedAttr(attr_name, attr));
+          }
+        }
 
         bool right_transpose = op.getRightTranspose();
         if (right_transpose) {

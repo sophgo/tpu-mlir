@@ -41,4 +41,14 @@ float F8E5M2(float src, double step, bool satu);
 void F8E4M3(const float *p_src, float *p_dst, int num, float step, bool satu);
 void F8E5M2(const float *p_src, float *p_dst, int num, float step, bool satu);
 
+/*
+  Unsigned FP8 UE5M3 (5-bit exponent, 3-bit mantissa, no sign bit)
+  Max value: 114688.0, Bias: 15
+*/
+float get_f8ue5m3_max();
+uint8_t f32_to_f8ue5m3(float src);
+float f8ue5m3_to_f32(uint8_t src);
+float F8UE5M3(float src, double step, bool satu);
+void F8UE5M3(const float *p_src, float *p_dst, int num, float step, bool satu);
+
 } // namespace tpu_mlir

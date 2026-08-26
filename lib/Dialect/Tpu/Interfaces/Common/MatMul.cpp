@@ -458,6 +458,12 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
     } else if (dynamic_quantize_type == "F4" ||
                dynamic_quantize_type == "MXF4") {
       imax = get_f4e2m1_max();
+    } else if (dynamic_quantize_type == "NVF4") {
+      imax = get_f4e2m1_max();
+    } else if (dynamic_quantize_type == "NVF4_UE5M3") {
+      imax = get_f4e2m1_max();
+    } else if (dynamic_quantize_type == "NVF4_FIXONE") {
+      imax = get_f4e2m1_max();
     } else {
       return failure();
     }
@@ -466,6 +472,41 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
     if (q_group_size <= 0 || q_group_size > a.K)
       q_group_size = a.K;
     int group_num = (a.K + q_group_size - 1) / q_group_size;
+    float global_scale_left = 1.0f;
+    float global_scale_right = 1.0f;
+    // Calibration-injected global_scale wins over runtime scan. No attr =
+    // no --calibration_table supplied, fall back to tensorAbsMax scan.
+    if (auto gs_left_attr = getOperation()->getAttr("nvf4_global_scale_left")) {
+      global_scale_left = gs_left_attr.cast<FloatAttr>().getValueAsDouble();
+      global_scale_right = getOperation()
+                               ->getAttr("nvf4_global_scale_right")
+                               .cast<FloatAttr>()
+                               .getValueAsDouble();
+    } else if (dynamic_quantize_type == "NVF4") {
+      float tensor_amax_left = 1e-8;
+      float tensor_amax_right = 1e-8;
+      int total_left = a.batch * a.batch_low * a.M * a.K;
+      int total_right = a.batch * a.batch_low * a.K * a.N;
+      for (int i = 0; i < total_left; i++)
+        tensor_amax_left = std::max(tensor_amax_left, std::abs(p.inputs[0][i]));
+      for (int i = 0; i < total_right; i++)
+        tensor_amax_right =
+            std::max(tensor_amax_right, std::abs(p.inputs[1][i]));
+      global_scale_left = compute_nvf4_global_scale(tensor_amax_left);
+      global_scale_right = compute_nvf4_global_scale(tensor_amax_right);
+    } else if (dynamic_quantize_type == "NVF4_UE5M3") {
+      float tensor_amax_left = 1e-8;
+      float tensor_amax_right = 1e-8;
+      int total_left = a.batch * a.batch_low * a.M * a.K;
+      int total_right = a.batch * a.batch_low * a.K * a.N;
+      for (int i = 0; i < total_left; i++)
+        tensor_amax_left = std::max(tensor_amax_left, std::abs(p.inputs[0][i]));
+      for (int i = 0; i < total_right; i++)
+        tensor_amax_right =
+            std::max(tensor_amax_right, std::abs(p.inputs[1][i]));
+      global_scale_left = compute_nvf4_ue5m3_global_scale(tensor_amax_left);
+      global_scale_right = compute_nvf4_ue5m3_global_scale(tensor_amax_right);
+    }
     float *tmp_output = new float[a.batch * a.batch_low * a.M * a.N];
     float *cur_group_left =
         new float[a.batch * a.batch_low * a.M * q_group_size];
@@ -539,6 +580,24 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
                 cur_group_left_max[b * a.M + row] = pot_scale * imax;
                 cur_group_left[b * a.M * q_group_size + row * q_group_size +
                                col] = F4E2M1(p.inputs[0][act_idx], pot_scale);
+              } else if (dynamic_quantize_type == "NVF4") {
+                cur_group_left[b * a.M * q_group_size + row * q_group_size +
+                               col] =
+                    NVF4_E4M3(p.inputs[0][act_idx],
+                              cur_group_left_max[b * a.M + row],
+                              global_scale_left);
+              } else if (dynamic_quantize_type == "NVF4_UE5M3") {
+                cur_group_left[b * a.M * q_group_size + row * q_group_size +
+                               col] =
+                    NVF4_UE5M3(p.inputs[0][act_idx],
+                               cur_group_left_max[b * a.M + row],
+                               global_scale_left);
+              } else if (dynamic_quantize_type == "NVF4_FIXONE") {
+                cur_group_left[b * a.M * q_group_size + row * q_group_size +
+                               col] =
+                    NVF4_UE5M3(p.inputs[0][act_idx],
+                               cur_group_left_max[b * a.M + row],
+                               global_scale_left);
               }
             } else {
               cur_group_left[b * a.M * q_group_size + row * q_group_size +
@@ -581,6 +640,21 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
                 cur_group_right_max[b * a.N + row] = pot_scale * imax;
                 cur_group_right[b * a.N * q_group_size + col * a.N + row] =
                     F4E2M1(p.inputs[1][right_act_idx], pot_scale);
+              } else if (dynamic_quantize_type == "NVF4") {
+                cur_group_right[b * a.N * q_group_size + col * a.N + row] =
+                    NVF4_E4M3(p.inputs[1][right_act_idx],
+                              cur_group_right_max[b * a.N + row],
+                              global_scale_right);
+              } else if (dynamic_quantize_type == "NVF4_UE5M3") {
+                cur_group_right[b * a.N * q_group_size + col * a.N + row] =
+                    NVF4_UE5M3(p.inputs[1][right_act_idx],
+                               cur_group_right_max[b * a.N + row],
+                               global_scale_right);
+              } else if (dynamic_quantize_type == "NVF4_FIXONE") {
+                cur_group_right[b * a.N * q_group_size + col * a.N + row] =
+                    NVF4_UE5M3(p.inputs[1][right_act_idx],
+                               cur_group_right_max[b * a.N + row],
+                               global_scale_right);
               }
             } else {
               cur_group_right[b * a.N * q_group_size + col * a.N + row] = 0;
@@ -592,14 +666,68 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
                     a.batch, a.batch_low, a.M, q_group_size, a.N, false, -1.0,
                     0, 0, false, false, false, false);
       matmul->run();
-      // accumulate result
-      for (int b = 0; b < a.batch * a.batch_low; b++) {
-        for (int row = 0; row < a.M; row++) {
-          for (int col = 0; col < a.N; col++) {
-            p.outputs[0][b * a.M * a.N + row * a.N + col] +=
-                tmp_output[b * a.M * a.N + row * a.N + col] *
-                (cur_group_left_max[b * a.M + row] / imax) *
-                (cur_group_right_max[b * a.N + col] / imax);
+      // For NVF4:
+      // - NVF4_E4M3 returns f4 ≈ src * output_scale on both sides
+      // - Dequant per side: 1/output_scale = gs/fp8_scale
+      // - Accumulation: output += tmp * (1/os_left) * (1/os_right)
+      if (dynamic_quantize_type == "NVF4") {
+        for (int b = 0; b < a.batch * a.batch_low; b++) {
+          for (int row = 0; row < a.M; row++) {
+            float left_os = compute_nvf4_output_scale(
+                cur_group_left_max[b * a.M + row], global_scale_left);
+            float left_dequant = left_os != 0.0f ? 1.0f / left_os : 0.0f;
+            for (int col = 0; col < a.N; col++) {
+              float right_os = compute_nvf4_output_scale(
+                  cur_group_right_max[b * a.N + col], global_scale_right);
+              float right_dequant = right_os != 0.0f ? 1.0f / right_os : 0.0f;
+              p.outputs[0][b * a.M * a.N + row * a.N + col] +=
+                  tmp_output[b * a.M * a.N + row * a.N + col] * left_dequant *
+                  right_dequant;
+            }
+          }
+        }
+      } else if (dynamic_quantize_type == "NVF4_UE5M3") {
+        for (int b = 0; b < a.batch * a.batch_low; b++) {
+          for (int row = 0; row < a.M; row++) {
+            float left_os = compute_nvf4_ue5m3_output_scale(
+                cur_group_left_max[b * a.M + row], global_scale_left);
+            float left_dequant = left_os != 0.0f ? 1.0f / left_os : 0.0f;
+            for (int col = 0; col < a.N; col++) {
+              float right_os = compute_nvf4_ue5m3_output_scale(
+                  cur_group_right_max[b * a.N + col], global_scale_right);
+              float right_dequant = right_os != 0.0f ? 1.0f / right_os : 0.0f;
+              p.outputs[0][b * a.M * a.N + row * a.N + col] +=
+                  tmp_output[b * a.M * a.N + row * a.N + col] * left_dequant *
+                  right_dequant;
+            }
+          }
+        }
+      } else if (dynamic_quantize_type == "NVF4_FIXONE") {
+        for (int b = 0; b < a.batch * a.batch_low; b++) {
+          for (int row = 0; row < a.M; row++) {
+            float left_os = compute_nvf4_ue5m3_output_scale(
+                cur_group_left_max[b * a.M + row], global_scale_left);
+            float left_dequant = left_os != 0.0f ? 1.0f / left_os : 0.0f;
+            for (int col = 0; col < a.N; col++) {
+              float right_os = compute_nvf4_ue5m3_output_scale(
+                  cur_group_right_max[b * a.N + col], global_scale_right);
+              float right_dequant = right_os != 0.0f ? 1.0f / right_os : 0.0f;
+              p.outputs[0][b * a.M * a.N + row * a.N + col] +=
+                  tmp_output[b * a.M * a.N + row * a.N + col] * left_dequant *
+                  right_dequant;
+            }
+          }
+        }
+      } else {
+        // accumulate result
+        for (int b = 0; b < a.batch * a.batch_low; b++) {
+          for (int row = 0; row < a.M; row++) {
+            for (int col = 0; col < a.N; col++) {
+              p.outputs[0][b * a.M * a.N + row * a.N + col] +=
+                  tmp_output[b * a.M * a.N + row * a.N + col] *
+                  (cur_group_left_max[b * a.M + row] / imax) *
+                  (cur_group_right_max[b * a.N + col] / imax);
+            }
           }
         }
       }

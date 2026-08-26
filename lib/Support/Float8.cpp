@@ -1,6 +1,7 @@
 #include "limits.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include <cmath>
 
 namespace tpu_mlir {
 
@@ -275,6 +276,76 @@ void F8E5M2(const float *p_src, float *p_dst, int num, float step, bool satu) {
 #pragma omp parallel for schedule(static, omp_schedule(num))
   for (int i = 0; i < num; i++) {
     p_dst[i] = F8E5M2(p_src[i], step, satu);
+  }
+}
+
+// =============================================================================
+// Unsigned FP8 UE5M3: 5-bit exponent (bias=15), 3-bit mantissa, no sign bit
+// Max value: 114688.0 = (1 + 6/8) * 2^16
+// =============================================================================
+
+float get_f8ue5m3_max() { return 114688.0f; }
+
+uint8_t f32_to_f8ue5m3(float src) {
+  if (src <= 0.0f || std::isnan(src))
+    return 0;
+
+  int exp;
+  float mant = frexpf(src, &exp); // src = mant * 2^exp, mant in [0.5, 1.0)
+  int biased_exp = exp + 14;
+
+  if (biased_exp >= 31) {
+    // Overflow: saturate to max encodable (e5=31, m3=6) = 0xFE
+    return 0xFE;
+  }
+
+  if (biased_exp <= 0) {
+    // Subnormal or zero (x < 2^-14)
+    int m3 = (int)roundf(src * 8.0f / ldexpf(1.0f, -14));
+    if (m3 <= 0)
+      return 0;
+    if (m3 > 7)
+      m3 = 7;
+    return (uint8_t)m3; // e5=0
+  }
+
+  // Normal: mant in [0.5, 1.0), m3 = round((mant - 0.5) * 16) -> [0, 7]
+  int m3 = (int)roundf((mant - 0.5f) * 16.0f);
+  if (m3 >= 8) {
+    // Mantissa overflow, carry into exponent
+    m3 = 0;
+    biased_exp++;
+    if (biased_exp >= 31)
+      return 0xFE;
+  }
+  if (m3 < 0)
+    m3 = 0;
+
+  return (uint8_t)((biased_exp << 3) | m3);
+}
+
+float f8ue5m3_to_f32(uint8_t src) {
+  int e = (src >> 3) & 0x1F;
+  int m = src & 0x07;
+
+  if (e == 0 && m == 0)
+    return 0.0f;
+  if (e == 31 && m == 7)
+    return std::nanf("");
+  if (e == 0)
+    return (m / 8.0f) * ldexpf(1.0f, -14);         // subnormal
+  return (1.0f + m / 8.0f) * ldexpf(1.0f, e - 15); // normal
+}
+
+float F8UE5M3(float src, double step, bool satu) {
+  (void)satu;
+  return f8ue5m3_to_f32(f32_to_f8ue5m3(src / step));
+}
+
+void F8UE5M3(const float *p_src, float *p_dst, int num, float step, bool satu) {
+#pragma omp parallel for schedule(static, omp_schedule(num))
+  for (int i = 0; i < num; i++) {
+    p_dst[i] = F8UE5M3(p_src[i], step, satu);
   }
 }
 

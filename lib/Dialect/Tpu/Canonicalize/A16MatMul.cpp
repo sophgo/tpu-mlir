@@ -90,6 +90,24 @@ void computePerGroupParam(
   // float f8e5m2_max = get_f8e5m2_max();
   float f4e2m1_max = get_f4e2m1_max();
   auto is_dynamic_quant = module::isDynamicQuantize();
+  // Precompute NVF4 global scale once (tensor_amax is the same for all groups)
+  float nvf4_global_scale = 1.0f;
+  if (is_dynamic_quant && dq_type == "NVF4") {
+    float tensor_amax = 1e-8;
+    for (int j = 0; j < row * col; j++)
+      tensor_amax = std::max(tensor_amax, std::abs(weight_data->data()[j]));
+    nvf4_global_scale = compute_nvf4_global_scale(tensor_amax);
+  }
+  float nvf4_ue5m3_global_scale = 1.0f;
+  if (is_dynamic_quant && dq_type == "NVF4_UE5M3") {
+    float tensor_amax = 1e-8;
+    for (int j = 0; j < row * col; j++)
+      tensor_amax = std::max(tensor_amax, std::abs(weight_data->data()[j]));
+    nvf4_ue5m3_global_scale = compute_nvf4_ue5m3_global_scale(tensor_amax);
+  }
+  // NVF4_FIXONE: identical to NVF4_UE5M3 but global_scale is fixed to 1.0
+  // (matches auto-round fp4_v2, where no tensor-wide amax is applied).
+  float nvf4_fixone_global_scale = 1.0f;
   for (int i = 0; i < num_groups; i++) {
     float *p_weight = weight_data->data() + i * q_group_size;
     findMinMax(p_weight, q_group_size, &min_val, &max_val);
@@ -108,6 +126,26 @@ void computePerGroupParam(
       float pot_scale = std::pow(2, std::ceil(log2_abs_max));
       assert(pot_scale != 0);
       scale->at(i) = pot_scale;
+      zp->at(i) = 0.0;
+    } else if (is_dynamic_quant && dq_type == "NVF4") {
+      float scale_raw = nvf4_global_scale * std::abs(abs_max) / f4e2m1_max;
+      scale_raw = std::clamp(scale_raw, -get_f8e4m3_max(), get_f8e4m3_max());
+      // Store the true dequantization scale: fp8_block_scale / global_scale
+      float fp8_scale = f8e4m3_to_f32(f32_to_f8e4m3(scale_raw, true));
+      scale->at(i) = fp8_scale / nvf4_global_scale;
+      zp->at(i) = 0.0;
+    } else if (is_dynamic_quant && dq_type == "NVF4_UE5M3") {
+      float scale_raw =
+          nvf4_ue5m3_global_scale * std::abs(abs_max) / f4e2m1_max;
+      scale_raw = std::clamp(scale_raw, 0.0f, get_f8ue5m3_max());
+      float fp8_scale = f8ue5m3_to_f32(f32_to_f8ue5m3(scale_raw));
+      scale->at(i) = fp8_scale / nvf4_ue5m3_global_scale;
+      zp->at(i) = 0.0;
+    } else if (is_dynamic_quant && dq_type == "NVF4_FIXONE") {
+      float scale_raw = std::abs(abs_max) / f4e2m1_max;
+      scale_raw = std::clamp(scale_raw, 0.0f, get_f8ue5m3_max());
+      float fp8_scale = f8ue5m3_to_f32(f32_to_f8ue5m3(scale_raw));
+      scale->at(i) = fp8_scale / nvf4_fixone_global_scale;
       zp->at(i) = 0.0;
     } else if (q_symmetric) {
       scale->at(i) = 2 * std::abs(abs_max) / max_int;
@@ -202,7 +240,8 @@ void weightQuantization(int bitwidth, bool sign, int row, int col,
         }
       } else {
         int real_weight_idx = i / 2;
-        if (dq_type == "F4" || dq_type == "MXF4") {
+        if (dq_type == "F4" || dq_type == "MXF4" || dq_type == "NVF4" ||
+            dq_type == "NVF4_UE5M3" || dq_type == "NVF4_FIXONE") {
           if (i % 2) {
             uint_weight_data->at(real_weight_idx) |= f32_to_f4e2m1(tmp_value)
                                                      << 4;

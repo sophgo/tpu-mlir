@@ -322,6 +322,9 @@ protected:
     case module::Mode::F8E4M3F16DYN:
     case module::Mode::F4F16DYN:
     case module::Mode::MXF4F16DYN:
+    case module::Mode::NVF4F16DYN_E4M3:
+    case module::Mode::NVF4F16DYN_UE5M3:
+    case module::Mode::NVF4F16DYN_FIXONE:
       LoweringF16(rewriter, opTy);
       break;
     case module::Mode::BF16:
@@ -332,6 +335,9 @@ protected:
     case module::Mode::F8E4M3BF16DYN:
     case module::Mode::F4BF16DYN:
     case module::Mode::MXF4BF16DYN:
+    case module::Mode::NVF4BF16DYN_E4M3:
+    case module::Mode::NVF4BF16DYN_UE5M3:
+    case module::Mode::NVF4BF16DYN_FIXONE:
       LoweringBF16(rewriter, opTy);
       break;
     case module::Mode::F8:

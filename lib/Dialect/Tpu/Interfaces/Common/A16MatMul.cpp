@@ -58,13 +58,22 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
     //   imax = get_f8e5m2_max();
     else if (dynamic_quantize_type == "F4" || dynamic_quantize_type == "MXF4")
       imax = get_f4e2m1_max();
+    else if (dynamic_quantize_type == "NVF4")
+      imax = get_f4e2m1_max();
+    else if (dynamic_quantize_type == "NVF4_UE5M3")
+      imax = get_f4e2m1_max();
+    else if (dynamic_quantize_type == "NVF4_FIXONE")
+      imax = get_f4e2m1_max();
     else
       return failure();
     if (getWeightBits() == 4) {
       for (int i = 0; i < K * N; i++) {
         int quant_idx = i / q_group_size;
         auto zp_i = zp[quant_idx];
-        if (dynamic_quantize_type == "F4" || dynamic_quantize_type == "MXF4") {
+        if (dynamic_quantize_type == "F4" || dynamic_quantize_type == "MXF4" ||
+            dynamic_quantize_type == "NVF4" ||
+            dynamic_quantize_type == "NVF4_UE5M3" ||
+            dynamic_quantize_type == "NVF4_FIXONE") {
           new_weight[i] = f4e2m1_to_f32((uint8_t(weight[i / 2]) & 0x0F)) - zp_i;
           i++;
           new_weight[i] = f4e2m1_to_f32((uint8_t(weight[i / 2]) >> 4)) - zp_i;
@@ -98,6 +107,22 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
     float *cur_group_act_max = new float[M];
     int group_num = (K + q_group_size - 1) / q_group_size;
     memset(p.outputs[0], 0, M * N * sizeof(float));
+    float global_scale_act = 1.0f;
+    // Calibration-injected activation global_scale wins over runtime scan.
+    // Weight side is baked at canonicalize time and unchanged here.
+    if (auto gs_act_attr = getOperation()->getAttr("nvf4_global_scale_left")) {
+      global_scale_act = gs_act_attr.cast<FloatAttr>().getValueAsDouble();
+    } else if (dynamic_quantize_type == "NVF4") {
+      float tensor_amax_act = 1e-8;
+      for (int i = 0; i < M * K; i++)
+        tensor_amax_act = std::max(tensor_amax_act, std::abs(p.inputs[0][i]));
+      global_scale_act = compute_nvf4_global_scale(tensor_amax_act);
+    } else if (dynamic_quantize_type == "NVF4_UE5M3") {
+      float tensor_amax_act = 1e-8;
+      for (int i = 0; i < M * K; i++)
+        tensor_amax_act = std::max(tensor_amax_act, std::abs(p.inputs[0][i]));
+      global_scale_act = compute_nvf4_ue5m3_global_scale(tensor_amax_act);
+    }
     for (int gi = 0; gi < group_num; gi++) {
       for (int row = 0; row < M; row++) {
         cur_group_act_max[row] = 1e-8;
@@ -134,6 +159,18 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
               cur_group_act_max[row] = pot_scale * imax;
               cur_group_act[row * q_group_size + col] =
                   F4E2M1(p.inputs[0][act_idx], pot_scale);
+            } else if (dynamic_quantize_type == "NVF4") {
+              cur_group_act[row * q_group_size + col] =
+                  NVF4_E4M3(p.inputs[0][act_idx], cur_group_act_max[row],
+                            global_scale_act);
+            } else if (dynamic_quantize_type == "NVF4_UE5M3") {
+              cur_group_act[row * q_group_size + col] =
+                  NVF4_UE5M3(p.inputs[0][act_idx], cur_group_act_max[row],
+                             global_scale_act);
+            } else if (dynamic_quantize_type == "NVF4_FIXONE") {
+              cur_group_act[row * q_group_size + col] =
+                  NVF4_UE5M3(p.inputs[0][act_idx], cur_group_act_max[row],
+                             global_scale_act);
             }
           } else {
             cur_group_act[row * q_group_size + col] = 0;
@@ -154,12 +191,54 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
                     M, q_group_size, N, false, -1.0, 0, 0, w_transpose, false,
                     false, false);
       matmul->run();
-      // accumulate result
-      for (int row = 0; row < M; row++) {
-        for (int col = 0; col < N; col++) {
-          p.outputs[0][row * N + col] += tmp_output[row * N + col] *
-                                         (cur_group_act_max[row] / imax) *
-                                         scale[col * group_num + gi];
+      // For NVF4:
+      // - NVF4_E4M3 returns f4_act ≈ src * output_scale_act
+      // - act_dequant = 1/output_scale_act = gs/fp8_as (to recover src from
+      // f4_act)
+      // - S_w = scale[col,gi] = fp8_ws/gs (weight dequant factor from
+      // canonicalize)
+      // - Product: act_dequant * S_w = (gs/fp8_as)*(fp8_ws/gs) = fp8_ws/fp8_as
+      // ✓
+      if (dynamic_quantize_type == "NVF4") {
+        for (int row = 0; row < M; row++) {
+          float output_scale = compute_nvf4_output_scale(cur_group_act_max[row],
+                                                         global_scale_act);
+          float act_dequant = output_scale != 0.0f ? 1.0f / output_scale : 0.0f;
+          for (int col = 0; col < N; col++) {
+            p.outputs[0][row * N + col] += tmp_output[row * N + col] *
+                                           act_dequant *
+                                           scale[col * group_num + gi];
+          }
+        }
+      } else if (dynamic_quantize_type == "NVF4_UE5M3") {
+        for (int row = 0; row < M; row++) {
+          float output_scale = compute_nvf4_ue5m3_output_scale(
+              cur_group_act_max[row], global_scale_act);
+          float act_dequant = output_scale != 0.0f ? 1.0f / output_scale : 0.0f;
+          for (int col = 0; col < N; col++) {
+            p.outputs[0][row * N + col] += tmp_output[row * N + col] *
+                                           act_dequant *
+                                           scale[col * group_num + gi];
+          }
+        }
+      } else if (dynamic_quantize_type == "NVF4_FIXONE") {
+        for (int row = 0; row < M; row++) {
+          float output_scale = compute_nvf4_ue5m3_output_scale(
+              cur_group_act_max[row], global_scale_act);
+          float act_dequant = output_scale != 0.0f ? 1.0f / output_scale : 0.0f;
+          for (int col = 0; col < N; col++) {
+            p.outputs[0][row * N + col] += tmp_output[row * N + col] *
+                                           act_dequant *
+                                           scale[col * group_num + gi];
+          }
+        }
+      } else {
+        for (int row = 0; row < M; row++) {
+          for (int col = 0; col < N; col++) {
+            p.outputs[0][row * N + col] += tmp_output[row * N + col] *
+                                           (cur_group_act_max[row] / imax) *
+                                           scale[col * group_num + gi];
+          }
         }
       }
     }

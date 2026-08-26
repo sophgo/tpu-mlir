@@ -50,6 +50,27 @@ void py_cuda::cudaA16MatMulOp(tpu::A16MatMulOp op) {
     } else if (dynamic_quantize_type == "MXF4") {
       cuda::mmMXF4DynamicQuantize(input_f32.get(), weight, output_f32.get(),
         scale.get(), zp.get(), M, K, N, q_group_size);
+    } else if (dynamic_quantize_type == "NVF4") {
+      // Calibration-supplied gs_act (op attr) wins; passing 0.0f triggers
+      // the runtime tensorAbsMax fallback inside the wrapper.
+      float gs_act = 0.0f;
+      if (auto attr = op->getAttr("nvf4_global_scale_left")) {
+        gs_act = attr.cast<FloatAttr>().getValueAsDouble();
+      }
+      cuda::mmNVF4E4M3DynamicQuantize(input_f32.get(), weight, output_f32.get(),
+        scale.get(), zp.get(), M, K, N, q_group_size, gs_act);
+    } else if (dynamic_quantize_type == "NVF4_UE5M3") {
+      // Calibration-supplied gs_act (op attr) wins; passing 0.0f triggers
+      // the runtime tensorAbsMax fallback inside the wrapper.
+      float gs_act = 0.0f;
+      if (auto attr = op->getAttr("nvf4_global_scale_left")) {
+        gs_act = attr.cast<FloatAttr>().getValueAsDouble();
+      }
+      cuda::mmNVF4UE5M3DynamicQuantize(input_f32.get(), weight, output_f32.get(),
+        scale.get(), zp.get(), M, K, N, q_group_size, gs_act);
+    } else if (dynamic_quantize_type == "NVF4_FIXONE") {
+      cuda::mmNVF4FixoneDynamicQuantize(input_f32.get(), weight, output_f32.get(),
+        scale.get(), zp.get(), M, K, N, q_group_size);
     } else {
       UNREACHABLE_OP("unsupported dynamic quantize type", op);
     }

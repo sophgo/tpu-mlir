@@ -964,6 +964,149 @@ void mmMXF4DynamicQuantize(void *input, void *weight, void *output, void *scale,
   cudaFree(input_max_values);
 }
 
+// Compute tensor-wide absmax of `input` (n floats) → returned as host float.
+// Single-block direct-float reduction (no atomics, no int-ordering tricks).
+// Block size 1024 + grid-stride loop handles up to ~1M elements efficiently;
+// for larger tensors the cost stays negligible vs the matmul that follows.
+float tensorAbsMax(float *input, int n) {
+  float *gpu_out;
+  cudaMalloc(&gpu_out, sizeof(float));
+  int block_size = 1024;
+  g_tensorAbsMax<<<1, block_size, block_size * sizeof(float)>>>(input, gpu_out, n);
+  float result;
+  cudaMemcpy(&result, gpu_out, sizeof(float), cudaMemcpyDeviceToHost);
+  cudaFree(gpu_out);
+  return result;
+}
+
+// NVF4 dynamic quantize. Quantizes activation with NVF4 two-level scaling
+// (global_scale * block_amax / F4_MAX, round-tripped through FP8 of the given
+// kind) and multiplies by pre-quantized F4 weight using the canonicalize
+// scale factor w_scale = fp8_w / global_scale. fp8_kind = 0 → E4M3,
+// fp8_kind = 1 → UE5M3.
+static void mmNVF4DynamicQuantizeImpl(void *input, void *weight, void *output,
+                                      void *scale, void *zp, int m, int k,
+                                      int n, int q_group_size, int fp8_kind,
+                                      float global_scale) {
+  int block_size = CUDA_BLOCK_SIZE;
+  int num_groups = (k + q_group_size - 1) / q_group_size;
+  float *input_max_values;
+  cudaMalloc(&input_max_values, m * num_groups * sizeof(float));
+  int num_blocks = CUDA_NUM_BLOCKS(m * num_groups);
+  g_groupAbsMax<<<num_blocks, block_size>>>((float *)input, input_max_values, m, k, q_group_size, false);
+  num_blocks = CUDA_NUM_BLOCKS(m * n);
+  if (fp8_kind == 0) {
+    g_mmNVF4DynamicQuantizeW<0><<<num_blocks, block_size>>>(
+      (float *)input, (uint8_t *)weight, (float *)output, input_max_values,
+      (float *)scale, (float *)zp, m, k, n, q_group_size, global_scale);
+  } else {
+    g_mmNVF4DynamicQuantizeW<1><<<num_blocks, block_size>>>(
+      (float *)input, (uint8_t *)weight, (float *)output, input_max_values,
+      (float *)scale, (float *)zp, m, k, n, q_group_size, global_scale);
+  }
+  cudaFree(input_max_values);
+}
+
+void mmNVF4E4M3DynamicQuantize(void *input, void *weight, void *output,
+                               void *scale, void *zp, int m, int k, int n,
+                               int q_group_size, float gs_act) {
+  // Caller-supplied gs_act (from calibration_table) wins; otherwise fall
+  // back to runtime tensorAbsMax scan (no --calibration_table supplied).
+  float global_scale = gs_act;
+  if (gs_act <= 0.0f) {
+    float tensor_amax = tensorAbsMax((float *)input, m * k);
+    global_scale = 448.0f * 6.0f / tensor_amax;
+  }
+  mmNVF4DynamicQuantizeImpl(input, weight, output, scale, zp, m, k, n,
+                            q_group_size, 0, global_scale);
+}
+
+void mmNVF4UE5M3DynamicQuantize(void *input, void *weight, void *output,
+                                void *scale, void *zp, int m, int k, int n,
+                                int q_group_size, float gs_act) {
+  // Caller-supplied gs_act (from calibration_table) wins; otherwise fall
+  // back to runtime tensorAbsMax scan (no --calibration_table supplied).
+  float global_scale = gs_act;
+  if (gs_act <= 0.0f) {
+    float tensor_amax = tensorAbsMax((float *)input, m * k);
+    global_scale = 114688.0f * 6.0f / tensor_amax;
+  }
+  mmNVF4DynamicQuantizeImpl(input, weight, output, scale, zp, m, k, n,
+                            q_group_size, 1, global_scale);
+}
+
+void mmNVF4FixoneDynamicQuantize(void *input, void *weight, void *output,
+                                    void *scale, void *zp, int m, int k, int n,
+                                    int q_group_size) {
+  // Identical to UE5M3 except global_scale is fixed at 1.0 (matches
+  // auto-round fp4_v2, no tensor-wide amax rescale).
+  mmNVF4DynamicQuantizeImpl(input, weight, output, scale, zp, m, k, n,
+                            q_group_size, 1, 1.0f);
+}
+
+// Two-F32-input overload for tpu::MatMulOp. Both operands are quantized
+// on-the-fly; each side gets its own tensor-wide global_scale.
+static void mmNVF4DynamicQuantizeImpl(void *input, void *right, void *output,
+                                       int m, int k, int n, bool left_transpose,
+                                       bool right_transpose, bool output_transpose,
+                                       int q_group_size, int fp8_kind,
+                                       float global_scale_left,
+                                       float global_scale_right) {
+  int block_size = CUDA_BLOCK_SIZE;
+  int num_groups = (k + q_group_size - 1) / q_group_size;
+  float *input_max_values, *right_max_values;
+  cudaMalloc(&input_max_values, m * num_groups * sizeof(float));
+  cudaMalloc(&right_max_values, n * num_groups * sizeof(float));
+  int num_blocks = CUDA_NUM_BLOCKS(m * num_groups);
+  g_groupAbsMax<<<num_blocks, block_size>>>((float *)input, input_max_values, m, k, q_group_size, left_transpose);
+  num_blocks = CUDA_NUM_BLOCKS(n * num_groups);
+  g_groupAbsMax<<<num_blocks, block_size>>>((float *)right, right_max_values, n, k, q_group_size, !right_transpose);
+  num_blocks = CUDA_NUM_BLOCKS(m * n);
+  if (fp8_kind == 0) {
+    g_mmNVF4DynamicQuantizeAA<0><<<num_blocks, block_size>>>(
+      (float *)input, (float *)right, (float *)output, input_max_values,
+      right_max_values, m, k, n, left_transpose, right_transpose,
+      output_transpose, q_group_size, global_scale_left, global_scale_right);
+  } else {
+    g_mmNVF4DynamicQuantizeAA<1><<<num_blocks, block_size>>>(
+      (float *)input, (float *)right, (float *)output, input_max_values,
+      right_max_values, m, k, n, left_transpose, right_transpose,
+      output_transpose, q_group_size, global_scale_left, global_scale_right);
+  }
+  cudaFree(input_max_values);
+  cudaFree(right_max_values);
+}
+
+void mmNVF4E4M3DynamicQuantize(void *input, void *right, void *output, int m, int k, int n,
+                                 bool left_transpose, bool right_transpose,
+                                 bool output_transpose, int q_group_size,
+                                 float gs_left, float gs_right) {
+  // gs_left/gs_right are pre-computed by the caller over the whole tensor
+  // (matching host semantics, which scans batch*batch_low*M*K elements).
+  mmNVF4DynamicQuantizeImpl(input, right, output, m, k, n, left_transpose,
+                             right_transpose, output_transpose, q_group_size,
+                             0, gs_left, gs_right);
+}
+
+void mmNVF4UE5M3DynamicQuantize(void *input, void *right, void *output, int m, int k, int n,
+                                  bool left_transpose, bool right_transpose,
+                                  bool output_transpose, int q_group_size,
+                                  float gs_left, float gs_right) {
+  // gs_left/gs_right are pre-computed by the caller over the whole tensor.
+  mmNVF4DynamicQuantizeImpl(input, right, output, m, k, n, left_transpose,
+                             right_transpose, output_transpose, q_group_size,
+                             1, gs_left, gs_right);
+}
+
+void mmNVF4FixoneDynamicQuantize(void *input, void *right, void *output, int m, int k, int n,
+                                     bool left_transpose, bool right_transpose,
+                                     bool output_transpose, int q_group_size) {
+  // global_scale fixed to 1.0 on both sides (matches auto-round fp4_v2).
+  mmNVF4DynamicQuantizeImpl(input, right, output, m, k, n, left_transpose,
+                             right_transpose, output_transpose, q_group_size,
+                             1, 1.0f, 1.0f);
+}
+
 void dequantA16MMWeight(void *input, void *output, void *scale, void *zp,
   int num, int group_size, int bits) {
   int block_size = CUDA_BLOCK_SIZE;

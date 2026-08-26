@@ -153,7 +153,7 @@ class DeployTool:
         self.cuda = args.cuda
         self.ip = getattr(args, "ip", "")
         self.pwd = getattr(args, "pwd", "")
-        self.q_group_size = args.q_group_size if (self.quantize.endswith('dyn') or self.quantize
+        self.q_group_size = args.q_group_size if ('dyn' in self.quantize or self.quantize
                                                   in ["w4f16", "w4bf16", "w8f16", "w8bf16"]) else 0
         self.q_symmetric = args.q_symmetric
         if self.quantize in ("int8", "int4", 'w4int8'):
@@ -618,7 +618,10 @@ if __name__ == '__main__':
                                  'W4F16', 'W4BF16', 'W4INT8', "F8E4M3", "F8E5M2", 'QDQ',
                                  "INT8F16DYN", "INT8BF16DYN", "INT4F16DYN", "INT4BF16DYN",
                                  "F8E4M3F16DYN", "F8E4M3BF16DYN", "F4F16DYN", "F4BF16DYN",
-                                 "MXF4F16DYN", "MXF4BF16DYN"],
+                                 "MXF4F16DYN", "MXF4BF16DYN",
+                                 "NVF4F16DYN_E4M3", "NVF4BF16DYN_E4M3",
+                                 "NVF4F16DYN_UE5M3", "NVF4BF16DYN_UE5M3",
+                                 "NVF4F16DYN_FIXONE", "NVF4BF16DYN_FIXONE"],
                         help="set default qauntization type")
     parser.add_argument("--model", required=True, help='output model')
     # ========== Quantization Options ==============
@@ -791,7 +794,7 @@ if __name__ == '__main__':
     if args.quant_output_bf16:
         if args.quantize in [
                 "BF16", "INT8BF16DYN", "INT4BF16DYN", "F8E4M3BF16DYN", "F4BF16DYN", "MXF4F16DYN",
-                "MXF4BF16DYN"
+                "MXF4BF16DYN", "NVF4BF16DYN_E4M3"
         ]:
             RuntimeError("quantize is BF16, please use --quant_output instead")
         if args.quant_output:

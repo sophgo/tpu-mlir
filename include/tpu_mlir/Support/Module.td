@@ -83,6 +83,12 @@ def Module_Mode: I32EnumAttr<"Mode", "module mode",[
       I32EnumAttrCase<"F4BF16DYN", 23>,
       I32EnumAttrCase<"MXF4F16DYN", 24>,
       I32EnumAttrCase<"MXF4BF16DYN", 25>,
+      I32EnumAttrCase<"NVF4F16DYN_E4M3", 26>,
+      I32EnumAttrCase<"NVF4BF16DYN_E4M3", 27>,
+      I32EnumAttrCase<"NVF4F16DYN_UE5M3", 28>,
+      I32EnumAttrCase<"NVF4BF16DYN_UE5M3", 29>,
+      I32EnumAttrCase<"NVF4F16DYN_FIXONE", 30>,
+      I32EnumAttrCase<"NVF4BF16DYN_FIXONE", 31>,
     ]> {
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::module";

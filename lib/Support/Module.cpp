@@ -1254,7 +1254,8 @@ bool isBF16Modes() {
   return mode == Mode::BF16 || mode == Mode::W8BF16 || mode == Mode::W4BF16 ||
          mode == Mode::INT8BF16DYN || mode == Mode::INT4BF16DYN ||
          mode == Mode::F8E4M3BF16DYN || mode == Mode::F4BF16DYN ||
-         mode == Mode::MXF4BF16DYN;
+         mode == Mode::MXF4BF16DYN || mode == Mode::NVF4BF16DYN_E4M3 ||
+         mode == Mode::NVF4BF16DYN_UE5M3 || mode == Mode::NVF4BF16DYN_FIXONE;
 }
 
 bool isF16Modes() {
@@ -1263,7 +1264,8 @@ bool isF16Modes() {
   return mode == Mode::F16 || mode == Mode::W8F16 || mode == Mode::W4F16 ||
          mode == Mode::INT8F16DYN || mode == Mode::INT4F16DYN ||
          mode == Mode::F8E4M3F16DYN || mode == Mode::F4F16DYN ||
-         mode == Mode::MXF4F16DYN;
+         mode == Mode::MXF4F16DYN || mode == Mode::NVF4F16DYN_E4M3 ||
+         mode == Mode::NVF4F16DYN_UE5M3 || mode == Mode::NVF4F16DYN_FIXONE;
 }
 
 bool isF8Modes() {
@@ -1339,7 +1341,7 @@ bool isDynamicQuantize() {
   if (m->hasAttrOfType<StringAttr>(Attr::MODE)) {
     auto mode = m->getAttrOfType<StringAttr>(Attr::MODE).getValue();
     auto imode = symbolizeMode(mode);
-    return (imode >= Mode::INT8F16DYN && imode <= Mode::MXF4BF16DYN);
+    return (imode >= Mode::INT8F16DYN && imode <= Mode::NVF4BF16DYN_FIXONE);
   }
   return false;
 }

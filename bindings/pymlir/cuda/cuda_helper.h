@@ -255,6 +255,29 @@ void mmMXF4DynamicQuantize(void *input, void *right, void *output, int m, int k,
                            int q_group_size = 32);
 void mmMXF4DynamicQuantize(void *input, void *weight, void *output, void *scale, void *zp,
                             int m, int k, int n, int q_group_size = 32);
+void mmNVF4E4M3DynamicQuantize(void *input, void *weight, void *output, void *scale, void *zp,
+                               int m, int k, int n, int q_group_size = 32,
+                               float gs_act = 0.0f);
+void mmNVF4UE5M3DynamicQuantize(void *input, void *weight, void *output, void *scale, void *zp,
+                                int m, int k, int n, int q_group_size = 32,
+                                float gs_act = 0.0f);
+void mmNVF4FixoneDynamicQuantize(void *input, void *weight, void *output, void *scale, void *zp,
+                                    int m, int k, int n, int q_group_size = 32);
+// Two-F32-input overload for tpu::MatMulOp (both operands quantized on-the-fly).
+// gs_left/gs_right are pre-computed global scales (caller scans whole tensor);
+// matching host semantics avoids per-batch vs whole-tensor amax divergence.
+float tensorAbsMax(float *input, int n);
+void mmNVF4E4M3DynamicQuantize(void *input, void *right, void *output, int m, int k, int n,
+                               bool left_transpose, bool right_transpose,
+                               bool output_transpose, int q_group_size,
+                               float gs_left, float gs_right);
+void mmNVF4UE5M3DynamicQuantize(void *input, void *right, void *output, int m, int k, int n,
+                                bool left_transpose, bool right_transpose,
+                                bool output_transpose, int q_group_size,
+                                float gs_left, float gs_right);
+void mmNVF4FixoneDynamicQuantize(void *input, void *right, void *output, int m, int k, int n,
+                                    bool left_transpose = false, bool right_transpose = false,
+                                    bool output_transpose = false, int q_group_size = 32);
 void dequantA16MMWeight(void *input, void *output, void *scale, void *zp, int num, int group_size, int bits);
 void requantInt8Perchannel(void *input, void *output, void *multipliers,
                            void *shifts, int n, int c, int h, int w,

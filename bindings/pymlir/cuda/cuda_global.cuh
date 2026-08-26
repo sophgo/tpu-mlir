@@ -1481,6 +1481,167 @@ __global__ void g_groupAbsMax(float *input, float *output, int m, int n, int gro
   output[idx] = max_val;
 }
 
+// Tensor-wide absmax reduction → single float, written by block 0 only.
+// Single block avoids atomics entirely (no int atomicMax / IEEE 754 ordering
+// trick); the grid-stride loop reads each input once so cost stays negligible
+// vs the matmul that follows.
+__global__ void g_tensorAbsMax(float *input, float *output, int n) {
+  extern __shared__ float sdata[];
+  int tid = threadIdx.x;
+  float v = 0.0f;
+  for (int i = tid; i < n; i += blockDim.x) {
+    v = fmaxf(v, fabsf(input[i]));
+  }
+  sdata[tid] = v;
+  __syncthreads();
+  for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+    if (tid < s) sdata[tid] = fmaxf(sdata[tid], sdata[tid + s]);
+    __syncthreads();
+  }
+  if (tid == 0) *output = sdata[0];
+}
+
+// NVF4 dynamic quantize kernel. Weight is pre-quantized F4E2M1 packed into
+// uint8_t; weight_scale stores fp8_scale_w / global_scale (the dequant factor
+// produced by canonicalize). Activations are quantized on-the-fly using NVF4
+// two-level scaling with the given global_scale. The fp8_kind selector picks
+// the FP8 encoding for the per-group block scale:
+//   0 = E4M3 (NVF4 / NVF4F16DYN_E4M3 / NVF4BF16DYN_E4M3)
+//   1 = UE5M3 (NVF4_UE5M3 / NVF4_FIXONE; FIXONE passes gs=1.0f)
+template <int fp8_kind>
+__global__ void g_mmNVF4DynamicQuantizeW(float *input, uint8_t *weight, float *output,
+  float *input_max_values, float *weight_scale, float *weight_zp, int m, int k,
+  int n, int group_size, float global_scale) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_m = idx / n;
+  int idx_n = idx % n;
+  if (idx_m >= m || idx_n >= n) return;
+
+  const float F4_MAX = 6.0f;
+  const float F8_E4M3_MAX = 448.0f;
+  const float F8_UE5M3_MAX = 114688.0f;
+  int num_groups = (k + group_size - 1) / group_size;
+  float sum = 0.0f;
+  for (int g = 0; g < num_groups; g++) {
+    int k_start = g * group_size;
+    int k_end = min(k_start + group_size, k);
+
+    float max_A = input_max_values[idx_m * num_groups + g];
+    float w_scale = weight_scale[idx_n * num_groups + g];
+
+    // Per-group output_scale = global_scale / fp8_scale, where fp8_scale is
+    // the round-tripped scale_raw = global_scale * block_amax / F4_MAX.
+    float scale_raw = global_scale * max_A / F4_MAX;
+    float fp8_scale;
+    if (fp8_kind == 0) {
+      scale_raw = fminf(fmaxf(scale_raw, -F8_E4M3_MAX), F8_E4M3_MAX);
+      fp8_scale = f8_to_fp32(fp32_to_fp8(scale_raw, false, true), 1.0f, false);
+    } else {
+      scale_raw = fminf(fmaxf(scale_raw, 0.0f), F8_UE5M3_MAX);
+      fp8_scale = f8ue5m3_to_f32(f32_to_f8ue5m3(scale_raw));
+    }
+    float output_scale = (fp8_scale == 0.0f) ? 1.0f : global_scale / fp8_scale;
+    float act_dequant = 1.0f / output_scale;  // fp8_scale / global_scale
+
+    float group_dot = 0.0f;
+    for (int k_idx = k_start; k_idx < k_end; k_idx++) {
+      float a_val = input[idx_m * k + k_idx];
+      float scaled = fminf(fmaxf(a_val * output_scale, -F4_MAX), F4_MAX);
+      float a_f4 = f32_to_f4e2m1(scaled, 1.0f);
+
+      int byte_idx = idx_n * ((k + 1) >> 1) + (k_idx >> 1);
+      uint8_t packed = weight[byte_idx];
+      uint8_t nibble = (k_idx & 1) ? (packed >> 4) : (packed & 0x0F);
+      int sign = nibble >> 3;
+      int exp  = (nibble >> 1) & 0x3;
+      int mant = nibble & 0x1;
+      float w_val = (exp == 0) ? (mant ? 0.5f : 0.0f)
+                               : (1.0f + mant * 0.5f) * (float)(1 << (exp - 1));
+      float w_f4 = sign ? -w_val : w_val;
+
+      group_dot += a_f4 * w_f4;
+    }
+    // Product: (a_f4 * w_f4) * act_dequant * w_scale
+    //   a_f4 ≈ src * output_scale = src * gs / fp8_as
+    //   act_dequant = fp8_as / gs            ⇒ a_f4 * act_dequant ≈ src
+    //   w_f4 (raw F4 grid) * w_scale (fp8_ws/gs) ≈ original weight
+    //   ⇒ sum ≈ Σ (src * weight)
+    sum += group_dot * act_dequant * w_scale;
+  }
+
+  output[idx_m * n + idx_n] = sum;
+}
+
+// Two-F32-input NVF4 dynamic quantize kernel for tpu::MatMulOp (both operands
+// are F32 and quantized on-the-fly). Mirrors g_mmNVF4DynamicQuantizeW but
+// uses NVF4 two-level scaling: each side gets its own global_scale and
+// per-block fp8_scale round-trip. fp8_kind = 0 → E4M3, 1 → UE5M3.
+template <int fp8_kind>
+__global__ void g_mmNVF4DynamicQuantizeAA(float *input, float *right, float *output,
+    float *input_max_values, float *right_max_values, int m, int k, int n,
+    bool left_transpose, bool right_transpose, bool output_transpose,
+    int q_group_size, float global_scale_left, float global_scale_right) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx_m = idx / n;
+  int idx_n = idx % n;
+  if (idx_m >= m || idx_n >= n) return;
+
+  const float F4_MAX = 6.0f;
+  const float F8_E4M3_MAX = 448.0f;
+  const float F8_UE5M3_MAX = 114688.0f;
+  int num_groups = (k + q_group_size - 1) / q_group_size;
+  float sum = 0.0f;
+  for (int g = 0; g < num_groups; g++) {
+    int k_start = g * q_group_size;
+    int k_end = min(k_start + q_group_size, k);
+
+    float max_A = input_max_values[idx_m * num_groups + g];
+    float max_B = right_max_values[idx_n * num_groups + g];
+
+    // Left per-block fp8 scale round-trip and derived output_scale / dequant.
+    float scale_raw_A = global_scale_left * max_A / F4_MAX;
+    float fp8_as;
+    if (fp8_kind == 0) {
+      scale_raw_A = fminf(fmaxf(scale_raw_A, -F8_E4M3_MAX), F8_E4M3_MAX);
+      fp8_as = f8_to_fp32(fp32_to_fp8(scale_raw_A, false, true), 1.0f, false);
+    } else {
+      scale_raw_A = fminf(fmaxf(scale_raw_A, 0.0f), F8_UE5M3_MAX);
+      fp8_as = f8ue5m3_to_f32(f32_to_f8ue5m3(scale_raw_A));
+    }
+    float os_left = (fp8_as == 0.0f) ? 1.0f : (global_scale_left / fp8_as);
+    float dequant_left = 1.0f / os_left;  // fp8_as / gs_left (or 1.0 if zero)
+
+    // Right per-block fp8 scale round-trip.
+    float scale_raw_B = global_scale_right * max_B / F4_MAX;
+    float fp8_bs;
+    if (fp8_kind == 0) {
+      scale_raw_B = fminf(fmaxf(scale_raw_B, -F8_E4M3_MAX), F8_E4M3_MAX);
+      fp8_bs = f8_to_fp32(fp32_to_fp8(scale_raw_B, false, true), 1.0f, false);
+    } else {
+      scale_raw_B = fminf(fmaxf(scale_raw_B, 0.0f), F8_UE5M3_MAX);
+      fp8_bs = f8ue5m3_to_f32(f32_to_f8ue5m3(scale_raw_B));
+    }
+    float os_right = (fp8_bs == 0.0f) ? 1.0f : (global_scale_right / fp8_bs);
+    float dequant_right = 1.0f / os_right;  // fp8_bs / gs_right (or 1.0 if zero)
+
+    float group_dot = 0.0f;
+    for (int i = k_start; i < k_end; i++) {
+      float a_val = left_transpose ? input[i * m + idx_m] : input[idx_m * k + i];
+      float b_val = right_transpose ? right[idx_n * k + i] : right[i * n + idx_n];
+      float a_scaled = fminf(fmaxf(a_val * os_left, -F4_MAX), F4_MAX);
+      float b_scaled = fminf(fmaxf(b_val * os_right, -F4_MAX), F4_MAX);
+      group_dot += f32_to_f4e2m1(a_scaled, 1.0f) *
+                   f32_to_f4e2m1(b_scaled, 1.0f);
+    }
+    // a_f4 ≈ a * gs_left / fp8_as; b_f4 ≈ b * gs_right / fp8_bs
+    // tmp * (fp8_as/gs_left) * (fp8_bs/gs_right) ≈ Σ a * b
+    sum += group_dot * dequant_left * dequant_right;
+  }
+
+  int c_idx = output_transpose ? idx_n * m + idx_m : idx_m * n + idx_n;
+  output[c_idx] = sum;
+}
+
 __global__ void g_dequantA16MMWeight(int8_t *input, float *output, float *scale,
   float *zp, int num, int group_size, int bits) {
   int group_num = (num + group_size - 1) / group_size;
