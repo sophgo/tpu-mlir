@@ -1,0 +1,84 @@
+name: 🐞 Bug report
+description: Report a problem with TPU-MLIR
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report!
+        Please search [existing issues](https://github.com/sophgo/tpu-mlir/issues) first to avoid duplicates.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Provide the exact commands you ran. A minimal model that reproduces the issue is hugely helpful.
+      placeholder: |
+        1. `model_transform.py ...`
+        2. `model_deploy.py ...`
+        3. See error: ...
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error logs / stack trace
+      render: shell
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: TPU-MLIR version
+      description: Output of `pip show tpu_mlir`, or the commit SHA if you built from source.
+      placeholder: e.g. tpu_mlir 1.x.y, or commit abc1234
+    validations:
+      required: true
+
+  - type: dropdown
+    id: chip
+    attributes:
+      label: Target chip
+      options:
+        - bm1684x
+        - bm1688
+        - bm1684
+        - cv186ah
+        - cv18xx
+        - other / N/A
+    validations:
+      required: true
+
+  - type: input
+    id: framework
+    attributes:
+      label: Source framework / model
+      placeholder: e.g. ONNX yolov5s, PyTorch resnet18, HuggingFace Qwen3.5
+    validations:
+      required: false
+
+  - type: input
+    id: env
+    attributes:
+      label: OS / Docker image
+      placeholder: e.g. sophgo/tpuc_dev:latest, Ubuntu 22.04
+    validations:
+      required: false
