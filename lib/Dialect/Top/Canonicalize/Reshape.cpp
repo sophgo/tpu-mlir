@@ -522,7 +522,7 @@ struct Reshape4Depth2SpacePattern : public OpRewriterPatternEx<ReshapeOp> {
     // check input and the previous permute op
     auto in = op.getInput();
     // permute: input shape like 1,28,2,28,2,96 and order [0,1,3,4,2,5]
-    auto permute_op = dyn_cast<PermuteOp>(in.getDefiningOp());
+    auto permute_op = dyn_cast_or_null<PermuteOp>(in.getDefiningOp());
     if (!permute_op) {
       return failure();
     }
@@ -610,6 +610,46 @@ struct Reshape4Depth2SpacePattern : public OpRewriterPatternEx<ReshapeOp> {
     }
     // if the input is [1,56,56,96]
     else if (input_shape_pre.size() == output_shape.size()) {
+      // A rank-3 input/output may flatten the two spatial dimensions. Restore
+      // the explicit [N, H*block_h, W*block_w, C] layout before Depth2Space.
+      // Applying Depth2Space directly to [N, H*W, C] would interpret N as H
+      // because this op uses the right-aligned (non-NCHW) layout.
+      bool flattened_spatial_shape =
+          input_shape_pre.size() == 3 && output_shape.size() == 3 &&
+          input_shape_pre[0] == new_out_shape_pre_reshape[0] &&
+          input_shape_pre[1] == new_out_shape_pre_reshape[1] *
+                                    new_out_shape_pre_reshape[2] &&
+          input_shape_pre[2] == new_out_shape_pre_reshape[3] &&
+          output_shape[0] == new_out_shape_pre_reshape[0] &&
+          output_shape[1] == output_shape_pre[1] * output_shape_pre[3];
+      if (flattened_spatial_shape) {
+        module::setShape(pre_reshape_op->getResult(0),
+                         new_out_shape_pre_reshape);
+        pre_reshape_op.setShapeAttr(
+            rewriter.getI64ArrayAttr(new_out_shape_pre_reshape));
+
+        std::vector<int64_t> d2s_output_shape = {
+            new_out_shape_pre_reshape[0], output_shape_pre[1],
+            output_shape_pre[3], output_shape[2]};
+        auto d2s_output_type =
+            module::getTypeLike(pre_reshape_op.getOutput(), d2s_output_shape);
+        rewriter.setInsertionPoint(op);
+        auto d2s_op = rewriter.create<Depth2SpaceOp>(
+            permute_op.getLoc(), d2s_output_type,
+            ValueRange{pre_reshape_op.getOutput()}, attrs);
+        op.setOperand(0, d2s_op.getOutput());
+        rewriter.eraseOp(permute_op);
+        return success();
+      }
+
+      auto rank = input_shape_pre.size();
+      if (rank < 3 ||
+          !std::equal(input_shape_pre.begin(), input_shape_pre.end() - 3,
+                      output_shape.begin()) ||
+          input_shape_pre[rank - 3] != output_shape[rank - 3] * block_h ||
+          input_shape_pre[rank - 2] != output_shape[rank - 2] * block_w) {
+        return failure();
+      }
       rewriter.replaceOpWithNewOp<Depth2SpaceOp>(
           op, depth2space_output_type, ValueRange{pre_reshape_op.getInput()},
           attrs);
