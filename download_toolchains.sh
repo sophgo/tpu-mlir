@@ -24,7 +24,7 @@ function usage() {
 DFSS_INSTALLED=0
 function ensure_dfss() {
   if [ "${DFSS_INSTALLED}" -eq 0 ]; then
-    pip3 install -U dfss
+    pip3 install -U dfss==1.10.5
     DFSS_INSTALLED=1
   fi
 }
