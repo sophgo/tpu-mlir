@@ -583,9 +583,17 @@ struct MatMulWithSlice : public OpRewriterPatternEx<MatMulOp> {
           return failure();
         }
         auto s_shape = module::getShape(slice_op.getOutput());
-        if (shape[0] != s_shape[0] || shape[1] != s_shape[1] ||
+        if (shape.size() < 3 || shape.size() != s_shape.size() ||
+            shape[0] != s_shape[0] || shape[1] != s_shape[1] ||
             s_shape[s_shape.size() - 1] < 128) {
           return failure();
+        }
+        // The rewrite only slices the output-channel (last) dimension.
+        // Every preceding dimension must therefore remain unchanged.
+        for (size_t i = 0; i + 1 < shape.size(); ++i) {
+          if (shape[i] != s_shape[i]) {
+            return failure();
+          }
         }
         auto offset = module::getI64Array(slice_op.getOffsetAttr());
         if (offset->at(0) != 0 || offset->at(1) != 0) {
