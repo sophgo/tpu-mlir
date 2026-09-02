@@ -232,7 +232,8 @@ CHATGLM3_INFO = ModelInfo(
     ModelConfig(intermediate_size="ffn_hidden_size",
                 rms_norm_eps="layernorm_epsilon",
                 num_key_value_heads="multi_query_group_num",
-                num_hidden_layers="num_layers"),
+                num_hidden_layers="num_layers",
+                vocab_size="padded_vocab_size"),
     weights={
         LlmList.LAYERS: "transformer.encoder.layers",
         LlmList.EMBEDING: "transformer.embedding.word_embeddings",

@@ -266,7 +266,7 @@ class Chatglm3Converter(LlmConverter):
                 scale_data = self.model.read(scale_path)
                 zp_data = self.model.read(zp_path)
                 unpacked_weights, pack_int8_weights, unpacked_zeros = self.unpack_weights(
-                    qweigth_data, zp_data, self.quant_bits, self.quant_mode)
+                    qweigth_data, zp_data, self.quant_bits, self.quant_mode, qweight_path)
                 weight_dict[qweight_path] = np.ascontiguousarray(
                     np.transpose(pack_int8_weights, (1, 0)))
                 weight_dict[scale_path] = np.ascontiguousarray(np.transpose(scale_data, (1, 0)))

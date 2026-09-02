@@ -537,7 +537,7 @@ class GLM4VConverter(LlmConverter):
                 scale_data = self.model.read(scale_path)
                 zp_data = self.model.read(zp_path)
                 _, pack_int8_weights, unpacked_zeros = self.unpack_weights(
-                    qweight_data, zp_data, self.quant_bits, self.quant_mode)
+                    qweight_data, zp_data, self.quant_bits, self.quant_mode, qweight_path)
 
                 last_dim_size = pack_int8_weights.shape[-1]
                 pack_int8_weights = np.ascontiguousarray(np.transpose(pack_int8_weights, (1, 0)))
@@ -858,7 +858,7 @@ class GLM4VConverter(LlmConverter):
                 scale_data = self.model.read(scale_path)
                 zp_data = self.model.read(zp_path)
                 _, pack_int8_weights, unpacked_zeros = self.unpack_weights(
-                    qweight_data, zp_data, self.quant_bits, self.quant_mode)
+                    qweight_data, zp_data, self.quant_bits, self.quant_mode, qweight_path)
 
                 last_dim_size = pack_int8_weights.shape[-1]
                 pack_int8_weights = np.ascontiguousarray(np.transpose(pack_int8_weights, (1, 0)))

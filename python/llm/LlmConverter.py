@@ -506,7 +506,7 @@ class LlmConverter(BaseConverter):
         Kz, Nz = qzeros.shape
         unpacked_zeros = np.zeros((Kz, Nz * compress_ratio), dtype=np.uint8)
         unpack_mlp_weights = False
-        if self.use_mlp:
+        if self.fused_mlp:
             if self.model_info.weights[LlmList.MLP_GATE] in path or self.model_info.weights[
                     LlmList.MLP_UP] in path or self.model_info.weights[LlmList.MLP_DOWN] in path:
                 unpack_mlp_weights = True
