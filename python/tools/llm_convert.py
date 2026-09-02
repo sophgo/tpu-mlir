@@ -61,6 +61,10 @@ LLM_CONVERTERS = [
     (("qwen3_vl", ), "llm.Qwen3VLConverter", "Qwen3VLConverter", {
         "pixel_multiple": 32
     }),
+    (("mage_vl", ), "llm.MageVLConverter", "MageVLConverter", {
+        "default_max_shape": (448, 448),
+        "pixel_multiple": 32,
+    }),
     (("qwen3_5", "qwen3_5_moe"), "llm.Qwen3_5Converter", "Qwen3_5Converter", {
         "force_dynamic": True,
         "pixel_multiple": 32

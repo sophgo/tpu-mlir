@@ -66,6 +66,7 @@ from .MiniCPMV4_6Converter import MiniCPMV4_6Converter
 from .Qwen2VLConverter import Qwen2VLConverter
 from .Qwen2_5VLConverter import Qwen2_5VLConverter
 from .Qwen3VLConverter import Qwen3VLConverter
+from .MageVLConverter import MageVLConverter
 from .Qwen2_5OConverter import Qwen2_5OConverter
 from .LocateAnythingConverter import LocateAnythingConverter
 from .FalconPerceptionConverter import FalconPerceptionConverter
@@ -95,6 +96,7 @@ __all__ = [
     'Qwen2VLConverter',
     'Qwen2_5VLConverter',
     'Qwen3VLConverter',
+    'MageVLConverter',
     'Qwen2_5OConverter',
     'LocateAnythingConverter',
     'FalconPerceptionConverter',
