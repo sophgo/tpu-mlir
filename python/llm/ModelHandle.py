@@ -91,6 +91,16 @@ class SafetensorsModelHandle(ModelHandle):
         if conv.quantization_config is None:
             if conv.quantize == "auto":
                 raise RuntimeError("No quantization config found, please set quantize type")
+            if conv.quantize.startswith(("w4", "w8")):
+                logger.warning(
+                    "Compiler-side PTQ is not recommended (model '%s', "
+                    "dtype=%s, -q %s): accuracy is not guaranteed. Use a "
+                    "pre-quantized checkpoint (GPTQ / AWQ / AutoRound / GGUF "
+                    "int4/int8) instead.",
+                    conv.model_path,
+                    dtype,
+                    conv.quantize,
+                )
             real_quantize = conv.get_qtype(dtype, 16)
             if real_quantize is None:
                 real_quantize = conv.quantize

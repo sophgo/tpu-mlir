@@ -19,8 +19,8 @@ def reorder(shape, order):
 
 class LFM2VLConverter(LlmConverter):
 
-    def __init__(self, args, config):
-        super().__init__(args, config)
+    def __init__(self, args, config, loader=None):
+        super().__init__(args, config, loader)
         self.max_shape = args.max_shape
         self.do_vit = True
         # vision config

@@ -2178,6 +2178,13 @@ void ConvertTopToTpu::cast_process() {
 }
 
 void ConvertTopToTpu::set_add_before_softmax_fp32() {
+  // Only relevant for INT8 quantized mode. In float modes (BF16/F16) this
+  // legacy CV-model heuristic would force an Add to F32/F16 and clash with
+  // the overall BF16 mode, producing mixed-dtype codegen errors on LLMs.
+  if (module::getMode() != module::Mode::INT8 &&
+      module::getMode() != module::Mode::UINT8 &&
+      module::getMode() != module::Mode::W4INT8)
+    return;
   mainFunc_.walk([&](Operation *op) {
     if (auto addop = dyn_cast<top::AddOp>(op)) {
       if (isa<top::InputOp>(addop)) {

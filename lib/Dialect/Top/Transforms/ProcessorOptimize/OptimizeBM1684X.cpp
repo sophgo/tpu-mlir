@@ -1889,7 +1889,7 @@ protected:
     // sort the slices ops by offset
     std::packaged_task<std::vector<Operation *>(std::vector<Operation *> &)>
         sortOps([&](std::vector<Operation *> &ops) {
-          int32_t index;
+          int32_t index = 0;
           std::vector<Operation *> sorted;
           auto first_offset =
               module::getI64Array(cast<top::SliceOp>(ops[0]).getOffset());

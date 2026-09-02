@@ -32,8 +32,8 @@ class SinusoidsPositionEmbedding(nn.Module):
 
 class Qwen3AsrConverter(LlmConverter):
 
-    def __init__(self, args, config):
-        super().__init__(args, config)
+    def __init__(self, args, config, loader=None):
+        super().__init__(args, config, loader)
         self.all_gen_mlirs.append(self.gen_audio_tower)
         self.all_compiles.append(self.compile_audio_tower)
 
