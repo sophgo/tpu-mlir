@@ -458,8 +458,8 @@ static bool group_type_check(LgInfo &lg_info) {
       auto Lshape = module::getShape(ins[0]);
       int left_num_dims = Lshape.size();
       int right_num_dims = module::getShape(ins[1]).size();
-      if (((left_num_dims == 4 && Lshape[1] < Lshape[2]) ||
-           (left_num_dims == 5 && Lshape[1] < Lshape[3])) &&
+      if (((left_num_dims == 4 && Lshape[1] <= Lshape[2]) ||
+           (left_num_dims == 5 && Lshape[1] <= Lshape[3])) &&
           right_num_dims == 2) {
         if (group_type != GROUP_SMALL_C) {
           return false;
