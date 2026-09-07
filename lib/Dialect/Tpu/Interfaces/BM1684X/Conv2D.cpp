@@ -272,14 +272,23 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   int use_3ic = (use_3ic_optimize & 0x3);
   int dw_out_size = 0;
   int kernel_len = 0;
+  // The firmware derives the depthwise output from the actually loaded input
+  // slice (which contains hw margins), so it can be larger than the conv
+  // output slice.
+  int64_t dw_oh = (use_3ic_optimize & 0x1)
+                      ? (in_hslice + p.pht + p.phb - kh_ext) / p.sh + 1
+                      : in_hslice;
+  int64_t dw_ow = (use_3ic_optimize & 0x2)
+                      ? (in_wslice + p.pwl + p.pwr - kw_ext) / p.sw + 1
+                      : in_wslice;
   if (use_3ic == 1) { // merge kh to ic
-    dw_out_size = out_hslice * in_wslice;
+    dw_out_size = dw_oh * in_wslice;
     kernel_len = p.kh;
   } else if (use_3ic == 2) { // merge kw to ic
-    dw_out_size = in_hslice * out_wslice;
+    dw_out_size = in_hslice * dw_ow;
     kernel_len = p.kw;
   } else if (use_3ic == 3) { // merge kh and kw to ic
-    dw_out_size = out_hslice * out_wslice;
+    dw_out_size = dw_oh * dw_ow;
     kernel_len = p.kh * p.kw;
   }
   if (use_3ic_optimize & 0x20) {
