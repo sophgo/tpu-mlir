@@ -25,7 +25,7 @@ cp bmcompiler/libbackend/libbackend_bm1684.so /workspace/tpu-mlir/third_party/nn
 # if debug, add -d
 ```
 
-## tpu-runtime 2026-08-07
+## tpu-runtime 2026-09-07
 
 build from tpu-runtime defd5b66215557e4579224535b0cfcba887ab159
 

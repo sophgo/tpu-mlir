@@ -171,41 +171,51 @@ void selective_scan(T *ptr_res, T *ptr_C, T *ptr_deltaA, T *ptr_deltaB_u,
           // delta_down_slice_offset); auto C_block_down_slice =
           // block_C_down.sub_view(real_shape_slice, c_down_slice_offset);
 
-          dim4 slice_stride = get_stride<T>(real_shape_slice, TPU_ALIGN);
+          // Slices must inherit the parent block's per-dim strides, not the
+          // compact strides of the slice shape: delta blocks are stored
+          // c-major (per-lane c-stride = block_l * batch), so a compact slice
+          // stride (c = batch) aliases channels when NPU_NUM < block_c.
+          dim4 c_slice_stride = get_stride<T>(real_shape_C_block, TPU_ALIGN);
+          dim4 delta_slice_stride =
+              get_stride<T>(real_shape_delta_block, TPU_ALIGN);
           auto deltaA_up_block_slice_tmp =
               block_deltaA_up.sub_view(real_shape_slice, delta_up_slice_offset);
           auto deltaA_up_block_slice =
-              deltaA_up_block_slice_tmp.view(real_shape_slice, slice_stride);
+              deltaA_up_block_slice_tmp.view(real_shape_slice,
+                                              delta_slice_stride);
           auto deltaBu_up_block_slice_tmp = block_deltaB_u_up.sub_view(
               real_shape_slice, delta_up_slice_offset);
           auto deltaBu_up_block_slice =
-              deltaBu_up_block_slice_tmp.view(real_shape_slice, slice_stride);
+              deltaBu_up_block_slice_tmp.view(real_shape_slice,
+                                              delta_slice_stride);
           auto C_block_up_slice_tmp =
               block_C_up.sub_view(real_shape_slice, c_up_slice_offset);
           auto C_block_up_slice =
-              C_block_up_slice_tmp.view(real_shape_slice, slice_stride);
+              C_block_up_slice_tmp.view(real_shape_slice, c_slice_stride);
 
           auto u_block_up_slice_tmp =
               block_u_up.sub_view(real_shape_slice, c_up_slice_offset);
           auto u_block_up_slice =
-              u_block_up_slice_tmp.view(real_shape_slice, slice_stride);
+              u_block_up_slice_tmp.view(real_shape_slice, c_slice_stride);
 
           auto deltaA_down_block_slice_tmp = block_deltaA_down.sub_view(
               real_shape_slice, delta_down_slice_offset);
           auto deltaA_down_block_slice =
-              deltaA_down_block_slice_tmp.view(real_shape_slice, slice_stride);
+              deltaA_down_block_slice_tmp.view(real_shape_slice,
+                                               delta_slice_stride);
           auto deltaBu_down_block_slice_tmp = block_deltaB_u_down.sub_view(
               real_shape_slice, delta_down_slice_offset);
           auto deltaBu_down_block_slice =
-              deltaBu_down_block_slice_tmp.view(real_shape_slice, slice_stride);
+              deltaBu_down_block_slice_tmp.view(real_shape_slice,
+                                               delta_slice_stride);
           auto C_block_down_slice_tmp =
               block_C_down.sub_view(real_shape_slice, c_down_slice_offset);
           auto C_block_down_slice =
-              C_block_down_slice_tmp.view(real_shape_slice, slice_stride);
+              C_block_down_slice_tmp.view(real_shape_slice, c_slice_stride);
           auto u_block_down_slice_tmp =
               block_u_down.sub_view(real_shape_slice, c_down_slice_offset);
           auto u_block_down_slice =
-              u_block_down_slice_tmp.view(real_shape_slice, slice_stride);
+              u_block_down_slice_tmp.view(real_shape_slice, c_slice_stride);
 
           tiu::fmul(x_up_slice, x_up_slice, deltaA_up_block_slice);
           tiu::fadd(x_up_slice, x_up_slice, deltaBu_up_block_slice);

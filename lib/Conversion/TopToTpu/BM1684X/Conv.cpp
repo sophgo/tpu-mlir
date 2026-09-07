@@ -261,7 +261,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     std::vector<int32_t> quant;
     int64_t quant_w_size = 0;
     if (module::isBM1688() || module::isSG2380() || module::isCV184X() ||
-        module::isSGTPUV8()) {
+        module::isSGTPUV8() || module::isBM1684X2()) {
       quant_w_size = 2;
       quant.resize(p.oc * quant_w_size, 0);
       for (size_t i = 0; i < p.oc; ++i) {
@@ -516,7 +516,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
     std::vector<int32_t> quant;
     int64_t quant_w_size = 0;
     if (module::isBM1688() || module::isSG2380() || module::isCV184X() ||
-        module::isSGTPUV8()) {
+        module::isSGTPUV8() || module::isBM1684X2()) {
       quant_w_size = 2;
       quant.resize(p.oc * quant_w_size, 0);
       for (size_t i = 0; i < p.oc; ++i) {
@@ -598,7 +598,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
       std::vector<int32_t> quant;
       int64_t quant_w_size = 0;
       if (module::isBM1688() || module::isSG2380() || module::isCV184X() ||
-          module::isSGTPUV8()) {
+          module::isSGTPUV8() || module::isBM1684X2()) {
         quant_w_size = 2;
         quant.resize(p.oc * quant_w_size, 0);
         for (size_t i = 0; i < p.oc; ++i) {
@@ -968,7 +968,7 @@ void ConvLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      1l);
     quant_shape[1] = quant_size;
     if (module::isBM1688() || module::isSG2380() || module::isCV184X() ||
-        module::isSGTPUV8()) {
+        module::isSGTPUV8() || module::isBM1684X2()) {
       quant.resize(quant_size * 2, 0);
       for (int i = 0; i < quant_size; ++i) {
         quant[i * 2] = multiplier[i];

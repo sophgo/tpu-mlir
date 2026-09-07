@@ -41,7 +41,9 @@ int64_t tpu::NmsOp::dyn_codegen_global_bm1684x(void *buffer) {
     spec.common.score_threshold = 0.5;
   }
 
-  spec.buffer_addr = module::isBM1688() ? module::getAddress(getBuffer()) : 0;
+  spec.buffer_addr = (module::isBM1688() || module::isBM1684X2())
+                         ? module::getAddress(getBuffer())
+                         : 0;
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 

@@ -1,13 +1,28 @@
 === bm1684x2 ===
-commit 8949518ba3eb0a8376407d0264e0307edbf80564
-Author: pengchao.hu <pengchao.hu@sophgo.com>
-Date:   Tue Aug 18 19:39:43 2026 +0800
+commit f36a2e9fd70d328b1d99bd3ee6d34ac312459412
+Author: zhejun.yang <zhejun.yang@sophgo.com>
+Date:   Fri Sep 11 00:11:48 2026 +0800
 
-    fix: a16matmul will fail in some shape
+    [fix][bm1684x2] cache 3 hot getenv in cmodel
     
-    - test in 1684x2
+    Layer-group compilation of an eva02_block on bm1684x2 spends ~58% of
+    wall time in getenv: the RVT simulation layer re-reads env vars on
+    every simulated instruction / command / issue_desc. None of the vars
+    has a runtime producer.
     
-    Change-Id: I0c4639828b8c594f35ab7152f10c9c0d1ba5f916
+    - rvt_sim.h INSTR_SAVE: one simulated instruction (one rvt_* hook)
+      expands to 4 INSTR_SAVE macros, each calling getenv("DUMP_RVTI")
+      (10.9B calls, 94.5%) -> rvti_dump_enabled() static inline
+    - store_cmd.cpp get_atomic_cmodel_enable(): getenv("FORBID_CMD_EXECUTE")
+      on every command (339M calls, 2.9%) -> static pointer cache
+    - rvt_sim.c txp_flag(): getenv("TVGEN_USING_TXP") on every issue_desc
+      (303M calls, 2.6%) -> static cached flag
+    - after fix, ~72% of held-lock samples inside the real RVT-instrumented
+      codegen chain (batch_matmul / quant_mm / tpu_bdc_cpy): the remaining
+      bottleneck is the instruction simulation itself.
+    - minor improve to cmodel_common.cpp and cmodel_arch.cpp
+    
+    Change-Id: Iba28fa09dbea21d821afa73e0e835fbc0b00b829
 === bm1684x ===
 commit 4ab63b3c2e
 Author: yujia liu <yujia.liu@sophgo.com>

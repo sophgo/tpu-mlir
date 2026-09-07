@@ -1079,8 +1079,7 @@ public:
     if (!module::isNone(NmsOp.getBuffer())) {
       return failure();
     }
-    if (!module::isBM1684XFamily() ||
-        (module::isBM1684XFamily() && !module::isBM1688())) {
+    if (!(module::isBM1688() || module::isBM1684X2())) {
       return failure();
     }
 
@@ -2116,7 +2115,7 @@ public:
   LogicalResult matchAndRewriteImpl(
       tpu::GridSampleInDeformableAttnOp GridSampleInDeformableAttnOp,
       PatternRewriter &rewriter) const override {
-    if (!module::isBM1684XFamily()) {
+    if (!(module::isBM1684XFamily() || module::isBM1684X2())) {
       return failure();
     }
     if (!module::isNone(GridSampleInDeformableAttnOp.getBuffer())) {

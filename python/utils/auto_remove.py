@@ -9,9 +9,15 @@
 # ==============================================================================
 
 import os
+import re
+
 from .mlir_parser import MlirParser
 
 g_auto_remove_files = []
+
+# libomp names its runtime-registration shm file "__KMP_REGISTERED_LIB_<pid>_<uid>"
+# (see the getpid/getuid pair feeding the format string in libomp.so).
+_KMP_FILE_NAME = re.compile(r"__KMP_REGISTERED_LIB_(\d+)_(\d+)$")
 
 
 def file_mark(file: str):
@@ -41,4 +47,15 @@ def clean_kmp_files():
     # eg: oneDNN/src/common/dnnl_thread.hpp:69 triggers the creation of __KMP__
     #     files when using OpenMP.
     uid = os.getuid()
-    os.system(f"rm -f /dev/shm/__KMP_REGISTERED_LIB_*_{uid}")
+    names = os.listdir("/dev/shm")
+    for name in names:
+        m = _KMP_FILE_NAME.match(name)
+        if m is None or int(m.group(2)) != uid:
+            continue
+        if os.path.isdir("/proc/" + m.group(1)):  # the process is still alive
+            continue
+        try:
+            os.remove(os.path.join("/dev/shm", name))
+        except FileNotFoundError:
+            # FileNotFoundError means we lost a race to a concurrent cleaner
+            pass

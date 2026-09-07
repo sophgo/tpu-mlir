@@ -33,7 +33,7 @@ import torchvision
 from tools.model_runner import mlir_inference, model_inference, onnx_inference, show_fake_cmd
 from tools.npz_tool import npz_compare
 from tools.model_transform import *
-from utils.auto_remove import file_mark, file_clean
+from utils.auto_remove import file_mark, file_clean, clean_kmp_files
 from utils.mlir_shell import *
 from utils.regression_logger import run_in_log_wrapper
 from transform.OnnxOpt import *
@@ -56,6 +56,7 @@ _CHIP_COLUMNS = (
     "bm1690",
     "bm1690e",
     "cv184x",
+    "bm1684x2",
 )
 
 _resolve_chip_support = make_chip_resolver(_CHIP_COLUMNS)
@@ -78,367 +79,375 @@ class ONNX_IR_TESTER(object):
             #########################################
             # ONNX Test Case, Alphabetically
             #########################################
-            # case: (test, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support)
-            "Abs":          (self.test_Abs,           Y, Y, Y, Y, Y, Y),
-            "Add":          (self.test_Add,           Y, Y, Y, Y, Y, Y),
-            "AddConst":     (self.test_AddConst,      N, N, N, N, N, N),
-            "Add_5dim_bc":  (self.test_Add_5dim_bc,   Y, Y, N, N, N, Y),
-            "And":          (self.test_And,           Y, Y, N, Y, Y, Y),
-            "AddBcast":     (self.test_AddBcast,      N, N, N, Y, Y, N), # bm1684x has random error caused by 2.27 commit
-            "AddBcast2":    (self.test_AddBcast2,     Y, Y, N, Y, Y, Y),
-            "AddBcast3":    (self.test_AddBcast3,     N, N, N, N, N, N), # failed cases
-            "AddBcast4":    (self.test_AddBcast4,     Y, Y, N, N, N, N),
-            "AddNoRearrange":    (self.test_AddNoRearrange,     Y, Y, N, Y, Y, N),
-            "AddRearrange_1d":    (self.test_AddRearrange_1d,     Y, Y, N, Y, Y, N),
-            "AddRearrange_2d":    (self.test_AddRearrange_2d,     Y, Y, N, Y, Y, N),
-            "AddRearrange_3d":    (self.test_AddRearrange_3d,     Y, Y, N, Y, Y, N),
-            "Acos":         (self.test_Arccos,        Y, Y, N, Y, Y, Y),
-            "Atan":         (self.test_Arctan,        Y, Y, N, Y, Y, Y),
-            "Atanh":        (self.test_Arctanh,       Y, Y, N, Y, Y, Y),
-            "Arg":          (self.test_Arg,           Y, Y, Y, Y, Y, Y),
-            "AddWeight":    (self.test_AddWeight,     Y, Y, Y, Y, Y, Y),
-            "AddWeight2":   (self.test_AddWeight2,    Y, Y, Y, Y, Y, Y),
-            "AdaptiveAvgPool": (self.test_AdaptiveAvgPool, Y, N, N, N, N, N),
-            "AdaptiveAvgPool1d": (self.test_AdaptiveAvgPool1d, Y, N, N, N, N, N),
-            "AdaptiveAvgPool2d": (self.test_AdaptiveAvgPool2d, Y, N, N, N, N, N),
-            "AvgPool1d":    (self.test_AvgPool1d,     Y, Y, Y, Y, Y, Y),
-            "AvgPool2d":    (self.test_AvgPool2d,     Y, Y, Y, Y, Y, Y),
-            "AvgPool3d":    (self.test_AvgPool3d,     Y, Y, Y, Y, Y, N),
-            "AvgPoolOdd":   (self.test_AvgPoolOdd,    Y, Y, Y, Y, Y, Y),
-            "AffineMap":    (self.test_AffineMap,     Y, Y, N, Y, Y, N),
-            "PadAvgPool2d": (self.test_PadAvgPool2d,  Y, Y, Y, Y, Y, Y),
-            "BatchMatMul":  (self.test_BatchMatMul,   Y, Y, Y, Y, Y, Y),
-            "BatchNorm2D":  (self.test_BatchNorm2D,   Y, Y, Y, Y, Y, Y),
-            "BCastAdd":     (self.test_BCastAdd,      Y, Y, Y, Y, Y, Y),
-            "BCastMul":     (self.test_BCastMul,      Y, Y, Y, Y, Y, Y),
-            "BCastMulCst":  (self.test_BCastMulCst,   Y, Y, Y, Y, Y, Y),
-            "Cast":         (self.test_Cast,          Y, Y, N, Y, Y, Y),
-            "Ceil":         (self.test_Ceil,          Y, Y, N, Y, Y, Y),
-            "CompareCst":   (self.test_CompareCst,    Y, Y, Y, Y, Y, Y),
-            "Compare":      (self.test_Compare,       Y, Y, N, Y, Y, Y),
-            "Concat":       (self.test_Concat,        Y, Y, Y, Y, Y, Y),
-            "Concat2":      (self.test_Concat2,       Y, Y, Y, Y, Y, N),
-            "Concat3":      (self.test_Concat3,       Y, Y, N, Y, Y, N),
-            "ConstOfShape": (self.test_ConstOfShape,  Y, Y, N, Y, Y, N),
-            "ConstantFillDyn": (self.test_ConstantFillDyn, Y, Y, N, Y, Y, N),
-            "Conv1d":       (self.test_Conv1d,        Y, Y, Y, Y, Y, Y),
-            "Conv2d":       (self.test_Conv2d,        Y, Y, Y, Y, Y, Y),
-            "Conv3d":       (self.test_Conv3d,        Y, Y, Y, Y, N, Y), # bm1690 has prob
-            "ConvPool3d":   (self.test_ConvPool3d,    Y, Y, N, Y, N, Y), # bm1690 has prob
-            "ConvStride":   (self.test_ConvStride,    Y, Y, Y, Y, Y, Y),
-            "ConvDw":       (self.test_ConvDw,        Y, Y, Y, Y, Y, Y),
-            "ConvTrans":    (self.test_ConvTrans,     Y, Y, Y, Y, Y, N),
-            "ConvTrans2":   (self.test_ConvTrans2,    Y, Y, Y, Y, Y, N), # no pad
-            "Cos":          (self.test_Cos,           Y, Y, N, Y, Y, N),
-            "Cosh":         (self.test_Cosh,          Y, Y, N, Y, Y, N),
-            "Clip":         (self.test_Clip,          Y, Y, Y, Y, Y, N),
-            "CumSum":       (self.test_CumSum,        Y, N, N, Y, Y, Y),
-            "DepthToSpace":  (self.test_DepthToSpace,  Y, Y, Y, Y, Y, N),
-            "Deconv":       (self.test_Deconv,        Y, Y, Y, Y, Y, N),
-            "DeconvDF":     (self.test_DeconvDynW,    Y, N, N, Y, Y, N),
-            "Deconv2":      (self.test_Deconv2,       N, N, Y, N, N, N),
-            "Deconv3d":     (self.test_Deconv3d,      Y, Y, N, Y, Y, Y),
-            "Div":          (self.test_Div,           Y, Y, Y, Y, Y, Y),
-            "DivBcast":     (self.test_DivBcast,      Y, Y, N, Y, Y, Y),
-            "DivBcast2":    (self.test_DivBcast2,     Y, Y, N, Y, Y, Y),
-            "DivConst":     (self.test_DivConst,      Y, Y, N, Y, Y, N),
+            # case: (test, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support, bm1684x2_support)
+            # bm1684x=Y but bm1684x2=N, grouped by reason:
+            #   1. mm1 is removed on bm1684x2 and mm2 has no FP32 compute.
+            #       f32 mode hits the mm1 stub assert at codegen: Gemm, BatchMatMul.
+            #       RNN ops keep f32 operands even in F16 mode, so they hit the same
+            #       assert in every quant mode: GRU, GRU2, GRU3, GRU4, LSTM, LSTM2,
+            #       LSTM3, LSTM4, TorchGRU, TorchLSTM.
+            #   2. NMS runs the bm1686-variant firmware kernel which is not ported to
+            #      bm1684x2 yet (scratch buffer alignment / VC op constraints): TorchNms.
+            "Abs":          (self.test_Abs,           Y, Y, Y, Y, Y, Y, Y),
+            "Add":          (self.test_Add,           Y, Y, Y, Y, Y, Y, Y),
+            "AddConst":     (self.test_AddConst,      N, N, N, N, N, N, N),
+            "Add_5dim_bc":  (self.test_Add_5dim_bc,   Y, Y, N, N, N, Y, Y),
+            "And":          (self.test_And,           Y, Y, N, Y, Y, Y, Y),
+            "AddBcast":     (self.test_AddBcast,      N, N, N, Y, Y, N, N), # bm1684x has random error caused by 2.27 commit
+            "AddBcast2":    (self.test_AddBcast2,     Y, Y, N, Y, Y, Y, Y),
+            "AddBcast3":    (self.test_AddBcast3,     N, N, N, N, N, N, N), # failed cases
+            "AddBcast4":    (self.test_AddBcast4,     Y, Y, N, N, N, N, Y),
+            "AddNoRearrange":    (self.test_AddNoRearrange,     Y, Y, N, Y, Y, N, Y),
+            "AddRearrange_1d":    (self.test_AddRearrange_1d,     Y, Y, N, Y, Y, N, Y),
+            "AddRearrange_2d":    (self.test_AddRearrange_2d,     Y, Y, N, Y, Y, N, Y),
+            "AddRearrange_3d":    (self.test_AddRearrange_3d,     Y, Y, N, Y, Y, N, Y),
+            "Acos":         (self.test_Arccos,        Y, Y, N, Y, Y, Y, Y),
+            "Atan":         (self.test_Arctan,        Y, Y, N, Y, Y, Y, Y),
+            "Atanh":        (self.test_Arctanh,       Y, Y, N, Y, Y, Y, Y),
+            "Arg":          (self.test_Arg,           Y, Y, Y, Y, Y, Y, Y),
+            "AddWeight":    (self.test_AddWeight,     Y, Y, Y, Y, Y, Y, Y),
+            "AddWeight2":   (self.test_AddWeight2,    Y, Y, Y, Y, Y, Y, Y),
+            "AdaptiveAvgPool": (self.test_AdaptiveAvgPool, Y, N, N, N, N, N, Y),
+            "AdaptiveAvgPool1d": (self.test_AdaptiveAvgPool1d, Y, N, N, N, N, N, Y),
+            "AdaptiveAvgPool2d": (self.test_AdaptiveAvgPool2d, Y, N, N, N, N, N, Y),
+            "AvgPool1d":    (self.test_AvgPool1d,     Y, Y, Y, Y, Y, Y, Y),
+            "AvgPool2d":    (self.test_AvgPool2d,     Y, Y, Y, Y, Y, Y, Y),
+            "AvgPool3d":    (self.test_AvgPool3d,     Y, Y, Y, Y, Y, N, Y),
+            "AvgPoolOdd":   (self.test_AvgPoolOdd,    Y, Y, Y, Y, Y, Y, Y),
+            "AffineMap":    (self.test_AffineMap,     Y, Y, N, Y, Y, N, Y),
+            "PadAvgPool2d": (self.test_PadAvgPool2d,  Y, Y, Y, Y, Y, Y, Y),
+            "BatchMatMul":  (self.test_BatchMatMul,   Y, Y, Y, Y, Y, Y, N),
+            "BatchNorm2D":  (self.test_BatchNorm2D,   Y, Y, Y, Y, Y, Y, Y),
+            "BCastAdd":     (self.test_BCastAdd,      Y, Y, Y, Y, Y, Y, Y),
+            "BCastMul":     (self.test_BCastMul,      Y, Y, Y, Y, Y, Y, Y),
+            "BCastMulCst":  (self.test_BCastMulCst,   Y, Y, Y, Y, Y, Y, Y),
+            "Cast":         (self.test_Cast,          Y, Y, N, Y, Y, Y, Y),
+            "Ceil":         (self.test_Ceil,          Y, Y, N, Y, Y, Y, Y),
+            "CompareCst":   (self.test_CompareCst,    Y, Y, Y, Y, Y, Y, Y),
+            "Compare":      (self.test_Compare,       Y, Y, N, Y, Y, Y, Y),
+            "Concat":       (self.test_Concat,        Y, Y, Y, Y, Y, Y, Y),
+            "Concat2":      (self.test_Concat2,       Y, Y, Y, Y, Y, N, Y),
+            "Concat3":      (self.test_Concat3,       Y, Y, N, Y, Y, N, Y),
+            "ConstOfShape": (self.test_ConstOfShape,  Y, Y, N, Y, Y, N, Y),
+            "ConstantFillDyn": (self.test_ConstantFillDyn, Y, Y, N, Y, Y, N, Y),
+            "Conv1d":       (self.test_Conv1d,        Y, Y, Y, Y, Y, Y, Y),
+            "Conv2d":       (self.test_Conv2d,        Y, Y, Y, Y, Y, Y, Y),
+            "Conv3d":       (self.test_Conv3d,        Y, Y, Y, Y, N, Y, Y), # bm1690 has prob
+            "ConvPool3d":   (self.test_ConvPool3d,    Y, Y, N, Y, N, Y, Y), # bm1690 has prob
+            "ConvStride":   (self.test_ConvStride,    Y, Y, Y, Y, Y, Y, Y),
+            "ConvDw":       (self.test_ConvDw,        Y, Y, Y, Y, Y, Y, Y),
+            "ConvTrans":    (self.test_ConvTrans,     Y, Y, Y, Y, Y, N, Y),
+            "ConvTrans2":   (self.test_ConvTrans2,    Y, Y, Y, Y, Y, N, Y), # no pad
+            "Cos":          (self.test_Cos,           Y, Y, N, Y, Y, N, Y),
+            "Cosh":         (self.test_Cosh,          Y, Y, N, Y, Y, N, Y),
+            "Clip":         (self.test_Clip,          Y, Y, Y, Y, Y, N, Y),
+            "CumSum":       (self.test_CumSum,        Y, N, N, Y, Y, Y, Y),
+            "DepthToSpace":  (self.test_DepthToSpace,  Y, Y, Y, Y, Y, N, Y),
+            "Deconv":       (self.test_Deconv,        Y, Y, Y, Y, Y, N, Y),
+            "DeconvDF":     (self.test_DeconvDynW,    Y, N, N, Y, Y, N, Y),
+            "Deconv2":      (self.test_Deconv2,       N, N, Y, N, N, N, N),
+            "Deconv3d":     (self.test_Deconv3d,      Y, Y, N, Y, Y, Y, Y),
+            "Div":          (self.test_Div,           Y, Y, Y, Y, Y, Y, Y),
+            "DivBcast":     (self.test_DivBcast,      Y, Y, N, Y, Y, Y, Y),
+            "DivBcast2":    (self.test_DivBcast2,     Y, Y, N, Y, Y, Y, Y),
+            "DivConst":     (self.test_DivConst,      Y, Y, N, Y, Y, N, Y),
             # "DtypeCast":    (self.test_DtypeCast,     Y, Y, N, Y, Y, N),
-            "Einsum":       (self.test_Einsum,        Y, Y, Y, Y, Y, Y),
-            "Einsum2":      (self.test_Einsum2,       Y, Y, Y, Y, Y, Y),
-            "Einsum3":      (self.test_Einsum3,       Y, Y, Y, Y, Y, Y),
-            "Einsum4":      (self.test_Einsum4,       Y, Y, N, Y, Y, Y),
-            "Einsum5":      (self.test_Einsum5,       Y, Y, N, Y, N, Y), # bm1690 has prob
-            "Einsum6":      (self.test_Einsum6,       Y, Y, N, Y, N, Y), # bm1690 has prob
-            "Einsum7":      (self.test_Einsum7,       Y, Y, N, Y, Y, Y),
-            "Einsum8":      (self.test_Einsum8,       Y, Y, N, Y, Y, Y),
-            "Einsum9":      (self.test_Einsum9,       Y, Y, N, Y, Y, Y),
-            "Einsum10":     (self.test_Einsum10,      Y, Y, N, Y, Y, Y),
-            "Einsum11":     (self.test_Einsum11,      Y, Y, N, Y, N, N), # bm1690 has prob
-            "Einsum12":     (self.test_Einsum12,      Y, Y, N, Y, Y, Y),
-            "Einsum13":     (self.test_Einsum13,      Y, N, N, Y, Y, N),
-            "Einsum14":     (self.test_Einsum14,      Y, Y, N, Y, Y, N),
-            "Elu":          (self.test_Elu,           Y, Y, N, Y, Y, Y),
-            "Erf":          (self.test_Erf,           Y, Y, N, Y, Y, N),
-            "Exp":          (self.test_Exp,           Y, Y, Y, Y, Y, Y),
-            "Expand":       (self.test_Expand,        Y, Y, Y, Y, Y, Y),
-            "Expand2":      (self.test_Expand2,       Y, Y, Y, Y, Y, Y),
-            "ExpandDyn":    (self.test_ExpandDyn,     Y, Y, N, Y, N, N), # bm1690e has prob
-            "Flatten":      (self.test_Flatten,       Y, Y, Y, Y, Y, Y),
-            "Flip":         (self.test_Flip,          Y, Y, N, Y, Y, Y),
-            "Floor":        (self.test_Floor,         Y, Y, N, Y, Y, N),
-            "FitPermute2Hdim": (self.test_FitPermute2Hdim, N, Y, Y, N, N, N),
-            "Gather":       (self.test_Gather,        Y, Y, Y, Y, Y, N),
-            "GatherElements": (self.test_GatherElements, Y, N, N, Y, N, Y), # bm1690 has prob
-            "GatherND":     (self.test_GatherND,      Y, Y, Y, Y, N, N), # bm1690e has prob
-            "Gather2":      (self.test_Gather2,       Y, Y, N, Y, Y, N),
-            "Gather3":      (self.test_Gather3,       Y, Y, N, Y, Y, N),
-            "Gemm":         (self.test_Gemm,          Y, Y, Y, Y, Y, Y),
-            "GlobalAveragePool": (self.test_GlobalAveragePool, Y, Y, Y, Y, Y, Y),
-            "GlobalMaxPool": (self.test_GlobalMaxPool, Y, Y, Y, Y, Y, Y),
-            "GroupFC":      (self.test_GroupFC,       Y, Y, Y, Y, Y, N), # test gru output Y
-            "GRU":          (self.test_GRU,           Y, Y, Y, Y, Y, N), # test gru output Yh
-            "GRU2":         (self.test_GRU2,          Y, Y, Y, Y, Y, N), # test gru output Y and Yh
-            "GRU3":         (self.test_GRU3,          Y, Y, Y, Y, Y, N),
-            "GRU4":         (self.test_GRU4,          Y, Y, N, Y, Y, N), # test gru output Y and Yh,also splitting batch dim
-            "LeakyRelu":    (self.test_LeakyRelu,     Y, Y, Y, Y, Y, N),
-            "Log":          (self.test_Log,           Y, Y, Y, Y, Y, N),
-            "LogB":         (self.test_LogB,          Y, Y, Y, Y, Y, Y),
-            "LogSoftmax":   (self.test_LogSoftmax,    Y, Y, Y, Y, Y, Y),
-            "LRN":          (self.test_LRN,           Y, Y, Y, Y, Y, Y), # output_y
-            "LSTM":         (self.test_LSTM,          Y, Y, Y, Y, Y, N), # output all
-            "LSTM2":        (self.test_LSTM2,         Y, Y, Y, Y, N, N), # output_yh and output_yc # bm1690 has prob
-            "LSTM3":        (self.test_LSTM3,         Y, Y, Y, Y, N, N), # bm1690 has prob
-            "LSTM4":        (self.test_LSTM4,         Y, Y, Y, Y, Y, Y),  # LSTM CV184X BF16 test case
-            "MaxPool1d":    (self.test_MaxPool1d,     Y, Y, Y, Y, Y, Y),
-            "MaxPool2d":    (self.test_MaxPool2d,     Y, Y, Y, Y, Y, Y),
-            "MaxPool3d":    (self.test_MaxPool3d,     Y, Y, Y, Y, Y, Y),
-            "MatMul":       (self.test_MatMul,        Y, Y, Y, Y, Y, Y),
-            "MatMul2":      (self.test_MatMul2,       Y, Y, Y, Y, Y, Y),
-            "MatMul2PC":    (self.test_MatMul2PC,     Y, Y, N, N, N, Y),
-            "MatMulRelu":       (self.test_MatMulRelu,       Y, Y, Y, Y, Y, Y),
-            "MatMulRelu_asym":  (self.test_MatMulRelu_asym,  Y, Y, Y, Y, Y, Y),
-            "Max":          (self.test_Max,           Y, Y, Y, Y, Y, Y),
-            "MaxBcast":     (self.test_MaxBcast,      Y, Y, N, Y, Y, Y),
-            "MeanRstd":     (self.test_MeanRstd,     Y, Y, N, Y, N, N),
-            "MeanStdScale": (self.test_MeanStdScale, Y, Y, N, Y, N, N),
-            "Not":          (self.test_Not,           Y, Y, N, Y, Y, Y),
+            "Einsum":       (self.test_Einsum,        Y, Y, Y, Y, Y, Y, Y),
+            "Einsum2":      (self.test_Einsum2,       Y, Y, Y, Y, Y, Y, Y),
+            "Einsum3":      (self.test_Einsum3,       Y, Y, Y, Y, Y, Y, Y),
+            "Einsum4":      (self.test_Einsum4,       Y, Y, N, Y, Y, Y, Y),
+            "Einsum5":      (self.test_Einsum5,       Y, Y, N, Y, N, Y, Y), # bm1690 has prob
+            "Einsum6":      (self.test_Einsum6,       Y, Y, N, Y, N, Y, Y), # bm1690 has prob
+            "Einsum7":      (self.test_Einsum7,       Y, Y, N, Y, Y, Y, Y),
+            "Einsum8":      (self.test_Einsum8,       Y, Y, N, Y, Y, Y, Y),
+            "Einsum9":      (self.test_Einsum9,       Y, Y, N, Y, Y, Y, Y),
+            "Einsum10":     (self.test_Einsum10,      Y, Y, N, Y, Y, Y, Y),
+            "Einsum11":     (self.test_Einsum11,      Y, Y, N, Y, N, N, Y), # bm1690 has prob
+            "Einsum12":     (self.test_Einsum12,      Y, Y, N, Y, Y, Y, Y),
+            "Einsum13":     (self.test_Einsum13,      Y, N, N, Y, Y, N, Y),
+            "Einsum14":     (self.test_Einsum14,      Y, Y, N, Y, Y, N, Y),
+            "Elu":          (self.test_Elu,           Y, Y, N, Y, Y, Y, Y),
+            "Erf":          (self.test_Erf,           Y, Y, N, Y, Y, N, Y),
+            "Exp":          (self.test_Exp,           Y, Y, Y, Y, Y, Y, Y),
+            "Expand":       (self.test_Expand,        Y, Y, Y, Y, Y, Y, Y),
+            "Expand2":      (self.test_Expand2,       Y, Y, Y, Y, Y, Y, Y),
+            "ExpandDyn":    (self.test_ExpandDyn,     Y, Y, N, Y, N, N, Y), # bm1690e has prob
+            "Flatten":      (self.test_Flatten,       Y, Y, Y, Y, Y, Y, Y),
+            "Flip":         (self.test_Flip,          Y, Y, N, Y, Y, Y, Y),
+            "Floor":        (self.test_Floor,         Y, Y, N, Y, Y, N, Y),
+            "FitPermute2Hdim": (self.test_FitPermute2Hdim, N, Y, Y, N, N, N, N),
+            "Gather":       (self.test_Gather,        Y, Y, Y, Y, Y, N, Y),
+            "GatherElements": (self.test_GatherElements, Y, N, N, Y, N, Y, Y), # bm1690 has prob
+            "GatherND":     (self.test_GatherND,      Y, Y, Y, Y, N, N, Y), # bm1690e has prob
+            "Gather2":      (self.test_Gather2,       Y, Y, N, Y, Y, N, Y),
+            "Gather3":      (self.test_Gather3,       Y, Y, N, Y, Y, N, Y),
+            "Gemm":         (self.test_Gemm,          Y, Y, Y, Y, Y, Y, N),
+            "GlobalAveragePool": (self.test_GlobalAveragePool, Y, Y, Y, Y, Y, Y, Y),
+            "GlobalMaxPool": (self.test_GlobalMaxPool, Y, Y, Y, Y, Y, Y, Y),
+            "GroupFC":      (self.test_GroupFC,       Y, Y, Y, Y, Y, N, Y), # test gru output Y
+            "GRU":          (self.test_GRU,           Y, Y, Y, Y, Y, N, N), # test gru output Yh
+            "GRU2":         (self.test_GRU2,          Y, Y, Y, Y, Y, N, N), # test gru output Y and Yh
+            "GRU3":         (self.test_GRU3,          Y, Y, Y, Y, Y, N, N),
+            "GRU4":         (self.test_GRU4,          Y, Y, N, Y, Y, N, N), # test gru output Y and Yh,also splitting batch dim
+            "LeakyRelu":    (self.test_LeakyRelu,     Y, Y, Y, Y, Y, N, Y),
+            "Log":          (self.test_Log,           Y, Y, Y, Y, Y, N, Y),
+            "LogB":         (self.test_LogB,          Y, Y, Y, Y, Y, Y, Y),
+            "LogSoftmax":   (self.test_LogSoftmax,    Y, Y, Y, Y, Y, Y, Y),
+            "LRN":          (self.test_LRN,           Y, Y, Y, Y, Y, Y, Y), # output_y
+            "LSTM":         (self.test_LSTM,          Y, Y, Y, Y, Y, N, N), # output all
+            "LSTM2":        (self.test_LSTM2,         Y, Y, Y, Y, N, N, N), # output_yh and output_yc # bm1690 has prob
+            "LSTM3":        (self.test_LSTM3,         Y, Y, Y, Y, N, N, N), # bm1690 has prob
+            "LSTM4":        (self.test_LSTM4,         Y, Y, Y, Y, Y, Y, N),  # LSTM CV184X BF16 test case
+            "MaxPool1d":    (self.test_MaxPool1d,     Y, Y, Y, Y, Y, Y, Y),
+            "MaxPool2d":    (self.test_MaxPool2d,     Y, Y, Y, Y, Y, Y, Y),
+            "MaxPool3d":    (self.test_MaxPool3d,     Y, Y, Y, Y, Y, Y, Y),
+            "MatMul":       (self.test_MatMul,        Y, Y, Y, Y, Y, Y, Y),
+            "MatMul2":      (self.test_MatMul2,       Y, Y, Y, Y, Y, Y, Y),
+            "MatMul2PC":    (self.test_MatMul2PC,     Y, Y, N, N, N, Y, Y),
+            "MatMulRelu":       (self.test_MatMulRelu,       Y, Y, Y, Y, Y, Y, Y),
+            "MatMulRelu_asym":  (self.test_MatMulRelu_asym,  Y, Y, Y, Y, Y, Y, Y),
+            "Max":          (self.test_Max,           Y, Y, Y, Y, Y, Y, Y),
+            "MaxBcast":     (self.test_MaxBcast,      Y, Y, N, Y, Y, Y, Y),
+            "MeanRstd":     (self.test_MeanRstd,     Y, Y, N, Y, N, N, Y),
+            "MeanStdScale": (self.test_MeanStdScale, Y, Y, N, Y, N, N, Y),
+            "Not":          (self.test_Not,           Y, Y, N, Y, Y, Y, Y),
             # "MLP1":         (self.test_MLP1,          Y, Y, N, N, N, N),
             # "MLP2":         (self.test_MLP2,          Y, Y, N, N, N, N),
             # "MLP3":         (self.test_MLP3,          Y, Y, N, N, N, N),
-            "Mod":          (self.test_Mod,           Y, Y, N, N, N, N),
-            "Mul":          (self.test_Mul,           Y, Y, Y, Y, Y, Y),
-            "MulMerge":     (self.test_MulMerge,      Y, Y, N, Y, Y, Y),
-            "MulBcast":     (self.test_MulBcast,      Y, Y, N, Y, Y, Y),
-            "MulBcast2":    (self.test_MulBcast2,     Y, Y, N, Y, Y, Y),
-            "Min":          (self.test_Min,           Y, Y, Y, Y, Y, Y),
-            "MinBcast":     (self.test_MinBcast,      Y, Y, N, Y, Y, Y),
-            "Mish":         (self.test_Mish,         Y, Y, N, Y, Y, N),
-            "MulConst":     (self.test_MulConst,      Y, Y, Y, Y, Y, Y),
-            "Neg":          (self.test_Neg,           Y, Y, Y, Y, Y, Y),
-            "Pack":         (self.test_Pack,         Y, Y, N, Y, Y, N),
-            "Pad":          (self.test_Pad,           Y, Y, Y, Y, Y, Y), # zero pad
-            "Pad1":         (self.test_Pad1,          Y, Y, Y, Y, Y, Y), # pad val
-            "PadEdge":      (self.test_PadEdge,       Y, Y, Y, Y, Y, Y),
-            "PadReflect":   (self.test_PadReflect,    Y, Y, Y, Y, Y, Y),
-            "Pow1":         (self.test_Pow1,          Y, Y, Y, Y, Y, Y), # y = x ^ n
-            "Pow2":         (self.test_Pow2,          Y, Y, N, Y, Y, Y), # y = n ^ x
-            "Pow3":         (self.test_Pow3,          Y, Y, N, Y, Y, Y), # y = x1 ^ x2
-            "PRelu":        (self.test_PRelu,         Y, Y, Y, Y, Y, Y),
-            "Range":        (self.test_Range,         Y, Y, N, Y, Y, N),
-            "Resize":       (self.test_Resize,        Y, Y, Y, Y, Y, Y),
-            "Resize2":      (self.test_Resize2,       Y, Y, Y, Y, Y, Y),
-            "ResizeCSplit": (self.test_ResizeCSplit, Y, Y, N, Y, Y, Y),
-            "Reshape":      (self.test_Reshape,       Y, Y, N, Y, Y, Y),
-            "Reverse":      (self.test_Reverse,       Y, Y, N, Y, Y, Y),
-            "Reduce":       (self.test_Reduce,        Y, Y, Y, Y, Y, Y),
-            "Reduce2":      (self.test_Reduce2,       Y, Y, Y, Y, Y, Y),
-            "ReduceL1":     (self.test_ReduceL1,      Y, Y, N, Y, Y, Y),
-            "ReduceL2":     (self.test_ReduceL2,      Y, Y, Y, Y, Y, Y),
-            "ReduceLogSumExp": (self.test_ReduceLogSumExp, Y, Y, N, N, N, N),
-            "ReduceMean":   (self.test_ReduceMean,    Y, Y, Y, Y, Y, Y),
-            "ReduceSum":    (self.test_ReduceSum,     Y, Y, Y, Y, Y, Y),
-            "ReduceSum2":    (self.test_ReduceSum2,     Y, Y, N, N, N, Y),
-            "ReduceProd":   (self.test_ReduceProd,    Y, Y, N, Y, Y, Y),
-            "Reciprocal":   (self.test_Reciprocal,    Y, Y, Y, Y, Y, Y),
-            "Relu":         (self.test_Relu,          Y, Y, Y, Y, Y, Y),
-            "ReluOnly":     (self.test_ReluOnly,      N, Y, N, N, N, Y),
-            "Round":        (self.test_Round,         Y, N, N, Y, Y, Y),
-            "Rsqrt":        (self.test_Rsqrt,         Y, Y, N, Y, Y, Y),
-            "ScatterElements": (self.test_ScatterElements, Y, N, N, Y, Y, N),
-            "ScatterND":    (self.test_ScatterND,     Y, Y, N, Y, Y, N),
-            "Shape":        (self.test_Shape,         Y, Y, N, Y, Y, N),
-            "ShapeCast":    (self.test_ShapeCast,     N, N, N, N, N, N),
-            "ShuffleChannel": (self.test_ShuffleChannel, Y, Y, N, Y, Y, N),
-            "SiLU":         (self.test_SiLU,          Y, Y, Y, Y, Y, Y),
-            "Softmax":      (self.test_Softmax,       Y, Y, Y, Y, Y, Y),
-            "Softplus":     (self.test_Softplus,      Y, Y, Y, Y, Y, Y),
-            "Softsign":     (self.test_Softsign,     Y, Y, N, Y, Y, N),
-            "Space2Depth":  (self.test_Space2Depth,   Y, Y, N, Y, Y, Y),
-            "Squeeze":      (self.test_Squeeze,       Y, Y, Y, Y, Y, Y),
-            "StridedSlice": (self.test_StridedSlice, Y, Y, N, Y, Y, N),
-            "Sigmoid":      (self.test_Sigmoid,       Y, Y, Y, Y, Y, Y),
-            "Sign":         (self.test_Sign,          Y, Y, N, Y, Y, Y),
-            "Sin":          (self.test_Sin,          Y, Y, N, Y, N, N),
-            "Sinh":         (self.test_Sinh,         Y, Y, N, Y, N, N),
-            "SliceAxis":    (self.test_SliceAxis,    Y, Y, N, Y, N, N),
-            "Slice":        (self.test_Slice,         Y, Y, Y, Y, Y, Y),
-            "Slice2":       (self.test_Slice2,        Y, Y, Y, Y, Y, Y),
-            "Slice3":       (self.test_Slice3,        Y, Y, Y, Y, Y, Y),
-            "Dynamic_Slice": (self.test_Dynamic_Slice, Y, Y, N, Y, N, Y),
-            "Split":        (self.test_Split,         Y, Y, Y, Y, Y, Y),
-            "Split2":        (self.test_Split2,       Y, Y, Y, Y, Y, Y),
-            "Scale":        (self.test_Scale,         Y, Y, Y, Y, Y, Y),
-            "Sqrt":         (self.test_Sqrt,          Y, Y, Y, Y, Y, Y),
-            "Sub":          (self.test_Sub,           Y, Y, Y, Y, Y, Y),
-            "Sub2":         (self.test_Sub2,          Y, Y, Y, Y, Y, Y),
-            "SubBcast":     (self.test_SubBcast,      Y, Y, N, Y, Y, Y),
-            "SubBcast2":    (self.test_SubBcast2,     Y, Y, N, Y, Y, Y),
-            "SubConst":     (self.test_SubConst,      Y, Y, Y, Y, Y, Y),
-            "SubConst2":    (self.test_SubConst2,     Y, Y, Y, Y, Y, Y),
-            "SubBcast3":    (self.test_SubBcast3,     Y, Y, N, N, N, N),
-            "Sum":          (self.test_Sum,           Y, Y, Y, Y, Y, Y),
-            "SwapChannel":  (self.test_SwapChannel,  Y, Y, N, Y, N, N),
-            "Swish":        (self.test_Swish,        Y, Y, N, Y, N, N),
-            "Tan":          (self.test_Tan,          Y, Y, N, Y, N, N),
-            "Tanh":         (self.test_Tanh,          Y, Y, Y, Y, Y, Y),
-            "Tile":         (self.test_Tile,          Y, Y, Y, Y, Y, Y),
-            "TileDyn":      (self.test_TileDyn,       Y, Y, N, Y, N, N), # bm1690 has prob
-            "Transpose":    (self.test_Transpose,     Y, Y, Y, Y, Y, Y),
-            "Transpose2":   (self.test_Transpose2,    Y, Y, Y, Y, Y, Y),
-            "Trilu":        (self.test_Trilu,         Y, N, N, N, N, N),
-            "TopK":         (self.test_TopK,          Y, Y, N, Y, N, N), # bm1690e has prob
-            "TopK2":        (self.test_TopK2,         Y, N, N, Y, N, N), # bm1690e has prob
-            "TopK4":        (self.test_TopK4,         N, N, Y, N, N, N),
-            "TopKSlice":    (self.test_TopKSlice,     Y, N, N, N, N, N),
-            "TopKTrans":    (self.test_TopKTrans,     Y, N, N, N, N, N),
-            "Unpack":       (self.test_Unpack,       Y, Y, N, Y, Y, N),
-            "Upsample":     (self.test_Upsample,      Y, Y, N, Y, Y, Y),
-            "Unsqueeze":    (self.test_Unsqueeze,     Y, Y, N, Y, Y, Y),
+            "Mod":          (self.test_Mod,           Y, Y, N, N, N, N, Y),
+            "Mul":          (self.test_Mul,           Y, Y, Y, Y, Y, Y, Y),
+            "MulMerge":     (self.test_MulMerge,      Y, Y, N, Y, Y, Y, Y),
+            "MulBcast":     (self.test_MulBcast,      Y, Y, N, Y, Y, Y, Y),
+            "MulBcast2":    (self.test_MulBcast2,     Y, Y, N, Y, Y, Y, Y),
+            "Min":          (self.test_Min,           Y, Y, Y, Y, Y, Y, Y),
+            "MinBcast":     (self.test_MinBcast,      Y, Y, N, Y, Y, Y, Y),
+            "Mish":         (self.test_Mish,         Y, Y, N, Y, Y, N, Y),
+            "MulConst":     (self.test_MulConst,      Y, Y, Y, Y, Y, Y, Y),
+            "Neg":          (self.test_Neg,           Y, Y, Y, Y, Y, Y, Y),
+            "Pack":         (self.test_Pack,         Y, Y, N, Y, Y, N, Y),
+            "Pad":          (self.test_Pad,           Y, Y, Y, Y, Y, Y, Y), # zero pad
+            "Pad1":         (self.test_Pad1,          Y, Y, Y, Y, Y, Y, Y), # pad val
+            "PadEdge":      (self.test_PadEdge,       Y, Y, Y, Y, Y, Y, Y),
+            "PadReflect":   (self.test_PadReflect,    Y, Y, Y, Y, Y, Y, Y),
+            "Pow1":         (self.test_Pow1,          Y, Y, Y, Y, Y, Y, Y), # y = x ^ n
+            "Pow2":         (self.test_Pow2,          Y, Y, N, Y, Y, Y, Y), # y = n ^ x
+            "Pow3":         (self.test_Pow3,          Y, Y, N, Y, Y, Y, Y), # y = x1 ^ x2
+            "PRelu":        (self.test_PRelu,         Y, Y, Y, Y, Y, Y, Y),
+            "Range":        (self.test_Range,         Y, Y, N, Y, Y, N, Y),
+            "Resize":       (self.test_Resize,        Y, Y, Y, Y, Y, Y, Y),
+            "Resize2":      (self.test_Resize2,       Y, Y, Y, Y, Y, Y, Y),
+            "ResizeCSplit": (self.test_ResizeCSplit, Y, Y, N, Y, Y, Y, Y),
+            "Reshape":      (self.test_Reshape,       Y, Y, N, Y, Y, Y, Y),
+            "Reverse":      (self.test_Reverse,       Y, Y, N, Y, Y, Y, Y),
+            "Reduce":       (self.test_Reduce,        Y, Y, Y, Y, Y, Y, Y),
+            "Reduce2":      (self.test_Reduce2,       Y, Y, Y, Y, Y, Y, Y),
+            "ReduceL1":     (self.test_ReduceL1,      Y, Y, N, Y, Y, Y, Y),
+            "ReduceL2":     (self.test_ReduceL2,      Y, Y, Y, Y, Y, Y, Y),
+            "ReduceLogSumExp": (self.test_ReduceLogSumExp, Y, Y, N, N, N, N, Y),
+            "ReduceMean":   (self.test_ReduceMean,    Y, Y, Y, Y, Y, Y, Y),
+            "ReduceSum":    (self.test_ReduceSum,     Y, Y, Y, Y, Y, Y, Y),
+            "ReduceSum2":    (self.test_ReduceSum2,     Y, Y, N, N, N, Y, Y),
+            "ReduceProd":   (self.test_ReduceProd,    Y, Y, N, Y, Y, Y, Y),
+            "Reciprocal":   (self.test_Reciprocal,    Y, Y, Y, Y, Y, Y, Y),
+            "Relu":         (self.test_Relu,          Y, Y, Y, Y, Y, Y, Y),
+            "ReluOnly":     (self.test_ReluOnly,      N, Y, N, N, N, Y, N),
+            "Round":        (self.test_Round,         Y, N, N, Y, Y, Y, Y),
+            "Rsqrt":        (self.test_Rsqrt,         Y, Y, N, Y, Y, Y, Y),
+            "ScatterElements": (self.test_ScatterElements, Y, N, N, Y, Y, N, Y),
+            "ScatterND":    (self.test_ScatterND,     Y, Y, N, Y, Y, N, Y),
+            "Shape":        (self.test_Shape,         Y, Y, N, Y, Y, N, Y),
+            "ShapeCast":    (self.test_ShapeCast,     N, N, N, N, N, N, N),
+            "ShuffleChannel": (self.test_ShuffleChannel, Y, Y, N, Y, Y, N, Y),
+            "SiLU":         (self.test_SiLU,          Y, Y, Y, Y, Y, Y, Y),
+            "Softmax":      (self.test_Softmax,       Y, Y, Y, Y, Y, Y, Y),
+            "Softplus":     (self.test_Softplus,      Y, Y, Y, Y, Y, Y, Y),
+            "Softsign":     (self.test_Softsign,     Y, Y, N, Y, Y, N, Y),
+            "Space2Depth":  (self.test_Space2Depth,   Y, Y, N, Y, Y, Y, Y),
+            "Squeeze":      (self.test_Squeeze,       Y, Y, Y, Y, Y, Y, Y),
+            "StridedSlice": (self.test_StridedSlice, Y, Y, N, Y, Y, N, Y),
+            "Sigmoid":      (self.test_Sigmoid,       Y, Y, Y, Y, Y, Y, Y),
+            "Sign":         (self.test_Sign,          Y, Y, N, Y, Y, Y, Y),
+            "Sin":          (self.test_Sin,          Y, Y, N, Y, N, N, Y),
+            "Sinh":         (self.test_Sinh,         Y, Y, N, Y, N, N, Y),
+            "SliceAxis":    (self.test_SliceAxis,    Y, Y, N, Y, N, N, Y),
+            "Slice":        (self.test_Slice,         Y, Y, Y, Y, Y, Y, Y),
+            "Slice2":       (self.test_Slice2,        Y, Y, Y, Y, Y, Y, Y),
+            "Slice3":       (self.test_Slice3,        Y, Y, Y, Y, Y, Y, Y),
+            "Dynamic_Slice": (self.test_Dynamic_Slice, Y, Y, N, Y, N, Y, Y),
+            "Split":        (self.test_Split,         Y, Y, Y, Y, Y, Y, Y),
+            "Split2":        (self.test_Split2,       Y, Y, Y, Y, Y, Y, Y),
+            "Scale":        (self.test_Scale,         Y, Y, Y, Y, Y, Y, Y),
+            "Sqrt":         (self.test_Sqrt,          Y, Y, Y, Y, Y, Y, Y),
+            "Sub":          (self.test_Sub,           Y, Y, Y, Y, Y, Y, Y),
+            "Sub2":         (self.test_Sub2,          Y, Y, Y, Y, Y, Y, Y),
+            "SubBcast":     (self.test_SubBcast,      Y, Y, N, Y, Y, Y, Y),
+            "SubBcast2":    (self.test_SubBcast2,     Y, Y, N, Y, Y, Y, Y),
+            "SubConst":     (self.test_SubConst,      Y, Y, Y, Y, Y, Y, Y),
+            "SubConst2":    (self.test_SubConst2,     Y, Y, Y, Y, Y, Y, Y),
+            "SubBcast3":    (self.test_SubBcast3,     Y, Y, N, N, N, N, Y), # fixed by TPU1686 231054b22, PASS since 2026-08-19
+            "Sum":          (self.test_Sum,           Y, Y, Y, Y, Y, Y, Y),
+            "SwapChannel":  (self.test_SwapChannel,  Y, Y, N, Y, N, N, Y),
+            "Swish":        (self.test_Swish,        Y, Y, N, Y, N, N, Y),
+            "Tan":          (self.test_Tan,          Y, Y, N, Y, N, N, Y),
+            "Tanh":         (self.test_Tanh,          Y, Y, Y, Y, Y, Y, Y),
+            "Tile":         (self.test_Tile,          Y, Y, Y, Y, Y, Y, Y),
+            "TileDyn":      (self.test_TileDyn,       Y, Y, N, Y, N, N, Y), # bm1690 has prob
+            "Transpose":    (self.test_Transpose,     Y, Y, Y, Y, Y, Y, Y),
+            "Transpose2":   (self.test_Transpose2,    Y, Y, Y, Y, Y, Y, Y),
+            "Trilu":        (self.test_Trilu,         Y, N, N, N, N, N, Y),
+            "TopK":         (self.test_TopK,          Y, Y, N, Y, N, N, Y), # bm1690e has prob
+            "TopK2":        (self.test_TopK2,         Y, N, N, Y, N, N, Y), # bm1690e has prob
+            "TopK4":        (self.test_TopK4,         N, N, Y, N, N, N, N),
+            "TopKSlice":    (self.test_TopKSlice,     Y, N, N, N, N, N, Y),
+            "TopKTrans":    (self.test_TopKTrans,     Y, N, N, N, N, N, Y),
+            "Unpack":       (self.test_Unpack,       Y, Y, N, Y, Y, N, Y),
+            "Upsample":     (self.test_Upsample,      Y, Y, N, Y, Y, Y, Y),
+            "Unsqueeze":    (self.test_Unsqueeze,     Y, Y, N, Y, Y, Y, Y),
             # Only 1D shape is supported currently
             # "ShapeUnsqueeze":  (self.test_ShapeUnsqueeze,  N, Y, Y, N),
             # "ShapeSqueeze":    (self.test_ShapeSqueeze,    N, Y, Y, N),
-            "Where":        (self.test_Where,         Y, Y, Y, Y,Y, Y),
-            "Xor":          (self.test_Xor,           Y, Y, N, N,N, Y),
+            "Where":        (self.test_Where,         Y, Y, Y, Y, Y, Y, Y),
+            "Xor":          (self.test_Xor,           Y, Y, N, N, N, Y, Y),
             #####################################
             # Torch Test Case, Alphabetically
             #####################################
-            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support,cv184x_support)
-            "TorchActivation":      (self.test_TorchActivation,     Y, Y, Y, Y, Y, N),
-            "TorchArg":             (self.test_TorchArg,            Y, Y, N, Y, Y, Y),
-            "TorchBatchNorm":       (self.test_TorchBatchNorm,      Y, Y, Y, Y, Y, Y),
-            "TorchChannelShuffle":  (self.test_TorchChannelShuffle, N, N, N, N, N, N),
-            "TorchChunk":           (self.test_TorchChunk,          Y, Y, Y, Y, Y, Y),
-            "TorchConv2d":          (self.test_TorchConv2d,         N, N, Y, N, N, N),
-            "TorchConv3dTrans":     (self.test_TorchConv3dTrans,    Y, Y, Y, Y, Y, Y),
-            "TorchHardSwish":       (self.test_TorchHardSwish,      Y, Y, Y, Y, Y, Y),
-            "TorchHardSigmoid":     (self.test_TorchHardSigmoid,    Y, Y, Y, Y, Y, Y),
-            "TorchGelu":            (self.test_TorchGelu,           Y, Y, Y, Y, Y, Y),
-            "TorchGroupNorm":       (self.test_TorchGroupNorm,      Y, Y, N, Y, Y, Y),
-            "TorchGroupNorm2":      (self.test_TorchGroupNorm2,     Y, Y, N, Y, Y, Y),
-            "TorchGRU":             (self.test_TorchGRU,            Y, Y, Y, Y, Y, N),
-            "TorchIdentity":        (self.test_TorchIdentity,       Y, Y, Y, Y, Y, Y),
-            "TorchIndexPut":        (self.test_TorchIndexPut,       Y, Y, N, Y, Y, Y),
-            "TorchInterp":          (self.test_TorchInterp,         Y, Y, Y, Y, Y, Y),
-            "TorchIndexCopy":       (self.test_TorchIndexCopy,      N, N, N, N, N, Y),
-            "TorchInstanceNorm":    (self.test_TorchInstanceNorm,   Y, Y, N, Y, Y, Y),
-            "TorchInstanceNorm2":   (self.test_TorchInstanceNorm2,  Y, Y, N, Y, Y, Y),
-            "TorchLayerGroup":      (self.test_TorchLayerGroup,     Y, Y, Y, Y, Y, Y),
-            "TorchLayerNorm":       (self.test_TorchLayerNorm,      Y, Y, Y, Y, Y, Y),
-            "TorchLayerNorm2":      (self.test_TorchLayerNorm2,     Y, Y, Y, Y, Y, Y),
-            "TorchLogSoftmax":      (self.test_TorchLogSoftmax,     Y, Y, Y, Y, Y, Y),
-            "TorchLSTM":            (self.test_TorchLSTM,           Y, Y, Y, Y, Y, N),
-            "TorchMaskedFill":      (self.test_TorchMaskedFill,     Y, Y, N, Y, Y, Y),
-            "TorchNms":             (self.test_TorchNms,            Y, Y, N, Y, Y, N),
-            "TorchNonZero":         (self.test_TorchNonZero,        Y, Y, N, Y, Y, N),
-            "TorchNormalize":       (self.test_TorchNormalize,      Y, Y, N, N, N, Y),
-            "TorchReflectionPad":   (self.test_TorchReflectionPad,  Y, Y, Y, Y, Y, Y),
-            "TorchRMSNorm":         (self.test_TorchRMSNorm,        Y, Y, N, Y, Y, Y),
-            "TorchRoiAlign":        (self.test_TorchRoiAlign,       Y, Y, N, Y, Y, N),
-            "TorchScatterND":       (self.test_TorchScatterND,      N, Y, Y, Y, Y, N),
-            "TorchSize":            (self.test_TorchSize,           Y, Y, Y, Y, Y, Y),
-            "TorchStd":             (self.test_TorchStd,            Y, Y, Y, Y, Y, Y),
-            "TorchWhere":           (self.test_TorchWhere,          Y, Y, N, Y, Y, Y),
-            "TorchZeroPad":         (self.test_TorchZeroPad,        Y, Y, Y, Y, Y, Y),
+            # case: (test, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support, bm1684x2_support)
+            "TorchActivation":      (self.test_TorchActivation,     Y, Y, Y, Y, Y, N, Y),
+            "TorchArg":             (self.test_TorchArg,            Y, Y, N, Y, Y, Y, Y),
+            "TorchBatchNorm":       (self.test_TorchBatchNorm,      Y, Y, Y, Y, Y, Y, Y),
+            "TorchChannelShuffle":  (self.test_TorchChannelShuffle, N, N, N, N, N, N, N),
+            "TorchChunk":           (self.test_TorchChunk,          Y, Y, Y, Y, Y, Y, Y),
+            "TorchConv2d":          (self.test_TorchConv2d,         N, N, Y, N, N, N, N),
+            "TorchConv3dTrans":     (self.test_TorchConv3dTrans,    Y, Y, Y, Y, Y, Y, Y),
+            "TorchHardSwish":       (self.test_TorchHardSwish,      Y, Y, Y, Y, Y, Y, Y),
+            "TorchHardSigmoid":     (self.test_TorchHardSigmoid,    Y, Y, Y, Y, Y, Y, Y),
+            "TorchGelu":            (self.test_TorchGelu,           Y, Y, Y, Y, Y, Y, Y),
+            "TorchGroupNorm":       (self.test_TorchGroupNorm,      Y, Y, N, Y, Y, Y, Y),
+            "TorchGroupNorm2":      (self.test_TorchGroupNorm2,     Y, Y, N, Y, Y, Y, Y),
+            "TorchGRU":             (self.test_TorchGRU,            Y, Y, Y, Y, Y, N, N),
+            "TorchIdentity":        (self.test_TorchIdentity,       Y, Y, Y, Y, Y, Y, Y),
+            "TorchIndexPut":        (self.test_TorchIndexPut,       Y, Y, N, Y, Y, Y, Y),
+            "TorchInterp":          (self.test_TorchInterp,         Y, Y, Y, Y, Y, Y, Y),
+            "TorchIndexCopy":       (self.test_TorchIndexCopy,      N, N, N, N, N, Y, N),
+            "TorchInstanceNorm":    (self.test_TorchInstanceNorm,   Y, Y, N, Y, Y, Y, Y),
+            "TorchInstanceNorm2":   (self.test_TorchInstanceNorm2,  Y, Y, N, Y, Y, Y, Y),
+            "TorchLayerGroup":      (self.test_TorchLayerGroup,     Y, Y, Y, Y, Y, Y, Y),
+            "TorchLayerNorm":       (self.test_TorchLayerNorm,      Y, Y, Y, Y, Y, Y, Y),
+            "TorchLayerNorm2":      (self.test_TorchLayerNorm2,     Y, Y, Y, Y, Y, Y, Y),
+            "TorchLogSoftmax":      (self.test_TorchLogSoftmax,     Y, Y, Y, Y, Y, Y, Y),
+            "TorchLSTM":            (self.test_TorchLSTM,           Y, Y, Y, Y, Y, N, N),
+            "TorchMaskedFill":      (self.test_TorchMaskedFill,     Y, Y, N, Y, Y, Y, Y),
+            "TorchNms":             (self.test_TorchNms,            Y, Y, N, Y, Y, N, N),
+            "TorchNonZero":         (self.test_TorchNonZero,        Y, Y, N, Y, Y, N, Y),
+            "TorchNormalize":       (self.test_TorchNormalize,      Y, Y, N, N, N, Y, Y),
+            "TorchReflectionPad":   (self.test_TorchReflectionPad,  Y, Y, Y, Y, Y, Y, Y),
+            "TorchRMSNorm":         (self.test_TorchRMSNorm,        Y, Y, N, Y, Y, Y, Y),
+            "TorchRoiAlign":        (self.test_TorchRoiAlign,       Y, Y, N, Y, Y, N, Y),
+            "TorchScatterND":       (self.test_TorchScatterND,      N, Y, Y, Y, Y, N, N),
+            "TorchSize":            (self.test_TorchSize,           Y, Y, Y, Y, Y, Y, Y),
+            "TorchStd":             (self.test_TorchStd,            Y, Y, Y, Y, Y, Y, Y),
+            "TorchWhere":           (self.test_TorchWhere,          Y, Y, N, Y, Y, Y, Y),
+            "TorchZeroPad":         (self.test_TorchZeroPad,        Y, Y, Y, Y, Y, Y, Y),
 
             #########################################
             # Special Pass test case, Alphabetically
             #########################################
-            # case:  (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support)
-            "ArgError":         (self.test_ArgError,        Y, Y, Y, Y, Y, Y),
-            "ArgReducefull":    (self.test_ArgReducefull,   Y, Y, N, Y, Y, Y),
-            "ConcatFuse":       (self.test_ConcatFuse,      Y, Y, Y, Y, Y, Y),
-            "ConcatToSpace":    (self.test_ConcatToSpace,   Y, Y, N, Y, Y, Y),
-            "Conv3dTo2d":       (self.test_Conv3dTo2d,      Y, Y, Y, Y, Y, Y),
-            "Depth2SpaceWithPermute": (self.test_Depth2SpaceWithPermute, Y, Y, N, Y, Y, Y),
-            "Div2Mul":          (self.test_Div2Mul,         Y, Y, Y, Y, Y, Y),
-            "ConvSlice":        (self.test_ConvSlice,       Y, Y, N, Y, Y, Y),
-            "Gather2Slice":     (self.test_Gather2Slice,    Y, Y, Y, Y, N, Y), # bm1690 has prob
-            "Gather2Slice2":    (self.test_Gather2Slice2,   Y, Y, Y, Y, Y, Y),
-            "GatherUnsqueeze":  (self.test_GatherUnsqueeze,  Y, Y, Y, Y, Y, Y),
-            "GLMTilePermute":   (self.test_GLMTilePermute,  Y, N, N, Y, Y, Y),
-            "GLMTilePermute2":  (self.test_GLMTilePermute2, Y, N, N, Y, Y, N),
-            "Mul2Scale":        (self.test_Mul2Scale,       Y, Y, Y, Y, Y, Y),
-            "MatMulTranspose":  (self.test_MatMulTranspose, Y, Y, Y, Y, N, Y), # bm1690 has prob
-            "MatMulTranspose2": (self.test_MatMulTranspose2, Y, Y, Y, Y, Y, Y),
-            "MatMulTranspose3": (self.test_MatMulTranspose3, Y, Y, Y, Y, Y, Y),
-            "PadConv1d":        (self.test_PadConv1d,       N, N, Y, N, N, Y),
-            "PadConv2d":        (self.test_PadConv2d,       Y, Y, Y, Y, Y, Y),
-            "PadConv3d":        (self.test_PadConv3d,       N, N, N, N, N, Y),
-            "PadPool1d":        (self.test_PadPool1d,       Y, Y, Y, Y, Y, Y),
-            "PadPool2d":        (self.test_PadPool2d,       N, N, Y, N, N, Y),
-            "PadPool3d":        (self.test_PadPool3d,       N, N, Y, N, N, N),
-            "PixelNorm":        (self.test_PixelNorm,       Y, Y, N, Y, Y, Y),
-            "PixelNorm2":       (self.test_PixelNorm2,      Y, Y, N, Y, Y, Y),
-            "PixelNorm3":       (self.test_PixelNorm3,      Y, Y, N, Y, Y, Y),
-            "PixelNorm4":       (self.test_PixelNorm4,      Y, Y, N, Y, Y, Y),
-            "PixelNorm5":       (self.test_PixelNorm5,      Y, Y, N, Y, Y, Y),
-            "PenaltySample":    (self.test_PenaltySample,   N, Y, N, N, N, N),
-            "PermuteAndConv1DtoMatMul": (self.test_PermuteAndConv1DtoMatMul, Y, Y, Y, Y, Y, Y),
-            "PermuteBinary":    (self.test_PermuteBinary,   Y, Y, Y, Y, Y, Y),
-            "PermuteFuse":      (self.test_PermuteFuse,     Y, Y, Y, Y, Y, Y),
-            "PermutePad":       (self.test_PermutePad,      Y, Y, N, Y, Y, Y),
-            "PermuteToReorg":   (self.test_PermuteToReorg,  Y, Y, Y, Y, Y, Y),
-            "PermuteToReorg2":  (self.test_PermuteToReorg2, Y, Y, Y, Y, Y, Y),
-            "PermuteToReshape": (self.test_PermuteToReshape, Y, Y, N, Y, Y, Y),
-            "Permute5dSplit":   (self.test_Permute5dSplit,  Y, Y, Y, Y, Y, Y),
-            "Permute7d":        (self.test_Permute7d,       Y, Y, N, Y, Y, Y),
-            "PoolAfterRelu":    (self.test_PoolAfterRelu,   Y, Y, Y, Y, Y, Y),
-            "PoolSignError":    (self.test_PoolSignError,   Y, Y, Y, Y, Y, Y),
-            "ReshapeFuse":      (self.test_ReshapeFuse,     Y, Y, Y, Y, Y, Y),
-            "ReshapeN":         (self.test_ReshapeN,        N, N, N, N, N, Y),
-            "ReduceTranspose":  (self.test_ReduceTranspose, Y, Y, N, Y, Y, Y),
-            "ReduceFuse":       (self.test_ReduceFuse,      Y, Y, Y, Y, Y, Y),
-            "SwapDimInner":     (self.test_SwapDimInner,    Y, Y, N, Y, Y, Y),
-            "SliceToReverse":   (self.test_SliceToReverse,  Y, Y, N, Y, Y, Y),
-            "StaticDynMixed":   (self.test_StaticDynMixed,  Y, Y, N, Y, N, N), # bm1690e has prob
-            "TransposeArg":     (self.test_TransposeArg,    Y, Y, Y, Y, Y, Y),
-            "If":               (self.test_If,              Y, Y, N, Y, N, N), # bm1690 has prob
-            "UpsampleAddWeight":(self.test_UpsampleAddWeight, Y, Y, N, N, N, Y),
-            "MatmulHdimIsBatch":(self.test_MatmulHdimIsBatch, Y, Y, Y, Y, Y, Y),
+            # case:  (test, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support, bm1684x2_support)
+            "ArgError":         (self.test_ArgError,        Y, Y, Y, Y, Y, Y, Y),
+            "ArgReducefull":    (self.test_ArgReducefull,   Y, Y, N, Y, Y, Y, Y),
+            "ConcatFuse":       (self.test_ConcatFuse,      Y, Y, Y, Y, Y, Y, Y),
+            "ConcatToSpace":    (self.test_ConcatToSpace,   Y, Y, N, Y, Y, Y, Y),
+            "Conv3dTo2d":       (self.test_Conv3dTo2d,      Y, Y, Y, Y, Y, Y, Y),
+            "Depth2SpaceWithPermute": (self.test_Depth2SpaceWithPermute, Y, Y, N, Y, Y, Y, Y),
+            "Div2Mul":          (self.test_Div2Mul,         Y, Y, Y, Y, Y, Y, Y),
+            "ConvSlice":        (self.test_ConvSlice,       Y, Y, N, Y, Y, Y, Y),
+            "Gather2Slice":     (self.test_Gather2Slice,    Y, Y, Y, Y, N, Y, Y), # bm1690 has prob
+            "Gather2Slice2":    (self.test_Gather2Slice2,   Y, Y, Y, Y, Y, Y, Y),
+            "GatherUnsqueeze":  (self.test_GatherUnsqueeze,  Y, Y, Y, Y, Y, Y, Y),
+            "GLMTilePermute":   (self.test_GLMTilePermute,  Y, N, N, Y, Y, Y, Y),
+            "GLMTilePermute2":  (self.test_GLMTilePermute2, Y, N, N, Y, Y, N, Y),
+            "Mul2Scale":        (self.test_Mul2Scale,       Y, Y, Y, Y, Y, Y, Y),
+            "MatMulTranspose":  (self.test_MatMulTranspose, Y, Y, Y, Y, N, Y, Y), # bm1690 has prob
+            "MatMulTranspose2": (self.test_MatMulTranspose2, Y, Y, Y, Y, Y, Y, Y),
+            "MatMulTranspose3": (self.test_MatMulTranspose3, Y, Y, Y, Y, Y, Y, Y),
+            "PadConv1d":        (self.test_PadConv1d,       N, N, Y, N, N, Y, N),
+            "PadConv2d":        (self.test_PadConv2d,       Y, Y, Y, Y, Y, Y, Y),
+            "PadConv3d":        (self.test_PadConv3d,       N, N, N, N, N, Y, N),
+            "PadPool1d":        (self.test_PadPool1d,       Y, Y, Y, Y, Y, Y, Y),
+            "PadPool2d":        (self.test_PadPool2d,       N, N, Y, N, N, Y, N),
+            "PadPool3d":        (self.test_PadPool3d,       N, N, Y, N, N, N, N),
+            "PixelNorm":        (self.test_PixelNorm,       Y, Y, N, Y, Y, Y, Y),
+            "PixelNorm2":       (self.test_PixelNorm2,      Y, Y, N, Y, Y, Y, Y),
+            "PixelNorm3":       (self.test_PixelNorm3,      Y, Y, N, Y, Y, Y, Y),
+            "PixelNorm4":       (self.test_PixelNorm4,      Y, Y, N, Y, Y, Y, Y),
+            "PixelNorm5":       (self.test_PixelNorm5,      Y, Y, N, Y, Y, Y, Y),
+            "PenaltySample":    (self.test_PenaltySample,   N, Y, N, N, N, N, N),
+            "PermuteAndConv1DtoMatMul": (self.test_PermuteAndConv1DtoMatMul, Y, Y, Y, Y, Y, Y, Y),
+            "PermuteBinary":    (self.test_PermuteBinary,   Y, Y, Y, Y, Y, Y, Y),
+            "PermuteFuse":      (self.test_PermuteFuse,     Y, Y, Y, Y, Y, Y, Y),
+            "PermutePad":       (self.test_PermutePad,      Y, Y, N, Y, Y, Y, Y),
+            "PermuteToReorg":   (self.test_PermuteToReorg,  Y, Y, Y, Y, Y, Y, Y),
+            "PermuteToReorg2":  (self.test_PermuteToReorg2, Y, Y, Y, Y, Y, Y, Y),
+            "PermuteToReshape": (self.test_PermuteToReshape, Y, Y, N, Y, Y, Y, Y),
+            "Permute5dSplit":   (self.test_Permute5dSplit,  Y, Y, Y, Y, Y, Y, Y),
+            "Permute7d":        (self.test_Permute7d,       Y, Y, N, Y, Y, Y, Y),
+            "PoolAfterRelu":    (self.test_PoolAfterRelu,   Y, Y, Y, Y, Y, Y, Y),
+            "PoolSignError":    (self.test_PoolSignError,   Y, Y, Y, Y, Y, Y, Y),
+            "ReshapeFuse":      (self.test_ReshapeFuse,     Y, Y, Y, Y, Y, Y, Y),
+            "ReshapeN":         (self.test_ReshapeN,        N, N, N, N, N, Y, N),
+            "ReduceTranspose":  (self.test_ReduceTranspose, Y, Y, N, Y, Y, Y, Y),
+            "ReduceFuse":       (self.test_ReduceFuse,      Y, Y, Y, Y, Y, Y, Y),
+            "SwapDimInner":     (self.test_SwapDimInner,    Y, Y, N, Y, Y, Y, Y),
+            "SliceToReverse":   (self.test_SliceToReverse,  Y, Y, N, Y, Y, Y, Y),
+            "StaticDynMixed":   (self.test_StaticDynMixed,  Y, Y, N, Y, N, N, Y), # bm1690e has prob
+            "TransposeArg":     (self.test_TransposeArg,    Y, Y, Y, Y, Y, Y, Y),
+            "If":               (self.test_If,              Y, Y, N, Y, N, N, Y), # bm1690 has prob
+            "UpsampleAddWeight":(self.test_UpsampleAddWeight, Y, Y, N, N, N, Y, Y),
+            "MatmulHdimIsBatch":(self.test_MatmulHdimIsBatch, Y, Y, Y, Y, Y, Y, Y),
             # "Loop":            (self.test_Loop,             N, Y, N, N, Y, Y, N),
             #########################################
             # LayerGroup test case, Alphabetically
             #########################################
-            "LgMultiBranchAdd":         (self.test_LgMultiBranchAdd,      Y, Y, N, Y, Y, Y),
-            "LgMultiBranchAddConst":    (self.test_LgMultiBranchAddConst, Y, Y, N, Y, Y, Y),
-            "LgMultiBranchSub":         (self.test_LgMultiBranchSub,      Y, Y, N, Y, Y, Y),
-            "LgMultiBranchSubConst":    (self.test_LgMultiBranchSubConst, Y, Y, N, Y, Y, Y),
-            "LgMultiBranchMul":         (self.test_LgMultiBranchMul,      Y, Y, N, Y, Y, Y),
+            "LgMultiBranchAdd":         (self.test_LgMultiBranchAdd,      Y, Y, N, Y, Y, Y, Y),
+            "LgMultiBranchAddConst":    (self.test_LgMultiBranchAddConst, Y, Y, N, Y, Y, Y, Y),
+            "LgMultiBranchSub":         (self.test_LgMultiBranchSub,      Y, Y, N, Y, Y, Y, Y),
+            "LgMultiBranchSubConst":    (self.test_LgMultiBranchSubConst, Y, Y, N, Y, Y, Y, Y),
+            "LgMultiBranchMul":         (self.test_LgMultiBranchMul,      Y, Y, N, Y, Y, Y, Y),
             # "LgMultiBranchDiv":         (self.test_LgMultiBranchDiv,      N, Y, Y, N, Y, Y, Y), # f16 test has precision issue when lowering
             # "LgMultiBranchMax":         (self.test_LgMultiBranchMax,      N, Y, Y, N, Y, Y, Y), # int8 lowering not support
             # "LgMultiBranchMin":         (self.test_LgMultiBranchMin,      N, Y, Y, N, Y, Y, Y), # int8 lowering not support
             # "LgMultiBranchCmp":         (self.test_LgMultiBranchCmp,      N, Y, Y, N, Y, Y, Y), # int8 has precision issue when lowering
-            "LgMultiBranchSlice":       (self.test_LgMultiBranchSlice,    Y, Y, N, Y, Y, Y),
-            "LgMultiBranchConcat":      (self.test_LgMultiBranchConcat,   Y, Y, N, Y, Y, Y),
-            "LgMultiBranchStore":       (self.test_LgMultiBranchStore,    Y, Y, N, Y, Y, Y),
+            "LgMultiBranchSlice":       (self.test_LgMultiBranchSlice,    Y, Y, N, Y, Y, Y, Y),
+            "LgMultiBranchConcat":      (self.test_LgMultiBranchConcat,   Y, Y, N, Y, Y, Y, Y),
+            "LgMultiBranchStore":       (self.test_LgMultiBranchStore,    Y, Y, N, Y, Y, Y, Y),
             #########################################
             # Dynamic test case, Alphabetically
             #########################################
-            # case:  (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support)
-            "DynamicSlice":     (self.test_DynamicSlice,    Y, N, N, N, N, N),
-            "DynamicPad":     (self.test_DynamicPad,        Y, Y, N, N, N, N),
-            "DynamicAdd":       (self.test_DynamicAdd,      Y, N, N, N, N, N),
-            "DynamicArg":       (self.test_DynamicArg,      Y, N, N, N, N, N),
-            "DynamicClip":      (self.test_DynamicClip,     Y, N, N, N, N, N),
-            "DynamicConcat":    (self.test_DynamicConcat,   Y, N, N, N, N, N),
-            "DynamicConv1d":    (self.test_DynamicConv1d,   Y, N, N, N, N, N),
-            "DynamicConv2d":    (self.test_DynamicConv2d,   Y, N, N, N, N, N),
-            "DynamicDeconv":    (self.test_DynamicDeconv,   Y, N, N, N, N, N),
-            "DynamicFloor":     (self.test_DynamicFloor,    Y, N, N, N, N, N),
-            "DynamicGather":    (self.test_DynamicGather,   Y, N, N, N, N, N),
-            "DynamicLog":       (self.test_DynamicLog,      Y, N, N, N, N, N),
-            "DynamicMaxconst":  (self.test_DynamicMaxconst, Y, N, N, N, N, N),
-            "DynamicMinconst":  (self.test_DynamicMinconst, Y, N, N, N, N, N),
-            "DynamicMul":       (self.test_DynamicMul,      Y, N, N, N, N, N),
-            "DynamicMatMul":    (self.test_DynamicMatMul,   Y, N, N, N, N, N),
-            "DynamicSigmoid":   (self.test_DynamicSigmoid,  Y, N, N, N, N, N),
-            "DynamicSub":       (self.test_DynamicSub,      Y, N, N, N, N, N),
-            "DynamicSqrt":      (self.test_DynamicSqrt,     Y, N, N, N, N, N),
-            "DynamicSqueeze":   (self.test_DynamicSqueeze,  Y, N, N, N, N, N),
-            "DynamicPermute":   (self.test_DynamicPermute,  Y, N, N, N, N, N),
-            "DynamicUnsqueeze": (self.test_DynamicUnsqueeze,Y, N, N, N, N, N),
-            "DynamicRelu":      (self.test_DynamicRelu,     Y, N, N, N, N, N),
-            "DynamicReduce":   (self.test_DynamicReduce,    Y, N, N, N, N, N),
+            # case:  (test, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support, bm1684x2_support)
+            "DynamicSlice":     (self.test_DynamicSlice,    Y, N, N, N, N, N, Y),
+            "DynamicPad":     (self.test_DynamicPad,        Y, Y, N, N, N, N, Y),
+            "DynamicAdd":       (self.test_DynamicAdd,      Y, N, N, N, N, N, Y),
+            "DynamicArg":       (self.test_DynamicArg,      Y, N, N, N, N, N, Y),
+            "DynamicClip":      (self.test_DynamicClip,     Y, N, N, N, N, N, Y),
+            "DynamicConcat":    (self.test_DynamicConcat,   Y, N, N, N, N, N, Y),
+            "DynamicConv1d":    (self.test_DynamicConv1d,   Y, N, N, N, N, N, Y),
+            "DynamicConv2d":    (self.test_DynamicConv2d,   Y, N, N, N, N, N, Y),
+            "DynamicDeconv":    (self.test_DynamicDeconv,   Y, N, N, N, N, N, Y),
+            "DynamicFloor":     (self.test_DynamicFloor,    Y, N, N, N, N, N, Y),
+            "DynamicGather":    (self.test_DynamicGather,   Y, N, N, N, N, N, Y),
+            "DynamicLog":       (self.test_DynamicLog,      Y, N, N, N, N, N, Y),
+            "DynamicMaxconst":  (self.test_DynamicMaxconst, Y, N, N, N, N, N, Y),
+            "DynamicMinconst":  (self.test_DynamicMinconst, Y, N, N, N, N, N, Y),
+            "DynamicMul":       (self.test_DynamicMul,      Y, N, N, N, N, N, Y),
+            "DynamicMatMul":    (self.test_DynamicMatMul,   Y, N, N, N, N, N, Y),
+            "DynamicSigmoid":   (self.test_DynamicSigmoid,  Y, N, N, N, N, N, Y),
+            "DynamicSub":       (self.test_DynamicSub,      Y, N, N, N, N, N, Y),
+            "DynamicSqrt":      (self.test_DynamicSqrt,     Y, N, N, N, N, N, Y),
+            "DynamicSqueeze":   (self.test_DynamicSqueeze,  Y, N, N, N, N, N, Y),
+            "DynamicPermute":   (self.test_DynamicPermute,  Y, N, N, N, N, N, Y),
+            "DynamicUnsqueeze": (self.test_DynamicUnsqueeze,Y, N, N, N, N, N, Y),
+            "DynamicRelu":      (self.test_DynamicRelu,     Y, N, N, N, N, N, Y),
+            "DynamicReduce":   (self.test_DynamicReduce,    Y, N, N, N, N, N, Y),
             #########################################
             # Shape Op test case, Alphabetically
             #########################################
@@ -447,11 +456,11 @@ class ONNX_IR_TESTER(object):
             #########################################
             # custom op test case, Alphabetically
             #########################################
-            # case:  (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support)
+            # case:  (test, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support, bm1684x2_support)
             # Correlation always fail in regression. Comment out to prevent affecting regression.
-            "ConcatVolume":  (self.test_ConcatVolume,   Y, Y, N, N, N, N),
-            "Correlation":   (self.test_Correlation,    N, N, N, N, N, N),
-            "SelectiveScan":   (self.test_SelectiveScan,    Y, N, N, N, N, N),
+            "ConcatVolume":  (self.test_ConcatVolume,   Y, Y, N, N, N, N, Y),
+            "Correlation":   (self.test_Correlation,    N, N, N, N, N, N, N),
+            "SelectiveScan":   (self.test_SelectiveScan,    Y, N, N, N, N, N, Y),
         }
         # yapf: enable
         self.cases_int4 = ["Conv2d", "MatMul", "MatMul2"]  # only bm1688
@@ -5650,52 +5659,51 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def, input_data=input_data)
 
     def test_GatherElements(self, case_name):
-        if self.chip in ['bm1684x', 'bm1690', 'cv184x']:
-            # samples too large for regression is commented
-            # but all samples following should be passed
-            input_data = [
-                {
-                    "data": np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.float32)
-                },
-                {
-                    "data": np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.float32)
-                },
-                {
-                    "data": np.random.randn(1, 13294, 4).astype(np.float32)
-                },
-                {
-                    "data": np.arange(256).reshape(4, 4, 4, 4).astype(np.float32)
-                },
-                {
-                    "data": np.random.randn(16, 17, 18, 19).astype(np.float32)
-                    # "data": np.arange(16 * 17 * 18 * 19).reshape(16, 17, 18, 19).astype(np.float32) # for f32 debug
-                },
-                {
-                    "data": np.random.randn(16, 17, 18, 19, 20).astype(np.float32)
-                    # }, {
-                    #     "data": np.random.randn(5, 8, 512, 512).astype(np.float32)
-                    # }, {
-                    #     "data": np.random.randn(5, 8, 512, 512).astype(np.float32)
-                    # }, {
-                    #     "data": np.random.randn(5, 8, 8, 512, 512).astype(np.float32)
-                    # }, {
-                    #     "data": np.random.randn(655340, 2).astype(np.float32)
-                }
-            ]
-            indices_data = [
-                np.array([[2, 1, 0, 2], [1, 2, 0, 1], [0, 2, 1, 0]], dtype=np.int64),
-                np.array([[2, 1, 0], [1, 2, 0], [0, 2, 1], [0, 1, 2]], dtype=np.int64),
-                np.random.randint(0, 13294, [1, 900, 4]),
-                np.random.randint(0, 4, [2, 3, 9, 4]),
-                np.random.randint(0, 18, [15, 12, 39, 15]),
-                np.random.randint(0, 18, [15, 12, 39, 15, 13]),
-                # np.random.randint(0, 512, [3, 7, 1025, 510]),
-                # np.random.randint(0, 8, [3, 128, 511, 88]),
-                # np.random.randint(0, 8, [3, 6, 128, 511, 88]),
-                # np.random.randint(0, 2, [65536, 2]),
-            ]
-            # axis_data = [1, 0, 1, 2, 2, 2, 2, 1, 2, 1]
-            axis_data = [1, 0, 1, 2, 2, 2]
+        # samples too large for regression is commented
+        # but all samples following should be passed
+        input_data = [
+            {
+                "data": np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.float32)
+            },
+            {
+                "data": np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.float32)
+            },
+            {
+                "data": np.random.randn(1, 13294, 4).astype(np.float32)
+            },
+            {
+                "data": np.arange(256).reshape(4, 4, 4, 4).astype(np.float32)
+            },
+            {
+                "data": np.random.randn(16, 17, 18, 19).astype(np.float32)
+                # "data": np.arange(16 * 17 * 18 * 19).reshape(16, 17, 18, 19).astype(np.float32) # for f32 debug
+            },
+            {
+                "data": np.random.randn(16, 17, 18, 19, 20).astype(np.float32)
+                # }, {
+                #     "data": np.random.randn(5, 8, 512, 512).astype(np.float32)
+                # }, {
+                #     "data": np.random.randn(5, 8, 512, 512).astype(np.float32)
+                # }, {
+                #     "data": np.random.randn(5, 8, 8, 512, 512).astype(np.float32)
+                # }, {
+                #     "data": np.random.randn(655340, 2).astype(np.float32)
+            }
+        ]
+        indices_data = [
+            np.array([[2, 1, 0, 2], [1, 2, 0, 1], [0, 2, 1, 0]], dtype=np.int64),
+            np.array([[2, 1, 0], [1, 2, 0], [0, 2, 1], [0, 1, 2]], dtype=np.int64),
+            np.random.randint(0, 13294, [1, 900, 4]),
+            np.random.randint(0, 4, [2, 3, 9, 4]),
+            np.random.randint(0, 18, [15, 12, 39, 15]),
+            np.random.randint(0, 18, [15, 12, 39, 15, 13]),
+            # np.random.randint(0, 512, [3, 7, 1025, 510]),
+            # np.random.randint(0, 8, [3, 128, 511, 88]),
+            # np.random.randint(0, 8, [3, 6, 128, 511, 88]),
+            # np.random.randint(0, 2, [65536, 2]),
+        ]
+        # axis_data = [1, 0, 1, 2, 2, 2, 2, 1, 2, 1]
+        axis_data = [1, 0, 1, 2, 2, 2]
         for i in range(len(input_data)):
             # if i != 8:
             #     continue
@@ -9235,6 +9243,7 @@ def main(argv=None) -> None:
         test_all(tester)
     else:
         tester.test_single(args.case)
+    clean_kmp_files()
     if not args.debug:
         file_clean()
 

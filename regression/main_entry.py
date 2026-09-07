@@ -61,8 +61,8 @@ class Status(enum.IntEnum):
 # Chip lists used by the op-level tests. Kept here (rather than in chip.py)
 # because they reflect *which chips we currently run in CI* for that test
 # family, which is a CI policy decision, not an intrinsic chip capability.
-_ONNX_CHIPS = ("bm1684x", "bm1688", "cv183x", "cv184x")
-_TORCH_CHIPS = ("bm1684x", "bm1688", "cv184x")
+_ONNX_CHIPS = ("bm1684x", "bm1688", "cv183x", "cv184x", "bm1684x2")
+_TORCH_CHIPS = ("bm1684x", "bm1688", "cv184x", "bm1684x2")
 _CUSTOM_TPULANG_CHIPS = ("bm1684x", "bm1688")
 _TPULANG_CHIPS = ("bm1684x", "bm1688")
 

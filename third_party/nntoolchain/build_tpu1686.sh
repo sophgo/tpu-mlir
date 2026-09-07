@@ -17,6 +17,7 @@ LIB_DEST="${TPUMLIR_PATH}/third_party/nntoolchain/lib"
 TPU1686_PATH="/workspace/TPU1686"
 SHA_FILE="${SCRIPT_DIR}/tpu1686_sha256.txt"
 BUILD_TYPE="RELEASE"
+unset OMP_NUM_THREADS # TPU1686/scripts/build_backend.sh uses 'nproc'; either switch to 'nproc --all' or unset this var.
 
 ALL_CHIPS=(bm1684x bm1688 bm1690 bm1690e cv184x sgtpuv8 bm1684x2)
 SELECTED_CHIPS=()
