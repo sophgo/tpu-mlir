@@ -6555,6 +6555,24 @@ def batch_norm(input: Tensor,
 @auto_name()
 @annotation_check
 @assert_with_out_name
+def instance_norm(input: Tensor,
+                  weight: Tensor = None,
+                  bias: Tensor = None,
+                  epsilon: float = 1e-5,
+                  out_name: str = None):
+    output = Tensor(dtype=input.dtype, name=out_name)
+    assert input.dtype in ["float32", "float16"]
+    attr = {"eps": Attr(epsilon, 'float64')}
+    TpuLang.insert_op("top.InstanceNorm",
+                      inputs=[input, weight, bias],
+                      outputs=[output],
+                      params=attr)
+    return output
+
+
+@auto_name()
+@annotation_check
+@assert_with_out_name
 def layer_norm(input: Tensor,
                gamma: Tensor = None,
                beta: Tensor = None,

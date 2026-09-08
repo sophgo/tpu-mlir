@@ -260,6 +260,7 @@ class TPULANG_IR_TESTER(object):
             "Hsigmoid": (self.test_Hsigmoid, Y, Y),
             "Hswish": (self.test_Hswish, Y, Y),
             "IndexSelect": (self.test_IndexSelect, Y, Y),
+            "InstanceNorm": (self.test_InstanceNorm, Y, Y),
             "Interp": (self.test_Interp, Y, Y),
             "Le": (self.test_Le, Y, Y),
             "Les": (self.test_Les, Y, Y),
@@ -4403,6 +4404,24 @@ class TPULANG_IR_TESTER(object):
                                     x.dtype,
                                     data=np.clip(np.random.randn(oc), 0.5, 10).astype(x.dtype))
             y = tpul.batch_norm(x, mean, var, epsilon=1e-5)
+            self.compile_and_check(self.unique_name(case_name), [x], [y], is_quantized=is_quantized)
+
+        _test_model_def([1, 3, 224, 224], dtype="float32")
+        _test_model_def([1, 3, 224, 224], dtype="float16", is_quantized=True)
+
+    #######################################################################
+    # InstanceNorm
+    # ------------
+    def test_InstanceNorm(self, case_name):
+
+        @tpulang(self.chip)
+        def _test_model_def(in_shape, dtype=None, is_quantized=False):
+            x_data = rand_data(in_shape, dtype, -10, 10)
+            x = tpul.Tensor(dtype=dtype, shape=in_shape, data=x_data)
+            oc = in_shape[1] if len(in_shape) > 1 else in_shape[0]
+            weight = self.coeff_tensor([oc], x.dtype, scale=0.1)
+            bias = self.coeff_tensor([oc], x.dtype, scale=0.1)
+            y = tpul.instance_norm(x, weight, bias, epsilon=1e-5)
             self.compile_and_check(self.unique_name(case_name), [x], [y], is_quantized=is_quantized)
 
         _test_model_def([1, 3, 224, 224], dtype="float32")
