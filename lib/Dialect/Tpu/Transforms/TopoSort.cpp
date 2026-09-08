@@ -161,6 +161,147 @@ getUnscheduledUserCount(Operation *op,
   return unique_users.size();
 };
 
+// A "heavy" op carries a large constant weight; 1MB is a tuning knob.
+static constexpr double HEAVY_WEIGHT_MB = 1.0;
+
+static bool isHeavyOp(Operation *op) {
+  if (!isa<top::MatMulOp, top::ConvOp, top::DeconvOp, tpu::MatMulOp,
+           tpu::Conv2DOp, tpu::DeconvOp>(op)) {
+    return false;
+  }
+  for (auto in : op->getOperands()) {
+    auto weight_op = dyn_cast_or_null<top::WeightOp>(in.getDefiningOp());
+    if (!weight_op) {
+      continue;
+    }
+    auto type =
+        weight_op.getOutput().getType().dyn_cast<mlir::RankedTensorType>();
+    if (!type) {
+      continue;
+    }
+    double bytes =
+        type.getNumElements() *
+        module::getStorageType(weight_op.getOutput()).getIntOrFloatBitWidth() /
+        8.0;
+    if (bytes / 1024.0 / 1024.0 >= HEAVY_WEIGHT_MB) {
+      return true;
+    }
+  }
+  return false;
+};
+
+static bool heavyTopoSortDisabled() {
+  static const bool disabled = getenv("TPU_DISABLE_HEAVY_TOPO_SORT") != nullptr;
+  return disabled;
+}
+
+// Sibling branches are decided by reachability, not traversal order: ops
+// reachable from nextOp form its downstream cone, and a heavy op inside the
+// cone is reached naturally by depth-first, so only a heavy op outside the
+// cone is a real sibling worth jumping to. Joins (ops with >= 2 real data
+// producers, weight/none placeholders excluded) are collected on the way.
+static void collectDownstreamCone(Operation *nextOp,
+                                  llvm::DenseSet<Operation *> &cone,
+                                  llvm::SmallVectorImpl<Operation *> &joins) {
+  llvm::SmallVector<Operation *, 16> work{nextOp};
+  cone.insert(nextOp);
+  while (!work.empty()) {
+    Operation *cur = work.pop_back_val();
+    int producers = 0;
+    for (auto in : cur->getOperands()) {
+      auto prod = in.getDefiningOp();
+      if (prod && !isa<top::WeightOp, top::NoneOp>(prod)) {
+        producers++;
+      }
+    }
+    if (producers >= 2) {
+      joins.push_back(cur);
+    }
+    for (auto user : cur->getUsers()) {
+      if (cone.insert(user).second) {
+        work.push_back(user);
+      }
+    }
+  }
+}
+
+static Operation *
+findUnscheduledHeavy(Operation *root, const llvm::DenseSet<Operation *> &cone,
+                     llvm::SetVector<Operation *> &unScheduledOps) {
+  llvm::SmallDenseSet<Operation *> seen;
+  llvm::SmallVector<Operation *, 8> stack{root};
+  seen.insert(root);
+  while (!stack.empty()) {
+    Operation *p = stack.pop_back_val();
+    if (cone.contains(p) || !unScheduledOps.contains(p)) {
+      continue;
+    }
+    if (isHeavyOp(p)) {
+      return p;
+    }
+    for (auto in : p->getOperands()) {
+      auto up = in.getDefiningOp();
+      if (up && seen.insert(up).second) {
+        stack.push_back(up);
+      }
+    }
+  }
+  return nullptr;
+}
+
+// First schedulable op on the path to heavy. Scheduling it lets depth-first
+// walk down the sibling branch so heavy ops cluster together. In a DAG such
+// an op always exists, and it can never be inside nextOp's cone: a cone
+// member upstream of heavy would make heavy reachable from nextOp.
+static Operation *
+findBranchFrontier(Operation *heavy,
+                   llvm::SetVector<Operation *> &unScheduledOps) {
+  llvm::SmallDenseSet<Operation *> seen;
+  llvm::SmallVector<Operation *, 8> stack{heavy};
+  seen.insert(heavy);
+  while (!stack.empty()) {
+    Operation *p = stack.pop_back_val();
+    if (!unScheduledOps.contains(p)) {
+      continue;
+    }
+    if (isReadyToSchedule(p, unScheduledOps)) {
+      return p;
+    }
+    for (auto in : p->getOperands()) {
+      auto up = in.getDefiningOp();
+      if (up && seen.insert(up).second) {
+        stack.push_back(up);
+      }
+    }
+  }
+  return nullptr;
+}
+
+// Returns the frontier op of an independent sibling branch that still has an
+// unscheduled heavy op, or nullptr when there is no such branch.
+static Operation *
+findHeavySiblingFrontier(Operation *nextOp,
+                         llvm::SetVector<Operation *> &unScheduledOps) {
+  llvm::DenseSet<Operation *> cone;
+  llvm::SmallVector<Operation *, 8> joins;
+  collectDownstreamCone(nextOp, cone, joins);
+  for (auto join : joins) {
+    for (auto in : join->getOperands()) {
+      auto prod = in.getDefiningOp();
+      if (!prod || isa<top::WeightOp, top::NoneOp>(prod) ||
+          cone.contains(prod)) {
+        continue;
+      }
+      if (auto heavy = findUnscheduledHeavy(prod, cone, unScheduledOps)) {
+        if (auto frontier = findBranchFrontier(heavy, unScheduledOps)) {
+          return frontier;
+        }
+      }
+    }
+  }
+  return nullptr;
+}
+
 class BaseStragegy {
 public:
   virtual ~BaseStragegy() = default;
@@ -176,18 +317,54 @@ public:
                  llvm::SetVector<Operation *> &unScheduledOps,
                  llvm::SetVector<Operation *> &dominantOps,
                  const bool flag_sort_local_ops) override {
-    if (!prevOp)
+    if (!prevOp) {
+      // A function always starts with prevOp == nullptr; snapshot its heavy
+      // ops here so later calls can skip scouting once all are scheduled.
+      heavyOps.clear();
+      for (auto op : unScheduledOps) {
+        if (isHeavyOp(op)) {
+          heavyOps.push_back(op);
+        }
+      }
       return false;
+    }
     if (prevOp->hasOneUse() == true) {
       nextOp = *(prevOp->user_begin());
       if (isReadyToSchedule(nextOp, unScheduledOps) &&
           isLgSupport(nextOp) == flag_sort_local_ops) {
+        if (!heavyTopoSortDisabled() && hasLiveHeavy(unScheduledOps)) {
+          if (auto frontier =
+                  findHeavySiblingFrontier(nextOp, unScheduledOps)) {
+            if (isLgSupport(frontier) == flag_sort_local_ops) {
+              nextOp = frontier;
+              return true;
+            }
+            // The frontier belongs to the other LG class: skip nextOp this
+            // round so the ping-pong flag can flip and make the frontier
+            // schedulable. This is best-effort only; the ping-pong fallback
+            // may still pick the held-back op first.
+            nextOp = nullptr;
+            return false;
+          }
+        }
         return true;
       }
     }
     nextOp = nullptr;
     return false;
   }
+
+private:
+  bool hasLiveHeavy(llvm::SetVector<Operation *> &unScheduledOps) {
+    for (auto h : heavyOps) {
+      if (unScheduledOps.contains(h)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  llvm::SmallVector<Operation *, 8> heavyOps;
 };
 
 class dominantNodeFirstStrategy : public BaseStragegy {
