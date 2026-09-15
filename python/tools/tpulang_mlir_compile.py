@@ -29,8 +29,8 @@ def main():
                         '--chip',
                         type=str,
                         default="bm1688",
-                        choices=["bm1688", "bm1684x"],
-                        help='bm1688 or bm1684x')
+                        choices=["bm1688", "bm1684x", "bm1684x2"],
+                        help='bm1688, bm1684x or bm1684x2')
     parser.add_argument(
         '-t',
         '--tag',
@@ -56,9 +56,9 @@ def main():
     parser.add_argument('-n',
                         '--num-core',
                         type=int,
-                        choices=[1, 2],
                         default=1,
-                        help='core num for currnet model, default is 1')
+                        help='core num for current model, default is 1 '
+                        '(bm1684x: 1; bm1688: 1 or 2; bm1684x2: 1 or 4)')
     parser.add_argument('--enable_lghash',
                         action='store_true',
                         default=False,
