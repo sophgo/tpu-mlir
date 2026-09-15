@@ -16,15 +16,22 @@ class Qwen3_5Converter(LlmConverter):
     def __init__(self, args, config, loader=None):
         super().__init__(args, config, loader=loader)
         self.max_pixels = args.max_pixels
-        self.do_vit = True
+        self.do_vit = not getattr(args, 'llm_only', False)
         self.dynamic = True  # force dynamic
         self.rmsnorm_type = WeightType.ZEROCENTERED_RMSNORM
-        # vision config (sets self.pixel_multiple among others)
-        self.init_vconfig()
-        pm = self.pixel_multiple
-        if self.max_pixels == 0 or self.max_pixels % (pm * pm) != 0:
-            raise RuntimeError(
-                f"max_pixels values must be multiples of {pm}*{pm} and non-zero: {args.max_pixels}")
+        if self.do_vit:
+            # vision config (sets self.pixel_multiple among others)
+            self.init_vconfig()
+            pm = self.pixel_multiple
+            if self.max_pixels == 0 or self.max_pixels % (pm * pm) != 0:
+                raise RuntimeError(
+                    f"max_pixels values must be multiples of {pm}*{pm} and non-zero: {args.max_pixels}"
+                )
+        else:
+            # llm_only: still need MRoPE position_ids shape [3, seq]
+            self.mrope_section, _ = self._get_mrope_params()
+            self.position_shape = [1, 3, self.max_input_length
+                                   ] if self.use_insert else [3, self.max_input_length]
 
         # extern compiles
         self.extern_block_weights = {"mrope_interleave_idx": self.get_mrope_index()}

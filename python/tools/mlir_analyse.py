@@ -107,13 +107,26 @@ class TensorInfo:
             "i16": 2,
             "i32": 4,
             "i64": 8,
+            "si8": 1,
+            "si16": 2,
             "si32": 4,
+            "si64": 8,
             "ui8": 1,
             "ui16": 2,
             "ui32": 4,
             "ui64": 8,
         }
-        return sizes.get(self.dtype, 4)
+        if self.dtype in sizes:
+            return sizes[self.dtype]
+        # !quant.uniform<STORAGE:EXPRESSED, scale...> -> storage element
+        m = re.match(r"!quant\.uniform<\s*(\w+)\s*:", self.dtype)
+        if m:
+            return sizes.get(m.group(1), 4)
+        # !quant.calibrated<EXPRESSED<min:max>> -> storage == expressed element
+        m = re.match(r"!quant\.calibrated<\s*(\w+)\s*<", self.dtype)
+        if m:
+            return sizes.get(m.group(1), 4)
+        return 4
 
     @property
     def size_bytes(self) -> int:

@@ -112,9 +112,12 @@ def find_converter_spec(model_type):
     raise RuntimeError("Unsupported model type: {}".format(model_type))
 
 
-def auto_out_dir(model_path, chip, quantize):
+def auto_out_dir(model_path, chip, quantize, llm_only=False):
     base = os.path.basename(os.path.normpath(model_path)).lower()
-    return "./{}_{}_{}".format(base, chip, quantize)
+    name = "./{}_{}_{}".format(base, chip, quantize)
+    if llm_only:
+        name += "_llm_only"
+    return name
 
 
 if __name__ == '__main__':
@@ -163,6 +166,19 @@ if __name__ == '__main__':
                         help="max pixels for vit as 'width,height', e.g. 672,896. "
                              "If unset, defaults are picked by model_type: "
                              "qwen2_5_vl -> 672,896, minicpmv -> 980,980, others -> 768,768.")
+    parser.add_argument('--llm_only', action='store_true',
+                        help='Compile language-model weights only; skip the vision tower (VLM models).')
+    parser.add_argument('--vit_quantize', type=str, default='auto',
+                        choices=['auto', 'bf16', 'f16', 'int8'],
+                        help='quantize type for the ViT (vision tower) of VLMs. '
+                             'auto: infer from weights (default, usually bf16/f16). '
+                             'int8: full W8A8 (weights + activations int8; ViT has no weight-only '
+                             'w8a16 mode, so int8 is the only int8 option). '
+                             'Without --vit_calibration_table the ViT activation quantization '
+                             'uses default scales (approximate, not deploy-grade).')
+    parser.add_argument('--vit_calibration_table', type=str, default=None,
+                        help='calibration table for full W8A8 int8 ViT; recommended for a '
+                             'deploy-grade int8 ViT (otherwise default/uncalibrated scales are used)')
     parser.add_argument('--audio_length', type=int, default=0,
                         help='audio sequence length for audio bmodel')
     parser.add_argument('--dynamic', action='store_true',
@@ -196,6 +212,11 @@ if __name__ == '__main__':
     deprecated_option(args.dynamic_vit, "DEPRECATED,default is dynamic compiling")
     deprecated_option(args.input_length_list, "DEPRECATED, please use --dynamic to enable dynamic compiling")
     # yapf: enable
+    if args.vit_quantize == 'int8' and not args.vit_calibration_table:
+        logging.warning(
+            "--vit_quantize int8 without --vit_calibration_table: ViT activation quantization "
+            "will use default (uncalibrated) scales, so the resulting int8 ViT is approximate "
+            "and not deploy-grade. Pass --vit_calibration_table for a real W8A8 ViT.")
     if args.seq_length <= 0:
         raise ValueError("seq_length must be positive, got: {}".format(args.seq_length))
     if args.use_history_kv:
@@ -223,7 +244,8 @@ if __name__ == '__main__':
 
     # Resolve out_dir before loading the model so --dry_run is fast.
     if args.out_dir is None:
-        args.out_dir = auto_out_dir(args.model_path, args.chip, args.quantize)
+        args.out_dir = auto_out_dir(args.model_path, args.chip, args.quantize,
+                                    getattr(args, "llm_only", False))
         print("Info: --out_dir not set, using '{}'".format(args.out_dir))
 
     is_gguf = os.path.isfile(args.model_path) and args.model_path.lower().endswith('.gguf')
@@ -309,7 +331,8 @@ if __name__ == '__main__':
     args.max_pixels = args.max_shape[0] * args.max_shape[1]
 
     pixel_multiple = opts.get("pixel_multiple")
-    if pixel_multiple and args.max_pixels % (pixel_multiple * pixel_multiple) != 0:
+    if (pixel_multiple and not args.llm_only
+            and args.max_pixels % (pixel_multiple * pixel_multiple) != 0):
         raise ValueError(
             "max_pixels (={}, from {}x{}) must be a multiple of {}*{} for model_type '{}'.".format(
                 args.max_pixels, args.max_shape[0], args.max_shape[1], pixel_multiple,
@@ -324,7 +347,8 @@ if __name__ == '__main__':
         for k in ("model_path", "model_type:" + model_type, "out_dir", "chip", "quantize",
                   "seq_length", "max_input_length", "max_shape", "max_pixels", "num_device",
                   "distribute_strategy", "num_core", "batch", "dynamic", "embedding_disk",
-                  "do_sample", "use_history_kv", "lora_max_rank", "symmetric"):
+                  "do_sample", "use_history_kv", "lora_max_rank", "symmetric", "vit_quantize",
+                  "vit_calibration_table", "llm_only"):
             if ":" in k:
                 key, value = k.split(":", 1)
                 print("  {:<22} = {}".format(key, value))

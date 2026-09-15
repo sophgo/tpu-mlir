@@ -99,13 +99,14 @@ class LlmConverter(BaseConverter):
         self.model_name = os.path.basename(self.model_path).lower()
         batch_str = f"_{self.batch}b" if self.batch > 1 else ""
         history_str = f"_history" if self.use_history_kv else ""
+        llm_only_str = "_llm_only" if getattr(args, "llm_only", False) else ""
         if self.only_mlir:
             folder_name = f"tmp_mlir_analyse"
         elif args.chip == "bm1684x":
-            folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_device}dev{batch_str}{history_str}"
+            folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_device}dev{batch_str}{history_str}{llm_only_str}"
             folder_name += "_dynamic" if args.dynamic else "_static"
         else:
-            folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_core}core{batch_str}{history_str}"
+            folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_core}core{batch_str}{history_str}{llm_only_str}"
             folder_name += "_dynamic" if args.dynamic else "_static"
         self.out_bmodel = os.path.join(self.out_dir, f"{folder_name}_{timestamp}.bmodel")
         self.bmodel_dir = os.path.join(self.out_dir, folder_name)
@@ -120,6 +121,9 @@ class LlmConverter(BaseConverter):
         self.all_bmodels_without_bytes = []
         self.extern_block_weights = {}
         self.vit_quantize = None
+        # Optional user override for the ViT quant mode ('auto' = detect from weights).
+        self.vit_quantize_override = getattr(args, 'vit_quantize', 'auto') or 'auto'
+        self.vit_calibration_table = getattr(args, 'vit_calibration_table', None)
         # store all weights name because some weights like qkv.weights may be splitted
         self.weight_keys = []
         self.fused_mlp = True
@@ -140,7 +144,10 @@ class LlmConverter(BaseConverter):
         os.chdir(self.bmodel_dir)
         if not self.again:
             self.gen_all_mlir()
-        self.vit_quantize = self._detect_vit_quantize()
+        if self.vit_quantize_override and self.vit_quantize_override != 'auto':
+            self.vit_quantize = self.vit_quantize_override
+        else:
+            self.vit_quantize = self._detect_vit_quantize()
         del self.model
         self.compile_all()
         os.chdir(ori_path)
@@ -2572,6 +2579,54 @@ class LlmConverter(BaseConverter):
 
         return self.symmetric
 
+    def _ensure_vit_int8_cali_table(self, name, extra_args):
+        """Make sure a calibration table is available for full W8A8 int8 ViT.
+
+        INT8 lowering needs every activation tensor to carry a CalibratedType,
+        which only ``--import-calibration-table`` attaches. Without one,
+        ``tpuc-opt`` aborts at ``getScaleAndZeroPoint`` ("can't get scale and
+        zeropoint"). For roofline *estimation* the exact scales are irrelevant —
+        timing only depends on shapes/dtypes/FLOPs — so a *synthetic* uniform
+        table (threshold 1.0 for every tensor) is enough: it lets the lowering
+        complete and emit a real i8 ``*_tpu.mlir`` with correct 1-byte tensors.
+
+        If the caller passed ``--vit_calibration_table``, use it verbatim.
+        Otherwise derive ``{name}/synthetic.cali`` from the loc names of the
+        already-generated ``{name}/{name}.mlir`` and warn that it is for
+        estimation only.
+        """
+        if self.vit_calibration_table:
+            extra_args.append(f'--calibration_table {self.vit_calibration_table}')
+            return
+        mlir_path = os.path.join(name, f"{name}.mlir")
+        if not os.path.exists(mlir_path):
+            # No top MLIR to derive tensor names from; skip and let the
+            # lowering fail loudly with the real error.
+            return
+        with open(mlir_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        names, seen = [], set()
+        for n in re.findall(r'loc\("([^"]+)"\)', content):
+            if n not in seen:
+                seen.add(n)
+                names.append(n)
+        if not names:
+            return
+        cali_path = os.path.join(name, "synthetic.cali")
+        with open(cali_path, "w", encoding="utf-8") as o:
+            o.write("# genetated time: synthetic (int8 estimation only; scales are placeholders)\n")
+            o.write("# histogram number: 0\n# sample number: 0\n# tune number: 0\n###\n")
+            o.write("# op_name    threshold    min    max\n")
+            for n in names:
+                o.write(f"{n} 1.0 -1.0 1.0\n")
+        logger.warning(
+            "vit int8: no calibration table given; wrote synthetic table '%s' "
+            "(%d tensors, uniform threshold 1.0). Scales are placeholders — use "
+            "for roofline estimation only, NOT for real deployment.", cali_path, len(names))
+        # model_deploy runs under ``pushd {name}``, so a bare filename resolves
+        # next to {name}.mlir where we just wrote it.
+        extra_args.append('--calibration_table synthetic.cali')
+
     def compile_vit(self):
         if not self.do_vit:
             return
@@ -2585,7 +2640,10 @@ class LlmConverter(BaseConverter):
         else:
             extra_args = [f'--quantize {vit_q}', '--quant_output']
         vit_info = getattr(self, 'vit_quant_info', None)
-        if vit_info and vit_info.quant_bits != 16:
+        if vit_q == 'int8':
+            # full W8A8 int8 ViT: needs a calibration table; per-group size is N/A
+            self._ensure_vit_int8_cali_table(name, extra_args)
+        elif vit_info and vit_info.quant_bits != 16:
             extra_args.append(f'--q_group_size {vit_info.q_group_size}')
         elif isinstance(self.loader,
                         GGUFModelHandle) and not getattr(self, 'vit_gguf_float', False):

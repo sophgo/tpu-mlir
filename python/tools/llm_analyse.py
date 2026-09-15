@@ -171,25 +171,29 @@ COMPUTE_FP8 = "fp8"
 COMPUTE_VECTOR = "vector"
 
 
-def _compute_type(base_opn: str) -> str:
+def _compute_type(base_opn: str, int8: bool = False) -> str:
     """Pick compute-power bucket for roofline estimate.
 
     Fp8MatMul computes in FP8; weight-only quant (w8/w4 f16/bf16) still
-    computes in FP16, so all other key ops use FP16 TOPS.
+    computes in FP16, so all other key ops use FP16 TOPS. Full W8A8 int8
+    (``int8=True``) computes MatMul/Conv in INT8; Fp8MatMul still uses FP8.
     """
     if base_opn == "Fp8MatMul":
         return COMPUTE_FP8
     if base_opn in KEY_OPS:
-        return COMPUTE_FP16
+        return COMPUTE_INT8 if int8 else COMPUTE_FP16
     return COMPUTE_VECTOR
 
 
-def analyse_module(filepath: str):
+def analyse_module(filepath: str, int8_compute: bool = False):
     """Parse and analyse a single TPU-lowered MLIR file.
 
     The module must be in the ``TPU_LOWERED`` state (validated up front) and
     only ``tpu.*`` ops are analysed. The tpu.mlir carries the real per-tensor
     dtypes, so data volumes use each tensor's own storage size.
+
+    ``int8_compute`` selects the INT8 compute bucket for key ops (used for a
+    full W8A8 int8 ViT module); weight-only w8/w4 still computes in FP16.
 
     Returns (rows_data, totals) where totals has keys: flops, read, write, io.
     """
@@ -217,7 +221,7 @@ def analyse_module(filepath: str):
                 wb=wb,
                 total_io=rb + wb,
                 is_key=base_opn in KEY_OPS,
-                compute_type=_compute_type(base_opn),
+                compute_type=_compute_type(base_opn, int8=int8_compute),
             ))
         total_flops += flops
         total_read += rb
@@ -249,7 +253,8 @@ def export_llm_excel(modules_data,
                      model_config=None,
                      seq_length=0,
                      max_pixels="",
-                     cmdline=""):
+                     cmdline="",
+                     vit_quantize="auto"):
     """Create combined LLM analysis Excel workbook.
 
     modules_data: list of (name, count, rows_data, totals)
@@ -769,6 +774,7 @@ def export_llm_excel(modules_data,
             ("Head Dim", model_config.get("head_dim", "")),
             ("Seq Length", seq_length if seq_length else ""),
             ("Max Pixels", max_pixels if max_pixels else ""),
+            ("ViT Quantize", vit_quantize if vit_quantize and vit_quantize != "auto" else ""),
             ("Command", cmdline if cmdline else ""),
         ]
         arch_fields = [(k, v) for k, v in arch_fields if v != ""]
@@ -799,6 +805,7 @@ def export_llm_excel(modules_data,
         "block / block_cache use the first block as representative, multiplied by Count.",
         "Data volumes read the real dtypes from the TPU-lowered *_tpu.mlir (bf16, ui8 for packed w4/w8, ...).",
         "Key operators: Fp8MatMul uses FP8 TOPS; others (incl. w4/w8 A16MatMul) use FP16 TOPS; non-key ops use vector TOPS.",
+        "ViT quantize: int8 = full W8A8 (INT8 compute); without a calibration table the activation scale is approximate. ViT has no weight-only w8a16 mode.",
     ]
     for i, txt in enumerate(notes, 1):
         ws0.merge_cells(start_row=info_banner + i,
@@ -857,10 +864,28 @@ def main():
                         help='max input length for prefill, default 0 means the same as seq_length')
     parser.add_argument('--max_pixels', type=str, default="",
                         help='max input pixels for vision models, default "" means no vision input')
+    parser.add_argument('--vit_quantize', type=str, default='auto',
+                        choices=['auto', 'bf16', 'f16', 'int8'],
+                        help='quantize for the ViT (vision tower) when analysing a VLM. '
+                             'auto: infer from weights (default, usually bf16/f16). '
+                             'int8: full W8A8 (weights + activations int8; ViT has no weight-only '
+                             'w8a16 mode). Without --vit_calibration_table the activation scale '
+                             'uses defaults (approximate); with it, the ViT MatMul/Conv ops are '
+                             'estimated with INT8 TOPS.')
+    parser.add_argument('--vit_calibration_table', type=str, default=None,
+                        help='calibration table for full W8A8 int8 ViT; recommended for an '
+                             'accurate estimate (otherwise default/uncalibrated scales are used)')
     parser.add_argument("-o", "--out_dir", required=True,
                         help="Output directory path (default: <out_dir>/<out_dir>_analysis.xlsx)")
     args = parser.parse_args()
     # yapf: enable
+    if args.vit_quantize == 'int8' and not args.vit_calibration_table:
+        print(
+            "Warning: --vit_quantize int8 without --vit_calibration_table: ViT activation "
+            "quantization will use default (uncalibrated) scales, so the int8 estimate is "
+            "approximate (compute bucket / I/O still valid, activation scale is not). "
+            "Pass --vit_calibration_table for a real W8A8 ViT.",
+            file=sys.stderr)
     from llm.transformers_compat import load_auto_config
     config = load_auto_config(args.model_path, trust_remote_code=True)
     if hasattr(config, "text_config"):
@@ -884,6 +909,10 @@ def main():
     ]
     if args.max_input_length > 0:
         cmds.append(f"--max_input_length {args.max_input_length}")
+    if args.vit_quantize != 'auto':
+        cmds.append(f"--vit_quantize {args.vit_quantize}")
+    if args.vit_calibration_table:
+        cmds.append(f"--vit_calibration_table {args.vit_calibration_table}")
     print("\nRunning LLM conversion to generate MLIR files...")
     cmd = " ".join(cmds)
     print(f"Command: {cmd}")
@@ -938,9 +967,13 @@ def main():
 
     # Step 2: Analyse each module
     modules_data = []
+    vit_int8 = args.vit_quantize == 'int8'
     for name, path, count in modules:
         print(f"  Analysing: {name} ({os.path.basename(path)})")
-        rows_data, totals = analyse_module(path)
+        # Full W8A8 int8 ViT computes MatMul/Conv in INT8; weight-only w8/w4
+        # still computes in FP16, so only the int8 mode overrides the bucket.
+        int8_compute = vit_int8 and name == "vit"
+        rows_data, totals = analyse_module(path, int8_compute=int8_compute)
         modules_data.append((name, count, rows_data, totals))
 
     # Step 3: Export Excel
@@ -950,7 +983,8 @@ def main():
     fp8_tops = args.fp8_tops if args.fp8_tops is not None else fp16_tops * 2.0
     export_llm_excel(modules_data, fp16_tops, args.bandwidth, args.out_dir, args.model_path,
                      int8_tops, fp8_tops, args.vector_tops, args.uarch_rate, args.bw_util,
-                     args.parallelism, model_config, args.seq_length, max_pixels, cmdline)
+                     args.parallelism, model_config, args.seq_length, max_pixels, cmdline,
+                     args.vit_quantize)
 
 
 if __name__ == "__main__":

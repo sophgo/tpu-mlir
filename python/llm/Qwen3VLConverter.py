@@ -652,7 +652,10 @@ class Qwen3VLConverter(LlmConverter):
             extra_args = ['--quantize f16', '--quant_output_bf16']
         else:
             extra_args = [f'--quantize {vit_q}', '--quant_output']
-        if vit_info:
+        if vit_q == 'int8':
+            # full W8A8 int8 ViT: needs a calibration table; per-group size is N/A
+            self._ensure_vit_int8_cali_table(name, extra_args)
+        elif vit_info:
             extra_args.append(f'--q_group_size {vit_info.q_group_size}')
         elif isinstance(self.loader, GGUFModelHandle):
             extra_args.append(f'--q_group_size {self.q_group_size}')

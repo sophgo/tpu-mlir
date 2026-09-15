@@ -202,7 +202,8 @@ def compile(
         logger.info("TPU-MLIR {}".format(pymlir.__version__))
     assert addr_mode in ['auto', 'io_reloc']
     assert (TpuLang.chip == "bm1684x" and num_core == 1) or \
-         (TpuLang.chip == "bm1688" and num_core in (1, 2)), \
+         (TpuLang.chip == "bm1688" and num_core in (1, 2)) or \
+         (TpuLang.chip == "bm1684x2" and num_core in (1, 4)), \
          f"Invalid core configuration: chip={TpuLang.chip}, cores={num_core}"
     if debug_dump_mode != 'load':
         TpuLang.graph.inputs = inputs
