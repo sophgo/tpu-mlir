@@ -71,6 +71,7 @@ LLM_CONVERTERS = [
     }),
     (("qwen2_5_omni", ), "llm.Qwen2_5OConverter", "Qwen2_5OConverter", {}),
     (("qwen3_asr", ), "llm.Qwen3AsrConverter", "Qwen3AsrConverter", {}),
+    (("qwen3_tts", ), "llm.Qwen3TTSConverter", "Qwen3TTSConverter", {}),
     (("internvl_chat", ), "llm.InternVL3Converter", "InternVL3Converter", {}),
     (("gemma3", ), "llm.Gemma3Converter", "Gemma3Converter", {}),
     (("gemma4", ), "llm.Gemma4Converter", "Gemma4Converter", {}),

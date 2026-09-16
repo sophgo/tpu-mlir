@@ -1617,18 +1617,29 @@ class LlmConverter(BaseConverter):
                           ip=mlir_gen.insert_point).output
         return new_q
 
-    def apply_rotary_pos(self, mlir_gen, pos_op, q_op, k_op, rotary_cos: str, rotary_sin: str):
+    def apply_rotary_pos(self,
+                         mlir_gen,
+                         pos_op,
+                         q_op,
+                         k_op,
+                         rotary_cos: str,
+                         rotary_sin: str,
+                         seq_length: int = None):
+        # seq_length defaults to self.seq_length; pass an explicit value when the
+        # rotary cos/sin weight shape must differ from the model's full SEQLEN
+        # (e.g. a per-frame KV cache sized to a shorter history). Do NOT mutate
+        # self.seq_length instead — MLIR gen runs in a ThreadPoolExecutor under
+        # --no-debug, so an instance-state swap races with sibling net gen.
+        sl = self.seq_length if seq_length is None else seq_length
         dim = pos_op.type.shape[-1]
-        weight_op = mlir_gen.create_weight_op(rotary_cos + ".weight",
-                                              [self.seq_length, 1, self.head_dim])
+        weight_op = mlir_gen.create_weight_op(rotary_cos + ".weight", [sl, 1, self.head_dim])
         cos_op = top.GatherOp(mlir_gen.get_tensor_type([1, dim, 1, self.head_dim]),
                               weight_op,
                               pos_op,
                               axis=0,
                               loc=self.get_loc(rotary_cos, mlir_gen),
                               ip=mlir_gen.insert_point).output
-        weight_op = mlir_gen.create_weight_op(rotary_sin + ".weight",
-                                              [self.seq_length, 1, self.head_dim])
+        weight_op = mlir_gen.create_weight_op(rotary_sin + ".weight", [sl, 1, self.head_dim])
         sin_op = top.GatherOp(mlir_gen.get_tensor_type([1, dim, 1, self.head_dim]),
                               weight_op,
                               pos_op,

@@ -400,6 +400,32 @@ LFM2_INFO = ModelInfo(
         LlmList.LMHEAD: "lm_head",
     })
 
+# qwen3_tts (Talker; codec vocab 3072, QK-norm + MRoPE interleaved [24,20,20])
+# Note: text_embedding/text_projection/codec_embedding are custom (not the
+# standard embed_tokens lookup) — handled in Qwen3TTSConverter.gen_embedding_lmhead_mlir.
+# LMHEAD here maps to talker.codec_head.
+QWEN3_TTS_INFO = ModelInfo(
+    ModelConfig(),
+    weights={
+        LlmList.LAYERS: "talker.model.layers",
+        LlmList.EMBEDING: "talker.model.text_embedding",  # text side; custom embedding net
+        # ========= in layers =============
+        LlmList.INPUT_LN: "input_layernorm",
+        LlmList.Q_PROJ: "self_attn.q_proj",
+        LlmList.Q_NORM: "self_attn.q_norm",
+        LlmList.K_PROJ: "self_attn.k_proj",
+        LlmList.K_NORM: "self_attn.k_norm",
+        LlmList.V_PROJ: "self_attn.v_proj",
+        LlmList.O_PROJ: "self_attn.o_proj",
+        LlmList.POST_ATTN_LN: "post_attention_layernorm",
+        LlmList.MLP_GATE: "mlp.gate_proj",
+        LlmList.MLP_UP: "mlp.up_proj",
+        LlmList.MLP_DOWN: "mlp.down_proj",
+        # ================================
+        LlmList.NORM: "talker.model.norm",
+        LlmList.LMHEAD: "talker.codec_head",
+    })
+
 # gemma4
 GEMMA4_INFO = ModelInfo(
     ModelConfig(hidden_act="hidden_activation", ),
