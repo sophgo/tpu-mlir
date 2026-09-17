@@ -2102,6 +2102,25 @@ void BMCodegen::codegen_ir(Operation *op, SubnetIr *subnet_ir_) {
 }
 
 static bool run_multi_core(FuncOp func) {
+  // Runtime dependent shapes diverge on cores that skip the producing ops,
+  // they corrupt the shared tensors.
+  if (getRunMode(func) == RunMode::TPU_DYNAMIC) {
+    bool data_dependent_shape = false;
+    func.walk([&](Operation *op) {
+      if (isa<tpu::NonZeroOp, tpu::NmsOp, tpu::SortOp, tpu::TopKOp,
+              tpu::YoloDetectionOp, tpu::DetectionOutputOp, tpu::RoiAlignOp>(
+              op) ||
+          op->hasTrait<trait::ShapeProducer>() ||
+          op->hasTrait<trait::ShapeConsumer>()) {
+        data_dependent_shape = true;
+        return WalkResult::interrupt();
+      }
+      return WalkResult::advance();
+    });
+    if (data_dependent_shape) {
+      return false;
+    }
+  }
   bool multi_core = false;
   func.walk<WalkOrder::PreOrder>([&](Operation *op) {
     if (isa<tpu::GroupParallelOp, tpu::CoreParallelOp, tpu::CoreSplitOp,
