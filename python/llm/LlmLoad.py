@@ -29,17 +29,29 @@ class LlmLoad:
             for key in f.keys():
                 self.key_to_file[key] = (f, is_dict)
 
+    def _resolve_key(self, key: str):
+        if key in self.key_to_file:
+            return key
+        # sentence-transformers models (e.g. Qwen3-Embedding) store weights
+        # without the "model." prefix; strip it and retry.
+        if key.startswith("model."):
+            stripped = key[len("model."):]
+            if stripped in self.key_to_file:
+                return stripped
+        return None
+
     def read(self, key: str):
-        if key not in self.key_to_file:
+        resolved = self._resolve_key(key)
+        if resolved is None:
             raise RuntimeError(f"Can't find key: {key}")
-        f, is_dict = self.key_to_file[key]
+        f, is_dict = self.key_to_file[resolved]
         if is_dict:
-            data = f[key]
+            data = f[resolved]
         else:
-            data = f.get_tensor(key)
+            data = f.get_tensor(resolved)
         if data.dtype in [torch.float16, torch.bfloat16, torch.float8_e4m3fn, torch.float8_e5m2]:
             return data.float().numpy()
         return data.numpy()
 
     def is_exist(self, key: str):
-        return key in self.key_to_file
+        return self._resolve_key(key) is not None
