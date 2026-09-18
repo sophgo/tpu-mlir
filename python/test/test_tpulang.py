@@ -399,7 +399,8 @@ class TPULANG_IR_TESTER(object):
 
     def check_support(self, case):
         _, bm1684x_support, bm1688_support = self.test_function[case]
-        if self.chip == "bm1684x" and bm1684x_support:
+        # TODO: bm1684x2 reuses the bm1684x support column for now
+        if self.chip in ("bm1684x", "bm1684x2") and bm1684x_support:
             return True
         if self.chip == "bm1688" and bm1688_support:
             return True
@@ -445,12 +446,14 @@ class TPULANG_IR_TESTER(object):
                           top_mlir_inference=True,
                           tpu_mlir_inference=True,
                           log_level='normal',
-                          dynamic=False):
+                          dynamic=False,
+                          modes=None):
         for input in inputs:
             assert input.ttype == "neuron", "coeff Tensor should not be input {}".format(input.name)
 
         if is_quantized == False:
-            for mode in self.quant_modes:
+            quant_modes = modes if modes is not None else self.quant_modes
+            for mode in quant_modes:
                 tpul.compile_f32(model_name,
                                  inputs,
                                  outputs,
@@ -5313,8 +5316,11 @@ class TPULANG_IR_TESTER(object):
                 attention_weights_bias, value_proj_weight, value_proj_bias, output_proj_weight,
                 output_proj_bias, spatial_shapes, embed_dims, num_heads, num_levels, num_points,
                 value_proj_ratio)
+            # bm1684x2: f32 matmul is firmware-blocked (mm1 atomic removed)
+            modes = ["f16"] if self.chip == "bm1684x2" else None
             self.compile_and_check(self.unique_name(case_name),
-                                   [query, key_padding_mask, reference_points], [output])
+                                   [query, key_padding_mask, reference_points], [output],
+                                   modes=modes)
 
         _test_multi_scale_deformable_attention()
 

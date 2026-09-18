@@ -4304,8 +4304,9 @@ def multi_scale_deformable_attention(
         identity = query
     bs = 1
     # assert embed_dims % (num_heads * num_levels) == 0
-    assert TpuLang.chip in ["bm1684x", "bm1688"]
-    npu_num = 64 if TpuLang.chip == "bm1684x" else 32
+    npu_num_map = {"bm1684x": 64, "bm1688": 32, "bm1684x2": 16}
+    assert TpuLang.chip in npu_num_map, f"chip {TpuLang.chip} not support multi_scale_deformable_attention"
+    npu_num = npu_num_map[TpuLang.chip]
     _, num_query, _ = query.shape
     _, num_value, _ = value.shape
     _, _, h, w = reference_points.shape

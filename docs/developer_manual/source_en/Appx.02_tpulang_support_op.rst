@@ -5730,6 +5730,7 @@ Processor support
 """""""""""""""""""""""""""""""""
 * BM1684X: The input data type can be FLOAT32/FLOAT16.
 * BM1688: The input data type can be FLOAT32/FLOAT16.
+* BM1684X2: The input data type can be FLOAT16.
 
 
 a16matmul

@@ -6972,6 +6972,10 @@ struct GridSampleInDeformableAttnFusionPattern
 
   LogicalResult matchAndRewriteImpl(tpu::ReduceOp op,
                                     PatternRewriter &rewriter) const override {
+    // Fused backend_api_grid_sample_in_deformable_attn is not correct on
+    // bm1684x2 yet; keep decomposed GridSampler path for that chip.
+    if (module::isBM1684X2())
+      return failure();
     if (!op->hasOneUse())
       return failure();
     if (op.getMode() != "ReduceSum")
