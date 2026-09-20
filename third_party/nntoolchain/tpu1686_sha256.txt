@@ -24,30 +24,21 @@ Date:   Fri Sep 11 00:11:48 2026 +0800
     
     Change-Id: Iba28fa09dbea21d821afa73e0e835fbc0b00b829
 === bm1684x ===
-commit 4ab63b3c2e
-Author: yujia liu <yujia.liu@sophgo.com>
-Date:   2026-08-06 16:35:33 +0800
+commit 44e24663d2f08eaf815fe1f0aba844a4f8f71103
+Author: yubing.shen <yubing.shen@sophgo.com>
+Date:   Thu Sep 17 21:25:39 2026 +0800
 
-    fix: matmul+relu for jira mlir-932
+    tpudnn SOC_MODE on
+    
+    Change-Id: Ibc5096ac36180cdd2a2c3e3ab759e2396d4b2214
 === bm1688 ===
-commit 0994e837c0ab01c449de55b7f4365b5063287444
-Author: yujia liu <yujia.liu@sophgo.com>
-Date:   Tue Aug 11 10:33:34 2026 +0800
+commit 44e24663d2f08eaf815fe1f0aba844a4f8f71103
+Author: yubing.shen <yubing.shen@sophgo.com>
+Date:   Thu Sep 17 21:25:39 2026 +0800
 
-fix: support matmul+relu do_relu on bm1688
-
-Extend the bm1684x matmul+relu fix to the bm1686 architecture (bm1688):
-pass do_relu through the api and enable the fused per-channel requant
-path (graceful-drop + requant_via_int16). Keep bias_dtype as FP32 on
-bm1686 so the fp16 matmul path is unaffected.
-
-Keep bm1688's native with_rq1 fast path (requant_mode<0/2/5, no izp)
-for non-fused matmul, and keep its rzp_dtype as DT_INT16 (as before):
-excluding bm1686 from with_rq1 or switching rzp to the input dtype both
-broke bm1688 int8 matmul (wrong bmodel output / codegen crash). The
-fused do_relu path (requant_mode==3) is unaffected.
-
-Change-Id: I292db1a970000000000000000000000000000001
+    tpudnn SOC_MODE on
+    
+    Change-Id: Ibc5096ac36180cdd2a2c3e3ab759e2396d4b2214
 === cv184x ===
 commit b853c35aa6bbc6aa37676607bae9c94429694664
 Author: yifan.chen <yifan.chen@sophgo.com>
@@ -73,24 +64,13 @@ Date:   Thu Jan 16 17:04:52 2025 +0800
     
     Change-Id: I23673c6bc26b40faf67addd3beb893ed62b09c72
 === bm1688 ===
-commit 0994e837c0ab01c449de55b7f4365b5063287444
-Author: yujia liu <yujia.liu@sophgo.com>
-Date:   Tue Aug 11 10:33:34 2026 +0800
+commit 44e24663d2f08eaf815fe1f0aba844a4f8f71103
+Author: yubing.shen <yubing.shen@sophgo.com>
+Date:   Thu Sep 17 21:25:39 2026 +0800
 
-fix: support matmul+relu do_relu on bm1688
-
-Extend the bm1684x matmul+relu fix to the bm1686 architecture (bm1688):
-pass do_relu through the api and enable the fused per-channel requant
-path (graceful-drop + requant_via_int16). Keep bias_dtype as FP32 on
-bm1686 so the fp16 matmul path is unaffected.
-
-Keep bm1688's native with_rq1 fast path (requant_mode<0/2/5, no izp)
-for non-fused matmul, and keep its rzp_dtype as DT_INT16 (as before):
-excluding bm1686 from with_rq1 or switching rzp to the input dtype both
-broke bm1688 int8 matmul (wrong bmodel output / codegen crash). The
-fused do_relu path (requant_mode==3) is unaffected.
-
-Change-Id: I292db1a970000000000000000000000000000001
+    tpudnn SOC_MODE on
+    
+    Change-Id: Ibc5096ac36180cdd2a2c3e3ab759e2396d4b2214
 === bm1690 ===
 commit 44b4477699e7487fa762d6b5622cbf3e7dfa3004
 Author: junliang.liu <junliang.liu@sophgo.com>
