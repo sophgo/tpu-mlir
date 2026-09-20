@@ -36,14 +36,14 @@ typedef enum {
 } tpuRtStatus_t;
 
 typedef struct tpuRtDeviceProperties {
-	char name[PRODUCT_NAME_LEN];                          /**< Device identifier string (e.g. "MT00,") */
-	uint64_t totalGlobalMem;                   /**< Total global memory size (bytes) */
-	int major;                               /**< Compute capability major version */
-	int minor;                               /**< Compute capability minor version */
-	int ECCEnabled;                          /**< Whether ECC memory support is enabled */
-	uint32_t pciBusID;                            /**< PCI bus ID */
-	uint32_t pciDeviceID;                         /**< PCI device ID */
-	uint32_t pciDomainID;                         /**< PCI domain ID */
+	char name[PRODUCT_NAME_LEN];
+	uint64_t totalGlobalMem;
+	int major;
+	int minor;
+	int ECCEnabled;
+	uint32_t pciBusID;
+	uint32_t pciDeviceID;
+	uint32_t pciDomainID;
 } tpuRtDeviceProperties_t;
 
 typedef struct tpuRtModule {
@@ -92,6 +92,37 @@ struct c2c_port_info_v2 {
 	uint8_t dst_pcie_id[MAX_C2C_LINK_BETWEN2CHIP];
 	int8_t send_port[MAX_C2C_LINK_BETWEN2CHIP];
 	int8_t recv_port[MAX_C2C_LINK_BETWEN2CHIP];
+};
+
+/* verdict bitmask for struct link_health */
+#define LINK_HEALTH_OK			0x0
+#define LINK_HEALTH_DOWN		0x1
+#define LINK_HEALTH_DEGRADED_SPEED	0x2
+#define LINK_HEALTH_DEGRADED_WIDTH	0x4
+
+#define LINK_HEALTH_LTSSM_L0		0x11
+
+#define MAX_LINK_HEALTH_ENTRY		(64 * MAX_C2C_LINK_BETWEN2CHIP)
+
+/*
+ * Per-link realtime health snapshot, filled by the RC-side kernel by reading
+ * hardware registers on demand (LNK_DBG_2 / dbi+0x80). Shared verbatim across
+ * host runtime, host driver, AP daemon and AP kernel.
+ */
+struct link_health {
+	uint16_t chip_id;	/* global chip id (topology matrix row/col) */
+	uint16_t peer_chip_id;	/* peer chip id, 0xffff if unknown */
+	uint8_t bus_num;	/* c2c pcie port number (linux,pci-domain / slot_id) */
+	uint8_t ltssm;		/* LNK_DBG_2[5:0], 0x11 == L0 */
+	uint8_t phy_up;		/* LNK_DBG_2[6], physical link layer up */
+	uint8_t dll_up;		/* LNK_DBG_2[7], data link layer up */
+	uint8_t cur_gen;	/* current link speed, already aligned to gen value */
+	uint8_t exp_gen;	/* expected gen, from DTS link_gen */
+	uint8_t cur_width;	/* current link width (lane count) */
+	uint8_t exp_width;	/* expected width, from DTS num_lanes */
+	uint8_t verdict;	/* LINK_HEALTH_* bitmask, 0 == OK */
+	uint8_t socket_id;	/* in-card chip index (0/1) */
+	uint8_t rsvd[2];
 };
 
 
@@ -761,6 +792,24 @@ tpuRtStatus_t tpuRtGetChipSN(int device_id, char *sn);
  *          Other code Fails.
  */
 tpuRtStatus_t tpuRtGetPcieStatus(int device_id, int *pcie_id);
+
+/**
+ * @name    tpuRtRefreshLinkHealth
+ * @brief   Re-read PCIe link health (LTSSM / phy / dll / speed / width) from
+ *          hardware on demand for the current device. Unlike the topology
+ *          snapshot, this triggers a live read on the RC side every call, so
+ *          it detects link-down and speed/width degradation. Read-only: it
+ *          never rebuilds c2c links.
+ * @ingroup tpuv7_rt
+ *
+ * @param [in]  device_id  chip id
+ * @param [out] report     caller-provided array of at least
+ *                         MAX_LINK_HEALTH_ENTRY entries
+ * @param [out] count      number of entries filled in @report
+ * @retval  tpuRtSuccess  Succeeds.
+ *          Other code Fails.
+ */
+tpuRtStatus_t tpuRtRefreshLinkHealth(int device_id, struct link_health *report, int *count);
 
 /**
  * @name    tpuRtGetAllMemory
