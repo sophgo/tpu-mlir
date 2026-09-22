@@ -17,6 +17,7 @@ import os
 import shutil
 import subprocess
 import shlex
+from utils.tpu_info import normalize_chip
 from filelock import FileLock
 import fcntl
 import time
@@ -158,6 +159,7 @@ def model_inference(inputs: dict,
 
 
 def get_cmodel_so(chip: str, is_rvti: bool = False) -> str:
+    chip = normalize_chip(chip).upper()  # bmodels built before the rename carry the legacy name
     if chip == 'BM1688' or chip == 'CV186X':
         return 'libcmodel_bm1688.so'
     elif chip == 'BM1684':
@@ -175,8 +177,8 @@ def get_cmodel_so(chip: str, is_rvti: bool = False) -> str:
         return 'libcmodel_sgtpuv8.so'
     elif chip == "SG2380":
         return 'libcmodel_sg2380.so'
-    elif chip == "BM1684X2":
-        return 'libcmodel_bm1684x2.so'
+    elif chip == "CV84X6":
+        return 'libcmodel_cv84x6.so'
     else:
         return 'libcmodel_bm1684x.so'
 
@@ -224,13 +226,14 @@ def link_cmodel_so(chip: str, is_rvti: bool = False):
 
 
 def link_bmlib_so(chip: str):
+    chip = normalize_chip(chip).upper()  # bmodels built before the rename carry the legacy name
     # libbmlib.so.0 is the SONAME pyruntime_bm links against. It ships as a
     # symlink to the default variant libbmlib_bm1684x.so.0 and is switched to
-    # libbmlib_bm1684x2.so.0 when running BM1684X2 models. Both variants ship
+    # libbmlib_cv84x6.so.0 when running CV84X6 models. Both variants ship
     # as real files, so switching never destroys the default library.
     lib_dir = os.path.join(TPUC_ROOT, "lib")
     link_so_0 = os.path.join(lib_dir, "libbmlib.so.0")
-    variant = "libbmlib_bm1684x2.so.0" if chip == "BM1684X2" else "libbmlib_bm1684x.so.0"
+    variant = "libbmlib_cv84x6.so.0" if chip == "CV84X6" else "libbmlib_bm1684x.so.0"
     target = os.path.join(lib_dir, variant)
     # A stale install dir (built before the variant files shipped) has no valid
     # target to point at; keep the existing library instead of creating a

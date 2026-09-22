@@ -441,7 +441,7 @@ void BMAddressAssign::assignAfter(ModuleOp &m,
 }
 
 void BMAddressAssign::assignL2SRAM(ModuleOp &m) {
-  if (!module::isBM1690Family() || module::isBM1684X2()) {
+  if (!module::isBM1690Family() || module::isCV84X6()) {
     return;
   }
   int64_t alignment = BM168x::ALIGNMENT;

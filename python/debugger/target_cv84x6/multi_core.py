@@ -199,7 +199,7 @@ class MultiCore(Node):
         self.indent = indent
         self.core_split_cmds = []
         self.core_split_rets = []
-        self.msges: List[Msg] = [Msg()] * 256  # BM1684X2 has 512 * 14 bits msg que
+        self.msges: List[Msg] = [Msg()] * 256  # CV84X6 has 512 * 14 bits msg que
 
         last_ret = None
         tmp_cmds = []

@@ -46,7 +46,7 @@ public:
     auto mode = module::AddrMode::BASIC;
     backend::Arch::init(0);
     if (addr_mode == "auto") {
-      if (module::isBM1688() || module::isCV184X() || module::isBM1684X2()) {
+      if (module::isBM1688() || module::isCV184X() || module::isCV84X6()) {
         mode = module::AddrMode::IO_TAG;
       }
     }

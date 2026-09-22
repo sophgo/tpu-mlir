@@ -437,7 +437,7 @@ struct MatMulFuseRequant : public OpRewriterPatternEx<tpu::MatMulOp> {
     auto newOp = rewriter.create<tpu::MatMulOp>(requantOp->getLoc(),
                                                 requantOp.getOutput().getType(),
                                                 operands, op->getAttrs());
-    if (module::isBM1684X2()) {
+    if (module::isCV84X6()) {
       int64_t multiplier = requantOp.getMultiplier();
       int64_t rshift = requantOp.getRshift();
       float scale_f = get_fscale_from_multiplier_and_rshift(multiplier, rshift);

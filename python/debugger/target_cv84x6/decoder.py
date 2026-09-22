@@ -26,7 +26,7 @@ from ..target_common import (
 from .opdef import tiu_index, tiu_cls, dma_index, dma_cls, cdma_index, TiuCmd, DmaCmd
 
 if TYPE_CHECKING:
-    from .context import BM1684X2Context
+    from .context import CV84X6Context
 
 
 class TiuHead(HeadDef):
@@ -134,7 +134,7 @@ class Decoder(DecoderBase):
     tiu_head_length = 50
     dma_head_length = 40
 
-    def __init__(self, context: "BM1684X2Context") -> None:
+    def __init__(self, context: "CV84X6Context") -> None:
         super().__init__()
         self.context = context
 
@@ -189,7 +189,7 @@ class Decoder(DecoderBase):
         return cmd
 
     def decode_cdma_cmd(self, reg_buf: memoryview, *, offset, core_id, cmd_id, subnet_id):
-        assert cmd_id is not None, "1684x2 must assign cmd_id manually"
+        assert cmd_id is not None, "cv84x6 must assign cmd_id manually"
         head = CDmaHead.from_buffer(reg_buf, offset)  # type: CDmaHead
         op_info = cdma_index.get(head, None)
 
@@ -260,7 +260,7 @@ class Decoder(DecoderBase):
         res = []
         cmd_id = 1
         while offset < len(reg_buf):
-            # (a zero head matches opcode-0 ops such as long CONV), BM1684X2 only has sCONV.
+            # (a zero head matches opcode-0 ops such as long CONV), CV84X6 only has sCONV.
             # But still need to check WHY there are zero heads but backend do not have this op.
             if self._head_is_zero(reg_buf, offset, self.tiu_head_length):
                 break

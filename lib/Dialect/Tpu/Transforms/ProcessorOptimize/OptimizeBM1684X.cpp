@@ -3897,7 +3897,7 @@ public:
           dyn_cast<top::WeightOp>(requant_op.getQuant().getDefiningOp());
       auto data = requant.read<int32_t>();
       if (module::isBM1688() || module::isSG2380() || module::isCV184X() ||
-          module::isSGTPUV8() || module::isBM1684X2()) {
+          module::isSGTPUV8() || module::isCV84X6()) {
         for (int i = 0; i < shape[1]; ++i) {
           multiplier_v.push_back(data->data()[i * 2]);
           rshift_v.push_back(-(data->data()[i * 2 + 1] & 0xffff));
@@ -5120,13 +5120,13 @@ public:
     for (int i = 0; i < channels; ++i) {
       if (module::isBM1684X()) {
         new_multi0[i] = quantData[i * 3]; // multi
-      } else if (module::isBM1688() || module::isBM1684X2()) {
+      } else if (module::isBM1688() || module::isCV84X6()) {
         new_multi0[i] = quantData[i * 2]; // multi
       }
     }
 
     int32_t raw_shift_in_quant;
-    if (module::isBM1688() || module::isBM1684X2()) {
+    if (module::isBM1688() || module::isCV84X6()) {
       raw_shift_in_quant =
           static_cast<int32_t>(static_cast<int16_t>(quantData[1] & 0xffff));
     } else {
@@ -6969,8 +6969,8 @@ struct GridSampleInDeformableAttnFusionPattern
   LogicalResult matchAndRewriteImpl(tpu::ReduceOp op,
                                     PatternRewriter &rewriter) const override {
     // Fused backend_api_grid_sample_in_deformable_attn is not correct on
-    // bm1684x2 yet; keep decomposed GridSampler path for that chip.
-    if (module::isBM1684X2())
+    // cv84x6 yet; keep decomposed GridSampler path for that chip.
+    if (module::isCV84X6())
       return failure();
     if (!op->hasOneUse())
       return failure();
@@ -7104,7 +7104,7 @@ public:
   LogicalResult matchAndRewriteImpl(tpu::UpsampleOp op,
                                     PatternRewriter &rewriter) const override {
 
-    if (!module::isBM1684XFamily() && !module::isBM1684X2()) {
+    if (!module::isBM1684XFamily() && !module::isCV84X6()) {
       return failure();
     }
     auto input = op.getInput();

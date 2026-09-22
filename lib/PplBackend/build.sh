@@ -127,7 +127,7 @@ LIBS=("libcmodel_bm1684x.a"  "libbm1684x_kernel_module.a"
       "libcmodel_bm1688.a"   "libbmtpulv60_kernel_module.a"
       "libcmodel_bm1690.a"   "libbm1690_kernel_module.a"
       "libcmodel_bm1690e.a"  "libbm1690e_kernel_module.a"
-      "libcmodel_bm1684x2.a" "libbm1684x2_kernel_module.a")
+      "libcmodel_cv84x6.a" "libcv84x6_kernel_module.a")
 mapfile -t libs_md5_list < <(
   for lib in "${LIBS[@]}"; do
     rel="$NNTC_LIB_PATH/$lib"

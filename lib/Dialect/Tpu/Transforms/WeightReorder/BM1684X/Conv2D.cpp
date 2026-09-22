@@ -309,9 +309,9 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter,
     int64_t quant_w_size = 0;
     bool align = true;
     if (module::isBM1688() || module::isBM1690Family() || module::isSG2380() ||
-        module::isCV184X() || module::isSGTPUV8() || module::isBM1684X2() ||
+        module::isCV184X() || module::isSGTPUV8() || module::isCV84X6() ||
         module::isSG2262()) {
-      // BM1688 family + BM1684X2/SG2262: the conv per-channel requant BDC reads
+      // BM1688 family + CV84X6/SG2262: the conv per-channel requant BDC reads
       // coeff as array4(1, oc, 1, 2) CONTINUOUS_LAYOUT: {int32 multiplier,
       // int32[7:0]=-rshift, int32[31:16]=zp}. BM1684X keeps the 3-element
       // (1, oc, 1, 3) layout instead.

@@ -12,7 +12,7 @@
      - 2026.06.29
      - MoE model support;
        Qwen3.5 support;
-       BM1684X2 FP8 LLM/VLM compilation support;
+       CV84X6 FP8 LLM/VLM compilation support;
        LayerGroup supports AffineMap data read/write
    * - v1.28.0
      - 2026.04.14

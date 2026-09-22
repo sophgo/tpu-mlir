@@ -400,8 +400,8 @@ class TPULANG_IR_TESTER(object):
 
     def check_support(self, case):
         _, bm1684x_support, bm1688_support = self.test_function[case]
-        # TODO: bm1684x2 reuses the bm1684x support column for now
-        if self.chip in ("bm1684x", "bm1684x2") and bm1684x_support:
+        # TODO: cv84x6 reuses the bm1684x support column for now
+        if self.chip in ("bm1684x", "cv84x6") and bm1684x_support:
             return True
         if self.chip == "bm1688" and bm1688_support:
             return True
@@ -5342,8 +5342,8 @@ class TPULANG_IR_TESTER(object):
                 attention_weights_bias, value_proj_weight, value_proj_bias, output_proj_weight,
                 output_proj_bias, spatial_shapes, embed_dims, num_heads, num_levels, num_points,
                 value_proj_ratio)
-            # bm1684x2: f32 matmul is firmware-blocked (mm1 atomic removed)
-            modes = ["f16"] if self.chip == "bm1684x2" else None
+            # cv84x6: f32 matmul is firmware-blocked (mm1 atomic removed)
+            modes = ["f16"] if self.chip == "cv84x6" else None
             self.compile_and_check(self.unique_name(case_name),
                                    [query, key_padding_mask, reference_points], [output],
                                    modes=modes)
@@ -6964,7 +6964,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684x', 'bm1688', 'bm1684x2'], help="chip platform name")
+                        choices=['bm1684x', 'bm1688', 'cv84x6'], help="chip platform name")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16'], help="quantize modes, only supports fp for now")
     parser.add_argument("--simple", action="store_true", help='do simple test for commit test')
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")

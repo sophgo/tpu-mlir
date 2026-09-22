@@ -56,6 +56,7 @@ from mlir_analyse import (
     fmt_bytes,
     fmt_time,
 )
+from utils.tpu_info import normalize_chip
 
 # ---------------------------------------------------------------------------
 # Phase classification
@@ -850,7 +851,7 @@ def main():
                         choices=["auto", "f16", "w8f16", "w4f16", "bf16", "w8bf16", "w4bf16"],
                         help="Quantization mode (default: auto, inferred from model config)")
     parser.add_argument("-c", "--chip", default="bm1684x",
-                        choices=["bm1684x", "bm1688", "cv186x", "bm1690", "bm1684x2"],
+                        choices=["bm1684x", "bm1688", "cv186x", "bm1690", "cv84x6"],
                         help="Chip type (default: bm1684x)")
     parser.add_argument("-v", "--vector_tops", type=float, default=None,
                         help="Vector compute power in TOPS (default: tops/8)")
@@ -878,6 +879,7 @@ def main():
     parser.add_argument("-o", "--out_dir", required=True,
                         help="Output directory path (default: <out_dir>/<out_dir>_analysis.xlsx)")
     args = parser.parse_args()
+    args.chip = normalize_chip(args.chip)
     # yapf: enable
     if args.vit_quantize == 'int8' and not args.vit_calibration_table:
         print(

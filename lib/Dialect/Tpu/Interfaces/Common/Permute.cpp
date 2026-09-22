@@ -90,7 +90,7 @@ ArrayAttr tpu::PermuteOp::getIndexingMaps() {
 };
 
 bool tpu::PermuteOp::support_multi_core() {
-  if (module::isBM1684X2())
+  if (module::isCV84X6())
     return true;
   int no_exchange_dim = GetNoExchangeDim(*this);
   if (no_exchange_dim > 0) {

@@ -41,12 +41,12 @@ from _test_base import (
 )
 
 # Constants
-SUPPORTED_CHIPS = ["bm1684x", "bm1688", "bm1690", "bm1690e", "bm1684x2"]
+SUPPORTED_CHIPS = ["bm1684x", "bm1688", "bm1690", "bm1690e", "cv84x6"]
 SUPPORTED_MODES = ["f32", "f16", "bf16"]  # Extend as needed
 
 # Chip columns of the per-row support tuples in ``_test_functions``.
-# Order must match the flags in each row: (bm1684x, bm1688, bm1684x2).
-_CHIP_COLUMNS = ("bm1684x", "bm1688", "bm1684x2")
+# Order must match the flags in each row: (bm1684x, bm1688, cv84x6).
+_CHIP_COLUMNS = ("bm1684x", "bm1688", "cv84x6")
 _CHIP_ALIASES = {}
 _resolve_chip_support = make_chip_resolver(_CHIP_COLUMNS, _CHIP_ALIASES)
 
@@ -127,7 +127,7 @@ class MLIR_IR_TESTER(object):
             #############################
             # MLIR Test Case, Alphabetically
             #############################
-            # case:  (test_function,      bm1684x_support, bm1688_support, bm1684x2_support)
+            # case:  (test_function,      bm1684x_support, bm1688_support, cv84x6_support)
             "error0": (self.test_error0, Y, Y, Y),
             "layernorm_dynamic_dc": (self.test_layernorm_dynamic_dc, Y, Y, Y),
             "layernorm_dynamic_dc_workaround": (self.test_layernorm_dynamic_dc_workaround, Y, Y, Y),
@@ -1420,7 +1420,7 @@ class MLIR_IR_TESTER(object):
         act = rand_data(input_shapes[0], "float32", -1, 1)
         if self.weights_path:
             act = np.load(
-                "/workspace/tpu-mlir/mlir_test_bm1684x2/fattn_o_proj_bm1684x2_bf16_model_outputs.npz"
+                "/workspace/tpu-mlir/mlir_test_cv84x6/fattn_o_proj_cv84x6_bf16_model_outputs.npz"
             )["fattention_f32"]
         inputs = {"in0": act}
 
@@ -2381,9 +2381,9 @@ class MLIR_IR_TESTER(object):
                                  weight_shapes,
                                  input_descs=[self.Desc('float32', -5, 5)])
 
-        # C2C only supports bm1684x2; skip silently on other chips.
-        if self.chip != "bm1684x2":
-            print(f"[SKIP] {case_name}: C2C requires bm1684x2, got {self.chip}")
+        # C2C only supports cv84x6; skip silently on other chips.
+        if self.chip != "cv84x6":
+            print(f"[SKIP] {case_name}: C2C requires cv84x6, got {self.chip}")
             return
 
         self._deploy_c2c_case(case_name, num_device=2)
@@ -2435,9 +2435,9 @@ class MLIR_IR_TESTER(object):
                                  weight_shapes,
                                  input_descs=[self.Desc('float32', -5, 5)])
 
-        # C2C only supports bm1684x2; skip silently on other chips.
-        if self.chip != "bm1684x2":
-            print(f"[SKIP] {case_name}: C2C requires bm1684x2, got {self.chip}")
+        # C2C only supports cv84x6; skip silently on other chips.
+        if self.chip != "cv84x6":
+            print(f"[SKIP] {case_name}: C2C requires cv84x6, got {self.chip}")
             return
 
         self._deploy_c2c_case(case_name, num_device=2)
@@ -2552,7 +2552,7 @@ class MLIR_IR_TESTER(object):
         # The bug only manifests under multi-core: CoreParallel early-returns
         # when num_core < 2, so on a single-core chip the graph deploys fine
         # and the case passes trivially. Use the chip's native core count
-        # (bm1688 -> 2, bm1684x2 -> 4, bm1684x -> 1) so the test is generic and
+        # (bm1688 -> 2, cv84x6 -> 4, bm1684x -> 1) so the test is generic and
         # does not depend on the caller remembering to pass --num_core.
         saved_num_core = self.num_core
         self.num_core = get_core_num(self.chip)
@@ -2634,7 +2634,7 @@ def main():
     parser.add_argument("--concise_log", action="store_true", help="use concise log")
     parser.add_argument("--num_core", default=1, type=int, help="number of cores to use")
     parser.add_argument("--dynamic", action="store_true", help='enable dynamic compile and inference')
-    parser.add_argument("--rvti", action="store_true", help='enable rvti, only for bm1684x2 and bm1690e')
+    parser.add_argument("--rvti", action="store_true", help='enable rvti, only for cv84x6 and bm1690e')
     parser.add_argument("--no_check", action="store_true", help='do not check result, only run deploy')
     parser.add_argument("--disable_lg", action="store_true", help='disable layergroup')
     parser.add_argument("--disable_hp", action="store_true", help='disable high precision')

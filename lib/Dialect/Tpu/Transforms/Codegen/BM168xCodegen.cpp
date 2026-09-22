@@ -10,11 +10,11 @@
 #include "BM168xCodegen.hpp"
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Backend/BM168x/BM1684X2.h"
 #include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include "tpu_mlir/Backend/BM168x/BM1690.h"
 #include "tpu_mlir/Backend/BM168x/BM1690E.h"
 #include "tpu_mlir/Backend/BM168x/BackendInterfaces.h"
+#include "tpu_mlir/Backend/BM168x/CV84X6.h"
 #include "tpu_mlir/Backend/BM168x/SGTPUV8.h"
 #include "tpu_mlir/Backend/CV18xx/CV184X.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Support.h"
@@ -77,10 +77,10 @@ std::string BMCodegen::getKernelModuleName(bool is_rvti) {
   if (is_rvti) {
     if (module::isBM1690E()) {
       return backend::BM1690E::LIB_RVTI_KERNEL_NAME.str();
-    } else if (module::isBM1684X2()) {
-      return backend::BM1684X2::LIB_RVTI_KERNEL_NAME.str();
+    } else if (module::isCV84X6()) {
+      return backend::CV84X6::LIB_RVTI_KERNEL_NAME.str();
     }
-    llvm_unreachable("Only BM1690E and BM1684X2 support RVTI kernel module.");
+    llvm_unreachable("Only BM1690E and CV84X6 support RVTI kernel module.");
     return "";
   }
   if (module::isBM1684X()) {
@@ -91,8 +91,8 @@ std::string BMCodegen::getKernelModuleName(bool is_rvti) {
     return backend::SGTPUV8::LIB_KERNEL_NAME.str();
   } else if (module::isBM1690()) {
     return backend::BM1690::LIB_KERNEL_NAME.str();
-  } else if (module::isBM1684X2()) {
-    return backend::BM1684X2::LIB_KERNEL_NAME.str();
+  } else if (module::isCV84X6()) {
+    return backend::CV84X6::LIB_KERNEL_NAME.str();
   } else if (module::isBM1690E()) {
     return backend::BM1690E::LIB_KERNEL_NAME.str();
   }
@@ -1738,7 +1738,7 @@ Offset<bmodel::SubNet> BMCodegen::CreateSubNet(ModuleOp s, func::CallOp call,
       multi_core->useCore(i);
       auto cmd_group_v = CreateCmdGroupVector();
       auto cmd_group = builder.CreateVector(*cmd_group_v);
-      // for bm1690/bm1684x2
+      // for bm1690/cv84x6
       auto sdma_cmds_bin = CreateCmdVector("sdma:0:0");
       auto hau_cmds_bin = CreateCmdVector("hau:0:0");
       auto cdma_cmds_bin = CreateCmdVector("cdma:0:0");

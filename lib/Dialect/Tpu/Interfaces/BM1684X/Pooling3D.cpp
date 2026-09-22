@@ -83,10 +83,10 @@ void tpu::Pool3DOp::codegen_global_bm1684x() {
         spec.rq_offset = getOffset().has_value()
                              ? (getOffset().value().convertToDouble())
                              : 0.;
-        // bm1684x2/sg2262 dropped rq0 (fp32-scale requant); firmware emulates
+        // cv84x6/sg2262 dropped rq0 (fp32-scale requant); firmware emulates
         // merge_requant with rq1 (int multiplier + rshift + zp). rq_offset is
         // reused as the rq1 zero-point.
-        if (module::isBM1684X2() || module::isSG2262()) {
+        if (module::isCV84X6() || module::isSG2262()) {
           get_scale_and_shift(spec.rq_scale, spec.multiplier, spec.rshiftbits,
                               32);
         }
@@ -209,10 +209,10 @@ void tpu::Pool3DOp::codegen_local_bm1684x_kernel(
         spec.rq_offset = getOffset().has_value()
                              ? (getOffset().value().convertToDouble())
                              : 0.;
-        // bm1684x2/sg2262 dropped rq0 (fp32-scale requant); firmware emulates
+        // cv84x6/sg2262 dropped rq0 (fp32-scale requant); firmware emulates
         // merge_requant with rq1 (int multiplier + rshift + zp). rq_offset is
         // reused as the rq1 zero-point.
-        if (module::isBM1684X2() || module::isSG2262()) {
+        if (module::isCV84X6() || module::isSG2262()) {
           get_scale_and_shift(spec.rq_scale, spec.multiplier, spec.rshiftbits,
                               32);
         }
@@ -272,10 +272,10 @@ int64_t tpu::Pool3DOp::dyn_codegen_local_bm1684x(void *buffer) {
         spec.common.rq_offset = getOffset().has_value()
                                     ? (getOffset().value().convertToDouble())
                                     : 0.;
-        // bm1684x2/sg2262 dropped rq0 (fp32-scale requant); firmware emulates
+        // cv84x6/sg2262 dropped rq0 (fp32-scale requant); firmware emulates
         // merge_requant with rq1 (int multiplier + rshift + zp). rq_offset is
         // reused as the rq1 zero-point.
-        if (module::isBM1684X2() || module::isSG2262()) {
+        if (module::isCV84X6() || module::isSG2262()) {
           get_scale_and_shift(spec.common.rq_scale, spec.common.multiplier,
                               spec.common.rshiftbits, 32);
         }
@@ -335,10 +335,10 @@ int64_t tpu::Pool3DOp::dyn_codegen_global_bm1684x(void *buffer) {
         spec.common.rq_offset = getOffset().has_value()
                                     ? (getOffset().value().convertToDouble())
                                     : 0.;
-        // bm1684x2/sg2262 dropped rq0 (fp32-scale requant); firmware emulates
+        // cv84x6/sg2262 dropped rq0 (fp32-scale requant); firmware emulates
         // merge_requant with rq1 (int multiplier + rshift + zp). rq_offset is
         // reused as the rq1 zero-point.
-        if (module::isBM1684X2() || module::isSG2262()) {
+        if (module::isCV84X6() || module::isSG2262()) {
           get_scale_and_shift(spec.common.rq_scale, spec.common.multiplier,
                               spec.common.rshiftbits, 32);
         }

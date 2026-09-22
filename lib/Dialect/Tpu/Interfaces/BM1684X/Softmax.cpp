@@ -87,7 +87,7 @@ int64_t tpu::SoftmaxOp::getBufferSize_bm1684x(
 
 #define SIZE                                                                   \
   ((stype.isF16() || stype.isBF16()) ? sizeof(int16_t) : sizeof(float))
-  if (module::isBM1684X2() && axis == 3 && !getLog()) {
+  if (module::isCV84X6() && axis == 3 && !getLog()) {
     buffer_size += align_up((int64_t)36, eu_num) * SIZE; // coeff
     buffer_size += c_per_npu * align_up(in_wslice, eu_num) *
                    (in_hslice == 1 ? 0 : in_hslice) *

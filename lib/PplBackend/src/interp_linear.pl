@@ -307,7 +307,7 @@ void interp_(T *ptr_output, T *ptr_input, const int core_num, const int N, const
       tiu::sub(index4_w_tensor, index4_w_tensor, index_w_dif, 0, RM_DOWN, false);
 
 #ifdef __bm1684x2__
-      // bm1684x2: gather_hw index is uint32, each element packs {int16 h, int16 w}
+      // cv84x6: gather_hw index is uint32, each element packs {int16 h, int16 w}
       // packed = (h << 16) + (w & 0xFFFF)
       dim4 block_index_stride_shape = {1, block_h * block_w, 1, 1};
       auto idx1_w_u32 = make_tensor<uint32>(block_index_stride_shape, real_index_stride_shape, TPU_COMPACT);

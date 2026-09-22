@@ -19,6 +19,7 @@ import textwrap
 import tempfile
 from typing import Tuple
 from subprocess import run, CalledProcessError, TimeoutExpired
+from utils.tpu_info import normalize_chip
 import sys
 import re
 import psutil
@@ -560,7 +561,7 @@ def lowering_options(mode: str,
     mode = mode.upper()
     options = [
         "--processor-assign=\"chip={} mode={} num_device={} num_core={} addr_mode={} high_precision={}\""
-        .format(chip.lower(), mode, num_device, num_core, addr_mode, high_precision)
+        .format(normalize_chip(chip), mode, num_device, num_core, addr_mode, high_precision)
     ]
 
     # asymmetric = False  # TODO: always using symmetric, as asymmetric not good

@@ -15,6 +15,7 @@ import pymlir
 import logging
 
 from llm.log_config import setup_logging
+from utils.tpu_info import normalize_chip
 
 
 def parse_max_pixels(value):
@@ -138,7 +139,7 @@ if __name__ == '__main__':
     parser.add_argument('-g', "--q_group_size", default=64, type=int,
                         help="group size for per-group quant, only used in quant mode")
     parser.add_argument('-c', '--chip', "--processor", type=str, default="bm1684x",
-                        choices=["bm1684x", "bm1688", "cv186x", "bm1690", "bm1684x2"],
+                        choices=["bm1684x", "bm1688", "cv186x", "bm1690", "cv84x6"],
                         help="chip type for bmodel")
     parser.add_argument('--num_device', type=int, default=1,
                         help="num device for bmodel")
@@ -192,7 +193,7 @@ if __name__ == '__main__':
                         'bmodel against an mlir-inferred reference')
     parser.add_argument('--only_mlir', action='store_true', help='only export mlir file, do not convert to bmodel')
     parser.add_argument('--rvti', action='store_true',
-                        help='enable rvti, only for bm1684x2 and bm1690e')
+                        help='enable rvti, only for cv84x6 and bm1690e')
     parser.add_argument("--again", action='store_true',
                         help='resume an interrupted conversion: skip stages whose '
                              'outputs already exist in --out_dir.')
@@ -209,6 +210,7 @@ if __name__ == '__main__':
     parser.add_argument('--input_length_list', action="store_true",
                         help="a list of input lengths separated by '+', each input length can be a single integer")
     args = parser.parse_args()
+    args.chip = normalize_chip(args.chip)
     setup_logging(debug=args.debug)
     deprecated_option(args.dynamic_vit, "DEPRECATED,default is dynamic compiling")
     deprecated_option(args.input_length_list, "DEPRECATED, please use --dynamic to enable dynamic compiling")

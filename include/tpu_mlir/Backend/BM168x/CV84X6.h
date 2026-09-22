@@ -20,15 +20,15 @@ typedef void (*gen_riscv_code_end)();
 namespace tpu_mlir {
 namespace backend {
 #define BUFFER_SIZE (4 * 1024 * 1024)
-class BM1684X2 : public BM1684X, MultiCoreInterface::Base<BM1684X2> {
+class CV84X6 : public BM1684X, MultiCoreInterface::Base<CV84X6> {
 public:
   static bool classof(const BM168x *bm168x) {
-    return bm168x->getTypeID() == TypeID::get<BM1684X2>();
+    return bm168x->getTypeID() == TypeID::get<CV84X6>();
   }
 
-  static BM1684X2 &instance() {
-    static BM1684X2 bm1684x2;
-    return bm1684x2;
+  static CV84X6 &instance() {
+    static CV84X6 cv84x6;
+    return cv84x6;
   }
   virtual void before_codegen() override;
   virtual void after_codegen(int64_t flops = 0) override;
@@ -70,13 +70,13 @@ private:
 public:
   // specific global info
   static constexpr llvm::StringRef LIB_KERNEL_NAME =
-      "libbm1684x2_kernel_module.so";
+      "libcv84x6_kernel_module.so";
   static constexpr llvm::StringRef LIB_RVTI_KERNEL_NAME =
-      "libbm1684x2rv_kernel_module.so";
+      "libcv84x6rv_kernel_module.so";
 
 protected:
-  BM1684X2() {
-    typeID = TypeID::get<BM1684X2>();
+  CV84X6() {
+    typeID = TypeID::get<CV84X6>();
     NPU_NUM = 16;
     EU_BYTES = 32;
     LMEM_BYTES = 1 << 18; // 256KB
@@ -93,8 +93,8 @@ protected:
     USER_TAG_START = 4;
     USER_TAG_END = 29;
     SUPPORT_MEM_TAG = true;
-    LIB_BACKEND_NAME = "libbackend_bm1684x2.so";
-    LIB_PPL_DYN_HOST_NAME = "libppl_dyn_host_bm1684x2.so";
+    LIB_BACKEND_NAME = "libbackend_cv84x6.so";
+    LIB_PPL_DYN_HOST_NAME = "libppl_dyn_host_cv84x6.so";
     // GDMA format
     GDMA_VALUE_FORMAT_INT8 = 0;
     GDMA_VALUE_FORMAT_FLOAT16 = 1;
@@ -110,7 +110,7 @@ protected:
     start_env();
   };
   virtual void load_functions() override;
-  virtual ~BM1684X2(){};
+  virtual ~CV84X6(){};
   bool useCode0 = true;
   std::vector<std::shared_ptr<BM168x::Code>> multiCode;
 };

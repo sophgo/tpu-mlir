@@ -48,7 +48,7 @@ _CHIP_COLUMNS = (
     "bm1688",
     "cv183x",
     "cv184x",
-    "bm1684x2",
+    "cv84x6",
 )
 
 _resolve_chip_support = make_chip_resolver(_CHIP_COLUMNS)
@@ -85,9 +85,9 @@ class TORCH_IR_TESTER(object):
             ##################################
             # Torch Test Case, Alphabetically
             ##################################
-            # case: (test, bm1684x_support, bm1688_support, cv183x_support, cv184x_support, bm1684x2_support)
-            # bm1684x=Y but bm1684x2=N, grouped by reason:
-            #   1. mm1 is removed on bm1684x2 and mm2 has no FP32 compute.
+            # case: (test, bm1684x_support, bm1688_support, cv183x_support, cv184x_support, cv84x6_support)
+            # bm1684x=Y but cv84x6=N, grouped by reason:
+            #   1. mm1 is removed on cv84x6 and mm2 has no FP32 compute.
             #       RNN ops (GRU/LSTM) keep f32 operands even in F16 mode, so they hit
             #       the mm1 stub assert at codegen in every quant mode: GRU, LSTM.
             #   2. Full reduce on the legacy firmware path accumulates in bf16 and drifts
@@ -4149,7 +4149,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684x', 'bm1688', 'cv183x', 'cv184x', 'cv186x', 'bm1690', 'bm1690e','sgtpuv8', 'bm1684x2'], help="chip platform name")
+                        choices=['bm1684x', 'bm1688', 'cv183x', 'cv184x', 'cv186x', 'bm1690', 'bm1690e','sgtpuv8', 'cv84x6'], help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8'],
                         help="chip platform name")

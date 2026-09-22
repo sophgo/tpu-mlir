@@ -14,6 +14,7 @@ import argparse
 from utils.mlir_shell import *
 from utils.mlir_parser import *
 from utils.misc import *
+from utils.tpu_info import normalize_chip
 from utils.preprocess import preprocess, supported_customization_format
 from utils.auto_remove import file_mark, file_clean
 from tools.model_runner import mlir_inference, model_inference, show_fake_cmd
@@ -122,7 +123,7 @@ class DeployTool:
         self.disable_topo_sort = args.disable_topo_sort
         self.disable_layer_group = args.disable_layer_group
         self.enable_affine = not args.disable_affine
-        # TODO: support 2260/1684x2
+        # TODO: support 2260/cv84x6
         self.gdma_check = False  # not args.disable_gdma_check
         self.opt = args.opt
         self.merge_weight = args.merge_weight
@@ -611,7 +612,8 @@ if __name__ == '__main__':
     parser.add_argument("--mlir", required=True, help="top mlir from model_transform.py")
     parser.add_argument("--chip", "--processor", required=True, type=str.lower,
                         choices=['bm1688', 'bm1684x', 'bm1684', 'bm1690', 'bm1690e', 'cv184x', 'sgtpuv8', 'sg2380',
-                                 'bm1684x2', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv190x', 'cv186x', 'sg2262', 'cpu'],
+                                 'cv84x6', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv190x', 'cv186x',
+                                 'sg2262', 'cpu'],
                         help="chip platform name")
     parser.add_argument("--quantize", default="F32", type=str.upper,
                         choices=['F32', 'BF16', 'F16', 'INT8', 'INT4', 'W8F16', 'W8BF16',
@@ -789,6 +791,7 @@ if __name__ == '__main__':
 
     # yapf: enable
     args = parser.parse_args()
+    args.chip = normalize_chip(args.chip)
     deprecated_option(args.io_alone, "DEPRECATED, please use --addr_mode io_alone")
     deprecated_option(args.ignore_f16_overflow, "DEPRECATED, please use --high_precision")
     if args.quant_output_bf16:

@@ -8,11 +8,13 @@ install(FILES nntoolchain/lib/libbackend_bm1684.so
               nntoolchain/lib/libbackend_bm1690e.so
               nntoolchain/lib/libbackend_sg2380.so
               nntoolchain/lib/libbackend_sgtpuv8.so
+              nntoolchain/lib/libbackend_cv84x6.so
+              # Legacy alias: the bundled ppl_compile kit still links this name
               nntoolchain/lib/libbackend_bm1684x2.so
               nntoolchain/lib/libbmlib.so
               nntoolchain/lib/libbmlib.so.0
               nntoolchain/lib/libbmlib_bm1684x.so.0
-              nntoolchain/lib/libbmlib_bm1684x2.so.0
+              nntoolchain/lib/libbmlib_cv84x6.so.0
               nntoolchain/lib/libcmodel_bm1684.so
               nntoolchain/lib/libcmodel_cv184x.so
               nntoolchain/lib/libcmodel_sg2380.so
@@ -26,7 +28,7 @@ install(FILES nntoolchain/lib/libbackend_bm1684.so
               nntoolchain/lib/libbmtpulv60_kernel_module.a
               nntoolchain/lib/libbm1690_kernel_module.a
               # nntoolchain/lib/libcv184x_kernel_module.a
-              nntoolchain/lib/libbm1684x2_kernel_module.a
+              nntoolchain/lib/libcv84x6_kernel_module.a
               nntoolchain/lib/libbm1690e_kernel_module.a
               nntoolchain/lib/libsgtpuv8_kernel_module.so
               nntoolchain/lib/libsgtpuv8_kernel_module.a

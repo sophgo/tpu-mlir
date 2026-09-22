@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Backend/BM168x/BM1684X2.h"
+#include "tpu_mlir/Backend/BM168x/CV84X6.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 
 using namespace tpu_mlir::backend;
@@ -27,8 +27,8 @@ static void fill_c2c_all_reduce_spec(tpu::C2CAllReduceOp op,
 }
 
 void tpu::C2CAllReduceOp::codegen_global_bm1684x() {
-  if (!module::isBM1684X2()) {
-    llvm_unreachable("C2CAllReduce only supports BM1684X2");
+  if (!module::isCV84X6()) {
+    llvm_unreachable("C2CAllReduce only supports CV84X6");
   }
   c2c_all_reduce_common_spec_t spec = {0};
   fill_c2c_all_reduce_spec(*this, spec);

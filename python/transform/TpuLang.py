@@ -15,6 +15,7 @@ from tools.model_runner import mlir_inference, model_inference, show_fake_cmd
 from tools.model_deploy import getCustomFormat
 # from deprecated.sphinx import deprecated
 from utils.mlir_shell import *
+from utils.tpu_info import normalize_chip
 from utils.auto_remove import file_mark
 from tools.npz_tool import npz_compare
 from tools.tdb import TdbInterface
@@ -29,7 +30,7 @@ import inspect
 
 logger = logging.getLogger("root")
 
-device_list = ['cpu', 'bm1684x', 'bm1688', 'cv183x', 'bm1684x2']
+device_list = ['cpu', 'bm1684x', 'bm1688', 'cv183x', 'cv84x6']
 MLIRImporterTypeStr = {
     "float64": "F64",
     "float32": "F32",
@@ -82,6 +83,7 @@ class TpuLang:
         self,
         device: str,
     ):
+        device = normalize_chip(device)
         if device.lower() in device_list:
             TpuLang.chip = device.lower()
         else:
@@ -203,7 +205,7 @@ def compile(
     assert addr_mode in ['auto', 'io_reloc']
     assert (TpuLang.chip == "bm1684x" and num_core == 1) or \
          (TpuLang.chip == "bm1688" and num_core in (1, 2)) or \
-         (TpuLang.chip == "bm1684x2" and num_core in (1, 4)), \
+         (TpuLang.chip == "cv84x6" and num_core in (1, 4)), \
          f"Invalid core configuration: chip={TpuLang.chip}, cores={num_core}"
     if debug_dump_mode != 'load':
         TpuLang.graph.inputs = inputs
@@ -396,7 +398,7 @@ def compile_f32(name: str,
         mode_list = ['f32', 'f16', 'bf16']
     assert (TpuLang.chip == "bm1684x" and num_core == 1) or \
        (TpuLang.chip == "bm1688" and num_core in (1, 2)) or \
-       (TpuLang.chip == "bm1684x2" and num_core in (1, 4)), \
+       (TpuLang.chip == "cv84x6" and num_core in (1, 4)), \
        f"Invalid core configuration: chip={TpuLang.chip}, cores={num_core}"
     converter = TpuLangConverter(name=name, graph=TpuLang.graph, mode="f32", no_save=no_save)
     qtable = ""
@@ -4304,7 +4306,7 @@ def multi_scale_deformable_attention(
         identity = query
     bs = 1
     # assert embed_dims % (num_heads * num_levels) == 0
-    npu_num_map = {"bm1684x": 64, "bm1688": 32, "bm1684x2": 16}
+    npu_num_map = {"bm1684x": 64, "bm1688": 32, "cv84x6": 16}
     assert TpuLang.chip in npu_num_map, f"chip {TpuLang.chip} not support multi_scale_deformable_attention"
     npu_num = npu_num_map[TpuLang.chip]
     _, num_query, _ = query.shape

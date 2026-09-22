@@ -7,7 +7,7 @@
 #   -t, --tpu1686 PATH Path to TPU1686 directory (default: /workspace/TPU1686)
 #   -h, --help         Show this help message
 #
-# Supported chips: bm1684x  bm1688  bm1690  bm1690e  cv184x  sgtpuv8  bm1684x2
+# Supported chips: bm1684x  bm1688  bm1690  bm1690e  cv184x  sgtpuv8  cv84x6
 
 set -e
 
@@ -19,7 +19,7 @@ SHA_FILE="${SCRIPT_DIR}/tpu1686_sha256.txt"
 BUILD_TYPE="RELEASE"
 unset OMP_NUM_THREADS # TPU1686/scripts/build_backend.sh uses 'nproc'; either switch to 'nproc --all' or unset this var.
 
-ALL_CHIPS=(bm1684x bm1688 bm1690 bm1690e cv184x sgtpuv8 bm1684x2)
+ALL_CHIPS=(bm1684x bm1688 bm1690 bm1690e cv184x sgtpuv8 cv84x6)
 SELECTED_CHIPS=()
 
 # ---------------------------------------------------------------------------
@@ -253,8 +253,8 @@ build_sgtpuv8() {
     echo ">>> [sgtpuv8] done."
 }
 
-build_bm1684x2() {
-    header bm1684x2
+build_cv84x6() {
+    header cv84x6
     (
         cd "${TPU1686_PATH}"
         source scripts/envsetup.sh bm1684x2
@@ -263,12 +263,12 @@ build_bm1684x2() {
         else
             unset EXTRA_CONFIG && rebuild_backend_lib_release_cmodel
         fi
-        cp build/backend_api/libbackend_bm1684x2.so          "${LIB_DEST}/libbackend_bm1684x2.so"
-        cp build_runtime/firmware_core/libcmodel_firmware.a  "${LIB_DEST}/libcmodel_bm1684x2.a"
+        cp build/backend_api/libbackend_bm1684x2.so          "${LIB_DEST}/libbackend_cv84x6.so"
+        cp build_runtime/firmware_core/libcmodel_firmware.a  "${LIB_DEST}/libcmodel_cv84x6.a"
         rebuild_firmware
-        cp build/firmware_core/libfirmware_core.a            "${LIB_DEST}/libbm1684x2_kernel_module.a"
+        cp build/firmware_core/libfirmware_core.a            "${LIB_DEST}/libcv84x6_kernel_module.a"
     )
-    echo ">>> [bm1684x2] done."
+    echo ">>> [cv84x6] done."
 }
 
 # ---------------------------------------------------------------------------
@@ -281,7 +281,7 @@ for chip in "${SELECTED_CHIPS[@]}"; do
         bm1690e)  build_bm1690e  ;;
         cv184x)   build_cv184x   ;;
         sgtpuv8)  build_sgtpuv8  ;;
-        bm1684x2) build_bm1684x2 ;;
+        cv84x6) build_cv84x6 ;;
     esac
     update_sha_record "${chip}"
 done

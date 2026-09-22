@@ -13,7 +13,7 @@ from .regdef import sDMA_sys_reg as dma_sys, SYS_reg as tiu_sys, SYS_TR_WR_reg, 
 from .memmap import *
 from .decoder import Decoder
 from typing import List, Type
-from .cmodel import BM1684X2Runner
+from .cmodel import CV84X6Runner
 from ..target_common import *
 from .opparam import get_opparam_converter_with_context, opparam_converter
 
@@ -26,8 +26,8 @@ def GET_SMEM_START_ADDR(core_id):
     return 0x24400000 + core_id * 0x800000
 
 
-class BM1684X2Context(BModelContext):
-    device = Target.BM1684X2
+class CV84X6Context(BModelContext):
+    device = Target.CV84X6
 
     memmap = memmap
 
@@ -66,7 +66,7 @@ class BM1684X2Context(BModelContext):
                 return MType.S
             else:
                 return MType.R
-        # io-tag (user tags): BM1684X2 uses tags [USER_TAG_START..USER_TAG_END]
+        # io-tag (user tags): CV84X6 uses tags [USER_TAG_START..USER_TAG_END]
         elif 4 <= tag <= 29:
             return MType.G
         return MType.UNKNOWN
@@ -118,7 +118,7 @@ class BM1684X2Context(BModelContext):
         return isinstance(cmd.reg, (dma_sys, tiu_sys, cdma_sys))
 
     def get_runner(self, memory_size: int) -> CModelRunner:
-        assert self.using_cmodel, "BM1684X2 currently only support cmodel mode"
+        assert self.using_cmodel, "CV84X6 currently only support cmodel mode"
         if self._runner is None:
-            self._runner = BM1684X2Runner(memory_size, self.base_addr)
+            self._runner = CV84X6Runner(memory_size, self.base_addr)
         return self._runner

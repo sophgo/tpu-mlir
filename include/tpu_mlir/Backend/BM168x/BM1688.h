@@ -93,7 +93,7 @@ private:
 
 public:
   // BM1688 places the memory tag at bit 36 (rather than bit 40 used by
-  // BM1684X2/BM1690), so override the base tag layout accordingly.
+  // CV84X6/BM1690), so override the base tag layout accordingly.
   uint64_t tag_addr(uint64_t tag_id) override {
     assert(SUPPORT_MEM_TAG);
     assert(tag_id >= USER_TAG_START && tag_id <= USER_TAG_END);

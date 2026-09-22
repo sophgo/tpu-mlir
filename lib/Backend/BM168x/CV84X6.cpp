@@ -7,11 +7,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Backend/BM168x/BM1684X2.h"
+#include "tpu_mlir/Backend/BM168x/CV84X6.h"
 
 using namespace tpu_mlir::backend;
 
-void BM1684X2::load_functions() {
+void CV84X6::load_functions() {
   BM1684X::load_functions();
   CAST_FUNCTION(tpu_sync_all);
   CAST_FUNCTION(tpu_core_context_setup);
@@ -22,14 +22,14 @@ void BM1684X2::load_functions() {
   // CAST_FUNCTION(gen_riscv_code_end);
 }
 
-void BM1684X2::before_codegen() {
+void CV84X6::before_codegen() {
   BM1684X::before_codegen();
   useCode0 = true;
   // setenv("GEN_RISCV_CODE", "1", 1);
   // dl_gen_riscv_code_begin();
 }
 
-void BM1684X2::after_codegen(int64_t flops) {
+void CV84X6::after_codegen(int64_t flops) {
   BM168x::after_codegen(flops);
   for (int i = 0, n = multiCode.size(); i < n; i++) {
     useCore(i);
@@ -45,7 +45,7 @@ void BM1684X2::after_codegen(int64_t flops) {
   // unsetenv("GEN_RISCV_CODE");
 }
 
-void BM1684X2::setCoreNum(int core) {
+void CV84X6::setCoreNum(int core) {
   for (int i = core - multiCode.size(); i > 0; i--) {
     multiCode.push_back(std::make_unique<BM168x::Code>());
     // initialize all of them
@@ -56,7 +56,7 @@ void BM1684X2::setCoreNum(int core) {
   }
 }
 
-int BM1684X2::getCurrentCoreID() {
+int CV84X6::getCurrentCoreID() {
   for (auto [id, _code] : llvm::enumerate(multiCode)) {
     if (_code == code)
       return id;
@@ -64,7 +64,7 @@ int BM1684X2::getCurrentCoreID() {
   llvm_unreachable("can not find current codeGen core.");
 }
 
-void BM1684X2::useCore(int coreID) {
+void CV84X6::useCore(int coreID) {
   if (code == multiCode[coreID]) {
     return;
   }

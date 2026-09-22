@@ -24,7 +24,7 @@ from .regdef import *
 from .memmap import *
 
 if TYPE_CHECKING:
-    from .context import BM1684X2Context
+    from .context import CV84X6Context
 
 opparam_converter: Dict[
     str,
@@ -59,7 +59,7 @@ def opparam_converter_regitstry(sheet_name):
 
 
 def get_value(
-    context: "BM1684X2Context",
+    context: "CV84X6Context",
     cmd_type: ["tiu", "dma"] = "tiu",
     address=-1,
     shape=None,
@@ -104,7 +104,7 @@ tgcr = TGCR()
 
 
 @opparam_converter_regitstry("sCONV")
-def sCONV_converter(context: "BM1684X2Context", reg: sCONV_reg):
+def sCONV_converter(context: "CV84X6Context", reg: sCONV_reg):
     INT8 = 0
     FP16 = 1
     FP32 = 2
@@ -202,7 +202,7 @@ def sCONV_converter(context: "BM1684X2Context", reg: sCONV_reg):
 
 
 @opparam_converter_regitstry("sCONV_DW")
-def sCONV_DW_converter(context: "BM1684X2Context", reg: sCONV_DW_reg):
+def sCONV_DW_converter(context: "CV84X6Context", reg: sCONV_DW_reg):
     INT8 = 0
     FP16 = 1
     FP32 = 2
@@ -264,7 +264,7 @@ def sCONV_DW_converter(context: "BM1684X2Context", reg: sCONV_DW_reg):
 
 
 @opparam_converter_regitstry("sMM2")
-def sMM2_converter(context: "BM1684X2Context", reg: sMM2_reg):
+def sMM2_converter(context: "CV84X6Context", reg: sMM2_reg):
     L_row = reg.res0_c
     L_col = reg.opd1_c
     l_trans, r_trans = False, False
@@ -354,7 +354,7 @@ def sMM2_converter(context: "BM1684X2Context", reg: sMM2_reg):
 
 
 @opparam_converter_regitstry("sCMP")
-def sCMP_converter(context: "BM1684X2Context", reg: sCMP_reg):
+def sCMP_converter(context: "CV84X6Context", reg: sCMP_reg):
     shape = tuple(reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
         address=reg.opd0_addr,
@@ -413,7 +413,7 @@ def sCMP_converter(context: "BM1684X2Context", reg: sCMP_reg):
 
 
 @opparam_converter_regitstry("sSFU")
-def sSFU_converter(context: "BM1684X2Context", reg: sSFU_reg):
+def sSFU_converter(context: "CV84X6Context", reg: sSFU_reg):
     shape = tuple(reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
         address=reg.opd0_addr,
@@ -448,7 +448,7 @@ def sSFU_converter(context: "BM1684X2Context", reg: sSFU_reg):
 
 
 @opparam_converter_regitstry("sLIN")
-def sLIN_converter(context: "BM1684X2Context", reg: sLIN_reg):
+def sLIN_converter(context: "CV84X6Context", reg: sLIN_reg):
     shape = tuple(reg[f"res0_{d}"] for d in "nchw")
     c = shape[1]
     opd0 = dict(
@@ -489,7 +489,7 @@ def sLIN_converter(context: "BM1684X2Context", reg: sLIN_reg):
 
 
 @opparam_converter_regitstry("sVC")
-def sVC_converter(context: "BM1684X2Context", reg: sVC_reg):
+def sVC_converter(context: "CV84X6Context", reg: sVC_reg):
     n = (reg.opd0_c - 1) * reg.opd0_w + reg.opd1_w
     opd0 = dict(
         address=reg.opd0_addr,
@@ -532,7 +532,7 @@ def restore_org_shape(operand_def):
 
 
 @opparam_converter_regitstry("sAR")
-def sAR_converter(context: "BM1684X2Context", reg: sAR_reg):
+def sAR_converter(context: "CV84X6Context", reg: sAR_reg):
     res0_n, res0_c, res0_h, res0_w = reg.res0_n, reg.res0_c, reg.res0_h, reg.res0_w
 
     # Build result
@@ -607,7 +607,7 @@ def sAR_converter(context: "BM1684X2Context", reg: sAR_reg):
 
 
 @opparam_converter_regitstry("sPRNG")
-def sPRNG_converter(context: "BM1684X2Context", reg: sPRNG_reg):
+def sPRNG_converter(context: "CV84X6Context", reg: sPRNG_reg):
     res0 = dict(
         address=reg.res0_addr,
         dtype=(reg.opt_res0_prec, 0),
@@ -636,7 +636,7 @@ def sPRNG_converter(context: "BM1684X2Context", reg: sPRNG_reg):
 
 
 @opparam_converter_regitstry("sREDUCE")
-def sREDUCE_converter(context: "BM1684X2Context", reg: sREDUCE_reg):
+def sREDUCE_converter(context: "CV84X6Context", reg: sREDUCE_reg):
     n, c, h, w = reg.res0_n, reg.res0_c, reg.res0_h, reg.res0_w
     opd0_n, opd0_c, opd0_h, opd0_w = reg.opd0_n, reg.opd0_c, reg.opd0_h, reg.opd0_w
     opd0 = dict(
@@ -658,7 +658,7 @@ def sREDUCE_converter(context: "BM1684X2Context", reg: sREDUCE_reg):
 
 
 @opparam_converter_regitstry("sPorD")
-def sPorD_converter(context: "BM1684X2Context", reg: sPorD_reg):
+def sPorD_converter(context: "CV84X6Context", reg: sPorD_reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
     # round mm
     opd0 = dict(
@@ -800,7 +800,7 @@ def bc_reg_format(context, reg: sCW_sBC_reg):
 
 
 @opparam_converter_regitstry("sCW&sBC")
-def sCW_sBC_converter(context: "BM1684X2Context", reg: sCW_sBC_reg):
+def sCW_sBC_converter(context: "CV84X6Context", reg: sCW_sBC_reg):
     if reg.tsk_eu_typ in (0, 1):
         return cw_trans_reg_format(context, reg)
     else:
@@ -808,7 +808,7 @@ def sCW_sBC_converter(context: "BM1684X2Context", reg: sCW_sBC_reg):
 
 
 @opparam_converter_regitstry("sRQ&sDQ")
-def sRQ_sDQ_converter(context: "BM1684X2Context", reg: sRQ_sDQ_reg):
+def sRQ_sDQ_converter(context: "CV84X6Context", reg: sRQ_sDQ_reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
         address=reg.opd0_addr,
@@ -885,7 +885,7 @@ def sRQ_sDQ_converter(context: "BM1684X2Context", reg: sRQ_sDQ_reg):
 
 
 @opparam_converter_regitstry("sSG")
-def sSG_converter(context: "BM1684X2Context", reg: sSG_reg):
+def sSG_converter(context: "CV84X6Context", reg: sSG_reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
         address=reg.opd0_addr,
@@ -956,7 +956,7 @@ def sSG_converter(context: "BM1684X2Context", reg: sSG_reg):
 
 
 @opparam_converter_regitstry("sSGL")
-def sSGL_converter(context: "BM1684X2Context", reg: sSGL_reg):
+def sSGL_converter(context: "CV84X6Context", reg: sSGL_reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
         address=reg.opd0_addr,
@@ -999,7 +999,7 @@ def sSGL_converter(context: "BM1684X2Context", reg: sSGL_reg):
 
 
 @opparam_converter_regitstry("SYS_TR_WR")
-def SYS_TR_WR_converter(context: "BM1684X2Context", reg: SYS_TR_WR_reg):
+def SYS_TR_WR_converter(context: "CV84X6Context", reg: SYS_TR_WR_reg):
 
     def int2bin(x, width):
         return np.binary_repr(x, width=width)
@@ -1024,7 +1024,7 @@ def SYS_TR_WR_converter(context: "BM1684X2Context", reg: SYS_TR_WR_reg):
 
 
 @opparam_converter_regitstry("SYS")
-def SYS_converter(context: "BM1684X2Context", reg):
+def SYS_converter(context: "CV84X6Context", reg):
     des_imm = reg.imm
     msg_id = des_imm & 0x1FF
     cnt = (des_imm >> 16) & 0x7F
@@ -1091,7 +1091,7 @@ def dma_reg_fmt_base(reg: Union[DMA_tensor_reg, DMA_matrix_reg]):
 
 
 @opparam_converter_regitstry("DMA_tensor")
-def DMA_tensor_converter(context: "BM1684X2Context", reg: DMA_tensor_reg):
+def DMA_tensor_converter(context: "CV84X6Context", reg: DMA_tensor_reg):
     NONE = 0
     TRANS = 1  # NC Transpose or Matrix Transpose
     # COLLECT = 2  # CW Transpose from lmem to gmem
@@ -1127,7 +1127,7 @@ def DMA_tensor_converter(context: "BM1684X2Context", reg: DMA_tensor_reg):
 
 
 @opparam_converter_regitstry("DMA_matrix")
-def DMA_matrix_converter(context: "BM1684X2Context", reg: DMA_matrix_reg):
+def DMA_matrix_converter(context: "CV84X6Context", reg: DMA_matrix_reg):
     res0, attr, opd0 = dma_reg_fmt_base(reg)
     lane_mask = opd0["layout"].args[0]
     l, r = memmap[MType.R]
@@ -1166,7 +1166,7 @@ def DMA_matrix_converter(context: "BM1684X2Context", reg: DMA_matrix_reg):
 
 
 @opparam_converter_regitstry("DMA_masked_select")
-def DMA_masked_select_converter(context: "BM1684X2Context", reg: DMA_masked_select_reg):
+def DMA_masked_select_converter(context: "CV84X6Context", reg: DMA_masked_select_reg):
     # src_hsize and src_wsize are split into low and high parts
     src_hsize = reg.src_hsize | (reg.src_hsize_h16 << 16)
     src_wsize = reg.src_wsize | (reg.src_wsize_h16 << 16)
@@ -1198,7 +1198,7 @@ def DMA_masked_select_converter(context: "BM1684X2Context", reg: DMA_masked_sele
 
 
 @opparam_converter_regitstry("DMA_general")
-def DMA_general_converter(context: "BM1684X2Context", reg: DMA_general_reg):
+def DMA_general_converter(context: "CV84X6Context", reg: DMA_general_reg):
     # Calculate copy length from src_wsize (combining l16 and h16 parts)
     copy_len = reg.src_wsize_l16 | (reg.src_wsize_h16 << 16)
     opd0 = dict(
@@ -1237,7 +1237,7 @@ def DMA_general_converter(context: "BM1684X2Context", reg: DMA_general_reg):
 
 
 @opparam_converter_regitstry("DMA_nonzero")
-def DMA_nonzero_converter(context: "BM1684X2Context", reg: DMA_nonzero_reg):
+def DMA_nonzero_converter(context: "CV84X6Context", reg: DMA_nonzero_reg):
     n, c, h, w = (reg[f"src_{d}size"] for d in "nchw")
     stride = (c * h * w, h * w, w, 1)
     opd0 = dict(
@@ -1321,19 +1321,19 @@ def dma_gather_base(context, reg: DMA_gather_reg):
 
 
 @opparam_converter_regitstry("DMA_gather")
-def DMA_gather_converter(context: "BM1684X2Context", reg: DMA_gather_reg):
+def DMA_gather_converter(context: "CV84X6Context", reg: DMA_gather_reg):
     return dma_gather_base(context, reg)
 
 
 @opparam_converter_regitstry("DMA_scatter")
-def DMA_scatter_converter(context: "BM1684X2Context", reg: DMA_scatter_reg):
+def DMA_scatter_converter(context: "CV84X6Context", reg: DMA_scatter_reg):
     results, _, operands = dma_gather_base(context, reg)
 
     return (results, {}, operands)
 
 
 @opparam_converter_regitstry("DMA_reverse")
-def DMA_reverse_converter(context: "BM1684X2Context", reg: DMA_reverse_reg):
+def DMA_reverse_converter(context: "CV84X6Context", reg: DMA_reverse_reg):
     n, c, h, w = (reg[f"src_{d}size"] for d in "nchw")
     stride = (c * h * w, h * w, w, 1)
     opd0 = dict(
@@ -1362,7 +1362,7 @@ def DMA_reverse_converter(context: "BM1684X2Context", reg: DMA_reverse_reg):
 
 
 @opparam_converter_regitstry("sDMA_sys")
-def sDMA_sys_converter(context: "BM1684X2Context", reg: sDMA_sys_reg):
+def sDMA_sys_converter(context: "CV84X6Context", reg: sDMA_sys_reg):
     des_imm = reg.constant_value
     msg_id = des_imm & 0xFF
     cnt = (des_imm >> 16) & 0xF
@@ -1437,14 +1437,14 @@ def cdma_result_base(context, reg):
 
 
 @opparam_converter_regitstry("CDMA_send")
-def CDMA_send_converter(context: "BM1684X2Context", reg: CDMA_send_reg):
+def CDMA_send_converter(context: "CV84X6Context", reg: CDMA_send_reg):
     rao = cdma_operand_base(context, reg)
     rao[1]["psum_op"] = "rd+wr" if reg.psum_op else "wo"
     return rao
 
 
 @opparam_converter_regitstry("CDMA_receive")
-def CDMA_receive_converter(context: "BM1684X2Context", reg: CDMA_receive_reg):
+def CDMA_receive_converter(context: "CV84X6Context", reg: CDMA_receive_reg):
     reduce_type = {0: "nop", 1: "mul", 2: "max", 3: "min", 4: "add"}
     rao = cdma_result_base(context, reg)
     rao[1]["reduce_op"] = reduce_type[reg.reduce_op]
@@ -1452,17 +1452,17 @@ def CDMA_receive_converter(context: "BM1684X2Context", reg: CDMA_receive_reg):
 
 
 @opparam_converter_regitstry("CDMA_read")
-def CDMA_read_converter(context: "BM1684X2Context", reg: CDMA_read_reg):
+def CDMA_read_converter(context: "CV84X6Context", reg: CDMA_read_reg):
     return cdma_base(context, reg)
 
 
 @opparam_converter_regitstry("CDMA_write")
-def CDMA_write_converter(context: "BM1684X2Context", reg: CDMA_write_reg):
+def CDMA_write_converter(context: "CV84X6Context", reg: CDMA_write_reg):
     return cdma_base(context, reg)
 
 
 @opparam_converter_regitstry("CDMA_general")
-def CDMA_general_converter(context: "BM1684X2Context", reg: CDMA_general_reg):
+def CDMA_general_converter(context: "CV84X6Context", reg: CDMA_general_reg):
     copy_len = reg.cmd_length
     opd0 = dict(
         address=dma_addr(reg.src_start_addr_h13, reg.src_start_addr_l32),
@@ -1486,7 +1486,7 @@ def CDMA_general_converter(context: "BM1684X2Context", reg: CDMA_general_reg):
 
 
 @opparam_converter_regitstry("sCDMA_sys")
-def sCDMA_sys_converter(context: "BM1684X2Context", reg: sCDMA_sys_reg):
+def sCDMA_sys_converter(context: "CV84X6Context", reg: sCDMA_sys_reg):
     constant_value_l32 = reg.constant_value_l32
     attr = {}
     if reg.cmd_special_function in (3, 4, 5, 6):

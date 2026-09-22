@@ -56,7 +56,7 @@ _CHIP_COLUMNS = (
     "bm1690",
     "bm1690e",
     "cv184x",
-    "bm1684x2",
+    "cv84x6",
 )
 
 _resolve_chip_support = make_chip_resolver(_CHIP_COLUMNS)
@@ -79,15 +79,15 @@ class ONNX_IR_TESTER(object):
             #########################################
             # ONNX Test Case, Alphabetically
             #########################################
-            # case: (test, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support, bm1684x2_support)
-            # bm1684x=Y but bm1684x2=N, grouped by reason:
-            #   1. mm1 is removed on bm1684x2 and mm2 has no FP32 compute.
+            # case: (test, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support, cv84x6_support)
+            # bm1684x=Y but cv84x6=N, grouped by reason:
+            #   1. mm1 is removed on cv84x6 and mm2 has no FP32 compute.
             #       f32 mode hits the mm1 stub assert at codegen: Gemm, BatchMatMul.
             #       RNN ops keep f32 operands even in F16 mode, so they hit the same
             #       assert in every quant mode: GRU, GRU2, GRU3, GRU4, LSTM, LSTM2,
             #       LSTM3, LSTM4, TorchGRU, TorchLSTM.
             #   2. NMS runs the bm1686-variant firmware kernel which is not ported to
-            #      bm1684x2 yet (scratch buffer alignment / VC op constraints): TorchNms.
+            #      cv84x6 yet (scratch buffer alignment / VC op constraints): TorchNms.
             "Abs":          (self.test_Abs,           Y, Y, Y, Y, Y, Y, Y),
             "Add":          (self.test_Add,           Y, Y, Y, Y, Y, Y, Y),
             "AddConst":     (self.test_AddConst,      N, N, N, N, N, N, N),
@@ -312,7 +312,7 @@ class ONNX_IR_TESTER(object):
             #####################################
             # Torch Test Case, Alphabetically
             #####################################
-            # case: (test, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support, bm1684x2_support)
+            # case: (test, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support, cv84x6_support)
             "TorchActivation":      (self.test_TorchActivation,     Y, Y, Y, Y, Y, N, Y),
             "TorchArg":             (self.test_TorchArg,            Y, Y, N, Y, Y, Y, Y),
             "TorchBatchNorm":       (self.test_TorchBatchNorm,      Y, Y, Y, Y, Y, Y, Y),
@@ -353,7 +353,7 @@ class ONNX_IR_TESTER(object):
             #########################################
             # Special Pass test case, Alphabetically
             #########################################
-            # case:  (test, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support, bm1684x2_support)
+            # case:  (test, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support, cv84x6_support)
             "ArgError":         (self.test_ArgError,        Y, Y, Y, Y, Y, Y, Y),
             "ArgReducefull":    (self.test_ArgReducefull,   Y, Y, N, Y, Y, Y, Y),
             "ConcatFuse":       (self.test_ConcatFuse,      Y, Y, Y, Y, Y, Y, Y),
@@ -424,7 +424,7 @@ class ONNX_IR_TESTER(object):
             #########################################
             # Dynamic test case, Alphabetically
             #########################################
-            # case:  (test, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support, bm1684x2_support)
+            # case:  (test, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support, cv84x6_support)
             "DynamicSlice":     (self.test_DynamicSlice,    Y, N, N, N, N, N, Y),
             "DynamicPad":     (self.test_DynamicPad,        Y, Y, N, N, N, N, Y),
             "DynamicAdd":       (self.test_DynamicAdd,      Y, N, N, N, N, N, Y),
@@ -457,7 +457,7 @@ class ONNX_IR_TESTER(object):
             #########################################
             # custom op test case, Alphabetically
             #########################################
-            # case:  (test, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support, bm1684x2_support)
+            # case:  (test, bm1684x_support, bm1688_support, cv183x_support, bm1690_support, bm1690e_support, cv184x_support, cv84x6_support)
             # Correlation always fail in regression. Comment out to prevent affecting regression.
             "ConcatVolume":  (self.test_ConcatVolume,   Y, Y, N, N, N, N, Y),
             "Correlation":   (self.test_Correlation,    N, N, N, N, N, N, N),
@@ -2331,7 +2331,7 @@ class ONNX_IR_TESTER(object):
                  'asymmetric']
         case8 = [[1, 1, 544, 960], [1, 1, 272, 480], [1, 1, 0.5, 0.5], [4], 'nearest', 'asymmetric']
         cases = (case0, case1, case2, case3, case4, case5, case6, case7,
-                 case8) if self.chip in ['bm1684x', 'bm1688', 'sg2380', 'bm1684x2'] else (case0, )
+                 case8) if self.chip in ['bm1684x', 'bm1688', 'sg2380', 'cv84x6'] else (case0, )
         if self.chip in ['cv184x']:
             cases = (case0, case1, case2, case3, case4, case6, case7, case8)
 
@@ -9240,7 +9240,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684x', 'bm1688', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv190x', 'cv186x', 'bm1690', 'sg2380', 'cv184x', 'sgtpuv8', 'bm1690e', 'bm1684x2'],
+                        choices=['bm1684x', 'bm1688', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv190x', 'cv186x', 'bm1690', 'sg2380', 'cv184x', 'sgtpuv8', 'bm1690e', 'cv84x6'],
                         help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8', 'int4', 'f8e4m3', 'f8e5m2', 'w4int8'],

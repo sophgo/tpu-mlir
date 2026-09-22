@@ -22,8 +22,8 @@ from numpy import ndarray
 from typing import List
 
 
-class BM1684X2Runner(CModelRunner):
-    lib_name = "libbackend_bm1684x2.so"
+class CV84X6Runner(CModelRunner):
+    lib_name = "libbackend_cv84x6.so"
 
     TAG_WEIGHT = 1  # coeff
     TAG_ACTIVATION = 2  # neuron
@@ -35,7 +35,7 @@ class BM1684X2Runner(CModelRunner):
     def __init__(self, memory_size, base_addr: Tuple[int, int]):
         # always init with 8 cores
         super().__init__()
-        self.base_addr = base_addr  # a list contains several base_addr, each one is manully set in BM1684X2Context, which represent the base_addr of 2 tags {TAG_WEIGHT,TAG_ACTIVATION} above.
+        self.base_addr = base_addr  # a list contains several base_addr, each one is manully set in CV84X6Context, which represent the base_addr of 2 tags {TAG_WEIGHT,TAG_ACTIVATION} above.
         self.core_num = 4
         lib = lib_wrapper(open_lib(self.lib_name))
         lib.cmodel_init.argtypes = [ctypes.c_int32, ctypes.c_ulonglong]
@@ -619,7 +619,7 @@ class Memory(CModelMemory):
         for lmem in self.LMEM:
             lmem.fill(0)
 
-        lut = np.array(BM1684X2Runner.gen_lookup_table(), np.uint32).view(np.uint8)
+        lut = np.array(CV84X6Runner.gen_lookup_table(), np.uint32).view(np.uint8)
         for smem in self.SMEM:
             smem[: len(lut)] = lut[...]
 

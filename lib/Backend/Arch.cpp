@@ -7,10 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
-#include "tpu_mlir/Backend/BM168x/BM1684X2.h"
 #include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include "tpu_mlir/Backend/BM168x/BM1690.h"
 #include "tpu_mlir/Backend/BM168x/BM1690E.h"
+#include "tpu_mlir/Backend/BM168x/CV84X6.h"
 #include "tpu_mlir/Backend/BM168x/SG2380.h"
 #include "tpu_mlir/Backend/BM168x/SGTPUV8.h"
 #include "tpu_mlir/Backend/CV18xx/CV184X.h"
@@ -69,8 +69,8 @@ void Arch::init(uint64_t freq) {
       inst = &SG2380::instance();
     } else if (chip == module::Chip::SG2262) {
       inst = &BM1690::instance();
-    } else if (chip == module::Chip::BM1684X2) {
-      inst = &BM1684X2::instance();
+    } else if (chip == module::Chip::CV84X6) {
+      inst = &CV84X6::instance();
     } else {
       llvm_unreachable("unsupport chip\n");
     }
@@ -80,7 +80,7 @@ void Arch::init(uint64_t freq) {
     case module::Chip::BM1684X:
       chip_str = PPL_BM1684X;
       break;
-    case module::Chip::BM1684X2:
+    case module::Chip::CV84X6:
       chip_str = PPL_BM1684X2;
       break;
     case module::Chip::BM1688:

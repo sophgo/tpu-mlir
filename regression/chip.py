@@ -24,7 +24,7 @@ Y, N = True, False
 chip_support = {
     # chip_name: (F32, F16, BF16, INT8_sym, INT8_asym, INT4_sym, f8e4m3, f8e5m2, dynamic, model_type)
     "bm1684x":   (Y,   Y,   Y,    Y,        Y,         N,        N,      N,      N,       "bmodel"),
-    "bm1684x2":  (Y,   Y,   Y,    Y,        Y,         N,        N,      N,      N,       "bmodel"),
+    "cv84x6":  (Y,   Y,   Y,    Y,        Y,         N,        N,      N,      N,       "bmodel"),
     "bm1688":    (Y,   Y,   Y,    Y,        N,         Y,        N,      N,      N,       "bmodel"),
     "cv190x":   (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "cvimodel"),
     "cv180x":    (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "cvimodel"),
@@ -61,7 +61,7 @@ multi_core_info = {
 # Model Support
 ######################################
 basic_model_list = {
-    # model_name:              (bm1684x, bm1684x2, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, bm1690, sg2380, cv184x, sgtpuv8, bm1690e)
+    # model_name:              (bm1684x, cv84x6, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, bm1690, sg2380, cv184x, sgtpuv8, bm1690e)
     "mobilenet_v2_cf":            (Y,       Y,       Y,      Y,      N,      Y,      Y,      N,      N,      N,      Y,      Y,       N),
     "resnet50_v2":                (N,       N,       N,      N,      N,      Y,      Y,      N,      Y,      N,      Y,      Y,       Y),
     "yolov5s":                    (Y,       Y,       Y,      N,      N,      Y,      Y,      Y,      Y,      N,      Y,      Y,       Y),
@@ -79,7 +79,7 @@ basic_model_list = {
 }
 
 full_model_list = {
-    # model_name:              (bm1684x, bm1684x2, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, bm1690, sg2380, cv184x, sgtpuv8, bm1690e)
+    # model_name:              (bm1684x, cv84x6, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, bm1690, sg2380, cv184x, sgtpuv8, bm1690e)
     ######## onnx ###############
     "bert-tiny_from_pt":          (Y,       Y,       Y,      N,      N,      Y,      Y,      Y,      N,      N,      N,      N,       N), # bm1690 int8_sym has problem
     "blazeface":                  (Y,       Y,       N,      Y,      N,      Y,      Y,      N,      N,      N,      N,      N,       N),
@@ -176,7 +176,7 @@ full_model_list = {
 }
 
 basic_multi_core_model_list = {
-    # model_name:              (bm1684x, bm1684x2, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, bm1690, sg2380, cv184x, sgtpuv8, bm1690e)
+    # model_name:              (bm1684x, cv84x6, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, bm1690, sg2380, cv184x, sgtpuv8, bm1690e)
     ######## onnx ###############
     "attention_2batch_block_0_1": (N,       N,       Y,      N,      N,      N,      N,      N,      Y,      N,      N,      N,       N),
     "pp_yoloe":                   (N,       N,       Y,      N,      N,      N,      N,      N,      Y,      N,      N,      N,       N),
@@ -185,7 +185,7 @@ basic_multi_core_model_list = {
 }
 
 full_multi_core_model_list = {
-    # model_name:              (bm1684x, bm1684x2, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, bm1690, sg2380, cv184x, sgtpuv8, bm1690e)
+    # model_name:              (bm1684x, cv84x6, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, bm1690, sg2380, cv184x, sgtpuv8, bm1690e)
     ###, sg2380##### onnx ###############
     "attention_2batch_block_0_1": (N,       N,       Y,      N,      N,      N,      N,      N,      Y,      N,      N,      N,       N),
     "pp_yoloe":                   (N,       N,       Y,      N,      N,      N,      N,      N,      Y,      N,      N,      N,       N),

@@ -18,10 +18,10 @@ cp bmcompiler/libbackend/libbackend_bm1684.so /workspace/tpu-mlir/third_party/nn
 ``` bash
 # update all
 ./build_tpu1686.sh -t /workspace/TPU1686
-# update one, (bm1684x2 for example)
-./build_tpu1686.sh -t /workspace/TPU1686 -c bm1684x2
-# update multi chip, (bm1684x2/bm1688/bm1684x for example)
-./build_tpu1686.sh -t /workspace/TPU1686 -c bm1684x -c bm1688 -c bm1684x2
+# update one, (cv84x6 for example)
+./build_tpu1686.sh -t /workspace/TPU1686 -c cv84x6
+# update multi chip, (cv84x6/bm1688/bm1684x for example)
+./build_tpu1686.sh -t /workspace/TPU1686 -c bm1684x -c bm1688 -c cv84x6
 # if debug, add -d
 ```
 
@@ -37,8 +37,8 @@ ninja
 cp -P tpu-runtime/libbmrt.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
 cp -P bmlib/libbmlib.so.0 /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmlib_bm1684x.so.0
 cp -P tpu-bmodel/libmodel_combine.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
-# libsopn need branch BM1684X2
-cp -P bmlib/libbmlib.so.0 /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmlib_bm1684x2.so.0
+# libsopn need branch CV84X6
+cp -P bmlib/libbmlib.so.0 /workspace/tpu-mlir/third_party/nntoolchain/lib/libbmlib_cv84x6.so.0
 popd
 ```
 

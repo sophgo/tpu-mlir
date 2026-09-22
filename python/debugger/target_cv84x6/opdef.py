@@ -30,7 +30,7 @@ def fix_cmd_id_dep(value):
 
 
 class TiuCmd(BaseTpuCmd, Tiu):
-    opparam_converter = None  # assigned by BM1684X2Context instance
+    opparam_converter = None  # assigned by CV84X6Context instance
 
     opcode_bits = (41, 45)
     description = "TIU Operation."
@@ -138,7 +138,7 @@ class TiuCmd(BaseTpuCmd, Tiu):
 
 
 class DmaCmd(BaseTpuCmd, Dma):
-    opparam_converter = None  # assigned by BM1684X2Context instance
+    opparam_converter = None  # assigned by CV84X6Context instance
 
     description = "GDMA Operation."
     opcode_bits = (32, 37)
@@ -233,7 +233,7 @@ class DmaCmd(BaseTpuCmd, Dma):
 
 
 class CdmaCmd(BaseTpuCmd, Cdma):
-    opparam_converter = None  # assigned by BM1684X2Context instance
+    opparam_converter = None  # assigned by CV84X6Context instance
 
     description = "CDMA Operation."
     opcode_bits = (4, 8)
@@ -806,7 +806,7 @@ class sg_op(TiuCmd):
     eu_type = {
         0: "sg.pl_gather_d1coor",
         1: "sg.pl_gather_d2coor",
-        # 2: "sg.pl_gather_rec", # not sure if is currently supported, not writen (Y) in BM1684X2 xlsx
+        # 2: "sg.pl_gather_rec", # not sure if is currently supported, not writen (Y) in CV84X6 xlsx
         3: "sg.pl_scatter_d1coor",
         4: "sg.pl_scatter_d2coor",
         5: "sg.pe_s_gather_d1coor",

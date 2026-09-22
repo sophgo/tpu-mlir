@@ -25,13 +25,13 @@ import functools
 from functools import lru_cache
 
 if TYPE_CHECKING:
-    from .context import BM1684X2Context
+    from .context import CV84X6Context
 
 
-class BM1684X2Info:
+class CV84X6Info:
 
     def __init__(self) -> None:
-        self.lib_name = "libbackend_bm1684x2.so"
+        self.lib_name = "libbackend_cv84x6.so"
         self._lib = None
 
     @property
@@ -125,7 +125,7 @@ class BM1684X2Info:
         return TYPED_CUBE_NUM[dtype]
 
 
-info = LazyInfo(BM1684X2Info)
+info = LazyInfo(CV84X6Info)
 
 
 class LazyMemmap(LazyDict):
@@ -220,7 +220,7 @@ class MemRef(MemRefBase):
     A description of tensor in memory.
     """
 
-    device = Target.BM1684X2
+    device = Target.CV84X6
 
     # return context.MemRef(147456, (1, 3, 46, 640), DType.f16, (0, 0, 0, 0), Layout.alignEU)
     def __init__(
@@ -230,7 +230,7 @@ class MemRef(MemRefBase):
         dtype: DType,
         stride=None,
         layout=None,
-        context: "BM1684X2Context" = None,
+        context: "CV84X6Context" = None,
     ):
         assert context is not None
         self.context = context
@@ -387,4 +387,4 @@ class MemRef(MemRefBase):
 
 
 CubeOutputHeightWidthAlignNum = 4
-ExecutionUnitNumber = 16 * 256 // 2 // 8  # NPU_NUM=16 for BM1684X2
+ExecutionUnitNumber = 16 * 256 // 2 // 8  # NPU_NUM=16 for CV84X6

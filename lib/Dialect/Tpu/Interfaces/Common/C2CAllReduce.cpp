@@ -21,4 +21,4 @@ LogicalResult tpu::C2CAllReduceOp::inference(InferenceParameter &p) {
   return success();
 }
 
-bool tpu::C2CAllReduceOp::support_multi_core() { return module::isBM1684X2(); }
+bool tpu::C2CAllReduceOp::support_multi_core() { return module::isCV84X6(); }

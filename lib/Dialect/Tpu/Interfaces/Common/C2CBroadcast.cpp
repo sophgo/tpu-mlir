@@ -21,4 +21,4 @@ LogicalResult tpu::C2CBroadcastOp::inference(InferenceParameter &p) {
   return success();
 }
 
-bool tpu::C2CBroadcastOp::support_multi_core() { return module::isBM1684X2(); }
+bool tpu::C2CBroadcastOp::support_multi_core() { return module::isCV84X6(); }

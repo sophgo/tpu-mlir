@@ -5642,7 +5642,7 @@ multi_scale_deformable_attention
 """"""""""""""""""""""""""""""""""""""""""""""
 * BM1684X: 输入数据类型可以是FLOAT32,FLOAT16类型。
 * BM1688: 输入数据类型可以是FLOAT32,FLOAT16类型。
-* BM1684X2: 输入数据类型可以是FLOAT16类型。
+* CV84X6: 输入数据类型可以是FLOAT16类型。
 
 
 a16matmul

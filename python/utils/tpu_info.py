@@ -25,7 +25,7 @@ from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Per-chip hardware constants — extracted from BM168x subclass constructors in:
-#   include/tpu_mlir/Backend/BM168x/{BM1684,BM1684X,BM1684X2,BM1688,BM1690,
+#   include/tpu_mlir/Backend/BM168x/{BM1684,BM1684X,CV84X6,BM1688,BM1690,
 #                                    BM1690E,SG2380,SGTPUV8}.h
 # ---------------------------------------------------------------------------
 
@@ -112,9 +112,9 @@ _CHIPS: dict[str, TPUInfo] = {
         lmem_bank_bytes=(1 << 18) // 16,
     ),
     #
-    # BM1684X2 — BM1684X2.h lines 76–109
+    # CV84X6 — CV84X6.h lines 76–109
     #
-    "bm1684x2":
+    "cv84x6":
     TPUInfo(
         npu_num=16,
         eu_bytes=32,
@@ -229,13 +229,30 @@ _CHIPS: dict[str, TPUInfo] = {
 # Public API
 # ---------------------------------------------------------------------------
 
+# Chips whose product name changed. The old name stays accepted on the command
+# line so that existing scripts keep working.
+_CHIP_ALIAS = {
+    "bm1684x2": "cv84x6",
+}
+
+
+def normalize_chip(chip: str) -> str:
+    """Map a legacy chip name to its current name, lowercased."""
+    if not chip:
+        return chip
+    name = chip.lower()
+    return _CHIP_ALIAS.get(name, name)
+
 
 def get_tpu_info(chip: str) -> TPUInfo:
     """Return :class:`TPUInfo` for *chip* (lowercase, e.g. ``"bm1684x"``).
 
+    The legacy chip name is accepted, so callers that read the chip straight
+    from an older bmodel do not have to normalise it themselves.
+
     Raises :class:`KeyError` if *chip* is unknown.
     """
-    return _CHIPS[chip]
+    return _CHIPS[normalize_chip(chip)]
 
 
 def supported_chips() -> list[str]:

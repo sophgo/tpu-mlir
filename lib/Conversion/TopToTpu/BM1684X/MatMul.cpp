@@ -45,7 +45,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
       use_perchannel = per_channel_quant.getValue();
     }
   }
-  if (module::isBM1684X2() && !use_perchannel) {
+  if (module::isCV84X6() && !use_perchannel) {
     out_quant_mode = tpu::RequantMode::OnlyScale;
   }
   if (p.batch > 1 && p.with_bias != 0) {

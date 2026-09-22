@@ -23,6 +23,7 @@ from utils.preprocess import get_preprocess_parser, preprocess
 from utils.mlir_parser import *
 from utils.misc import *
 from tools.model_runner import get_chip_from_model, round_away_from_zero, get_kernel_mode_from_model, link_bmlib_so
+from utils.tpu_info import normalize_chip
 
 
 class common_inference():
@@ -124,6 +125,8 @@ class bmodel_inference(common_inference):
         if self.args.model_file.endswith(".bmodel"):
             pyruntime = pyruntime + "bm"
             chip = get_chip_from_model(self.args.model_file)
+            chip = normalize_chip(
+                chip).upper()  # bmodels built before the rename carry the legacy name
             kernel_mode = get_kernel_mode_from_model(self.args.model_file)
             is_rvti = kernel_mode == "1"
             # trick for runtime link chip cmodel
@@ -145,8 +148,8 @@ class bmodel_inference(common_inference):
                 lib_so = 'libcmodel_sg2380.so'
             elif chip == "SGTPUV8":
                 lib_so = 'libcmodel_sgtpuv8.so'
-            elif chip == "BM1684X2":
-                lib_so = 'libcmodel_bm1684x2.so'
+            elif chip == "CV84X6":
+                lib_so = 'libcmodel_cv84x6.so'
             # with FileLock("/tmp/cmodel_so.lock"):
             cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel.so'.format(lib_so)
             os.system(cmd)

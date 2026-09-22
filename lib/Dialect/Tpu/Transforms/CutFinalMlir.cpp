@@ -742,7 +742,7 @@ class CutFinalMlirPass : public CutFinalMlirBase<CutFinalMlirPass> {
 public:
   CutFinalMlirPass() = default;
   void runOnOperation() override {
-    assert(module::isBM1684XFamily() || module::isBM1684X2());
+    assert(module::isBM1684XFamily() || module::isCV84X6());
     parse_config_file();
     record_weight_addrs(module::getAllModules()->at(0));
     run(module::getAllModules()->at(0));

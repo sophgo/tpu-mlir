@@ -65,7 +65,7 @@ LogicalResult weight_reorder_A16MatMul(tpu::A16MatMulOp op,
   }
 
   bool use_dq2 = false;
-  if (module::isCV184X() || module::isSGTPUV8() || module::isBM1684X2()) {
+  if (module::isCV184X() || module::isSGTPUV8() || module::isCV84X6()) {
     int gp_size = op.getQGroupSize();
     use_dq2 = (gp_size >= 32) && (gp_size % 32 == 0) &&
               (op.getWeightBits() == 4 || op.getWeightBits() == 8);
@@ -262,7 +262,7 @@ LogicalResult weight_reorder_A16MatMul(tpu::A16MatMulOp op,
     auto quant_data = std::make_shared<std::vector<uint16_t>>(
         scale_shape[0] * scale_shape[1] * 2, 0);
 
-    bool noTrans = module::isBM1684X2();
+    bool noTrans = module::isCV84X6();
     for (auto i = 0; i < npu_num; i++) {
       for (auto j = 0; j < h; j++) {
         auto offset_ori = i * w + npu_num * j * w; //[h,NPU,w] = [NPU,N/NPU,K/g]

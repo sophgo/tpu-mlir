@@ -134,7 +134,7 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
 
 uint64_t tpu::MatMulOp::getL2BufferSize() {
   // calculate L2SRAM buffer size
-  if (module::isBM1684X2()) {
+  if (module::isCV84X6()) {
     return 0;
   }
   auto p = parseParam();

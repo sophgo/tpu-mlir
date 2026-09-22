@@ -47,6 +47,7 @@ import argparse
 import shutil
 import subprocess
 from typing import Optional
+from utils.tpu_info import normalize_chip
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -439,7 +440,7 @@ def main():
     parser.add_argument('-c',
                         '--chip',
                         default="bm1684x",
-                        choices=["bm1684x", "bm1688", "cv186x", "bm1690", "bm1684x2"],
+                        choices=["bm1684x", "bm1688", "cv186x", "bm1690", "cv84x6"],
                         help='Chip type (default: bm1684x)')
     parser.add_argument('--int8_tops',
                         type=float,
@@ -491,6 +492,7 @@ def main():
                         action='store_true',
                         help='skip recomputing TTFT/Tokens/s and writing the summary CSV')
     args = parser.parse_args()
+    args.chip = normalize_chip(args.chip)
 
     if args.mode in ("cross", "paired") and args.max_input_length is None:
         print(f"Error: --mode {args.mode} requires --max_input_length.", file=sys.stderr)

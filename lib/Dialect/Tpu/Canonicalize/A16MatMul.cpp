@@ -330,7 +330,7 @@ struct A16MatMulAdjust : public OpRewriterPatternEx<tpu::A16MatMulOp> {
       llvm_unreachable("input of A16MatMul has to be F16 or BF16");
     }
     bool use_dq2 = false;
-    if (module::isCV184X() || module::isSGTPUV8() || module::isBM1684X2()) {
+    if (module::isCV184X() || module::isSGTPUV8() || module::isCV84X6()) {
       int gp_size = op.getQGroupSize();
       use_dq2 = (gp_size >= 32) && (gp_size % 32 == 0) &&
                 (op.getWeightBits() == 4 || op.getWeightBits() == 8);

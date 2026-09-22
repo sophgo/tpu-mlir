@@ -486,7 +486,7 @@ public:
     module::getNCHW(interpOp.getOutput(), n, c, oh, ow, false);
     bool range_flag = (oh % ih == 0 && ow % iw == 0);
     if ((!range_flag) &&
-        (module::isBM1684X() || module::isBM1688() || module::isBM1684X2())) {
+        (module::isBM1684X() || module::isBM1688() || module::isCV84X6())) {
       auto type = ::mlir::Builder(getContext()).getIntegerType(8);
       int64_t buffer_size = ow * oh * 4 * 2 * 4; // index_buffer of ppl
       auto buffer_type = RankedTensorType::get({(int64_t)buffer_size}, type);
@@ -1079,7 +1079,7 @@ public:
     if (!module::isNone(NmsOp.getBuffer())) {
       return failure();
     }
-    if (!(module::isBM1688() || module::isBM1684X2())) {
+    if (!(module::isBM1688() || module::isCV84X6())) {
       return failure();
     }
 
@@ -2115,7 +2115,7 @@ public:
   LogicalResult matchAndRewriteImpl(
       tpu::GridSampleInDeformableAttnOp GridSampleInDeformableAttnOp,
       PatternRewriter &rewriter) const override {
-    if (!(module::isBM1684XFamily() || module::isBM1684X2())) {
+    if (!(module::isBM1684XFamily() || module::isCV84X6())) {
       return failure();
     }
     if (!module::isNone(GridSampleInDeformableAttnOp.getBuffer())) {

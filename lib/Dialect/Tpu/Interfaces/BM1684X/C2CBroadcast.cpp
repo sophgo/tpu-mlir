@@ -26,8 +26,8 @@ static void fill_c2c_broadcast_spec(tpu::C2CBroadcastOp op,
 }
 
 void tpu::C2CBroadcastOp::codegen_global_bm1684x() {
-  if (!module::isBM1684X2()) {
-    llvm_unreachable("C2CBroadcast only supports BM1684X2");
+  if (!module::isCV84X6()) {
+    llvm_unreachable("C2CBroadcast only supports CV84X6");
   }
   c2c_broadcast_common_spec_t spec = {0};
   fill_c2c_broadcast_spec(*this, spec);
