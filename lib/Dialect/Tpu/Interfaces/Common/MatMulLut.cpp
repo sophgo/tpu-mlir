@@ -97,12 +97,8 @@ matmul_attr_t tpu::MatMulLutOp::parseParam() {
   }
   if (p.hdim_is_batch) {
     p.batch = o_s[0];
-    if (!p.output_transpose && module::isCV18xx()) {
-      p.batch_low = o_s[1];
-    } else {
-      p.batch_low = o_s[2];
-      p.output_transpose = true; // tmp code remove later
-    }
+    // output layout is declared by the shape: dim1==M means (B0,M,B1,N)
+    p.batch_low = (o_s[1] == p.M) ? o_s[2] : o_s[1];
   }
   if (!p.hdim_is_batch) {
     // if right batch dim is broadcast, merge left batch to M

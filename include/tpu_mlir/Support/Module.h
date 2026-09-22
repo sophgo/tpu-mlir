@@ -125,6 +125,8 @@ std::shared_ptr<std::vector<StringRef>> getOutputs();
 bool isBF16Modes();
 bool isF16Modes();
 bool isF8Modes();
+bool matmulOutputTransposeFused(ArrayRef<int64_t> left_shape,
+                                ArrayRef<int64_t> right_shape);
 int64_t getLoraRank();
 void setLoraRank(int64_t rank);
 
@@ -354,8 +356,8 @@ bool isScalar(mlir::Operation *op);
 //-----------------------------------------------------------------
 class ShapeHelper {
 private:
-  ShapeHelper(){};
-  ~ShapeHelper(){};
+  ShapeHelper() {};
+  ~ShapeHelper() {};
   ShapeHelper(const ShapeHelper &);
   ShapeHelper &operator=(const ShapeHelper &);
 

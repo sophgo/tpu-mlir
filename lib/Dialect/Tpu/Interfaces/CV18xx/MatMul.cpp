@@ -62,6 +62,13 @@ void tpu::MatMulOp::codegen_global_cv18xx(int64_t layer_id) {
   gaddr_t ga_filter = module::getAddress(getRight());
   gaddr_t ga_output = module::getAddress(getOutput());
   gaddr_t ga_bias = GA_INVALID;
+  // ostride: hdim output layout (B0,M,B1,N) is declared by the shape
+  // (dim1==M), output_transpose stays reserved for the semantic transpose
+  bool ostride = false;
+  if (getHdimIsBatch()) {
+    auto oshape = module::getShape(getOutput());
+    ostride = (oshape[1] == p.M);
+  }
   bool is_fc = true;
   if (!getRight().getDefiningOp()) {
     is_fc = false;
@@ -102,7 +109,7 @@ void tpu::MatMulOp::codegen_global_cv18xx(int64_t layer_id) {
           layer_id, ga_input, ga_filter, ga_bias, ga_output, p.M, p.K, p.N,
           p.with_bias, p.do_relu, rshift_int32, multiplier_int32,
           &weight_opt.old_data, &weight_opt.new_data, batch_high, batch_low,
-          getLeftTranspose(), getRightTranspose(), getOutputTranspose());
+          getLeftTranspose(), getRightTranspose(), ostride);
     } else {
       // TODO batch_high, batch_low, lstride, ostride, do_quant_bf16
       if (p.with_bias) {
@@ -137,7 +144,7 @@ void tpu::MatMulOp::codegen_global_cv18xx(int64_t layer_id) {
           layer_id, ga_input, ga_filter, ga_bias, ga_output, p.M, p.K, p.N,
           p.with_bias, p.do_relu, &weight_opt.old_data, &weight_opt.new_data,
           batch_high, batch_low, getLeftTranspose(), getRightTranspose(),
-          getOutputTranspose(), do_quant_bf16, ga_scale, ga_zeropoint);
+          ostride, do_quant_bf16, ga_scale, ga_zeropoint);
     }
   } else {
     int batch_high = p.batch;    // fixme
@@ -159,13 +166,13 @@ void tpu::MatMulOp::codegen_global_cv18xx(int64_t layer_id) {
           layer_id, ga_input, ga_filter, ga_bias, ga_output, p.M, p.K, p.N,
           p.with_bias, p.do_relu, rshift_int32, multiplier_int32, nullptr,
           nullptr, batch_high, batch_low, getLeftTranspose(),
-          getRightTranspose(), getOutputTranspose());
+          getRightTranspose(), ostride);
     } else {
       // TODO batch_high, batch_low, lt, rt, ot
       cvi_backend_tg_bf16_fc_kernel(
           layer_id, ga_input, ga_filter, GA_INVALID, ga_output, p.M, p.K, p.N,
           false, p.do_relu, nullptr, nullptr, batch_high, batch_low,
-          getLeftTranspose(), getRightTranspose(), getOutputTranspose());
+          getLeftTranspose(), getRightTranspose(), ostride);
     }
   }
 }

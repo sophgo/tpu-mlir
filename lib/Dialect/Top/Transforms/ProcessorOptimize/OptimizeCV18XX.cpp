@@ -1017,8 +1017,12 @@ protected:
         op.getResult().hasOneUse()) {
       auto otrans_op = dyn_cast<top::PermuteOp>(out);
       order_4 = *module::getI64Array(otrans_op.getOrder());
-      if (order_4 == pattern) {
-        op.setOutputTranspose(true);
+      auto oshape = module::getShape(op.getOutput());
+      // dim1/dim2 must differ, otherwise the shape cannot declare which of
+      // (B0,M,B1,N) / (B0,B1,M,N) the output is laid out as
+      if (order_4 == pattern && oshape[1] != oshape[2]) {
+        // output layout is declared by the permuted shape; keep
+        // output_transpose reserved for the semantic output transpose
         op.setHdimIsBatch(true);
         op->setLoc(otrans_op->getLoc());
         op.getResult().setType(otrans_op.getResult().getType());

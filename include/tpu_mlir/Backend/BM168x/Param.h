@@ -1387,6 +1387,8 @@ typedef struct batch_matmul_common_spec {
   int Y_dtype;
   int L_trans;
   int R_trans;
+  int O_trans; // fused output transpose (swap trailing two dims M<->N);
+               // !hdim_is_batch only
   bool R_zp_is_const;
   int R_zp_const_val;
   int izp_const_val;

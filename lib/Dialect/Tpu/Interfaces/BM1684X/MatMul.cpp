@@ -24,8 +24,22 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
   auto output_spec = BM168x::get_output_spec(op);
   auto odtype = module::getStorageType(getOutput());
 
-  if (p.hdim_is_batch || p.batch != 1 || getFuseRq() || module::isF8Modes() ||
-      module::isCV184X() || module::isSGTPUV8()) {
+  // output_transpose on the plain path is firmware-fused (O_trans); it is the
+  // compiler's responsibility to reject configurations the firmware cannot
+  // serve, since the output shape is already declared transposed [..., N, M].
+  if (p.output_transpose && !p.hdim_is_batch) {
+    assert(module::matmulOutputTransposeFused(module::getShape(getInput()),
+                                              module::getShape(getRight())) &&
+           "output_transpose plain path unsupported for this chip/mode/shape");
+  }
+  bool fw_o_trans = p.output_transpose && !p.hdim_is_batch;
+
+  // fw_o_trans must take the batch_matmul api path: the fc path (batch == 1,
+  // no fw_o_trans) does not carry O_trans in fc_global_spec_t. batch == 1 is
+  // just the degenerate single-iteration case of the batch loop, so the
+  // batch_matmul firmware path serves it unchanged.
+  if (fw_o_trans || p.hdim_is_batch || p.batch != 1 || getFuseRq() ||
+      module::isF8Modes() || module::isCV184X() || module::isSGTPUV8()) {
     if (!p.hdim_is_batch) {
       BM168x::fix_shape(input_spec->at(0), {p.batch, p.M, p.K});
       if (p.right_transpose == false) {
@@ -33,12 +47,18 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
       } else {
         BM168x::fix_shape(input_spec->at(1), {p.batch, p.N, p.K});
       }
-      BM168x::fix_shape(output_spec->at(0), {p.batch, p.M, p.N});
+      if (fw_o_trans) {
+        // the firmware store writes the transposed layout [batch, N, M]
+        BM168x::fix_shape(output_spec->at(0), {p.batch, p.N, p.M});
+      } else {
+        BM168x::fix_shape(output_spec->at(0), {p.batch, p.M, p.N});
+      }
     }
     batch_matmul_common_spec_t spec{0};
     spec.Y_dtype = output_spec->at(0).dtype;
     spec.L_trans = p.left_transpose;
     spec.R_trans = p.right_transpose;
+    spec.O_trans = fw_o_trans ? 1 : 0;
     spec.has_bias = p.with_bias;
     spec.hdim_is_batch = p.hdim_is_batch;
     spec.requant_mode = -1;
@@ -334,6 +354,11 @@ void tpu::MatMulOp::codegen_local_bm1684x_kernel(
 int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
   auto p = parseParam();
   auto op = getOperation();
+  // output_transpose on the plain path is static-only: the dynamic codegen path
+  // does not serialize O_trans, so reject it here rather than miscompile.
+  assert(
+      !(p.output_transpose && !p.hdim_is_batch) &&
+      "output_transpose (plain path) is static-only; dynamic mode unsupported");
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
   if (!buffer)

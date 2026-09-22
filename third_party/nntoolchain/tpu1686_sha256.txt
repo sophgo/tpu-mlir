@@ -1,111 +1,56 @@
 === bm1684x2 ===
-commit f36a2e9fd70d328b1d99bd3ee6d34ac312459412
-Author: zhejun.yang <zhejun.yang@sophgo.com>
-Date:   Fri Sep 11 00:11:48 2026 +0800
+commit ff5882577116dcc04ea0a7e61315050513d88a7f
+Author: yubing.shen <yubing.shen@sophgo.com>
+Date:   Wed Sep 16 15:09:47 2026 +0800
 
-    [fix][bm1684x2] cache 3 hot getenv in cmodel
+    fix: fix conv for jira mlir-965
     
-    Layer-group compilation of an eva02_block on bm1684x2 spends ~58% of
-    wall time in getenv: the RVT simulation layer re-reads env vars on
-    every simulated instruction / command / issue_desc. None of the vars
-    has a runtime producer.
-    
-    - rvt_sim.h INSTR_SAVE: one simulated instruction (one rvt_* hook)
-      expands to 4 INSTR_SAVE macros, each calling getenv("DUMP_RVTI")
-      (10.9B calls, 94.5%) -> rvti_dump_enabled() static inline
-    - store_cmd.cpp get_atomic_cmodel_enable(): getenv("FORBID_CMD_EXECUTE")
-      on every command (339M calls, 2.9%) -> static pointer cache
-    - rvt_sim.c txp_flag(): getenv("TVGEN_USING_TXP") on every issue_desc
-      (303M calls, 2.6%) -> static cached flag
-    - after fix, ~72% of held-lock samples inside the real RVT-instrumented
-      codegen chain (batch_matmul / quant_mm / tpu_bdc_cpy): the remaining
-      bottleneck is the instruction simulation itself.
-    - minor improve to cmodel_common.cpp and cmodel_arch.cpp
-    
-    Change-Id: Iba28fa09dbea21d821afa73e0e835fbc0b00b829
+    Change-Id: I276ffe6a16e59b5633fc0d5623904ac64c874174
 === bm1684x ===
-commit 44e24663d2f08eaf815fe1f0aba844a4f8f71103
+commit ff5882577116dcc04ea0a7e61315050513d88a7f
 Author: yubing.shen <yubing.shen@sophgo.com>
-Date:   Thu Sep 17 21:25:39 2026 +0800
+Date:   Wed Sep 16 15:09:47 2026 +0800
 
-    tpudnn SOC_MODE on
+    fix: fix conv for jira mlir-965
     
-    Change-Id: Ibc5096ac36180cdd2a2c3e3ab759e2396d4b2214
+    Change-Id: I276ffe6a16e59b5633fc0d5623904ac64c874174
 === bm1688 ===
-commit 44e24663d2f08eaf815fe1f0aba844a4f8f71103
+commit ff5882577116dcc04ea0a7e61315050513d88a7f
 Author: yubing.shen <yubing.shen@sophgo.com>
-Date:   Thu Sep 17 21:25:39 2026 +0800
+Date:   Wed Sep 16 15:09:47 2026 +0800
 
-    tpudnn SOC_MODE on
+    fix: fix conv for jira mlir-965
     
-    Change-Id: Ibc5096ac36180cdd2a2c3e3ab759e2396d4b2214
+    Change-Id: I276ffe6a16e59b5633fc0d5623904ac64c874174
 === cv184x ===
-commit b853c35aa6bbc6aa37676607bae9c94429694664
-Author: yifan.chen <yifan.chen@sophgo.com>
-Date:   Wed Jul 29 15:31:55 2026 +0800
-
-    fix: handle non-integer offset in bm1684x2 requant mode==1
-    
-    - mode==1 perlayer path on BM1684X2/SG2262 now checks offset integrality;
-      non-integer offset falls back to fp32 arithmetic (cast to FP32, fp_mul_C,
-      fp_add_C, cast to top) so the fractional part participates in final rounding
-    - global layer allocates FP32 buffer for mode==1 + non-integer offset on
-      BM1684X2/SG2262, enabling the local-layer fallback
-    
-    Change-Id: I4cdbf568bae3501e5eba768a7faaf8ca21709c3d
-=======
-commit f36ef1a39a77b508ea1b9e101271f91093a3f092
-Author: xu.yang <xu.yang@sophgo.com>
-Date:   Thu Jan 16 17:04:52 2025 +0800
-
-    fix: mean std scale add more channel info for hik
-    
-    according to hik's demand, change mean_std op's channel support num to 20
-    
-    Change-Id: I23673c6bc26b40faf67addd3beb893ed62b09c72
-=== bm1688 ===
-commit 44e24663d2f08eaf815fe1f0aba844a4f8f71103
+commit ff5882577116dcc04ea0a7e61315050513d88a7f
 Author: yubing.shen <yubing.shen@sophgo.com>
-Date:   Thu Sep 17 21:25:39 2026 +0800
+Date:   Wed Sep 16 15:09:47 2026 +0800
 
-    tpudnn SOC_MODE on
+    fix: fix conv for jira mlir-965
     
-    Change-Id: Ibc5096ac36180cdd2a2c3e3ab759e2396d4b2214
+    Change-Id: I276ffe6a16e59b5633fc0d5623904ac64c874174
+=== bm1688 ===
+commit ff5882577116dcc04ea0a7e61315050513d88a7f
+Author: yubing.shen <yubing.shen@sophgo.com>
+Date:   Wed Sep 16 15:09:47 2026 +0800
+
+    fix: fix conv for jira mlir-965
+    
+    Change-Id: I276ffe6a16e59b5633fc0d5623904ac64c874174
 === bm1690 ===
-commit 44b4477699e7487fa762d6b5622cbf3e7dfa3004
-Author: junliang.liu <junliang.liu@sophgo.com>
-Date:   Fri Aug 21 16:06:40 2026 +0800
+commit ff5882577116dcc04ea0a7e61315050513d88a7f
+Author: yubing.shen <yubing.shen@sophgo.com>
+Date:   Wed Sep 16 15:09:47 2026 +0800
 
-    [fix][sg2262][tvgen] support TV_GEN_ENABLE_DENORMAL and TV_GEN_ENABLE_SATURATE together
+    fix: fix conv for jira mlir-965
     
-    Previously the two env vars mapped to the same mutually-exclusive
-    CORNER_LEVEL, so enabling both silently dropped saturate (denormal won),
-    leaving param.saturate=1 paired with NaN/Inf inputs and causing miscompares.
-    
-    Add a dedicated ALL_COVER_SATURATE level that merges both distributions
-    (denormal special values + extra MaxNormal weight for saturate). Only the
-    combined branch is new; single-flag paths keep the exact same rand()
-    sequence, so enabling only one flag reproduces the previous results
-    bit-for-bit.
-    
-    Change-Id: I7d7e89b568426daad3c11e7233fac0993c5c85b5
-    Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+    Change-Id: I276ffe6a16e59b5633fc0d5623904ac64c874174
 === bm1690e ===
-commit 44b4477699e7487fa762d6b5622cbf3e7dfa3004
-Author: junliang.liu <junliang.liu@sophgo.com>
-Date:   Fri Aug 21 16:06:40 2026 +0800
+commit ff5882577116dcc04ea0a7e61315050513d88a7f
+Author: yubing.shen <yubing.shen@sophgo.com>
+Date:   Wed Sep 16 15:09:47 2026 +0800
 
-    [fix][sg2262][tvgen] support TV_GEN_ENABLE_DENORMAL and TV_GEN_ENABLE_SATURATE together
+    fix: fix conv for jira mlir-965
     
-    Previously the two env vars mapped to the same mutually-exclusive
-    CORNER_LEVEL, so enabling both silently dropped saturate (denormal won),
-    leaving param.saturate=1 paired with NaN/Inf inputs and causing miscompares.
-    
-    Add a dedicated ALL_COVER_SATURATE level that merges both distributions
-    (denormal special values + extra MaxNormal weight for saturate). Only the
-    combined branch is new; single-flag paths keep the exact same rand()
-    sequence, so enabling only one flag reproduces the previous results
-    bit-for-bit.
-    
-    Change-Id: I7d7e89b568426daad3c11e7233fac0993c5c85b5
-    Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+    Change-Id: I276ffe6a16e59b5633fc0d5623904ac64c874174

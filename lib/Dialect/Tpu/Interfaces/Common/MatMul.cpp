@@ -95,12 +95,8 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
   }
   if (p.hdim_is_batch) {
     p.batch = o_s[0];
-    if (!p.output_transpose && module::isCV18xx()) {
-      p.batch_low = o_s[1];
-    } else {
-      p.batch_low = o_s[2];
-      p.output_transpose = true; // tmp code remove later
-    }
+    // output layout is declared by the shape: dim1==M means (B0,M,B1,N)
+    p.batch_low = (o_s[1] == p.M) ? o_s[2] : o_s[1];
   }
   if (!p.hdim_is_batch) {
     // if right batch dim is broadcast, merge left batch to M
@@ -111,7 +107,9 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
     if (right_batch != p.batch && right_batch == 1) {
       p.batch = 1;
     }
-    if (p.batch > 1 || o_dims <= 2) {
+    if (p.output_transpose && !p.hdim_is_batch) {
+      p.M = o_s[o_dims - 1];
+    } else if (p.batch > 1 || o_dims <= 2) {
       p.M = p.output_transpose ? o_s[o_dims - 1] : o_s[o_dims - 2];
     } else {
       p.M = std::accumulate(o_s.begin(), o_s.begin() + o_dims - 1, 1,
@@ -263,11 +261,14 @@ matmul_attr_t tpu::MatMulOp::dynparseParam() {
   }
   bool o_transpose = getOutputTranspose();
   auto out_shape_new = out_shape;
+  // hdim+OT is rejected at the Top layer (layout is declared by the shape);
+  // only the plain semantic transpose reaches here
+  assert(!(o_transpose && hdim_is_batch));
   if (o_transpose) {
-    if (hdim_is_batch) {
-      out_shape_new[1] = out_shape[2];
-      out_shape_new[2] = out_shape[1];
-    }
+    // plain output_transpose: transpose the trailing two dims [..., M, N] ->
+    // [..., N, M]
+    std::swap(out_shape_new[out_shape_new.size() - 2],
+              out_shape_new[out_shape_new.size() - 1]);
   }
   module::setShape(getOutput(), out_shape_new);
 
@@ -346,12 +347,8 @@ matmul_attr_t tpu::MatMulOp::dynparseParam() {
   }
   if (p.hdim_is_batch) {
     p.batch = o_s[0];
-    if (!p.output_transpose && module::isCV18xx()) {
-      p.batch_low = o_s[1];
-    } else {
-      p.batch_low = o_s[2];
-      p.output_transpose = true; // tmp code remove later
-    }
+    // output layout is declared by the shape: dim1==M means (B0,M,B1,N)
+    p.batch_low = (o_s[1] == p.M) ? o_s[2] : o_s[1];
   }
   if (!p.hdim_is_batch) {
     // if right batch dim is broadcast, merge left batch to M
@@ -362,7 +359,9 @@ matmul_attr_t tpu::MatMulOp::dynparseParam() {
     if (right_batch != p.batch && right_batch == 1) {
       p.batch = 1;
     }
-    if (p.batch > 1 || o_dims <= 2) {
+    if (p.output_transpose && !p.hdim_is_batch) {
+      p.M = o_s[o_dims - 1];
+    } else if (p.batch > 1 || o_dims <= 2) {
       p.M = o_s[o_dims - 2];
     } else {
       p.M = std::accumulate(o_s.begin(), o_s.begin() + o_dims - 1, 1,
@@ -384,13 +383,22 @@ matmul_attr_t tpu::MatMulOp::dynparseParam() {
   return p;
 }
 
+static bool matmulOutputTranspose(const matmul_attr_t &a,
+                                  ArrayRef<int64_t> o_shape) {
+  // hdim: layout is declared by the shape (dim1==M means (B0,M,B1,N)), the
+  // dnnl reference needs an hc shuffle for that layout; plain: OT is the
+  // semantic output transpose
+  return a.hdim_is_batch ? (o_shape[1] == a.M) : a.output_transpose;
+}
+
 LogicalResult tpu::MatMulOp::init(InferenceParameter &p) {
   auto matmul = new MatMul();
   auto a = parseParam();
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], a.batch,
                 a.batch_low, a.M, a.K, a.N, a.do_relu, a.relu_limit, a.right_zp,
                 a.input_zp, a.right_transpose, a.left_transpose,
-                a.output_transpose, a.hdim_is_batch);
+                matmulOutputTranspose(a, module::getShape(getOutput())),
+                a.hdim_is_batch);
   p.handle = (void *)matmul;
   return success();
 }
@@ -741,7 +749,8 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
     matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], a.batch,
                   a.batch_low, a.M, a.K, a.N, a.do_relu, a.relu_limit,
                   a.right_zp, a.input_zp, a.right_transpose, a.left_transpose,
-                  a.output_transpose, a.hdim_is_batch);
+                  matmulOutputTranspose(a, module::getShape(getOutput())),
+                  a.hdim_is_batch);
     matmul->run();
   }
   auto out_type = module::getStorageType(getOutput());
@@ -876,6 +885,10 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
 
 LogicalResult tpu::MatMulOp::LocalGenSupport() {
   if (module::isCV18xx()) {
+    return failure();
+  }
+  // output_transpose implies !hdim_is_batch (canonicalized away otherwise)
+  if (getOutputTranspose()) {
     return failure();
   }
   if ((module::isBM1684XFamily() || module::isBM1690Family()) &&

@@ -273,6 +273,7 @@ class TPULANG_IR_TESTER(object):
             "LayerNorm": (self.test_LayerNorm, Y, Y),
             "MatMul": (self.test_MatMul, Y, Y),
             "MatMul_Relu": (self.test_MatMul_Relu, Y, Y),
+            "MatMulOutputTranspose": (self.test_MatMulOutputTranspose, Y, N),
             "MatMulRQ_OP": (self.test_MatMulRQ_OP, Y, Y),
             "MatMulRQ_Relu": (self.test_MatMulRQ_Relu, Y, Y),
             "MatMulRQ_Int_Group": (self.test_MatMulRQ_Int_Group, Y, N),
@@ -2293,6 +2294,31 @@ class TPULANG_IR_TESTER(object):
                                    is_quantized=is_quantized)
 
         _test_matmul([1, 3, 28, 10], [1, 3, 10, 8], dtype="float16", is_quantized=True)
+
+    def test_MatMulOutputTranspose(self, case_name):
+
+        @tpulang(self.chip)
+        def _test_matmul(shape_x: List[int],
+                         shape_y: List[int],
+                         dtype="float16",
+                         right_transpose: bool = False):
+            left = rand_data(shape_x, dtype)
+            right = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=left)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=right, ttype="coeff")
+            # output_transpose on the plain path is firmware-fused (O_trans): the
+            # matmul stores [..., N, M] directly, no trailing Permute. The Top DNNL
+            # reference (ot_ref) produces the same transposed result, so refs=None.
+            matmul = tpul.matmul(x,
+                                 y,
+                                 right_transpose=right_transpose,
+                                 output_transpose=True,
+                                 out_dtype=dtype)
+            self.compile_and_check(self.unique_name(case_name), [x], [matmul], is_quantized=True)
+
+        # batched 3-D, batch > 1 (firmware requires non-broadcast batched shapes)
+        _test_matmul([4, 28, 10], [4, 10, 8], dtype="float16", right_transpose=False)
+        _test_matmul([4, 28, 10], [4, 8, 10], dtype="float16", right_transpose=True)
 
     def matmul_int_op(
             self,

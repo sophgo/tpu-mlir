@@ -1274,6 +1274,37 @@ bool isF8Modes() {
   return mode == Mode::F8 || mode == Mode::F8E4M3 || mode == Mode::F8E5M2;
 }
 
+bool matmulOutputTransposeFused(ArrayRef<int64_t> left_shape,
+                                ArrayRef<int64_t> right_shape) {
+
+  // The fused O_trans store lives in the shared TPU1686 firmware_core source
+  // and all BM168x-family backend libs are rebuilt from it, so every family
+  // chip serves O_trans — except sgtpuv8, whose firmware build is broken on
+  // TPU1686 master, so its kernel module never carries the store. Keep F8
+  // modes excluded too (unverified on that path).
+  if (isSGTPUV8() || (!isBM1684XFamily() && !isBM1690Family()) || isF8Modes()) {
+    return false;
+  }
+
+  auto s = m->getAttrOfType<StringAttr>(Attr::MODE);
+  auto mode = symbolizeMode(s).value_or(Mode::F32);
+  if (mode != Mode::F16 && mode != Mode::BF16 && mode != Mode::F32 &&
+      mode != Mode::INT8) {
+    return false;
+  }
+
+  // Firmware requires non-broadcast batched shapes: both operands 3-D with a
+  // matching batch dimension (batch == 1 included: the batch loop degenerates
+  // to a single iteration and the O_trans store path is identical).
+  if (left_shape.size() != 3 || right_shape.size() != 3) {
+    return false;
+  }
+  if (left_shape[0] != right_shape[0]) {
+    return false;
+  }
+  return true;
+}
+
 void setChip(Chip chip_) {
   chip = chip_;
   auto s = stringifyChip(chip_);

@@ -93,6 +93,13 @@ matmul_attr_t top::MatMulOp::parseParam() {
 }
 
 matmul_attr_t top::MatMulOp::dynparseParam() {
+  // output_transpose only means the semantic output transpose; the hdim
+  // layout is declared by the output shape, so the combo is rejected
+  if (getOutputTranspose() && getHdimIsBatch()) {
+    UNREACHABLE_THIS(
+        "output_transpose with hdim_is_batch is not supported; the hdim "
+        "layout is declared by the output shape");
+  }
   std::vector<int64_t> in0_shape = module::getShape(getInput());
   int in0_dims = in0_shape.size();
   auto k = in0_shape[in0_dims - 1];
@@ -155,11 +162,16 @@ matmul_attr_t top::MatMulOp::dynparseParam() {
     out_shape[0] = batch_size;
     out_shape[1] = n;
   }
+  std::vector<int64_t> logical_out_shape = out_shape;
+  if (getOutputTranspose() && !getHdimIsBatch() && out_shape.size() >= 2) {
+    std::swap(out_shape[out_shape.size() - 2], out_shape[out_shape.size() - 1]);
+  }
   module::setShape(getOutput(), out_shape);
   matmul_attr_t p = {0};
   auto a_s = SmallVector<int64_t>(module::getShape(getInput()));
   auto b_s = SmallVector<int64_t>(module::getShape(getRight()));
-  auto o_s = SmallVector<int64_t>(module::getShape(getOutput()));
+  auto o_s =
+      SmallVector<int64_t>(logical_out_shape.begin(), logical_out_shape.end());
   p.with_bias = !module::isNone(getBias());
   p.do_relu = getDoRelu();
   p.relu_limit = this->getReluLimit().convertToDouble();
@@ -256,9 +268,11 @@ LogicalResult top::MatMulOp::inference(InferenceParameter &p) {
   }
   auto matmul = (MatMul *)p.handle;
   auto a = dynparseParam();
+  bool ot_ref = a.hdim_is_batch ? false : a.output_transpose;
+  bool hb_ref = false;
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], a.batch, 1,
                 a.M, a.K, a.N, a.do_relu, a.relu_limit, 0, 0, a.right_transpose,
-                0, 0, 0, a.L_shape, a.R_shape, a.dims_merge_2_M);
+                0, ot_ref, hb_ref, a.L_shape, a.R_shape, a.dims_merge_2_M);
   matmul->run();
   return success();
 }
@@ -272,6 +286,13 @@ LogicalResult top::MatMulOp::inference(InferenceParameter &p) {
 // case 6: keep_dims == false, [4, 5, 6] * [6, 7] = [20, 7]
 // case 7: [3] * [3, 256] = [1,256]
 void top::MatMulOp::shape_inference() {
+  // output_transpose only means the semantic output transpose; the hdim
+  // layout is declared by the output shape, so the combo is rejected
+  if (getOutputTranspose() && getHdimIsBatch()) {
+    UNREACHABLE_THIS(
+        "output_transpose with hdim_is_batch is not supported; the hdim "
+        "layout is declared by the output shape");
+  }
   std::vector<int64_t> in0_shape = module::getShape(getInput());
   int in0_dims = in0_shape.size();
   auto k = in0_shape[in0_dims - 1];
@@ -337,6 +358,9 @@ void top::MatMulOp::shape_inference() {
     out_shape.resize(2);
     out_shape[0] = batch_size;
     out_shape[1] = n;
+  }
+  if (getOutputTranspose() && !getHdimIsBatch()) {
+    std::swap(out_shape[out_shape.size() - 2], out_shape[out_shape.size() - 1]);
   }
   module::setShapeOrVerify(getOutput(), out_shape);
 }
