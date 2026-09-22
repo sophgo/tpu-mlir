@@ -135,6 +135,7 @@ class ONNX_IR_TESTER(object):
             "Conv3d":       (self.test_Conv3d,        Y, Y, Y, Y, N, Y, Y), # bm1690 has prob
             "ConvPool3d":   (self.test_ConvPool3d,    Y, Y, N, Y, N, Y, Y), # bm1690 has prob
             "ConvStride":   (self.test_ConvStride,    Y, Y, Y, Y, Y, Y, Y),
+            "ConvStrideH":  (self.test_ConvStrideH,   N, Y, N, N, N, N, N),
             "ConvDw":       (self.test_ConvDw,        Y, Y, Y, Y, Y, Y, Y),
             "ConvTrans":    (self.test_ConvTrans,     Y, Y, Y, Y, Y, N, Y),
             "ConvTrans2":   (self.test_ConvTrans2,    Y, Y, Y, Y, Y, N, Y), # no pad
@@ -1759,6 +1760,35 @@ class ONNX_IR_TESTER(object):
         filter1 = helper.make_tensor('filter1', TensorProto.FLOAT, f_shape1, f_data1)
         graph_def.initializer.extend([filter0, filter1])
         self.onnx_and_test(graph_def)
+
+    def test_ConvStrideH(self, case_name):
+        """BM1688 INT8 Conv2D striding along H only: kernel 32x4, stride 32x4.
+        The backend splits the kernel along H but keeps the full W dimension.
+        """
+        input_shape = [1, 3, 64, 512]
+        filter_shape = [384, 3, 32, 4]
+        output_shape = [1, 384, 2, 128]
+        rng = np.random.default_rng(965)
+        input_data = rng.normal(0.0, 1.0, size=input_shape).astype(np.float32)
+        weight_data = rng.normal(0.0, 0.05, size=filter_shape).astype(np.float32)
+        # Keep the four H tiles statistically distinct instead of relying on
+        # random chance to expose a tile-offset regression.
+        weight_data *= (1.0 + np.arange(32, dtype=np.float32)[None, None, :, None] / 8.0)
+        bias_data = rng.normal(0.0, 0.01, size=(output_shape[1], )).astype(np.float32)
+
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            <float%s weight, float%s bias>
+            {
+                output = Conv<kernel_shape=[32,4],pads=[0,0,0,0],strides=[32,4],dilations=[1,1],group=1>(input, weight, bias)
+            }
+            """ % (case_name, input_shape, output_shape, filter_shape, list(bias_data.shape))
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([
+            helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data),
+            helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data),
+        ])
+        self.onnx_and_test(graph_def, input_data={'input': input_data}, support_modes=['int8'])
 
     def test_Conv3d(self, case_name):
         oc = 32

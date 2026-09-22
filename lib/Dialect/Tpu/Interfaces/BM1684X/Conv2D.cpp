@@ -245,7 +245,8 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
       sz = std::max(sz, hw_margin_crop_buffer);
       return sz;
     }
-    if (use_3ic_optimize == 0)
+    if (use_3ic_optimize == 0 &&
+        !(p.sh > 15 || p.sw > 15 || p.dh > 15 || p.dw > 15))
       return sz;
   }
   if (p.sh > 15 || p.sw > 15 || p.dh > 15 || p.dw > 15) {
