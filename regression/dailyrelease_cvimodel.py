@@ -45,7 +45,7 @@ class CviModelRegressor:
         self.current_dir = os.getcwd()
         self.dest_dir = dest_dir
         os.makedirs(self.dest_dir, exist_ok=True)
-        self.chips = ["phobos3", "cv180x", "cv181x", "cv182x", "cv183x"]
+        self.chips = ["cv190x", "cv180x", "cv181x", "cv182x", "cv183x"]
         self.model_list = full_model_list
         self.test_type = "all"
         self.results = []
@@ -209,7 +209,7 @@ class CviModelRegressor:
 class CviSampleGenerator:
 
     def __init__(self, dest_dir):
-        self.chips = ["phobos3", "cv180x", "cv181x", "cv182x", "cv183x"]
+        self.chips = ["cv190x", "cv180x", "cv181x", "cv182x", "cv183x"]
         self.current_dir = os.getcwd()
         self.dest_dir = dest_dir
         os.makedirs(self.dest_dir, exist_ok=True)
@@ -268,7 +268,7 @@ class CviSampleGenerator:
         if chip == "cv183x" or chip == "cv182x":
             self.run_sample_net("yolov3_416_with_det", os.path.join(tmp_dir, "yolo_v3_416_fused_preprocess_with_detection.cvimodel"), chip, "int8_sym", "RGB_PLANAR", True)
 
-        if chip != "cv180x" and chip != "phobos3":
+        if chip != "cv180x" and chip != "cv190x":
             self.run_sample_net("yolox_s", os.path.join(tmp_dir, "yolox_s.cvimodel"), chip, "int8_sym")
             self.run_sample_net("yolov5s", os.path.join(tmp_dir, "yolov5s_fused_preprocess.cvimodel"), chip, "int8_sym", "RGB_PLANAR", True)
             self.run_sample_net("yolov5s", os.path.join(tmp_dir, "yolov5s_fused_preprocess_aligned_input.cvimodel"), chip, "int8_sym", "RGB_PLANAR", True, True)

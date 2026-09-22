@@ -63,7 +63,7 @@ typedef enum CVIKERNEL_FMT_E {
 #define CVI_TPU_VERSION_182X "cv182x"
 #define CVI_TPU_VERSION_181X "cv181x"
 #define CVI_TPU_VERSION_180X "cv180x"
-#define CVI_TPU_VERSION_PHOBOS3 "phobos3"
+#define CVI_TPU_VERSION_PHOBOS3 "cv190x"
 
 /*
  * System information

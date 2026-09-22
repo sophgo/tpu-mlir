@@ -642,6 +642,13 @@ void CV18xx::load_ctx(module::Chip chip) {
   cvk_cmd_buf_.reserve(0x20000000);
   cvk_reg_info_t req_info = {0};
   auto chip_ = module::stringifyChip(chip);
+  // The bundled libcvikernel.so still matches the "phobos3" key internally
+  // (the backend lib is a prebuilt binary; its source is not in this repo).
+  // Map the public "cv190x" name back to "phobos3" when handing the chip
+  // version string to the backend, so cvikernel_register still succeeds.
+  if (chip_.lower() == "cv190x") {
+    chip_ = StringRef("phobos3");
+  }
   strncpy(req_info.chip_ver_str, chip_.lower().c_str(),
           sizeof(req_info.chip_ver_str) - 1);
   req_info.cmdbuf_size = cvk_cmd_buf_.capacity();

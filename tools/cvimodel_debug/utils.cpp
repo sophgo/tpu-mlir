@@ -57,7 +57,7 @@ uint32_t getNpuSize(std::string chip) {
     size = 8 * 32 * 1024;
   } else if (chip == "cv183x") {
     size = 32 * 32 * 1024;
-  } else if (chip == "phobos3") {
+  } else if (chip == "cv190x") {
     size = 2 * 32 * 512;
   } else {
     assert(0 && "unsupport chip");
@@ -81,7 +81,7 @@ tpu_mlir::module::Chip getChip(std::string chip) {
     return tpu_mlir::module::Chip::CV182x;
   } else if (chip == "cv183x") {
     return tpu_mlir::module::Chip::CV183x;
-  } else if (chip == "phobos3") {
+  } else if (chip == "cv190x") {
     return tpu_mlir::module::Chip::PHOBOS3;
   } else {
     assert(0 && "unsupport chip type");
