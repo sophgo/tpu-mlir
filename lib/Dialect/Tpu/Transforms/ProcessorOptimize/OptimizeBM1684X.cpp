@@ -5132,11 +5132,7 @@ public:
     } else {
       raw_shift_in_quant = quantData[1];
     }
-    if (module::isBM1688()) {
-      new_rshift0[0] = std::abs(raw_shift_in_quant);
-    } else {
-      new_rshift0[0] = -raw_shift_in_quant;
-    }
+    new_rshift0[0] = std::abs(raw_shift_in_quant);
 
     rewriter.setInsertionPoint(op);
     std::vector<int32_t> reshaped_multi0(channels);

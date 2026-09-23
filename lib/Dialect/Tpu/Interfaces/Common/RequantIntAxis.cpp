@@ -68,7 +68,7 @@ LogicalResult tpu::RequantIntAxisOp::inference(InferenceParameter &p) {
 
     auto unpack_rshift_axis = [&](int64_t packed) -> int64_t {
       if (module::isBM1684X()) {
-        return -static_cast<int32_t>(packed);
+        return std::abs(static_cast<int32_t>(packed));
       }
       return std::abs(
           static_cast<int32_t>(static_cast<int16_t>(packed & 0xffff)));

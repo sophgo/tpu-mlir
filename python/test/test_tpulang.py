@@ -2454,7 +2454,7 @@ class TPULANG_IR_TESTER(object):
                 f"unexpected MatMulRQ origin rshift: {requant_rshifts}"
 
         def assert_final_rshifts(model_name, expected_rshift):
-            """Assert the fused MatMul keeps the signed shift direction."""
+            """Assert the fused MatMul rshift (fusion uses the absolute value)."""
             if self.no_save:
                 return
 
@@ -2563,7 +2563,7 @@ class TPULANG_IR_TESTER(object):
             np.testing.assert_array_equal(actual, expected)
 
         _test_fixed_shift(-2, 2, 2, [4, 8, 12, 16], "_NegativeShift")
-        _test_fixed_shift(2, -2, -2, [64, 127, 127, 127], "_PositiveShift")
+        _test_fixed_shift(2, -2, 2, [4, 8, 12, 16], "_PositiveShift")
 
     def test_MatMulRQ_Relu(self, case_name):
         """MatMulRQ with fused do_relu"""
