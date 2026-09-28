@@ -1105,6 +1105,13 @@ bool tpu::MatMulOp::support_multi_core() {
     if (p.batch > 1) {
       return false;
     }
+    // hdim_is_batch always takes the single-core batch_matmul branch.
+    if (p.hdim_is_batch) {
+      return false;
+    }
+    if (getFuseRq() && !(module::isCV84X6() || module::isSG2262())) {
+      return false;
+    }
     return true;
   }
 

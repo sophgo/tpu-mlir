@@ -316,9 +316,9 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
 
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int ic = 0; ic < c; ic++) {
-      int64_t shift = per_axis
-                          ? rshift_v->at(ic)
-                          : use_winograd ? rshift_v->at(1) : rshift_v->at(0);
+      int64_t shift = per_axis       ? rshift_v->at(ic)
+                      : use_winograd ? rshift_v->at(1)
+                                     : rshift_v->at(0);
       int64_t multi = 1;
       if (qmode != tpu::RequantMode::OnlyShift) {
         multi = per_axis ? multiplier_v->at(ic) : multiplier_v->at(0);
@@ -598,6 +598,13 @@ bool tpu::Conv2DOp::support_multi_core() {
   bool is_depthwise =
       attr.ic == attr.oc && attr.ic == attr.groups && attr.groups > 1;
   auto in_etype = module::getStorageType(getInput());
+  // bm1684x2 only: the TPU1686 int8 Conv scheduler splits output channels
+  // across cores.
+  if (module::isCV84X6() && !is_depthwise && attr.groups == 1 &&
+      in_etype.isInteger(8) && attr.sh < 16 && attr.sw < 16 && attr.dh < 16 &&
+      attr.dw < 16 && attr.use_3ic_optimize == 0 && attr.oc >= 16) {
+    return true;
+  }
   if (is_depthwise == false && in_etype.isIntOrIndex() == false) {
     return true;
   }

@@ -21,6 +21,140 @@ using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 
 namespace bm1684x {
+// Two consecutive int8 LUTs compose into one: the backend indexes signed
+// values as bytes, so the 256-entry tables merge without changing results.
+class FuseLutLutPattern : public OpRewriterPatternEx<tpu::LutOp> {
+public:
+  FuseLutLutPattern(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<tpu::LutOp>(context, "FuseLutLutPattern", benefit) {
+  }
+
+protected:
+  LogicalResult
+  matchAndRewriteImpl(tpu::LutOp op,
+                      mlir::PatternRewriter &rewriter) const override {
+    auto first = op.getInput().getDefiningOp<tpu::LutOp>();
+    if (!first || !first->hasOneUse())
+      return failure();
+
+    auto first_input_type = module::getStorageType(first.getInput());
+    auto first_output_type = module::getStorageType(first.getOutput());
+    auto second_input_type = module::getStorageType(op.getInput());
+    auto second_output_type = module::getStorageType(op.getOutput());
+    if (!first_input_type.isInteger(8) || !first_output_type.isInteger(8) ||
+        !second_input_type.isInteger(8) || !second_output_type.isInteger(8)) {
+      return failure();
+    }
+
+    // Signedness must match the LUT interpreter; unsigned tables use a
+    // different index convention and are left untouched.
+    auto first_input_int = first_input_type.dyn_cast<IntegerType>();
+    auto first_output_int = first_output_type.dyn_cast<IntegerType>();
+    auto second_input_int = second_input_type.dyn_cast<IntegerType>();
+    auto second_output_int = second_output_type.dyn_cast<IntegerType>();
+    if (!first_input_int || !first_output_int || !second_input_int ||
+        !second_output_int || !first_input_int.isSigned() ||
+        !first_output_int.isSigned() || !second_input_int.isSigned() ||
+        !second_output_int.isSigned()) {
+      return failure();
+    }
+
+    auto first_table = first.getTable().getDefiningOp<top::WeightOp>();
+    auto second_table = op.getTable().getDefiningOp<top::WeightOp>();
+    if (!first_table || !second_table)
+      return failure();
+    auto first_table_type =
+        first.getTable().getType().cast<RankedTensorType>().getElementType();
+    auto second_table_type =
+        op.getTable().getType().cast<RankedTensorType>().getElementType();
+    auto first_table_int = first_table_type.dyn_cast<IntegerType>();
+    auto second_table_int = second_table_type.dyn_cast<IntegerType>();
+    if (!first_table_int || !second_table_int || !first_table_int.isSigned() ||
+        !second_table_int.isSigned() || first_table_int.getWidth() != 8 ||
+        second_table_int.getWidth() != 8) {
+      return failure();
+    }
+
+    auto first_data = first_table.read<int8_t>();
+    auto second_data = second_table.read<int8_t>();
+    if (!first_data || !second_data || first_data->size() != 256 ||
+        second_data->size() != 256)
+      return failure();
+
+    std::vector<int8_t> composed(256);
+    for (int i = 0; i < 256; ++i) {
+      int next = static_cast<int>(first_data->at(i));
+      if (next < 0)
+        next += 256;
+      composed[i] = second_data->at(next);
+    }
+
+    auto table_type = op.getTable().getType().cast<RankedTensorType>();
+    auto composed_table =
+        top::WeightOp::create(op, "composed", composed, table_type);
+    rewriter.updateRootInPlace(op, [&]() {
+      op->setOperand(0, first.getInput());
+      op->setOperand(1, composed_table);
+    });
+    rewriter.eraseOp(first);
+    return success();
+  }
+};
+
+// A quantized LUT followed only by dequantizing Cast can use an F16 table
+// directly, removing the full-size int8 result and the Cast kernel.
+class FuseLutCastPattern : public OpRewriterPatternEx<tpu::LutOp> {
+public:
+  FuseLutCastPattern(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<tpu::LutOp>(context, "FuseLutCastPattern",
+                                        benefit) {}
+
+protected:
+  LogicalResult
+  matchAndRewriteImpl(tpu::LutOp op,
+                      mlir::PatternRewriter &rewriter) const override {
+    if (!op.getOutput().hasOneUse() ||
+        !module::isUniformQuantized(op.getOutput()))
+      return failure();
+    auto cast = dyn_cast<tpu::CastOp>(*op.getOutput().user_begin());
+    if (!cast || !cast->hasOneUse() || !cast.getWithScale() ||
+        !module::getStorageType(cast.getOutput()).isF16())
+      return failure();
+
+    auto lut_type = module::getStorageType(op.getOutput());
+    if (!lut_type.isSignedInteger(8))
+      return failure();
+    auto table = op.getTable().getDefiningOp<top::WeightOp>();
+    if (!table || !module::getStorageType(op.getTable()).isSignedInteger(8))
+      return failure();
+    auto table_data = table.read<int8_t>();
+    if (!table_data || table_data->size() != 256)
+      return failure();
+
+    auto qtype = module::getUniformQuantizedType(op.getOutput());
+    std::vector<float> f16_table(256);
+    const float scale = F16(static_cast<float>(qtype.getScale()));
+    const float zero_point = static_cast<float>(qtype.getZeroPoint());
+    for (int i = 0; i < 256; ++i) {
+      // This is exactly the Common Cast INT8 -> F16 expression:
+      // F16(F16(scale) * F16(raw - zero_point)).
+      f16_table[i] =
+          F16(scale * F16(static_cast<float>(table_data->at(i)) - zero_point));
+    }
+
+    auto f16_table_value = top::WeightOp::create_float(
+        op, "dequant", f16_table, module::getShape(op.getTable()),
+        rewriter.getF16Type());
+    rewriter.setInsertionPoint(op);
+    auto new_lut = rewriter.create<tpu::LutOp>(
+        op.getLoc(), cast.getOutput().getType(),
+        ArrayRef<Value>{op.getInput(), f16_table_value});
+    rewriter.replaceOp(cast, new_lut.getOutput());
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
 class MatMulHdimBatchPattern : public OpRewriterPatternEx<tpu::MatMulOp> {
   // Case0: MatMul -> Reshape -> Permute(0213)   (Swin/ViT QKV head split etc.)
   // Case1: Permute -> MatMul <- Permute
@@ -5092,9 +5226,10 @@ public:
     bool m_fuse_rq = op.getFuseRq();
     if (m_fuse_rq) // If matmul supports per-channel quantization in the
                    // lowering stage, don't fuse rq!
-      failure();
+      return failure();
 
-    if (!(module::isBM1684X() || module::isBM1688()) || !op->hasOneUse()) {
+    if (!(module::isBM1684X() || module::isBM1688() || module::isCV84X6()) ||
+        !op->hasOneUse()) {
       return failure();
     }
 
@@ -5106,7 +5241,6 @@ public:
     bool fuse_rq_axis = requantIntAxisOp.getFuseRqAxis();
     if (!fuse_rq_axis)
       return failure();
-
     auto shape = module::getShape(requantIntAxisOp.getOutput());
     auto quantValueOp =
         requantIntAxisOp.getQuant().getDefiningOp<top::WeightOp>();
@@ -7327,6 +7461,7 @@ using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns,
                                      const std::vector<RewriterRule> &rules) {
   auto ctx = patterns->getContext();
+  patterns->add<FuseLutLutPattern, FuseLutCastPattern>(ctx, 10);
   patterns->add<MatMulRequantIntFusion>(ctx, 10);
   patterns->add<LargePadConvPattern, ConvToMatMulPattern>(ctx, 9);
   // clang-format off

@@ -38,8 +38,9 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
   // no fw_o_trans) does not carry O_trans in fc_global_spec_t. batch == 1 is
   // just the degenerate single-iteration case of the batch loop, so the
   // batch_matmul firmware path serves it unchanged.
-  if (fw_o_trans || p.hdim_is_batch || p.batch != 1 || getFuseRq() ||
-      module::isF8Modes() || module::isCV184X() || module::isSGTPUV8()) {
+  if (fw_o_trans || p.hdim_is_batch || p.batch != 1 ||
+      (getFuseRq() && !supportMultiCore(*this)) || module::isF8Modes() ||
+      module::isCV184X() || module::isSGTPUV8()) {
     if (!p.hdim_is_batch) {
       BM168x::fix_shape(input_spec->at(0), {p.batch, p.M, p.K});
       if (p.right_transpose == false) {

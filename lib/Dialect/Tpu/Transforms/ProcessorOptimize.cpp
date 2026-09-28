@@ -58,6 +58,9 @@ public:
         if (false == module::isOpInBlock(op)) {
           auto gl = dyn_cast<GlobalGenInterface>(op);
           if (gl && gl.support_multi_core()) {
+            if (module::isCV84X6() && isa<tpu::RMSNormOp>(op)) {
+              return;
+            }
             mlir::Attribute isTrue =
                 mlir::BoolAttr::get(op->getContext(), true);
             op->setAttr("multicore", isTrue);
