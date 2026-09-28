@@ -141,7 +141,21 @@ int64_t tpu::Pool2DOp::getBufferSize_bm1684x(
       int64_t eu_num = BM168x::eu_num(odtype_bytes);
       const auto idtype = BM168x::getDataType(getInput());
       if (!(idtype == DTYPE_F8E4M3 || idtype == DTYPE_F8E5M2)) {
-        size += out_nslice * eu_num * ceiling_func(p.c, npu_num) * odtype_bytes;
+        if (module::isCV84X6() &&
+            (idtype == DTYPE_BFP16 || idtype == DTYPE_FP16)) {
+          // Mirrors nodechip_global_pooling_local's staging layout: an fp32
+          // partial (n, c, 1, eu_num), each row padded to ALIGN_BYTES (==
+          // Arch::EU_BYTES on this chip). The reduce-w pass folds each row
+          // in place, so no separate result region is needed.
+          const int64_t align_bytes = Arch::EU_BYTES;
+          const int64_t eu_num_in = BM168x::eu_num(BM168x::getFmtBytes(idtype));
+          const int64_t partial_row =
+              align_up(eu_num_in * sizeof(float), align_bytes);
+          size += out_nslice * ceiling_func(p.c, npu_num) * partial_row;
+        } else {
+          size +=
+              out_nslice * eu_num * ceiling_func(p.c, npu_num) * odtype_bytes;
+        }
       } else {
         size +=
             out_nslice * eu_num * ceiling_func(p.c, npu_num) * sizeof(float);

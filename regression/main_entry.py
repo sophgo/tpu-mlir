@@ -64,7 +64,7 @@ class Status(enum.IntEnum):
 _ONNX_CHIPS = ("bm1684x", "bm1688", "cv183x", "cv184x", "cv84x6")
 _TORCH_CHIPS = ("bm1684x", "bm1688", "cv184x", "cv84x6")
 _CUSTOM_TPULANG_CHIPS = ("bm1684x", "bm1688")
-_TPULANG_CHIPS = ("bm1684x", "bm1688")
+_TPULANG_CHIPS = ("bm1684x", "bm1688", "cv84x6")
 
 # Script-test buckets — kept as class-level constants for easy editing.
 _SCRIPT_BASIC = (

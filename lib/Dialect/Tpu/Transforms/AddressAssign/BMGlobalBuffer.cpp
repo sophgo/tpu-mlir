@@ -1223,7 +1223,7 @@ public:
 
   LogicalResult matchAndRewriteImpl(tpu::SortOp op,
                                     PatternRewriter &rewriter) const override {
-    if (!module::isBM1684XFamily()) {
+    if (!module::isBM1684XFamily() && !module::isCV84X6()) {
       return failure();
     }
     auto _op = op.getOperation();

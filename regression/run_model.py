@@ -146,7 +146,10 @@ class MODEL_RUN(object):
                     self.quant_modes["f8e4m3"] = 1
                     self.quant_modes["f8e5m2"] = 1
         for idx, quant_mode in enumerate(self.quant_modes.keys()):
-            if f"do_{quant_mode}" in self.ini_content:
+            # per-chip do_* flags in the arch section override [DEFAULT]
+            if f"do_{quant_mode}" in self.arch_content:
+                self.quant_modes[quant_mode] &= int(self.arch_content[f"do_{quant_mode}"])
+            elif f"do_{quant_mode}" in self.ini_content:
                 self.quant_modes[quant_mode] &= int(self.ini_content[f"do_{quant_mode}"])
             # check chip support from chip.py
             if quant_mode == mode:

@@ -35,7 +35,7 @@ chip_support = {
     "bm1690":    (Y,   Y,   Y,    Y,        N,         Y,        N,      N,      N,       "bmodel"),
     "bm1690e":   (Y,   Y,   Y,    Y,        N,         Y,        N,      N,      N,       "bmodel"),
     "sg2380":    (N,   N,   N,    N,        N,         N,        N,      N,      N,       "bmodel"), # sg2380 no longer in use
-    "cv184x":     (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "bmodel"),
+    "cv184x":    (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "bmodel"),
     "sgtpuv8":   (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "bmodel"),
 }
 
@@ -45,6 +45,7 @@ multi_core_info = {
     "bm1690": 8,
     "bm1690e": 4,
     "sg2380": 4,
+    "cv84x6": 4,
 }
 
 '''
@@ -178,19 +179,19 @@ full_model_list = {
 basic_multi_core_model_list = {
     # model_name:              (bm1684x, cv84x6, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, bm1690, sg2380, cv184x, sgtpuv8, bm1690e)
     ######## onnx ###############
-    "attention_2batch_block_0_1": (N,       N,       Y,      N,      N,      N,      N,      N,      Y,      N,      N,      N,       N),
-    "pp_yoloe":                   (N,       N,       Y,      N,      N,      N,      N,      N,      Y,      N,      N,      N,       N),
-    "inception_v3":               (N,       N,       Y,      N,      N,      N,      N,      N,      Y,      N,      N,      N,       N),
-    "pp_ocr_cls":                 (N,       N,       Y,      N,      N,      N,      N,      N,      Y,      N,      N,      N,       N),
+    "attention_2batch_block_0_1": (N,       Y,       Y,      N,      N,      N,      N,      N,      Y,      N,      N,      N,       N),
+    "pp_yoloe":                   (N,       Y,       Y,      N,      N,      N,      N,      N,      Y,      N,      N,      N,       N),
+    "inception_v3":               (N,       Y,       Y,      N,      N,      N,      N,      N,      Y,      N,      N,      N,       N),
+    "pp_ocr_cls":                 (N,       Y,       Y,      N,      N,      N,      N,      N,      Y,      N,      N,      N,       N),
 }
 
 full_multi_core_model_list = {
     # model_name:              (bm1684x, cv84x6, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, bm1690, sg2380, cv184x, sgtpuv8, bm1690e)
     ###, sg2380##### onnx ###############
-    "attention_2batch_block_0_1": (N,       N,       Y,      N,      N,      N,      N,      N,      Y,      N,      N,      N,       N),
-    "pp_yoloe":                   (N,       N,       Y,      N,      N,      N,      N,      N,      Y,      N,      N,      N,       N),
-    "inception_v3":               (N,       N,       Y,      N,      N,      N,      N,      N,      N,      N,      N,      N,       N), # bm1690 f16, b16 has problem
-    "pp_ocr_cls":                 (N,       N,       Y,      N,      N,      N,      N,      N,      Y,      N,      N,      N,       N),
+    "attention_2batch_block_0_1": (N,       Y,       Y,      N,      N,      N,      N,      N,      Y,      N,      N,      N,       N),
+    "pp_yoloe":                   (N,       Y,       Y,      N,      N,      N,      N,      N,      Y,      N,      N,      N,       N),
+    "inception_v3":               (N,       Y,       Y,      N,      N,      N,      N,      N,      N,      N,      N,      N,       N), # bm1690 f16, b16 has problem
+    "pp_ocr_cls":                 (N,       Y,       Y,      N,      N,      N,      N,      N,      Y,      N,      N,      N,       N),
 }
 
 # yapf: enable

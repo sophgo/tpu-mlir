@@ -1012,9 +1012,8 @@ protected:
     if (module::isDynamic()) {
       return failure();
     }
-    if (module::isBM1688() || module::isBM1690() || module::isBM1690E() ||
-        module::isSG2262() || module::isSG2380() || module::isCV184X() ||
-        module::isSGTPUV8()) {
+    if (module::isBM1688() || module::isSG2380() || module::isCV184X() ||
+        module::isSGTPUV8() || module::isBM1690Family()) {
       return failure();
     }
     if (module::isHighPrecision()) {
@@ -1562,6 +1561,10 @@ protected:
     }
     if (module::isSG2380() && module::getMode() == module::Mode::F32) {
       // sg2380 can't support GDMA transpose instruction in FP32 mode
+      return failure();
+    }
+    if (module::isCV84X6()) {
+      // cv84x6 can't support GDMA transpose instruction, keep the conv
       return failure();
     }
     int id = 0;

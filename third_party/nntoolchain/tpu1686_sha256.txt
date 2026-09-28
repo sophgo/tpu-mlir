@@ -1,31 +1,18 @@
 === cv84x6 ===
-commit 99fb6f9d2c6c920724782950ac71a95289ae5d33
-Author: junliang.liu <junliang.liu@sophgo.com>
-Date:   Mon Sep 28 14:01:22 2026 +0800
+commit 868471256a98e40780aa3983847505bdaf19d201
+Author: zhejun.yang <zhejun.yang@sophgo.com>
+Date:   Mon Sep 28 11:56:55 2026 +0800
 
-    [fix][sg2262][hau] LMEM round-robin for c>NPU_NUM
+    [fix][bm1684x2] fix bugs
+    - enable tpu_bdc_fp_avg_pool2d_ex; stage bf16/fp16 SUM/MEAN (reduce
+      onedim/hw, global avg pooling) through fp32 partials so long rows
+      no longer saturate the 16-bit accumulator
+    - attention: allocate and load keys when M_q != M_k nc-split
+    - mean_std_scale: cap slice to one bank per NPU slot; overflowing
+      loads spilled into the out slot and raced the requant TIU write
+    - requant_int: use INT8 shift operand for the arithmetic-shift atomic
     
-    HAU opd0_c > NPU_NUM channels were addressed as one full LMEM lane
-    per channel (c * LOCAL_MEM_SIZE), which cannot represent more
-    channels than there are NPU lanes.  Spec 2.1.2 lays them out
-    round-robin instead: lane = c % NPU_NUM, and each full lap advances
-    the in-lane offset by one row.
-    
-    Address both ends with the same formula:
-    - cmodel: lmem_lane_addr() plus an assertion that one lap of rows
-      still fits a single lane.  dump_hau_tensor_range() now dumps once
-      per lane over rounds * lane_bytes; dumping per channel re-emitted
-      the same lane run piecemeal.
-    - tv_gen: scatter and clear the same round-robin layout, and extend
-      the random dim_c range up to NPU_NUM.  Merge keeps opd0/opd1 in
-      disjoint lap sets, so its opd1 offset becomes a fixed NPU_NUM/2
-      lanes instead of dim_c lanes.
-    
-    For c <= NPU_NUM the formula degenerates to the old one, so existing
-    single-lap cases are unchanged.
-    
-    Change-Id: If039fefe0c0986700d1c04c9ca2290206bc4911a
-    Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+    Change-Id: I89dd6c13148acc9fa44474e39867c1f33ad3d926
 === bm1684x ===
 commit 99fb6f9d2c6c920724782950ac71a95289ae5d33
 Author: junliang.liu <junliang.liu@sophgo.com>
