@@ -168,7 +168,7 @@ class DeployTool:
         self._maybe_gen_test_input()
         self._prepare_input_npz()
         self.patterns_count = args.patterns_count
-        self.compress_mode = args.compress_mode if self.chip == "bm1688" else "none"
+        self.compress_mode = args.compress_mode
         self.mute = args.not_gen_bmodel
         self.matmul_perchannel = args.matmul_perchannel
         self.enable_maskrcnn = args.enable_maskrcnn
@@ -786,6 +786,15 @@ if __name__ == '__main__':
 
     # yapf: enable
     args = parser.parse_args()
+    if args.compress_mode != "none" and args.chip != "bm1688":
+        parser.error(
+            f"--compress_mode {args.compress_mode} is only supported on bm1688; "
+            f"{args.chip} does not support TPU-MLIR compression"
+        )
+    if args.chip == "cv181x" and args.quantize in ("INT4", "W4INT8"):
+        parser.error(
+            f"--quantize {args.quantize} is not supported on cv181x; use INT8 or BF16"
+        )
     deprecated_option(args.io_alone, "DEPRECATED, please use --addr_mode io_alone")
     deprecated_option(args.ignore_f16_overflow, "DEPRECATED, please use --high_precision")
     if args.quant_output_bf16:
