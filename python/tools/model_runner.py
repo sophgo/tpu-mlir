@@ -493,12 +493,17 @@ def _mlir_inference_by_cpu(inputs: dict,
     only_one = len(inputs) == 1
     if only_one:
         assert (len(g_mlir_module.input_names) == 1)
-    for name in g_mlir_module.input_names:
+    decl_shapes = parser.get_input_shapes()
+    for idx, name in enumerate(g_mlir_module.input_names):
         if not only_one:
             assert (name in inputs)
             input = inputs[name]
         else:
             input = list(inputs.values())[0]
+        if idx < len(decl_shapes):
+            decl = tuple(decl_shapes[idx])
+            if tuple(input.shape) != decl and input.size == int(np.prod(decl)):
+                input = input.reshape(decl)
         if input.dtype == np.int8 or input.dtype == np.uint8:
             g_mlir_module.set_tensor_from_int(name, input.astype(np.float32), input.shape)
         else:
