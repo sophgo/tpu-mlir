@@ -50,6 +50,7 @@ def deprecated_option(cond, msg):
 LLM_CONVERTERS = [
     (("qwen3", "qwen2", "llama", "minicpm", "qwen2_moe"), "llm.LlmConverter", "LlmConverter", {}),
     (("mllama", ), "llm.Llama3_2VConverter", "Llama3_2VConverter", {}),
+    (("xlm-roberta", ), "llm.XLMRobertaConverter", "XLMRobertaConverter", {}),
     (("chatglm", ), "llm.Chatglm3Converter", "Chatglm3Converter", {}),
     (("phi3", ), "llm.Phi3Converter", "Phi3Converter", {}),
     (("qwen2_vl", ), "llm.Qwen2VLConverter", "Qwen2VLConverter", {

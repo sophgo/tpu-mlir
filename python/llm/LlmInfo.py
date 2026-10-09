@@ -489,3 +489,22 @@ FALCON_PERCEPTION_INFO = ModelInfo(
         LlmList.LMHEAD:
         "output",
     })
+
+# XLM-RoBERTa (encoder-only reranker, e.g. bge-reranker-v2-m3)
+# No NORM/LMHEAD at model level (LayerNorms are per-layer, classifier is custom).
+XLM_ROBERTA_INFO = ModelInfo(ModelConfig(),
+                             weights={
+                                 LlmList.LAYERS: "roberta.encoder.layer",
+                                 LlmList.EMBEDING: "roberta.embeddings.word_embeddings",
+                                 LlmList.NORM: "",
+                                 LlmList.LMHEAD: "",
+                                 LlmList.INPUT_LN: "",
+                                 LlmList.Q_PROJ: "attention.self.query",
+                                 LlmList.K_PROJ: "attention.self.key",
+                                 LlmList.V_PROJ: "attention.self.value",
+                                 LlmList.O_PROJ: "attention.output.dense",
+                                 LlmList.POST_ATTN_LN: "attention.output.LayerNorm",
+                                 LlmList.MLP_GATE: "",
+                                 LlmList.MLP_UP: "intermediate.dense",
+                                 LlmList.MLP_DOWN: "output.dense",
+                             })
