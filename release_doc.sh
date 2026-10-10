@@ -4,80 +4,94 @@ set -e
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 python docs/generate_operation.py ${DIR}/build/supported_ops.rst
 
-# Parallelize doc builds.
+# Parallelize doc builds with a bounded job pool.
 #
-# 2 doc dirs (quick_start, developer_manual) × 2 langs (en, zh) = 4 (doc, lang)
-# pairs. For each pair we launch 2 jobs: one builds latex→xelatex→PDF, the
-# other builds HTML. Total 8 concurrent jobs.
+# 2 doc dirs (quick_start, developer_manual) × 2 langs (en, zh) = 4 jobs.
+# Each job builds latex→xelatex→PDF then HTML sequentially, so latex/html
+# never race on the same build_${lang}/ directory.
 #
-# Directory isolation: each (doc_dir, lang) pair writes to its own
-# build_${lang}/ directory. The latex job writes build_${lang}/latex/ and
-# doctrees_latex/; the html job writes build_${lang}/html/ and doctrees_html/.
-# Separate -d paths prevent the two sphinx-build processes from racing on the
-# shared doctrees pickle cache.
+# Cap concurrent jobs (default 2) to avoid OOM: a full release build already
+# consumes a lot of memory/cache, and 8 concurrent sphinx+xelatex jobs have
+# been observed to get oom-killed, leaving no release tarball.
 #
-# SPHINX_J = CPU_NUM / 8 so total sphinx threads ≈ CPU_NUM (8 jobs × 1/8 cores).
-# xelatex is single-threaded and runs inside the latex job after sphinx finishes.
+# Override with DOC_MAX_JOBS=N if needed.
 CPU_NUM=$(cat /proc/stat | grep cpu[0-9] -c)
 DOC_DIRS=("quick_start" "developer_manual")
 LANGS=("en" "zh")
-SPHINX_J=$(( CPU_NUM / 8 ))
+MAX_JOBS=${DOC_MAX_JOBS:-2}
+SPHINX_J=$(( CPU_NUM / MAX_JOBS ))
 [ "$SPHINX_J" -lt 1 ] && SPHINX_J=1
 
-pids=()
-labels=()
+# sphinx-build calls locale.setlocale(LC_ALL, '') and crashes if LANG/LC_ALL
+# is unset or unsupported (common in non-interactive release shells).
+export LC_ALL="${LC_ALL:-C.UTF-8}"
+export LANG="${LANG:-C.UTF-8}"
 
-# build_latex_pdf: sphinx-build → xelatex (×2 for cross-refs) → mv PDF → cleanup.
-# Runs in a subshell with set -e so a sphinx or xelatex failure exits immediately
-# instead of continuing into cd/xelatex/mv on missing files.
-build_latex_pdf() {
-  local doc_dir=$1 lang=$2 srcdir builddir module_name pdf_name
+LOG_DIR="${DIR}/build/doc_logs"
+mkdir -p "$LOG_DIR"
+rm -rf "${LOG_DIR:?}"/*
+
+# build_one: latex PDF then HTML for one (doc_dir, lang) pair.
+build_one() {
+  set -e
+  local doc_dir=$1 lang=$2 srcdir builddir module_name pdf_name logfile
   srcdir="${DIR}/docs/${doc_dir}/source_${lang}"
   builddir="${DIR}/docs/${doc_dir}/build_${lang}"
   module_name="TPU-MLIR"
   pdf_name="tpu-mlir_$([ "$doc_dir" = "quick_start" ] && echo "quick_start" || echo "technical_manual")_${lang}"
-  sphinx-build -M latex "$srcdir" "$builddir" -j "$SPHINX_J" -d "$builddir/doctrees_latex" > /dev/null 2>&1
-  cd "$builddir/latex"
-  xelatex ${module_name}.tex > /dev/null 2>&1
-  xelatex ${module_name}.tex > /dev/null 2>&1
-  mv ${module_name}.pdf ../"${pdf_name}.pdf"
-  rm -rf "$builddir/latex"
+  logfile="${LOG_DIR}/${doc_dir}_${lang}.log"
+
+  {
+    echo "=== sphinx latex ${doc_dir}/${lang} ==="
+    sphinx-build -M latex "$srcdir" "$builddir" -j "$SPHINX_J" -d "$builddir/doctrees_latex"
+    echo "=== xelatex ${doc_dir}/${lang} ==="
+    cd "$builddir/latex"
+    # nonstopmode: never prompt for missing input (would hang release forever)
+    xelatex -interaction=nonstopmode ${module_name}.tex
+    xelatex -interaction=nonstopmode ${module_name}.tex
+    mv ${module_name}.pdf ../"${pdf_name}.pdf"
+    rm -rf "$builddir/latex"
+    cd "$DIR"
+    echo "=== sphinx html ${doc_dir}/${lang} ==="
+    sphinx-build -M html "$srcdir" "$builddir" -j "$SPHINX_J" -d "$builddir/doctrees_html"
+  } >"$logfile" 2>&1
 }
 
-# build_html: sphinx-build HTML output. Separate doctrees dir from latex.
-build_html() {
-  local doc_dir=$1 lang=$2 srcdir builddir
-  srcdir="${DIR}/docs/${doc_dir}/source_${lang}"
-  builddir="${DIR}/docs/${doc_dir}/build_${lang}"
-  sphinx-build -M html "$srcdir" "$builddir" -j "$SPHINX_J" -d "$builddir/doctrees_html" > /dev/null 2>&1
-}
-
-# Clean build dirs for both docs before launching any parallel jobs.
+# Clean build dirs for both docs before launching any jobs.
 for d in "${DOC_DIRS[@]}"; do
   make -C "${DIR}/docs/${d}" clean > /dev/null 2>&1
 done
 
-# Launch 8 jobs: for each (doc_dir, lang), one latex+PDF job and one HTML job.
-# set -e in each subshell ensures fail-fast (sphinx/xelatex failure stops the
-# subshell immediately, detected by the wait loop below).
+# Build task list, then run with xargs -P for reliable concurrency limiting.
+task_file="${LOG_DIR}/tasks.txt"
+: >"$task_file"
 for d in "${DOC_DIRS[@]}"; do
   for l in "${LANGS[@]}"; do
-    ( set -e; build_latex_pdf "$d" "$l" ) &
-    pids+=($!); labels+=("latex_${d}_${l}")
-    ( set -e; build_html "$d" "$l" ) &
-    pids+=($!); labels+=("html_${d}_${l}")
+    echo "${d} ${l}" >>"$task_file"
   done
 done
 
-# Wait for all jobs. Report failures but reap all zombies first.
-failed=0
-for i in "${!pids[@]}"; do
-  if ! wait "${pids[$i]}" 2>/dev/null; then
-    echo -e "\033[1;31mERROR: doc build failed for ${labels[$i]} (pid ${pids[$i]})\033[0m"
-    failed=1
-  fi
-done
-if [ "$failed" -ne 0 ]; then
+# Export helpers for the xargs child bash.
+export DIR SPHINX_J LOG_DIR LC_ALL LANG
+export -f build_one
+
+set +e
+xargs -P "$MAX_JOBS" -n 2 -a "$task_file" bash -c 'build_one "$1" "$2"' _
+xargs_status=$?
+set -e
+
+if [ "$xargs_status" -ne 0 ]; then
+  echo -e "\033[1;31mERROR: doc build failed (xargs status ${xargs_status})\033[0m"
+  for d in "${DOC_DIRS[@]}"; do
+    for l in "${LANGS[@]}"; do
+      pdf="tpu-mlir_$([ "$d" = "quick_start" ] && echo "quick_start" || echo "technical_manual")_${l}.pdf"
+      if [ ! -f "${DIR}/docs/${d}/build_${l}/${pdf}" ]; then
+        echo -e "\033[1;31mERROR: missing ${d}/${l} -> ${pdf}\033[0m"
+        echo "---- tail ${LOG_DIR}/${d}_${l}.log ----"
+        tail -n 40 "${LOG_DIR}/${d}_${l}.log" || true
+      fi
+    done
+  done
   exit 1
 fi
 

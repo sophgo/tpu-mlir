@@ -98,8 +98,9 @@ popd
 if [ "$1" != "DEBUG" ]; then
   # build doc
   echo "check document ..."
-  ./release_doc.sh >doc.log 2>&1
-  if grep -i 'error' doc.log; then
+  if ! ./release_doc.sh >doc.log 2>&1; then
+    echo "document check failed, see doc.log (and build/doc_logs/)"
+    tail -n 80 doc.log || true
     exit 1
   fi
   rm doc.log
