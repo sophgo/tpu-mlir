@@ -42,33 +42,20 @@ Date:   Mon Sep 28 14:01:22 2026 +0800
     Change-Id: If039fefe0c0986700d1c04c9ca2290206bc4911a
     Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 === bm1688 ===
-commit 99fb6f9d2c6c920724782950ac71a95289ae5d33
-Author: junliang.liu <junliang.liu@sophgo.com>
-Date:   Mon Sep 28 14:01:22 2026 +0800
+commit 8b3b71d490f1cf037ddf3c8212f07c1bf5cdef9f
+Author: yujia liu <yujia.liu@sophgo.com>
+Date:   Thu Oct 8 11:24:06 2026 +0800
 
-    [fix][sg2262][hau] LMEM round-robin for c>NPU_NUM
+    fix(bm1688): size softmax max_lo/max_buf by h_total
     
-    HAU opd0_c > NPU_NUM channels were addressed as one full LMEM lane
-    per channel (c * LOCAL_MEM_SIZE), which cannot represent more
-    channels than there are NPU lanes.  Spec 2.1.2 lays them out
-    round-robin instead: lane = c % NPU_NUM, and each full lap advances
-    the in-lane offset by one row.
+    - nodechip_softmax_local_1x1() sized both buffers for a single aligned
+      float, but the reduction stores one slot per h-slice
+    - with c_per_npu == 1 anything needing more than four slices overran into
+      exp_imm0_lo / exp_imm1_lo
+    - size them by max(one aligned float, h_total floats)
     
-    Address both ends with the same formula:
-    - cmodel: lmem_lane_addr() plus an assertion that one lap of rows
-      still fits a single lane.  dump_hau_tensor_range() now dumps once
-      per lane over rounds * lane_bytes; dumping per channel re-emitted
-      the same lane run piecemeal.
-    - tv_gen: scatter and clear the same round-robin layout, and extend
-      the random dim_c range up to NPU_NUM.  Merge keeps opd0/opd1 in
-      disjoint lap sets, so its opd1 offset becomes a fixed NPU_NUM/2
-      lanes instead of dim_c lanes.
-    
-    For c <= NPU_NUM the formula degenerates to the old one, so existing
-    single-lap cases are unchanged.
-    
-    Change-Id: If039fefe0c0986700d1c04c9ca2290206bc4911a
-    Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+    Change-Id: I485e0eab2937a7b9ee03274390fc95d508f7fe42
+    Co-Authored-By: Claude Code <noreply@anthropic.com>
 === cv184x ===
 commit ff5882577116dcc04ea0a7e61315050513d88a7f
 Author: yubing.shen <yubing.shen@sophgo.com>
@@ -78,33 +65,20 @@ Date:   Wed Sep 16 15:09:47 2026 +0800
     
     Change-Id: I276ffe6a16e59b5633fc0d5623904ac64c874174
 === bm1688 ===
-commit 99fb6f9d2c6c920724782950ac71a95289ae5d33
-Author: junliang.liu <junliang.liu@sophgo.com>
-Date:   Mon Sep 28 14:01:22 2026 +0800
+commit 8b3b71d490f1cf037ddf3c8212f07c1bf5cdef9f
+Author: yujia liu <yujia.liu@sophgo.com>
+Date:   Thu Oct 8 11:24:06 2026 +0800
 
-    [fix][sg2262][hau] LMEM round-robin for c>NPU_NUM
+    fix(bm1688): size softmax max_lo/max_buf by h_total
     
-    HAU opd0_c > NPU_NUM channels were addressed as one full LMEM lane
-    per channel (c * LOCAL_MEM_SIZE), which cannot represent more
-    channels than there are NPU lanes.  Spec 2.1.2 lays them out
-    round-robin instead: lane = c % NPU_NUM, and each full lap advances
-    the in-lane offset by one row.
+    - nodechip_softmax_local_1x1() sized both buffers for a single aligned
+      float, but the reduction stores one slot per h-slice
+    - with c_per_npu == 1 anything needing more than four slices overran into
+      exp_imm0_lo / exp_imm1_lo
+    - size them by max(one aligned float, h_total floats)
     
-    Address both ends with the same formula:
-    - cmodel: lmem_lane_addr() plus an assertion that one lap of rows
-      still fits a single lane.  dump_hau_tensor_range() now dumps once
-      per lane over rounds * lane_bytes; dumping per channel re-emitted
-      the same lane run piecemeal.
-    - tv_gen: scatter and clear the same round-robin layout, and extend
-      the random dim_c range up to NPU_NUM.  Merge keeps opd0/opd1 in
-      disjoint lap sets, so its opd1 offset becomes a fixed NPU_NUM/2
-      lanes instead of dim_c lanes.
-    
-    For c <= NPU_NUM the formula degenerates to the old one, so existing
-    single-lap cases are unchanged.
-    
-    Change-Id: If039fefe0c0986700d1c04c9ca2290206bc4911a
-    Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+    Change-Id: I485e0eab2937a7b9ee03274390fc95d508f7fe42
+    Co-Authored-By: Claude Code <noreply@anthropic.com>
 === bm1690 ===
 commit ff5882577116dcc04ea0a7e61315050513d88a7f
 Author: yubing.shen <yubing.shen@sophgo.com>
