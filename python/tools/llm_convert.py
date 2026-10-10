@@ -313,9 +313,6 @@ if __name__ == '__main__':
         from llm.transformers_compat import load_auto_config
         from llm.ModelHandle import SafetensorsModelHandle
 
-        _path_lower = args.model_path.lower()
-        if "qwen" in _path_lower and "asr" in _path_lower:
-            import qwen_asr  # noqa: F401
         try:
             config = load_auto_config(args.model_path, trust_remote_code=True)
         except Exception as e:
