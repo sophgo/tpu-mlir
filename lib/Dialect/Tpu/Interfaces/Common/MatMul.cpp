@@ -1115,11 +1115,12 @@ bool tpu::MatMulOp::support_multi_core() {
     return true;
   }
 
+  // cv84x6 firmware multi-core also takes the f16 MatMul of an INT8-mode graph.
   if (p.hdim_is_batch || p.batch != 1 || p.do_relu ||
       module::getMode() == module::Mode::F8E4M3 ||
       module::getMode() == module::Mode::F8E5M2 ||
       module::getMode() == module::Mode::F8 ||
-      module::getMode() == module::Mode::INT8) {
+      (module::getMode() == module::Mode::INT8 && !module::isCV84X6())) {
     return false;
   }
 
