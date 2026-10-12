@@ -83,8 +83,13 @@ void fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
     block_kh = 1;
   }
   if (is_decode && head_rep > 2) {
-    func = is_fp16 ? fattention_decode_f16 : fattention_decode_bf16;
-    block_kh = 1;
+    std::string chip_str = getenv("CHIP");
+    if (chip_str == PPL_BM1688) {
+      block_kh = (kv_head + safe_core_num - 1) / safe_core_num;
+    } else {
+      func = is_fp16 ? fattention_decode_f16 : fattention_decode_bf16;
+      block_kh = 1;
+    }
   }
   block_qh = block_kh * head_rep;
   while (block_m > 0 && block_k > 0) {
