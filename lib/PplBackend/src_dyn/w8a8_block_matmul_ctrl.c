@@ -29,12 +29,13 @@ void dynamic_glb_w8a8_block_matmul_ctrl(
                             output_spec[0].shape[2] * output_spec[0].shape[3];
 
   if (data_type == FW_DTYPE_FP16) {
-    tpu_kernel_api_w8a8_block_matmul_f16_t *param_ =
-        (tpu_kernel_api_w8a8_block_matmul_f16_t *)param;
-    param_->ptr_in = input_spec[0].addr;
+    tpu_kernel_api_w8a8_block_matmul_decode_f16_t *param_ =
+        (tpu_kernel_api_w8a8_block_matmul_decode_f16_t *)param;
+    const int use_prefill = param_->M > 1;
+    param_->ptr_input = input_spec[0].addr;
     param_->ptr_weight = input_spec[1].addr;
     param_->ptr_weight_scale = input_spec[2].addr;
-    param_->ptr_out = output_spec[0].addr;
+    param_->ptr_output = output_spec[0].addr;
     param_->G = input_spec[0].shape[0];
     param_->M = input_spec[0].shape[1];
     param_->K = input_spec[0].shape[3];
@@ -42,14 +43,20 @@ void dynamic_glb_w8a8_block_matmul_ctrl(
     if (param_->core_num > tpu_core_num()) {
       param_->core_num = tpu_core_num();
     }
-    w8a8_block_matmul_f16_entry(param_);
+    if (use_prefill) {
+      w8a8_block_matmul_prefill_f16_entry(
+          (tpu_kernel_api_w8a8_block_matmul_prefill_f16_t *)param_);
+    } else {
+      w8a8_block_matmul_decode_f16_entry(param_);
+    }
   } else if (data_type == FW_DTYPE_BFP16) {
-    tpu_kernel_api_w8a8_block_matmul_bf16_t *param_ =
-        (tpu_kernel_api_w8a8_block_matmul_bf16_t *)param;
-    param_->ptr_in = input_spec[0].addr;
+    tpu_kernel_api_w8a8_block_matmul_decode_bf16_t *param_ =
+        (tpu_kernel_api_w8a8_block_matmul_decode_bf16_t *)param;
+    const int use_prefill = param_->M > 1;
+    param_->ptr_input = input_spec[0].addr;
     param_->ptr_weight = input_spec[1].addr;
     param_->ptr_weight_scale = input_spec[2].addr;
-    param_->ptr_out = output_spec[0].addr;
+    param_->ptr_output = output_spec[0].addr;
     param_->G = input_spec[0].shape[0];
     param_->M = input_spec[0].shape[1];
     param_->K = input_spec[0].shape[3];
@@ -57,7 +64,12 @@ void dynamic_glb_w8a8_block_matmul_ctrl(
     if (param_->core_num > tpu_core_num()) {
       param_->core_num = tpu_core_num();
     }
-    w8a8_block_matmul_bf16_entry(param_);
+    if (use_prefill) {
+      w8a8_block_matmul_prefill_bf16_entry(
+          (tpu_kernel_api_w8a8_block_matmul_prefill_bf16_t *)param_);
+    } else {
+      w8a8_block_matmul_decode_bf16_entry(param_);
+    }
   }
 }
 

@@ -1354,8 +1354,16 @@ class MLIR_IR_TESTER(object):
 
     @staticmethod
     def _default_fp8_matmul_weights(w_n: int, w_k: int, block_size: int) -> dict:
+        if os.getenv("FP8_TEST_WEIGHT") == "pattern":
+            n_idx = np.arange(w_n, dtype=np.uint32)[:, None]
+            k_idx = np.arange(w_k, dtype=np.uint32)[None, :]
+            weight = ((n_idx * 31 + k_idx * 17) % 126 + 1).astype(np.uint8)
+        else:
+            weight = np.random.randint(0, 256, (w_n, w_k), dtype=np.uint8)
+            weight[weight == 0x7F] = 0x7E
+            weight[weight == 0xFF] = 0xFE
         return {
-            "fp8_weight": np.random.randint(0, 256, (w_n, w_k), dtype=np.uint8),
+            "fp8_weight": weight,
             "fp8_scale": rand_data([w_n // block_size, w_k // block_size], "float32", 0, 0.1),
         }
 
@@ -1387,9 +1395,10 @@ class MLIR_IR_TESTER(object):
     #     return {"fp8_weight": weight, "fp8_scale": scale}
 
     def test_fp8matmul(self, case_name):
-        """Standalone Fp8MatMul (Qwen3 o_proj-like: 1x512x2048 -> 1x512x1024)."""
-        S = 512
-        W_N, W_K = 1024, 2048
+        """Standalone Fp8MatMul (default decode 1x1x12288 -> 1x1x4096)."""
+        S = int(os.getenv("FP8_TEST_S", "1"))
+        W_N = int(os.getenv("FP8_TEST_N", "4096"))
+        W_K = int(os.getenv("FP8_TEST_K", "12288"))
         block_size = 128
 
         input_shapes = [[1, S, W_K]]

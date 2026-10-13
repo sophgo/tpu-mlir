@@ -11,8 +11,6 @@
 
 #ifdef USING_CMODEL
 #define fw_log printf
-#else
-extern void fw_log(char *, ...);
 #endif
 
 void *ppl_global_func_map[PPL_FW_LAYER_TYPE_UNKNOWN - PPL_FW_LAYER_START] = {0};
