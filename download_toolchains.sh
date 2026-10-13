@@ -3,7 +3,7 @@ set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 # PPL compiler version and download URL
 # Update these when a new PPL release is needed
-PPL_URL="/toolchains/tpu_mlir/ppl_v1.7.111-g23cf8831-20260616.tar.gz"
+PPL_URL="/toolchains/tpu_mlir/ppl_v1.7.279-gb14af6be-20261013.tar.gz"
 
 function usage() {
   echo "Usage: $0 [ppl|cross-gcc|all] [--dir PATH]"
