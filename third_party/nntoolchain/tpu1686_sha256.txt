@@ -1,18 +1,11 @@
 === cv84x6 ===
-commit 868471256a98e40780aa3983847505bdaf19d201
-Author: zhejun.yang <zhejun.yang@sophgo.com>
-Date:   Mon Sep 28 11:56:55 2026 +0800
+commit f61bf661a34b899ba841f969572affea830f3560
+Author: yangyang.zhou <yangyang.zhou@sophgo.com>
+Date:   Wed Oct 14 22:31:05 2026 +0800
 
-    [fix][bm1684x2] fix bugs
-    - enable tpu_bdc_fp_avg_pool2d_ex; stage bf16/fp16 SUM/MEAN (reduce
-      onedim/hw, global avg pooling) through fp32 partials so long rows
-      no longer saturate the 16-bit accumulator
-    - attention: allocate and load keys when M_q != M_k nc-split
-    - mean_std_scale: cap slice to one bank per NPU slot; overflowing
-      loads spilled into the out slot and raced the requant TIU write
-    - requant_int: use INT8 shift operand for the arithmetic-shift atomic
+    [workaround][cv84x6] remove tpu_bdc_fp_avg_pool2d_ex() in pooling && reduce
     
-    Change-Id: I89dd6c13148acc9fa44474e39867c1f33ad3d926
+    Change-Id: Ibdd963543d103a511d4c7a106cbae0ea3acd4997
 === bm1684x ===
 commit 99fb6f9d2c6c920724782950ac71a95289ae5d33
 Author: junliang.liu <junliang.liu@sophgo.com>
