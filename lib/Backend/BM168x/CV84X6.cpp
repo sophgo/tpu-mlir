@@ -25,7 +25,11 @@ void CV84X6::load_functions() {
 }
 
 void CV84X6::before_codegen() {
-  BM1684X::before_codegen();
+  // Reset every core's buffer.
+  for (int i = multiCode.size() - 1; i >= 0; i--) {
+    useCore(i);
+    BM1684X::before_codegen();
+  }
   useCode0 = true;
   // setenv("GEN_RISCV_CODE", "1", 1);
   // dl_gen_riscv_code_begin();
