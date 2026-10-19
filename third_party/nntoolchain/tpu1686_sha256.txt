@@ -1,11 +1,36 @@
 === cv84x6 ===
-commit f61bf661a34b899ba841f969572affea830f3560
-Author: yangyang.zhou <yangyang.zhou@sophgo.com>
-Date:   Wed Oct 14 22:31:05 2026 +0800
+commit 966fe14486d1b03d375d5e3211f5b43d3207eeb5
+Author: yujia liu <yujia.liu@sophgo.com>
+Date:   Mon Oct 19 15:37:02 2026 +0800
 
-    [workaround][cv84x6] remove tpu_bdc_fp_avg_pool2d_ex() in pooling && reduce
+    fix(bm1688/bm1684x2): fast not_perchannel path for requant and dequant
     
-    Change-Id: Ibdd963543d103a511d4c7a106cbae0ea3acd4997
+    MLIR-973: DINOv2 ViT-B/14 int8 is 2.69x slower than fp16 on bm1688
+    (141.96ms vs 52.75ms), while accuracy is unchanged.  bm1686 lacks the
+    not_perchannel fast path that bm1684x has, on both the requant and the
+    dequant side.  Without it the per-op cost is too high, so the layer
+    group partitioner folds the gelu chain into one over-large group and
+    splits it 17 ways: 99,270 TIU instructions.
+    
+    Add both fast paths, ported from bm1684x.  The fixed 16-bank buffer
+    layout fits bm1686 (128KB/16 banks) and bm1684x2 (256KB/16 banks); the
+    surrounding else-branch in nodechip_dequant.c/nodechip_requant.c also
+    serves sg2262 (64KB/8 banks) and others, so restrict the new path to
+    __bm1686__ and __bm1684x2__.  INT4/UINT4 stay on the generic path
+    because tpu_data_type_size() rejects them.
+    
+    Verified on bm1688: DINOv2 int8 141.96ms -> 34.01ms (0.64x of fp16),
+    TIU instructions 99,270 -> 19,350, model output bit-identical.  The
+    int4 cases of test_onnx (Conv2d/MatMul/MatMul2) pass.
+    
+    Verified on bm1684x2 (cv84x6): DINOv2 int8 48 -> 36 layer groups,
+    instruct 6,566,784 -> 1,690,368 bytes, profile commands 107,899 ->
+    28,327, cmodel output bit-identical.  s5 regression: 23/23 cmodel and
+    70/70 tvgen tests pass (EDA firmware build skipped locally: the riscv
+    toolchain is not installed).
+    
+    Change-Id: I973de9a4b21c3e5f60718293a4b5c6d7e8f90123
+    Co-Authored-By: Claude Code <noreply@anthropic.com>
 === bm1684x ===
 commit 99fb6f9d2c6c920724782950ac71a95289ae5d33
 Author: junliang.liu <junliang.liu@sophgo.com>
@@ -35,19 +60,37 @@ Date:   Mon Sep 28 14:01:22 2026 +0800
     Change-Id: If039fefe0c0986700d1c04c9ca2290206bc4911a
     Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 === bm1688 ===
-commit 8b3b71d490f1cf037ddf3c8212f07c1bf5cdef9f
+commit 966fe14486d1b03d375d5e3211f5b43d3207eeb5
 Author: yujia liu <yujia.liu@sophgo.com>
-Date:   Thu Oct 8 11:24:06 2026 +0800
+Date:   Mon Oct 19 15:37:02 2026 +0800
 
-    fix(bm1688): size softmax max_lo/max_buf by h_total
+    fix(bm1688/bm1684x2): fast not_perchannel path for requant and dequant
     
-    - nodechip_softmax_local_1x1() sized both buffers for a single aligned
-      float, but the reduction stores one slot per h-slice
-    - with c_per_npu == 1 anything needing more than four slices overran into
-      exp_imm0_lo / exp_imm1_lo
-    - size them by max(one aligned float, h_total floats)
+    MLIR-973: DINOv2 ViT-B/14 int8 is 2.69x slower than fp16 on bm1688
+    (141.96ms vs 52.75ms), while accuracy is unchanged.  bm1686 lacks the
+    not_perchannel fast path that bm1684x has, on both the requant and the
+    dequant side.  Without it the per-op cost is too high, so the layer
+    group partitioner folds the gelu chain into one over-large group and
+    splits it 17 ways: 99,270 TIU instructions.
     
-    Change-Id: I485e0eab2937a7b9ee03274390fc95d508f7fe42
+    Add both fast paths, ported from bm1684x.  The fixed 16-bank buffer
+    layout fits bm1686 (128KB/16 banks) and bm1684x2 (256KB/16 banks); the
+    surrounding else-branch in nodechip_dequant.c/nodechip_requant.c also
+    serves sg2262 (64KB/8 banks) and others, so restrict the new path to
+    __bm1686__ and __bm1684x2__.  INT4/UINT4 stay on the generic path
+    because tpu_data_type_size() rejects them.
+    
+    Verified on bm1688: DINOv2 int8 141.96ms -> 34.01ms (0.64x of fp16),
+    TIU instructions 99,270 -> 19,350, model output bit-identical.  The
+    int4 cases of test_onnx (Conv2d/MatMul/MatMul2) pass.
+    
+    Verified on bm1684x2 (cv84x6): DINOv2 int8 48 -> 36 layer groups,
+    instruct 6,566,784 -> 1,690,368 bytes, profile commands 107,899 ->
+    28,327, cmodel output bit-identical.  s5 regression: 23/23 cmodel and
+    70/70 tvgen tests pass (EDA firmware build skipped locally: the riscv
+    toolchain is not installed).
+    
+    Change-Id: I973de9a4b21c3e5f60718293a4b5c6d7e8f90123
     Co-Authored-By: Claude Code <noreply@anthropic.com>
 === cv184x ===
 commit ff5882577116dcc04ea0a7e61315050513d88a7f
@@ -58,19 +101,37 @@ Date:   Wed Sep 16 15:09:47 2026 +0800
     
     Change-Id: I276ffe6a16e59b5633fc0d5623904ac64c874174
 === bm1688 ===
-commit 8b3b71d490f1cf037ddf3c8212f07c1bf5cdef9f
+commit 966fe14486d1b03d375d5e3211f5b43d3207eeb5
 Author: yujia liu <yujia.liu@sophgo.com>
-Date:   Thu Oct 8 11:24:06 2026 +0800
+Date:   Mon Oct 19 15:37:02 2026 +0800
 
-    fix(bm1688): size softmax max_lo/max_buf by h_total
+    fix(bm1688/bm1684x2): fast not_perchannel path for requant and dequant
     
-    - nodechip_softmax_local_1x1() sized both buffers for a single aligned
-      float, but the reduction stores one slot per h-slice
-    - with c_per_npu == 1 anything needing more than four slices overran into
-      exp_imm0_lo / exp_imm1_lo
-    - size them by max(one aligned float, h_total floats)
+    MLIR-973: DINOv2 ViT-B/14 int8 is 2.69x slower than fp16 on bm1688
+    (141.96ms vs 52.75ms), while accuracy is unchanged.  bm1686 lacks the
+    not_perchannel fast path that bm1684x has, on both the requant and the
+    dequant side.  Without it the per-op cost is too high, so the layer
+    group partitioner folds the gelu chain into one over-large group and
+    splits it 17 ways: 99,270 TIU instructions.
     
-    Change-Id: I485e0eab2937a7b9ee03274390fc95d508f7fe42
+    Add both fast paths, ported from bm1684x.  The fixed 16-bank buffer
+    layout fits bm1686 (128KB/16 banks) and bm1684x2 (256KB/16 banks); the
+    surrounding else-branch in nodechip_dequant.c/nodechip_requant.c also
+    serves sg2262 (64KB/8 banks) and others, so restrict the new path to
+    __bm1686__ and __bm1684x2__.  INT4/UINT4 stay on the generic path
+    because tpu_data_type_size() rejects them.
+    
+    Verified on bm1688: DINOv2 int8 141.96ms -> 34.01ms (0.64x of fp16),
+    TIU instructions 99,270 -> 19,350, model output bit-identical.  The
+    int4 cases of test_onnx (Conv2d/MatMul/MatMul2) pass.
+    
+    Verified on bm1684x2 (cv84x6): DINOv2 int8 48 -> 36 layer groups,
+    instruct 6,566,784 -> 1,690,368 bytes, profile commands 107,899 ->
+    28,327, cmodel output bit-identical.  s5 regression: 23/23 cmodel and
+    70/70 tvgen tests pass (EDA firmware build skipped locally: the riscv
+    toolchain is not installed).
+    
+    Change-Id: I973de9a4b21c3e5f60718293a4b5c6d7e8f90123
     Co-Authored-By: Claude Code <noreply@anthropic.com>
 === bm1690 ===
 commit ff5882577116dcc04ea0a7e61315050513d88a7f
