@@ -853,12 +853,12 @@ Execution command example:
    $ mlir2graph.py \
      --mlir netname.mlir
 
-For large MLIR files, the original rendering algorithm for dot files may take a long time. You can add the --is_big parameter to reduce the iteration time of the algorithm and generate the graph faster:
+For large MLIR files, the original rendering algorithm for dot files may take a long time. You can add the --isbig parameter to reduce the iteration time of the algorithm and generate the graph faster:
 
 .. code-block:: shell
 
    $ mlir2graph.py \
-     --mlir netname.mlir --is_big
+     --mlir netname.mlir --isbig
 
 Supported functions:
 
@@ -870,7 +870,7 @@ Supported functions:
      - Description
    * - mlir
      - Any MLIR file
-   * - is_big
+   * - isbig
      - Indicates whether the MLIR file is relatively large; there is no specific criterion, usually judged based on rendering time
    * - failed_keys
      - List of failed node names for comparison, separated by ",", nodes corresponding to these keys will be rendered in red after rendering
