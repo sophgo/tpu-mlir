@@ -8,6 +8,18 @@ from safetensors import safe_open
 import os, torch
 
 
+def _is_lfs_pointer(file_path: str) -> bool:
+    """Return True if the file is a git-LFS pointer stub (< ~1KB, no tensor data)."""
+    try:
+        if os.path.getsize(file_path) > 1024:
+            return False
+        with open(file_path, 'r', errors='ignore') as f:
+            head = f.read(64)
+        return head.startswith('version https://git-lfs.github.com/spec/v1')
+    except OSError:
+        return False
+
+
 class LlmLoad:
 
     def __init__(self, model_path: str):
@@ -17,7 +29,16 @@ class LlmLoad:
             file_path = os.path.join(model_path, entry)
             if os.path.isfile(file_path):
                 if entry.lower().endswith('.safetensors'):
-                    f = safe_open(file_path, "pt")
+                    try:
+                        f = safe_open(file_path, "pt")
+                    except Exception as e:
+                        # Git-LFS pointer stubs (weights not pulled yet) fail to
+                        # open; skip them so config-only inspection (--dry_run)
+                        # still works. Real weight reads will fail loudly later.
+                        if _is_lfs_pointer(file_path):
+                            print(f"Warning: skipping LFS pointer stub {entry}")
+                            continue
+                        raise RuntimeError(f"Failed to open {entry}: {e}") from e
                     self.st_files.append(f)
                 elif entry.lower().endswith('.bin'):
                     f = torch.load(file_path, map_location="cpu")

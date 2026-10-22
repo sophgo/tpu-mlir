@@ -178,6 +178,8 @@ def get_cmodel_so(chip: str, is_rvti: bool = False) -> str:
     elif chip == "SG2380":
         return 'libcmodel_sg2380.so'
     elif chip == "CV84X6":
+        if is_rvti:
+            return 'libcmodel_cv84x6rv.so'
         return 'libcmodel_cv84x6.so'
     else:
         return 'libcmodel_bm1684x.so'

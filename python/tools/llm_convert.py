@@ -84,7 +84,7 @@ LLM_CONVERTERS = [
         "default_max_shape": (980, 980),
         "pixel_multiple": 28
     }),
-    (("minicpmv4_6", ), "llm.MiniCPMV4_6Converter", "MiniCPMV4_6Converter", {
+    (("minicpmv4_6", "minicpmv4_7"), "llm.MiniCPMV4_6Converter", "MiniCPMV4_6Converter", {
         "default_max_shape": (448, 448),
         "pixel_multiple": 56,
         "force_dynamic": True,

@@ -69,6 +69,139 @@ from .LlmInfo import LlmList
 import torch
 
 
+def _auto_map_module_file(spec: str) -> str:
+    # "owner/repo--processing_foo.ClassName" or "processing_foo.ClassName"
+    if "--" in spec:
+        spec = spec.split("--", 1)[1]
+    return spec.split(".", 1)[0] + ".py"
+
+
+def _backend_class_name(mapping_names, model_type: str):
+    entry = mapping_names.get(model_type)
+    if isinstance(entry, str):
+        return entry
+    if not isinstance(entry, dict):
+        return None
+    name = entry.get("torchvision")
+    if isinstance(name, str):
+        return name
+    for value in entry.values():
+        if isinstance(value, str):
+            return value
+    return None
+
+
+def _collect_processor_names(mapping_names):
+    names = set()
+    for entry in mapping_names.values():
+        if isinstance(entry, dict):
+            names.update(value for value in entry.values() if isinstance(value, str))
+        elif isinstance(entry, str):
+            names.add(entry)
+    return names
+
+
+def _import_processor_mapping(module_path: str, symbol: str):
+    """Return a transformers processor registry, or {} when this install lacks it.
+
+    ``video_processing_auto`` is absent from transformers builds that predate the
+    video-processor registry. ``gen_config`` runs for every model, including
+    text-only ones, so a missing module must not abort conversion.
+    """
+    import importlib
+
+    try:
+        module = importlib.import_module(module_path)
+    except ImportError:
+        return {}
+    mapping = getattr(module, symbol, None)
+    return mapping if mapping is not None else {}
+
+
+def _normalize_copied_processor_config(config_dir: str):
+    """Make a copied model config loadable by AutoProcessor.from_pretrained.
+
+    gen_config skips *.py, so auto_map entries that name those modules cannot
+    be imported. Processor type strings that are not registered in the
+    installed transformers are rewritten to the class registered for this
+    model_type.
+    """
+    import json
+
+    image_mapping = _import_processor_mapping("transformers.models.auto.image_processing_auto",
+                                              "IMAGE_PROCESSOR_MAPPING_NAMES")
+    video_mapping = _import_processor_mapping("transformers.models.auto.video_processing_auto",
+                                              "VIDEO_PROCESSOR_MAPPING_NAMES")
+
+    model_type = None
+    config_path = os.path.join(config_dir, "config.json")
+    if os.path.isfile(config_path):
+        with open(config_path, "r", encoding="utf-8") as f:
+            try:
+                model_type = json.load(f).get("model_type")
+            except json.JSONDecodeError:
+                model_type = None
+
+    image_names = _collect_processor_names(image_mapping)
+    video_names = _collect_processor_names(video_mapping)
+    replacements = {}
+    if model_type:
+        image_name = _backend_class_name(image_mapping, model_type)
+        video_name = _backend_class_name(video_mapping, model_type)
+        if image_name:
+            replacements["image_processor_type"] = (image_names, image_name)
+        if video_name:
+            replacements["video_processor_type"] = (video_names, video_name)
+
+    def walk(obj):
+        changed = False
+        if isinstance(obj, dict):
+            auto_map = obj.get("auto_map")
+            if isinstance(auto_map, dict):
+                kept = {}
+                for key, spec in auto_map.items():
+                    module_file = _auto_map_module_file(spec) if isinstance(spec, str) else None
+                    if module_file and not os.path.isfile(os.path.join(config_dir, module_file)):
+                        changed = True
+                        continue
+                    kept[key] = spec
+                if kept:
+                    obj["auto_map"] = kept
+                else:
+                    del obj["auto_map"]
+                    changed = True
+            for key, value in list(obj.items()):
+                known_names, registered = replacements.get(key, (None, None))
+                if isinstance(value, str) and known_names is not None and value not in known_names:
+                    if value != registered:
+                        obj[key] = registered
+                        changed = True
+                else:
+                    changed = walk(value) or changed
+        elif isinstance(obj, list):
+            for value in obj:
+                changed = walk(value) or changed
+        return changed
+
+    for name in os.listdir(config_dir):
+        if not name.endswith(".json") or name == "tokenizer.json":
+            continue
+        path = os.path.join(config_dir, name)
+        if not os.path.isfile(path):
+            continue
+        with open(path, "r", encoding="utf-8") as f:
+            try:
+                data = json.load(f)
+            except json.JSONDecodeError:
+                continue
+        if not walk(data):
+            continue
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+        logger.info("Normalized processor config for AutoProcessor in %s", path)
+
+
 class SafetensorsModelHandle(ModelHandle):
 
     def __init__(self, model_path: str):
@@ -176,6 +309,7 @@ class SafetensorsModelHandle(ModelHandle):
                                                       "*.py", "*.bin", "*.bin.index.json",
                                                       "model.safetensors.index.json"),
                         dirs_exist_ok=True)
+        _normalize_copied_processor_config(conv.config_dir)
 
     def fp32_to_fp8(self, x: np.ndarray, fmt: str = "e4m3") -> np.ndarray:
         """

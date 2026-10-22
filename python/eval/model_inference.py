@@ -149,7 +149,10 @@ class bmodel_inference(common_inference):
             elif chip == "SGTPUV8":
                 lib_so = 'libcmodel_sgtpuv8.so'
             elif chip == "CV84X6":
-                lib_so = 'libcmodel_cv84x6.so'
+                if is_rvti:
+                    lib_so = 'libcmodel_cv84x6rv.so'
+                else:
+                    lib_so = 'libcmodel_cv84x6.so'
             # with FileLock("/tmp/cmodel_so.lock"):
             cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel.so'.format(lib_so)
             os.system(cmd)

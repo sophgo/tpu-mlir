@@ -1150,7 +1150,7 @@ class LlmConverter(BaseConverter):
                 bias_op = mlir_gen.none_op
             bias_op_list.append(bias_op)
             # if self.is_key_quantized(proj):
-            if self.quant_mode in ["gptq", "awq"]:
+            if self.quant_mode in ["gptq", "awq", "compressed-tensors"]:
                 if i in [2]:
                     if is_expert:
                         qweight_op = mlir_gen.create_weight_op(proj + ".qweight", [
@@ -1784,6 +1784,20 @@ class LlmConverter(BaseConverter):
     def gen_block_mlir(self, idx: int):
         return self._gen_block_mlir_impl(idx)
 
+    @staticmethod
+    def _pack_int4_along_last(data):
+        """Pack uint8 values 0..15 into int4 pairs along the last axis.
+
+        Even indices occupy the low nibble and odd indices the high nibble,
+        matching the GPTQ/AWQ expert zero-point layout consumed by fused Mlp.
+        """
+        if data.shape[-1] % 2 != 0:
+            raise RuntimeError("qzeros last dim {} is not even, cannot pack int4".format(
+                data.shape[-1]))
+        low = data[..., 0::2].astype(np.uint8)
+        high = data[..., 1::2].astype(np.uint8)
+        return np.ascontiguousarray(low | (high << 4))
+
     def _set_moe_expert_weights(self, weight_dict, shared_gate, shared_expert_gate,
                                 shared_expert_up, shared_expert_down, gate, experts_gate,
                                 experts_up, experts_down):
@@ -1816,7 +1830,7 @@ class LlmConverter(BaseConverter):
                 del weight_dict[real_experts_gate + ".weight"]
                 del weight_dict[real_experts_up + ".weight"]
                 del weight_dict[real_experts_down + ".weight"]
-            elif self.quant_mode in ["gptq", "awq"]:
+            elif self.quant_mode in ["gptq", "awq", "compressed-tensors"]:
                 experts_gate_qweight_list.append(weight_dict[real_experts_gate + ".qweight"])
                 experts_up_qweight_list.append(weight_dict[real_experts_up + ".qweight"])
                 experts_down_qweight_list.append(weight_dict[real_experts_down + ".qweight"])
@@ -1829,9 +1843,18 @@ class LlmConverter(BaseConverter):
                 del weight_dict[real_experts_gate + ".scales"]
                 del weight_dict[real_experts_up + ".scales"]
                 del weight_dict[real_experts_down + ".scales"]
-                experts_gate_qzeros_list.append(weight_dict[real_experts_gate + ".qzeros"])
-                experts_up_qzeros_list.append(weight_dict[real_experts_up + ".qzeros"])
-                experts_down_qzeros_list.append(weight_dict[real_experts_down + ".qzeros"])
+                # compressed-tensors keeps one uint8 zero per group. Fused Mlp
+                # expects the GPTQ/AWQ layout: two int4 zeros packed per byte.
+                gate_z = weight_dict[real_experts_gate + ".qzeros"]
+                up_z = weight_dict[real_experts_up + ".qzeros"]
+                down_z = weight_dict[real_experts_down + ".qzeros"]
+                if self.quant_mode == "compressed-tensors" and self.quant_bits == 4:
+                    gate_z = self._pack_int4_along_last(gate_z)
+                    up_z = self._pack_int4_along_last(up_z)
+                    down_z = self._pack_int4_along_last(down_z)
+                experts_gate_qzeros_list.append(gate_z)
+                experts_up_qzeros_list.append(up_z)
+                experts_down_qzeros_list.append(down_z)
                 del weight_dict[real_experts_gate + ".qzeros"]
                 del weight_dict[real_experts_up + ".qzeros"]
                 del weight_dict[real_experts_down + ".qzeros"]
@@ -1854,7 +1877,7 @@ class LlmConverter(BaseConverter):
                 np.transpose(experts_up_weight, (0, 2, 1)))
             weight_dict[experts_down + ".weight"] = np.ascontiguousarray(experts_down_weight)
             del experts_gate_weight_list, experts_up_weight_list, experts_down_weight_list
-        elif self.quant_mode in ["gptq", "awq"]:
+        elif self.quant_mode in ["gptq", "awq", "compressed-tensors"]:
             experts_gate_qweight = (np.concatenate(experts_gate_qweight_list, axis=0)).reshape(
                 self.num_experts, self.moe_intermediate_size,
                 self.hidden_size // (8 // self.quant_bits))
