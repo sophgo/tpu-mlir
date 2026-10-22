@@ -60,6 +60,11 @@ void LgConfig::load(const std::string &config_file) {
             rootObj->getBoolean("structure_detect_opt")) {
       global_configs_["structure_detect_opt"] = *structure_detect_opt_bool;
     }
+    // level of the multi-core shape_secs alignment search, see
+    // LmemAllocator.cpp
+    if (auto shape_secs_align = rootObj->getInteger("shape_secs_align")) {
+      global_configs_["shape_secs_align"] = static_cast<int>(*shape_secs_align);
+    }
     // set sc_method_configs
     if (auto sc_method_configs = rootObj->getArray("sc_method_configs")) {
       std::map<std::string, ConfigMap> configs_;

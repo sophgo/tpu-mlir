@@ -33,7 +33,8 @@ def gen_layer_group_config(model_name: str = "",
                            output: str = "",
                            silence: bool = False,
                            strategy: int = 0,
-                           structure_detect_opt: bool = True) -> None:
+                           structure_detect_opt: bool = True,
+                           shape_secs_align: int = 0) -> None:
     config_filename = "layer_group_config.json"
     if not output:
         if not model_name or not chip or not quantize:
@@ -62,7 +63,10 @@ def gen_layer_group_config(model_name: str = "",
 
     # Add layer group config template
     #######################################################################
-    def get_default_config(chip: str, strategy: int, structure_detect_opt: bool) -> Dict[str, Any]:
+    def get_default_config(chip: str,
+                           strategy: int,
+                           structure_detect_opt: bool,
+                           shape_secs_align: int = 0) -> Dict[str, Any]:
         chip = chip.lower()
         if chip == "cv184x":
             return {
@@ -104,6 +108,9 @@ def gen_layer_group_config(model_name: str = "",
                 strategy,
                 "structure_detect_opt":
                 structure_detect_opt,
+                # multi-core shape_secs alignment level, see LmemAllocator.cpp
+                "shape_secs_align":
+                shape_secs_align,
                 "sc_method_configs": [
                     {
                         "sc_method": "sc_method_quick_search",
@@ -133,7 +140,7 @@ def gen_layer_group_config(model_name: str = "",
                 ],
             }
 
-    config = get_default_config(chip, strategy, structure_detect_opt)
+    config = get_default_config(chip, strategy, structure_detect_opt, shape_secs_align)
     # Save the config to a file
     save_config(config, config_filename, silence=silence)
 

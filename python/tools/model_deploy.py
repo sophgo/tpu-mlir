@@ -213,6 +213,12 @@ class DeployTool:
         self.layer_group_config = args.layer_group_config
         self.shape_secs_search_strategy = args.shape_secs_search_strategy
         self.structure_detect_opt = not args.disable_structure_detect_opt
+        self.shape_secs_align = args.shape_secs_align
+        if self.shape_secs_align and self.shape_secs_search_strategy != 0:
+            logger.warning(
+                "shape_secs_align {} only takes effect with shape_secs_search_strategy 0 "
+                "(current: {}), the multi-core alignment search will be skipped".format(
+                    self.shape_secs_align, self.shape_secs_search_strategy))
         if self.layer_group_config == "":
             gen_layer_group_config(model_name=self.module_name,
                                    chip=self.chip,
@@ -220,7 +226,8 @@ class DeployTool:
                                    overwrite=True,
                                    silence=False,
                                    strategy=self.shape_secs_search_strategy,
-                                   structure_detect_opt=self.structure_detect_opt)
+                                   structure_detect_opt=self.structure_detect_opt,
+                                   shape_secs_align=self.shape_secs_align)
         self.enable_lghash = True if args.enable_lghash else False
         self.lghash_dir = args.lghash_dir
 
@@ -708,6 +715,14 @@ if __name__ == '__main__':
                         )
     parser.add_argument("--disable_structure_detect_opt", action='store_true',
                         help="Disable structure detect optimization in layer group pass")
+    parser.add_argument("--shape_secs_align", default=0, type=int,
+                        choices=[0, 1, 2, 3],
+                        help="Multi-core shape_secs alignment level in layer group pass: "
+                        "0=off (default), 1=raise secs to core_num, "
+                        "2=also pad hsecs until aligned (cheap, recommended), "
+                        "3=also search aligned n/c/h factors (slowest, best). "
+                        "Only takes effect when --num_core > 1 and "
+                        "--shape_secs_search_strategy 0.")
     # The io_tag option is deprecated. Addr_mode  will be set as io_tag automatically when the processor supports IO_MEM_TAG
     parser.add_argument("--addr_mode", default="auto", type=str.lower,
                         choices=['auto', 'basic', 'io_alone', 'io_tag', 'io_tag_fuse', 'io_reloc', 'in_reuse'],

@@ -1488,14 +1488,24 @@ bool LmemAllocator::assignLmemAddrWithSecs(LgInfo &lg_info,
     });
     sc_method_quick_search(lg_info, shape_secs, allow_bank_conflict, time_step);
 
-    // if (module::getCoreNum() > 1) {
-    //   sc_method_multi_core(lg_info, shape_secs, allow_bank_conflict,
-    //   time_step); sc_method_multi_core_v2(lg_info, shape_secs,
-    //   allow_bank_conflict,
-    //                           time_step);
-    //   sc_method_multi_core_v3(lg_info, shape_secs, allow_bank_conflict,
-    //                           time_step);
-    // }
+    // Restore the multi-core shape_secs alignment search disabled by 5aa5a45b3,
+    // as a level switch: 0=off (upstream), 1=v1, 2=+v3, 3=+v2.
+    if (module::getCoreNum() > 1) {
+      int shape_secs_align =
+          LgConfig::getInstance().get_config_value<int>("shape_secs_align", 0);
+      if (shape_secs_align >= 1) {
+        sc_method_multi_core(lg_info, shape_secs, allow_bank_conflict,
+                             time_step);
+      }
+      if (shape_secs_align >= 2) {
+        sc_method_multi_core_v3(lg_info, shape_secs, allow_bank_conflict,
+                                time_step);
+      }
+      if (shape_secs_align >= 3) {
+        sc_method_multi_core_v2(lg_info, shape_secs, allow_bank_conflict,
+                                time_step);
+      }
+    }
   }
 
   if (min_group_costs_ == -1) {
@@ -2299,6 +2309,11 @@ void LmemAllocator::sc_method_multi_core_v2(LgInfo &lg_info,
     return;
   }
   int MAX_TRY_NUM = getenv("MAX_TRY_NUM") ? atoi(getenv("MAX_TRY_NUM")) : 200;
+  // Guard the enumeration (this is why 5aa5a45b3 disabled the path): only try
+  // slice counts divisible by core_num, and cap the trials to keep it cheap.
+  constexpr bool V2_PRUNE = true;
+  constexpr int V2_MAX_TRY = 10;
+  int v2_total_try = 0;
   int64_t max_nch_secs =
       max_shape_secs_.nsecs * max_shape_secs_.csecs * max_shape_secs_.hsecs;
 
@@ -2310,6 +2325,13 @@ void LmemAllocator::sc_method_multi_core_v2(LgInfo &lg_info,
   int not_best_count = 0;
   // search all possible n/c/h values
   for (int64_t i = min_nch_secs; i <= max_nch_secs; i++) {
+    if (V2_PRUNE &&
+        ((i * shape_secs.dsecs * shape_secs.wsecs) % core_num) != 0) {
+      continue;
+    }
+    if (V2_MAX_TRY > 0 && v2_total_try >= V2_MAX_TRY) {
+      return;
+    }
 
     std::vector<int64_t> factorys;
 
@@ -2329,6 +2351,7 @@ void LmemAllocator::sc_method_multi_core_v2(LgInfo &lg_info,
       core_shape_secs.csecs = dist[1];
       core_shape_secs.hsecs = dist[2];
 
+      v2_total_try++;
       search_result_t ret = try_this_shape_secs(lg_info, core_shape_secs,
                                                 allow_bank_conflict, time_step);
       if (ret == SECS_VALID_AND_BETTER) {
