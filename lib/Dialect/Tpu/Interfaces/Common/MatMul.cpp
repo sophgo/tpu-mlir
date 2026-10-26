@@ -1105,8 +1105,9 @@ bool tpu::MatMulOp::support_multi_core() {
     if (p.batch > 1) {
       return false;
     }
-    // hdim_is_batch always takes the single-core batch_matmul branch.
-    if (p.hdim_is_batch) {
+    // Only cv84x6/sg2262 need the single-core fallback here; on other chips it
+    // clears the multicore flag and desyncs 2-core dynamic subnets.
+    if (p.hdim_is_batch && (module::isCV84X6() || module::isSG2262())) {
       return false;
     }
     if (getFuseRq() && !(module::isCV84X6() || module::isSG2262())) {
