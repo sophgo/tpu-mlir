@@ -6473,24 +6473,6 @@ public:
       if (CanReshapeDown_Param.CanReshapeDown) {
         axis = CanReshapeDown_Param.out_axis;
         layerNormOpInst->setAttr("axis", rewriter.getSI32IntegerAttr(axis));
-        auto gamma_weight_value = layerNormOpInst->getOperand(1);
-        auto beta_weight_value = layerNormOpInst->getOperand(2);
-        auto w_shape = module::getShape(gamma_weight_value);
-        std::vector<int64_t> w_shape_vector(w_shape.begin(), w_shape.end());
-        std::vector<int64_t> i_shape_vector(ishape.begin(), ishape.end());
-        if (w_shape_vector.size() != i_shape_vector.size()) {
-          int diff_len = i_shape_vector.size() - w_shape_vector.size();
-          if (diff_len > 0) {
-            w_shape_vector.insert(w_shape_vector.begin(), diff_len, 1);
-          } else {
-            w_shape_vector.erase(w_shape_vector.begin(),
-                                 w_shape_vector.begin() - diff_len);
-          }
-        }
-        module::setShape(gamma_weight_value, w_shape_vector);
-        module::setShape(beta_weight_value, w_shape_vector);
-        layerNormOpInst->setOperand(1, gamma_weight_value);
-        layerNormOpInst->setOperand(2, beta_weight_value);
       }
       if (afterLayerNormOp && isa<tpu::CastOp>(afterLayerNormOp)) {
         auto castOpInst_2 = dyn_cast<tpu::CastOp>(afterLayerNormOp);
