@@ -1594,6 +1594,12 @@ void dump_slice_info(const slice_info_t &si) {
   }
 }
 
+// CV84X6 supports H-margin slices too; without this the slicer rejects every
+// H-sliced group that crosses a residual block boundary.
+static bool chip_supports_hw_margin() {
+  return module::isBM1684XFamily() || module::isCV84X6();
+}
+
 bool get_backward_slice_info(LgInfo &lg_info, slice_info_t &in_si,
                              const slice_info_t &out_si, Operation *op,
                              Value in, const shape_secs_t &shape_secs,
@@ -1704,11 +1710,11 @@ bool get_backward_slice_info(LgInfo &lg_info, slice_info_t &in_si,
 
   int64_t pre_end_idx = 0;
   idx = slice = 0;
-  bool support_hw_margin = module::isBM1684XFamily();
+  bool support_hw_margin = chip_supports_hw_margin();
   if (auto conv_op = dyn_cast<tpu::Conv2DOp>(op)) {
     auto attr = getConv2DParam(conv_op);
-    if (!attr.is_dw &&
-        (module::getCoreNum() > 1 || attr.dh > 1 || attr.dw > 1)) {
+    if (!attr.is_dw && ((module::getCoreNum() > 1 && !module::isCV84X6()) ||
+                        attr.dh > 1 || attr.dw > 1)) {
       support_hw_margin = false;
     }
   }
@@ -2207,12 +2213,13 @@ static bool backward_update_slice(
         // has no backend support.)
         auto tpukernel_support_HWmargins = [&lg_info](Operation *op) -> bool {
           if (auto conv_op = dyn_cast<tpu::Conv2DOp>(op)) {
-            if (module::isBM1684XFamily()) {
+            if (chip_supports_hw_margin()) {
               auto attr = getConv2DParam(conv_op);
               if (attr.is_dw) {
                 return true;
               }
-              if (module::getCoreNum() == 1 && attr.dh == 1 && attr.dw == 1) {
+              if ((module::getCoreNum() == 1 || module::isCV84X6()) &&
+                  attr.dh == 1 && attr.dw == 1) {
                 return true;
               }
             }
