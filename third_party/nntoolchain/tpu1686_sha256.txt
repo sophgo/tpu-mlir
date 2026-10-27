@@ -1,36 +1,18 @@
 === cv84x6 ===
-commit 966fe14486d1b03d375d5e3211f5b43d3207eeb5
-Author: yujia liu <yujia.liu@sophgo.com>
-Date:   Mon Oct 19 15:37:02 2026 +0800
+commit beb04c0cafece6ef9b371b41bb866e49f902c2df
+Author: zunshi.liu <zunshi.liu@sophgo.com>
+Date:   Mon Oct 26 18:38:03 2026 +0800
 
-    fix(bm1688/bm1684x2): fast not_perchannel path for requant and dequant
+    [bm1684x2][cv] fix cw_trans ops and local-mem sizing in cv rotate/transpose/hist/axpy
     
-    MLIR-973: DINOv2 ViT-B/14 int8 is 2.69x slower than fp16 on bm1688
-    (141.96ms vs 52.75ms), while accuracy is unchanged.  bm1686 lacks the
-    not_perchannel fast path that bm1684x has, on both the requant and the
-    dequant side.  Without it the per-op cost is too high, so the layer
-    group partitioner folds the gelu chain into one over-large group and
-    splits it 17 ways: 99,270 TIU instructions.
+    bm1684x2 has no GDMA cw_trans, so cv_rotate/cv_transpose switch to
+    tpu_bdc_cw_trans with the aligned local strides; also fix cv_rotate 270's
+    out-of-range output offset and its partial lane group handling, correct
+    hist_balance1's local memory reservation, and make cv_calc_hist size its
+    uint8 staging and FP32 tile from the real per-lane usage (alignment,
+    partial-channel address and inter-block sync included).
     
-    Add both fast paths, ported from bm1684x.  The fixed 16-bank buffer
-    layout fits bm1686 (128KB/16 banks) and bm1684x2 (256KB/16 banks); the
-    surrounding else-branch in nodechip_dequant.c/nodechip_requant.c also
-    serves sg2262 (64KB/8 banks) and others, so restrict the new path to
-    __bm1686__ and __bm1684x2__.  INT4/UINT4 stay on the generic path
-    because tpu_data_type_size() rejects them.
-    
-    Verified on bm1688: DINOv2 int8 141.96ms -> 34.01ms (0.64x of fp16),
-    TIU instructions 99,270 -> 19,350, model output bit-identical.  The
-    int4 cases of test_onnx (Conv2d/MatMul/MatMul2) pass.
-    
-    Verified on bm1684x2 (cv84x6): DINOv2 int8 48 -> 36 layer groups,
-    instruct 6,566,784 -> 1,690,368 bytes, profile commands 107,899 ->
-    28,327, cmodel output bit-identical.  s5 regression: 23/23 cmodel and
-    70/70 tvgen tests pass (EDA firmware build skipped locally: the riscv
-    toolchain is not installed).
-    
-    Change-Id: I973de9a4b21c3e5f60718293a4b5c6d7e8f90123
-    Co-Authored-By: Claude Code <noreply@anthropic.com>
+    Change-Id: Iafcc737c1e61baf94cc2d7939ab0549e3ca1f704
 === bm1684x ===
 commit 99fb6f9d2c6c920724782950ac71a95289ae5d33
 Author: junliang.liu <junliang.liu@sophgo.com>
