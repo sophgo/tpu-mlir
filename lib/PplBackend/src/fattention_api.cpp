@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "fattention_decode.h"
+#include "fattention_decode_k_split.h"
 #include "fattention_flex.h"
 #include "fattention_prefill.h"
 #include "fattention_v1.h"
@@ -36,12 +37,13 @@ static int align_2n(int x, int limit = 512) {
   return p;
 }
 
-void fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
-                       gaddr_t ptr_v, gaddr_t ptr_mask, int b, int qm, int kvm,
-                       int d, int q_head, int kv_head, float sqrt_d,
-                       int has_mask, int core_num, int dtype,
-                       bool high_precision, int &block_m, int &block_k,
-                       int &block_qh, int &block_kh) {
+static void fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
+                              gaddr_t ptr_v, gaddr_t ptr_mask, int b, int qm,
+                              int kvm, int d, int q_head, int kv_head,
+                              float sqrt_d, int has_mask, int core_num,
+                              int dtype, bool high_precision, int &block_m,
+                              int &block_k, int &block_qh, int &block_kh,
+                              gaddr_t buffer_addr = 0) {
   int ret = 0;
   int keep_dim = 0;
   bool is_mha = q_head == kv_head;
@@ -82,6 +84,8 @@ void fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
   if (block_kh == 0) {
     block_kh = 1;
   }
+  int k_split = 1;
+  decltype(&fattention_decode_k_split_bf16) decode_k_split_func = nullptr;
   if (is_decode && head_rep > 2) {
     std::string chip_str = getenv("CHIP");
     if (chip_str == PPL_BM1688) {
@@ -89,15 +93,59 @@ void fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
     } else {
       func = is_fp16 ? fattention_decode_f16 : fattention_decode_bf16;
       block_kh = 1;
+      block_qh = block_kh * head_rep;
+      // Split-K only pays off when the cores outnumber b * kv_head.
+      bool consider_k_split =
+          chip_str == PPL_BM1684X2 && core_num > b * kv_head;
+      if (consider_k_split) {
+        // Split the kvm axis so idle cores pick up extra chunks
+        // (e.g. qwen3.5-moe kv_head=2 on 4 cores).
+        int max_split = core_num / (b * kv_head);
+        // No gmem scratch on the dyn path: stay on the legacy single-chunk
+        // path.
+        if (buffer_addr == 0) {
+          max_split = 1;
+        }
+        if (max_split > 1 && kvm >= 2 * block_k && qm <= block_m &&
+            head_rep <= block_qh) {
+          // Each chunk should still have >= 2 k tiles for
+          // enable_pipeline(); shrink block_k until the whole sequence
+          // holds >= 4 tiles.
+          while (kvm / block_k < 4 && block_k > 2 * npu_num) {
+            block_k /= 2;
+          }
+          // by_len = tiles / 2 encodes tiles >= 2 * k_split. A ragged tail
+          // (kvm % block_k) rides in the last chunk, so it is not a reason
+          // to refuse the split.
+          int tiles = kvm / block_k;
+          int by_len = tiles / 2;
+          if (by_len > 0) {
+            // The kernel's merge buffers are statically tiled along the
+            // k_split axis, which requires a power of two.
+            k_split = align_2n(std::min(max_split, by_len));
+          }
+          if (k_split > 1) {
+            decode_k_split_func = is_fp16 ? fattention_decode_k_split_f16
+                                          : fattention_decode_k_split_bf16;
+          }
+        }
+      }
     }
   }
   block_qh = block_kh * head_rep;
   while (block_m > 0 && block_k > 0) {
-    printf("fattention block_m:%d, block_k:%d, block_qh:%d\n", block_m, block_k,
-           block_qh);
-    ret = func(ptr_dst, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm, q_head,
-               kv_head, sqrt_d, has_mask, core_num, d, keep_dim, block_m,
-               block_k, block_qh, block_kh);
+    printf("fattention block_m:%d, block_k:%d, block_qh:%d, k_split:%d\n",
+           block_m, block_k, block_qh, k_split);
+    if (k_split > 1 && decode_k_split_func) {
+      ret = decode_k_split_func(ptr_dst, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm,
+                                kvm, q_head, kv_head, sqrt_d, has_mask,
+                                buffer_addr, core_num, d, keep_dim, block_m,
+                                block_k, block_qh, block_kh, k_split);
+    } else {
+      ret = func(ptr_dst, ptr_q, ptr_k, ptr_v, ptr_mask, b, qm, kvm, q_head,
+                 kv_head, sqrt_d, has_mask, core_num, d, keep_dim, block_m,
+                 block_k, block_qh, block_kh);
+    }
     CHECK_PPL_RET(ret);
     if (ret == PplL2AddrAssignErr || ret == PplLocalAddrAssignErr) {
       printf("block is not suitable, have another try !!!\n");
@@ -109,6 +157,11 @@ void fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
         } else if (block_kh > 1) {
           block_kh /= 2;
           block_qh = block_kh * head_rep;
+        } else if (k_split > 1) {
+          // Fall back to the legacy decode kernel (no cross-core merge), so
+          // drop the split-K workspace requirement and switch func.
+          k_split = 1;
+          func = is_fp16 ? fattention_decode_f16 : fattention_decode_bf16;
         } else {
           break;
         }
@@ -284,13 +337,14 @@ void api_fattention_global(void *param, size_t param_size, void *input_spec,
   // user-provided mask elementwise (matches the CPU reference behaviour where
   // `has_mask` trumps `attn_type`).
   if (_param->common.mask_size == 0) {
-    fattention_tiling(
-        out_spec->addr, q_spec->addr, k_spec->addr, v_spec->addr,
-        _param->common.hasmask ? mask_spec->addr : 0, _param->common.batch,
-        _param->common.mq, _param->common.mk, _param->common.dim,
-        _param->common.q_head, _param->common.kv_head, _param->common.scale,
-        _param->common.hasmask, core_num, in_spec[0].dtype,
-        _param->common.high_precision, block_m, block_k, block_qh, block_kh);
+    fattention_tiling(out_spec->addr, q_spec->addr, k_spec->addr, v_spec->addr,
+                      _param->common.hasmask ? mask_spec->addr : 0,
+                      _param->common.batch, _param->common.mq,
+                      _param->common.mk, _param->common.dim,
+                      _param->common.q_head, _param->common.kv_head,
+                      _param->common.scale, _param->common.hasmask, core_num,
+                      in_spec[0].dtype, _param->common.high_precision, block_m,
+                      block_k, block_qh, block_kh, _param->buffer_addr);
   } else {
     fattention_prefill_tiling(
         out_spec->addr, q_spec->addr, k_spec->addr, v_spec->addr,

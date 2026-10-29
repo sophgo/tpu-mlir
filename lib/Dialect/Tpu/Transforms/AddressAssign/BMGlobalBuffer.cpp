@@ -66,6 +66,30 @@ public:
     // auto buffer_type = RankedTensorType::get(buffer_shape, type);
     // auto buffer = tpu::BufferOp::create(FaOp, buffer_type);
     // FaOp.getBufferMutable().assign(buffer);
+    if (!module::isNone(op.getBuffer())) {
+      return failure();
+    }
+    // Split-K decode scratch: when kv_head cannot fill the cores the PPL
+    // decode kernel splits the kvm axis across the spare cores and merges
+    // partials through a gmem workspace of
+    // core_num * block_m * block_qh * (dim + 2) fp32 values (acc / mi / li
+    // per core; mi must be spilled too — it cannot be recovered from acc).
+    // Allocate it here so address assignment hands the kernel a real address.
+    // Only the split-K decode case (single-token query on cv84x6 with more
+    // cores than kv heads) ever consumes the buffer, so skip it otherwise.
+    if (op.getMq() != 1 || !module::isCV84X6() ||
+        module::getCoreNum() <= op.getKvHead()) {
+      return failure();
+    }
+    int64_t core_num = static_cast<int64_t>(module::getCoreNum());
+    int64_t head_rep = static_cast<int64_t>(op.getQHead()) /
+                       static_cast<int64_t>(op.getKvHead());
+    std::vector<int64_t> buffer_shape = {core_num, head_rep,
+                                         static_cast<int64_t>(op.getDim()) + 2};
+    auto buffer_type =
+        RankedTensorType::get(buffer_shape, rewriter.getF32Type());
+    auto buffer = tpu::BufferOp::create(op, buffer_type);
+    op.getBufferMutable().assign(buffer);
     return success();
   }
   bool shouldPrint(tpu::FAttentionOp op) const override { return false; }
@@ -2161,6 +2185,7 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
       GatherElementsGlobalBuffer,
       GRUGlobalBuffer,
       LSTMGlobalBuffer,
+      FAttentionGlobalBuffer,
       ReduceGlobalBuffer,
       SliceGlobalBuffer,
       ReshapeGlobalBuffer,

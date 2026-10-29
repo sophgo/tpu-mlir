@@ -1682,6 +1682,8 @@ typedef struct flash_attention_common_spec {
 
 typedef struct flash_attention_global_spec {
   flash_attention_common_spec_t common;
+  // Split-K merge scratch in global memory (decode path only)
+  uint64_t buffer_addr;
 } flash_attention_global_spec_t;
 
 typedef struct {

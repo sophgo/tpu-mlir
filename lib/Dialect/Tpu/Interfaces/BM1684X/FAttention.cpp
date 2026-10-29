@@ -32,6 +32,10 @@ void tpu::FAttentionOp::codegen_global_bm1684x() {
   common.high_precision = module::isHighPrecision();
   common.keep_dim = getKeepDims();
   common.mask_size = getMaskSize();
+  if (!module::isNone(getBuffer())) {
+    // Split-K merge scratch (see FAttentionGlobalBuffer)
+    param.buffer_addr = module::getAddress(getBuffer());
+  }
 
   BM168x::call_ppl_global_func("api_fattention_global", &param, sizeof(param),
                                input_spec->data(), output_spec->data());
