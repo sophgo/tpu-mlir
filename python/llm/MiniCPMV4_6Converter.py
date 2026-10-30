@@ -18,6 +18,10 @@ class MiniCPMV4_6Converter(Qwen3_5Converter):
         self.max_shape = args.max_shape
         self.patch_grid_h = self.max_shape[0] // self.patch_size
         self.patch_grid_w = self.max_shape[1] // self.patch_size
+        # 4.7 (config.version=4.7) changes the vit_merger residual order:
+        # residual is gathered to window order before the add, and the reverse
+        # reorder is skipped. 4.6 keeps the original raster-order residual.
+        self.is_v47 = getattr(self.config, "version", None) == 4.7
 
     @override
     def init_vconfig(self):
@@ -149,6 +153,18 @@ class MiniCPMV4_6Converter(Qwen3_5Converter):
             extra_args = [f'--quantize {vit_q}', '--quant_output']
             self.submit_deploy_task(name, extra_args, dynamic=True)
 
+    @override
+    def load_pretrained(self, config):
+        # 4.7 GPTQ: config tie_word_embeddings=False (lm_head untied), but the
+        # checkpoint does not physically store lm_head.weight — HF falls back
+        # to tied embedding at runtime. Force tie so LlmConverter reads the
+        # embedding as lm_head and merges the two nets (identical result).
+        if getattr(config, "version", None) == 4.7:
+            config.tie_word_embeddings = True
+            if hasattr(config, "text_config"):
+                config.text_config.tie_word_embeddings = True
+        super().load_pretrained(config)
+
     # ======================== _build_vit (shared builder) ========================
 
     def _build_vit(self, mode):
@@ -198,9 +214,7 @@ class MiniCPMV4_6Converter(Qwen3_5Converter):
 
         # Output shape: final merger output
         merged_d = D * 4
-        out_shapes = [
-            [merger_N_out, D_text],
-        ]
+        out_shapes = [[merger_N_out, D_text]]
 
         vit_mlir = MLIRImporter(in_shapes,
                                 out_shapes,
@@ -471,38 +485,77 @@ class MiniCPMV4_6Converter(Qwen3_5Converter):
                                  win_hidden,
                                  force_bias=True)
 
-            # 5. Reshape back: [N_win,4,D] → [N,D]
+            # Reshape window attn out to window-order [N, D] (before residual add).
             out_flat = top.ReshapeOp(T([N, D]),
                                      out_op,
                                      shape=[-1, D],
                                      loc=L(f"{vm}.reshape_back"),
                                      ip=ip).output
 
-            # 6. Reverse reorder: [N, D] gather axis=0
-            restored = top.GatherOp(T([N, D]),
-                                    out_flat,
-                                    rev_idx_op,
-                                    axis=0,
-                                    loc=L(f"{vm}.gather_reverse"),
-                                    ip=ip).output
+            # 5/6. Reorder + residual add, then 2x2 spatial concat.
+            #
+            # 4.6 (original): reverse-restore attn out to raster order, add
+            #   residual in raster order, then gather again to window order.
+            # 4.7 (version 4.7): gather residual to window order, add there,
+            #   no reverse gather (window order is already 2x2 grouped).
+            if self.is_v47:
+                # 4.7 math: gather residual to window order, add there, no
+                # reverse gather.  But we still consume rev_idx_op via a dummy
+                # identity gather to keep the input alive and preserve the
+                # input order expected by the runtime (same as 4.6).
+                rev_dummy = top.GatherOp(T([N, D]),
+                                         in_op,
+                                         rev_idx_op,
+                                         axis=0,
+                                         loc=L(f"{vm}.reverse_dummy"),
+                                         ip=ip).output
+                residual_w = top.GatherOp(T([N, D]),
+                                          rev_dummy,
+                                          win_idx_op,
+                                          axis=0,
+                                          loc=L(f"{vm}.residual.gather"),
+                                          ip=ip).output
+                attn_result = top.AddOp(T([N, D]), [residual_w, out_flat],
+                                        loc=L(f"{vm}.residual.add"),
+                                        ip=ip).output
+                concat_out = top.ReshapeOp(T([N_win, win_d]),
+                                           attn_result,
+                                           shape=[-1, win_d],
+                                           loc=L(f"{vm}.reshape_2x2"),
+                                           ip=ip).output
+            else:
+                # 4.6: Reshape back: [N_win,4,D] → [N,D]
+                out_flat_46 = top.ReshapeOp(T([N, D]),
+                                            out_op,
+                                            shape=[-1, D],
+                                            loc=L(f"{vm}.reshape_back"),
+                                            ip=ip).output
 
-            # 7. Residual add: [N, D] + [N, D]
-            attn_result = top.AddOp(T([N, D]), [in_op, restored],
-                                    loc=L(f"{vm}.residual.add"),
-                                    ip=ip).output
+                # Reverse reorder: [N, D] gather axis=0
+                restored = top.GatherOp(T([N, D]),
+                                        out_flat_46,
+                                        rev_idx_op,
+                                        axis=0,
+                                        loc=L(f"{vm}.gather_reverse"),
+                                        ip=ip).output
 
-            # 8. 2×2 spatial concat: [N,D] → [N_win, 4*D]
-            gathered = top.GatherOp(T([N, D]),
-                                    attn_result,
-                                    win_idx_op,
-                                    axis=0,
-                                    loc=L(f"{vm}.gather_2x2"),
-                                    ip=ip).output
-            concat_out = top.ReshapeOp(T([N_win, win_d]),
-                                       gathered,
-                                       shape=[-1, win_d],
-                                       loc=L(f"{vm}.reshape_2x2"),
-                                       ip=ip).output
+                # Residual add: [N, D] + [N, D]
+                attn_result = top.AddOp(T([N, D]), [in_op, restored],
+                                        loc=L(f"{vm}.residual.add"),
+                                        ip=ip).output
+
+                # 2×2 spatial concat: [N,D] → [N_win, 4*D]
+                gathered = top.GatherOp(T([N, D]),
+                                        attn_result,
+                                        win_idx_op,
+                                        axis=0,
+                                        loc=L(f"{vm}.gather_2x2"),
+                                        ip=ip).output
+                concat_out = top.ReshapeOp(T([N_win, win_d]),
+                                           gathered,
+                                           shape=[-1, win_d],
+                                           loc=L(f"{vm}.reshape_2x2"),
+                                           ip=ip).output
 
             # 9. mean_residual: [N,D] → reorder → [N_win,4,D] → mean → [N_win,D]
             mean_gathered = top.GatherOp(T([N, D]),
