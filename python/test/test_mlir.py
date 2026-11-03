@@ -146,6 +146,8 @@ class MLIR_IR_TESTER(object):
             "a16gather": (self.test_a16gather, Y, Y, Y),
             "chunk_gated_delta_rule": (self.test_chunk_gated_delta_rule, Y, Y, Y),
             "recurrent_gated_delta_rule": (self.test_recurrent_gated_delta_rule, Y, Y, Y),
+            "recurrent_gated_delta_rule_state_out":
+            (self.test_recurrent_gated_delta_rule_state_out, Y, Y, Y),
             "concat_slice": (self.test_concat_slice, Y, Y, Y),
             "softplus_mul": (self.test_softplus_mul, Y, Y, Y),
             "softmax_topk": (self.test_softmax_topk, Y, Y, Y),
@@ -1787,7 +1789,19 @@ class MLIR_IR_TESTER(object):
         self._deploy_test_case(case_name, tolerance=(0.9, 0.8))
 
     def test_recurrent_gated_delta_rule(self, case_name):
-        """Test case: RecurrentGatedDeltaRule operator."""
+        """Test case: RecurrentGatedDeltaRule operator (in-place state update)."""
+        self._test_recurrent_gated_delta_rule(case_name, state_out=False)
+
+    def test_recurrent_gated_delta_rule_state_out(self, case_name):
+        """Test case: RecurrentGatedDeltaRule with explicit new_state output.
+
+        Two steps are chained in one graph: step 2 consumes the new_state of
+        step 1, which is only correct if the kernel writes the updated state to
+        the separate output instead of overwriting the input in place.
+        """
+        self._test_recurrent_gated_delta_rule(case_name, state_out=True)
+
+    def _test_recurrent_gated_delta_rule(self, case_name, state_out: bool):
         B = 1
         num_qk_heads = 16
         num_v_heads = 16
@@ -1803,33 +1817,67 @@ class MLIR_IR_TESTER(object):
             [B, num_v_heads, D, D],  # recurrent_state
         ]
         weight_shapes = []
-        output_shapes = [
-            [B, 1, num_v_heads, D],  # attn_out
-        ]
+        if state_out:
+            output_shapes = [
+                [B, 1, num_v_heads, D],  # attn_out (step 2)
+                [B, num_v_heads, D, D],  # new_state (step 2)
+            ]
+        else:
+            output_shapes = [
+                [B, 1, num_v_heads, D],  # attn_out
+            ]
 
         # Create MLIR importer
         block_mlir, input_ops, weight_ops, ip = self._create_mlir_importer(
             case_name, input_shapes, weight_shapes, output_shapes, ["F32"] * len(input_shapes))
 
         q_op, k_op, v_op, g_op, beta_op, state_op = input_ops
+        attn_type = self._T(block_mlir, [B, 1, num_v_heads, D])
+        state_type = self._T(block_mlir, [B, num_v_heads, D, D])
+        common = dict(num_k_heads=num_qk_heads,
+                      num_v_heads=num_v_heads,
+                      d=D,
+                      use_qk_l2norm=True,
+                      scale=scale,
+                      ip=ip)
 
-        op = top.RecurrentGatedDeltaRuleOp(self._T(block_mlir, output_shapes[0]),
-                                           q_op,
-                                           k_op,
-                                           v_op,
-                                           g_op,
-                                           beta_op,
-                                           state_op,
-                                           num_k_heads=num_qk_heads,
-                                           num_v_heads=num_v_heads,
-                                           d=D,
-                                           use_qk_l2norm=True,
-                                           scale=scale,
-                                           loc=self._L(block_mlir, "recurrent_gated_delta_rule"),
-                                           ip=ip).attn_out
-
-        # Create return operation
-        block_mlir.create_return_op([op])
+        if state_out:
+            step1 = top.RecurrentGatedDeltaRuleOp(attn_type,
+                                                  state_type,
+                                                  q_op,
+                                                  k_op,
+                                                  v_op,
+                                                  g_op,
+                                                  beta_op,
+                                                  state_op,
+                                                  loc=self._L(block_mlir,
+                                                              ["recurrent_step1", "state_step1"]),
+                                                  **common)
+            step2 = top.RecurrentGatedDeltaRuleOp(attn_type,
+                                                  state_type,
+                                                  k_op,
+                                                  q_op,
+                                                  v_op,
+                                                  g_op,
+                                                  beta_op,
+                                                  step1.new_state,
+                                                  loc=self._L(block_mlir,
+                                                              ["recurrent_step2", "state_step2"]),
+                                                  **common)
+            block_mlir.create_return_op([step2.attn_out, step2.new_state])
+        else:
+            op = top.RecurrentGatedDeltaRuleOp(attn_type,
+                                               block_mlir.get_tensor_type(None),
+                                               q_op,
+                                               k_op,
+                                               v_op,
+                                               g_op,
+                                               beta_op,
+                                               state_op,
+                                               loc=self._L(block_mlir,
+                                                           "recurrent_gated_delta_rule"),
+                                               **common).attn_out
+            block_mlir.create_return_op([op])
 
         # Generate input data with appropriate ranges
         inputs = {

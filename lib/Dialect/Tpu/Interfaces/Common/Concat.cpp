@@ -211,6 +211,19 @@ bool tpu::ConcatOp::SupportInplace() {
     // 1684 4N mode not support
     return false;
   }
+  if (module::isAddrMode(module::AddrMode::IO_ALONE)) {
+    // In io_alone mode the network outputs get their fixed IO addresses before
+    // the common tensors are allocated, and assignAfter() skips an only_merge
+    // concat whose output is already addressed, so its operands (which carry
+    // tensor_size 0 in the live range) would never be placed inside the output
+    // buffer and end up aliasing unrelated live tensors. Keep such a concat as
+    // a real copy.
+    for (auto user : getOutput().getUsers()) {
+      if (isa<ReturnOp>(user)) {
+        return false;
+      }
+    }
+  }
 
   auto shape = module::getShape(getOutput());
   int outer_dim = std::accumulate(shape.begin(), shape.begin() + getAxis(), 1,

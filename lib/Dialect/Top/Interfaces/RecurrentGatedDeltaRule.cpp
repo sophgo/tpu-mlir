@@ -141,15 +141,25 @@ LogicalResult top::RecurrentGatedDeltaRuleOp::inference(InferenceParameter &p) {
     }
   }
 
+  // Optional explicit state output (otherwise the backend updates in place).
+  if (!module::isNone(getNewState()) && p.outputs.size() > 1 &&
+      p.outputs[1] != nullptr) {
+    std::memcpy(p.outputs[1], state.data(), state_total * sizeof(float));
+  }
+
   return success();
 }
 
-// if keep_dims, output shape = input shape
-// else input = [1, M_q, q_head, d], output = [1, M_q, q_head*d]
+// attn_out: [B, 1, num_v_heads, d]; new_state (optional): same as
+// recurrent_state [B, num_v_heads, d, d]
 void top::RecurrentGatedDeltaRuleOp::shape_inference() {
 
   auto shape = module::getShape(getValue());
   std::vector<int64_t> o_shape = {shape[0], 1, (int64_t)getNumVHeads(),
                                   (int64_t)getD()};
   module::setShapeOrVerify(getAttnOut(), o_shape);
+  if (!module::isNone(getNewState())) {
+    auto state_shape = module::getShape(getRecurrentState());
+    module::setShapeOrVerify(getNewState(), state_shape);
+  }
 }

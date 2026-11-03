@@ -117,6 +117,12 @@ class LlmList:
     # ===============================
     NORM = "NORM"
     LMHEAD = "LMHEAD"
+    # NextN / MTP (multi-token prediction) draft head
+    MTP_LAYERS = "MTP_LAYERS"
+    MTP_FC = "MTP_FC"
+    MTP_PRE_FC_NORM_EMBED = "MTP_PRE_FC_NORM_EMBED"
+    MTP_PRE_FC_NORM_HIDDEN = "MTP_PRE_FC_NORM_HIDDEN"
+    MTP_NORM = "MTP_NORM"
 
 
 class ModelInfo:
@@ -375,6 +381,12 @@ QWEN3VL_INFO = ModelInfo(
         # ================================
         LlmList.NORM: "model.language_model.norm",
         LlmList.LMHEAD: "lm_head",
+        # ========= NextN / MTP draft head (Qwen3.5) =============
+        LlmList.MTP_LAYERS: "mtp.layers",
+        LlmList.MTP_FC: "mtp.fc",
+        LlmList.MTP_PRE_FC_NORM_EMBED: "mtp.pre_fc_norm_embedding",
+        LlmList.MTP_PRE_FC_NORM_HIDDEN: "mtp.pre_fc_norm_hidden",
+        LlmList.MTP_NORM: "mtp.norm",
     })
 
 LFM2_INFO = ModelInfo(

@@ -72,11 +72,14 @@ Outputs:
   core_attn_out:        [B, 1, num_v_heads, d]
   last_recurrent_state: [B, num_v_heads, d, d]  (updated in-place)
 */
+// ptr_new_state: where the updated state is written. The caller passes the
+// same address as ptr_last_recurrent_state for in-place update, or a separate
+// buffer when the op has an explicit new_state output.
 template <typename T>
 void recurrent_gated_delta_rule_kernel(
-    T *ptr_core_attn_out, T *ptr_last_recurrent_state, T *ptr_Q, T *ptr_K,
-    T *ptr_V, T *ptr_g, T *ptr_beta, int B, float scale, int core_num,
-    const int num_k_heads, const int num_v_heads, const int d,
+    T *ptr_core_attn_out, T *ptr_new_state, T *ptr_last_recurrent_state,
+    T *ptr_Q, T *ptr_K, T *ptr_V, T *ptr_g, T *ptr_beta, int B, float scale,
+    int core_num, const int num_k_heads, const int num_v_heads, const int d,
     const int use_qk_l2norm, const int block_h) {
   int core_index = get_core_index();
   if (core_index >= core_num) {
@@ -105,6 +108,7 @@ void recurrent_gated_delta_rule_kernel(
   auto g_beta = gtensor<T>(shape_gb_g, GLOBAL, ptr_beta);
   auto g_out = gtensor<T>(shape_out_g, GLOBAL, ptr_core_attn_out);
   auto g_state = gtensor<T>(shape_state_g, GLOBAL, ptr_last_recurrent_state);
+  auto g_new_state = gtensor<T>(shape_state_g, GLOBAL, ptr_new_state);
 
   // Local (SRAM) block allocation shapes — upper bounds for make_tensor
   // real shapes are narrowed inside the loop when the tail block is smaller
@@ -300,9 +304,9 @@ void recurrent_gated_delta_rule_kernel(
       dma::store(g_out.sub_view(out_shape, out_offset).view(v_real_shape),
                  kv_mem);
 
-      // Store updated state: [real_v_block_h, d, 1, d] -> g_state[b_idx,
-      // h_v_idx, 0, 0]
-      dma::store(g_state.sub_view(cur_state_global_shape, state_offset)
+      // Store updated state: [real_v_block_h, d, 1, d] -> g_new_state[b_idx,
+      // h_v_idx, 0, 0] (aliases g_state when updating in place)
+      dma::store(g_new_state.sub_view(cur_state_global_shape, state_offset)
                      .view(state_real_shape),
                  state_result);
     }
@@ -310,25 +314,25 @@ void recurrent_gated_delta_rule_kernel(
 }
 
 __KERNEL__ void recurrent_gated_delta_rule_bf16(
-    bf16 *ptr_core_attn_out, bf16 *ptr_last_recurrent_state, bf16 *ptr_Q,
-    bf16 *ptr_K, bf16 *ptr_V, bf16 *ptr_g, bf16 *ptr_beta, int B, float scale,
-    int core_num, const int num_k_heads, const int num_v_heads, const int d,
-    const int use_qk_l2norm, const int block_h) {
+    bf16 *ptr_core_attn_out, bf16 *ptr_new_state, bf16 *ptr_last_recurrent_state,
+    bf16 *ptr_Q, bf16 *ptr_K, bf16 *ptr_V, bf16 *ptr_g, bf16 *ptr_beta, int B,
+    float scale, int core_num, const int num_k_heads, const int num_v_heads,
+    const int d, const int use_qk_l2norm, const int block_h) {
   recurrent_gated_delta_rule_kernel<bf16>(
-      ptr_core_attn_out, ptr_last_recurrent_state, ptr_Q, ptr_K, ptr_V, ptr_g,
-      ptr_beta, B, scale, core_num, num_k_heads, num_v_heads, d, use_qk_l2norm,
-      block_h);
+      ptr_core_attn_out, ptr_new_state, ptr_last_recurrent_state, ptr_Q, ptr_K,
+      ptr_V, ptr_g, ptr_beta, B, scale, core_num, num_k_heads, num_v_heads, d,
+      use_qk_l2norm, block_h);
 }
 
 __KERNEL__ void recurrent_gated_delta_rule_f16(
-    fp16 *ptr_core_attn_out, fp16 *ptr_last_recurrent_state, fp16 *ptr_Q,
-    fp16 *ptr_K, fp16 *ptr_V, fp16 *ptr_g, fp16 *ptr_beta, int B, float scale,
-    int core_num, const int num_k_heads, const int num_v_heads, const int d,
-    const int use_qk_l2norm, const int block_h) {
+    fp16 *ptr_core_attn_out, fp16 *ptr_new_state, fp16 *ptr_last_recurrent_state,
+    fp16 *ptr_Q, fp16 *ptr_K, fp16 *ptr_V, fp16 *ptr_g, fp16 *ptr_beta, int B,
+    float scale, int core_num, const int num_k_heads, const int num_v_heads,
+    const int d, const int use_qk_l2norm, const int block_h) {
   recurrent_gated_delta_rule_kernel<fp16>(
-      ptr_core_attn_out, ptr_last_recurrent_state, ptr_Q, ptr_K, ptr_V, ptr_g,
-      ptr_beta, B, scale, core_num, num_k_heads, num_v_heads, d, use_qk_l2norm,
-      block_h);
+      ptr_core_attn_out, ptr_new_state, ptr_last_recurrent_state, ptr_Q, ptr_K,
+      ptr_V, ptr_g, ptr_beta, B, scale, core_num, num_k_heads, num_v_heads, d,
+      use_qk_l2norm, block_h);
 }
 
 __TEST__ void recurrent_gated_delta_rule_test() {
@@ -365,8 +369,11 @@ __TEST__ void recurrent_gated_delta_rule_test() {
   ppl::read_npz(ptr_last_recurrent_state,
                 "recurrent_gated_delta_rule_input.npz", "in5");
 
-  recurrent_gated_delta_rule_bf16(ptr_core_attn_out, ptr_last_recurrent_state,
-                                  ptr_Q, ptr_K, ptr_V, ptr_g, ptr_beta, B,
-                                  scale, core_num, num_k_heads, num_v_heads, d,
-                                  use_qk_l2norm, block_h);
+  auto ptr_new_state = malloc<bf16>(&last_recurrent_state_shape);
+
+  recurrent_gated_delta_rule_bf16(ptr_core_attn_out, ptr_new_state,
+                                  ptr_last_recurrent_state, ptr_Q, ptr_K, ptr_V,
+                                  ptr_g, ptr_beta, B, scale, core_num,
+                                  num_k_heads, num_v_heads, d, use_qk_l2norm,
+                                  block_h);
 }

@@ -24,6 +24,7 @@ void tpu::RecurrentGatedDeltaRuleOp::codegen_global_bm1684x() {
   param.d = getD();
   param.use_qk_l2norm = getUseQkL2norm();
   param.scale = static_cast<float>(getScale().convertToDouble());
+  param.has_state_out = module::isNone(getNewState()) ? 0 : 1;
   BM168x::call_ppl_global_func("api_recurrent_gated_delta_rule_global", &param,
                                sizeof(param), input_spec->data(),
                                output_spec->data());
@@ -47,6 +48,7 @@ tpu::RecurrentGatedDeltaRuleOp::dyn_codegen_global_bm1684x(void *buffer) {
   param.d = getD();
   param.use_qk_l2norm = getUseQkL2norm();
   param.scale = static_cast<float>(getScale().convertToDouble());
+  param.has_state_out = module::isNone(getNewState()) ? 0 : 1;
   return BM168x::call_ppl_dyn_func("api_dyn_recurrent_gated_delta_rule_global",
                                    &param, input_spec->data(),
                                    output_spec->data(), buffer);

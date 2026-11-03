@@ -6,6 +6,7 @@
 # ==============================================================================
 import torch
 import os
+import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -67,6 +68,12 @@ class LlmConverter(BaseConverter):
         self.only_mlir = args.only_mlir
         self.lora_rank = args.lora_max_rank
         self.do_lora = self.lora_rank > 0
+        # MTP (multi-token prediction / NextN) speculative decoding support.
+        # mtp_k = draft_len + 1 is the number of tokens verified per step.
+        self.do_mtp = bool(getattr(args, "mtp", False))
+        self.mtp_draft_len = int(getattr(args, "mtp_draft_len", 1) or 1)
+        self.mtp_k = self.mtp_draft_len + 1
+        self.mtp_vocab_size = int(getattr(args, "mtp_vocab_size", 0) or 0)
         self.rmsnorm_type = WeightType.RMSNORM
         self.platform = Platform.LLM
         self.lmhead_with_topk = False if args.do_sample or self.do_lora else True
@@ -100,13 +107,14 @@ class LlmConverter(BaseConverter):
         batch_str = f"_{self.batch}b" if self.batch > 1 else ""
         history_str = f"_history" if self.use_history_kv else ""
         llm_only_str = "_llm_only" if getattr(args, "llm_only", False) else ""
+        mtp_str = f"_mtp{self.mtp_draft_len}" if self.do_mtp else ""
         if self.only_mlir:
             folder_name = f"tmp_mlir_analyse"
         elif args.chip == "bm1684x":
-            folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_device}dev{batch_str}{history_str}{llm_only_str}"
+            folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_device}dev{batch_str}{history_str}{llm_only_str}{mtp_str}"
             folder_name += "_dynamic" if args.dynamic else "_static"
         else:
-            folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_core}core{batch_str}{history_str}{llm_only_str}"
+            folder_name = f"{self.model_name}_{self.quantize}_seq{self.seq_length}_{self.chip}_{self.num_core}core{batch_str}{history_str}{llm_only_str}{mtp_str}"
             folder_name += "_dynamic" if args.dynamic else "_static"
         self.out_bmodel = os.path.join(self.out_dir, f"{folder_name}_{timestamp}.bmodel")
         self.bmodel_dir = os.path.join(self.out_dir, folder_name)
@@ -187,6 +195,27 @@ class LlmConverter(BaseConverter):
 
     def gen_config(self):
         self.loader.gen_config(self)
+        if self.do_mtp:
+            self._patch_config_for_mtp()
+
+    def _patch_config_for_mtp(self):
+        """Record the MTP compile settings in config.json so the runtime demo can
+        read the draft length / draft vocab without probing the bmodel."""
+        config_path = os.path.join(self.config_dir, "config.json")
+        if not os.path.exists(config_path):
+            return
+        with open(config_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        target = data.get("text_config", data)
+        target["mtp_num_hidden_layers"] = int(
+            getattr(self.llm_config, "mtp_num_hidden_layers", 1) or 1)
+        data["tpu_mtp"] = {
+            "draft_len": self.mtp_draft_len,
+            "verify_len": self.mtp_k,
+            "vocab_size": self.mtp_vocab_size if self.mtp_vocab_size > 0 else self.vocab_size,
+        }
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
 
     def check_experts_gate_up(self, path):
         numbers = list(re.finditer(r'\d+', path))
@@ -332,6 +361,8 @@ class LlmConverter(BaseConverter):
         self.all_gen_mlirs.append(self.gen_embedding_lmhead_mlir)
         if not self.lmhead_with_topk:
             self.all_gen_mlirs.append(self.gen_sample_head_mlir)
+        if self.do_mtp:
+            self.all_gen_mlirs.append(self.gen_mtp_mlir)
         if not self.only_mlir:
             for i in range(self.num_layers):
                 self.all_gen_mlirs.append(lambda i=i: self.gen_block_mlir(i))
@@ -828,19 +859,19 @@ class LlmConverter(BaseConverter):
             self.save_mlir_module(lora_mlir, name)
 
         # gen lm_head mlir
-        def gen_lm_head():
-            name = "lm_head"
-            out_shape = [[1, self.vocab_size]]
+        def gen_lm_head(name="lm_head", rows=1, vocab=None, npz=lmhead_npz):
+            vocab = vocab or self.vocab_size
+            out_shape = [[rows, vocab]]
             if self.lmhead_with_topk:
-                out_shape = [[1, 1]]
-            lmhead_mlir = MLIRImporter([[1, self.hidden_size]],
+                out_shape = [[rows, 1]]
+            lmhead_mlir = MLIRImporter([[rows, self.hidden_size]],
                                        out_shape,
                                        name,
                                        self.platform,
-                                       weight_file=f"../{lmhead_npz}")
+                                       weight_file=f"../{npz}")
             input_op = lmhead_mlir.create_input_op(self.get_loc("hidden_states", lmhead_mlir), 0)
             if self.llm_type == LlmType.MINICPM4:
-                input_op = top.MulConstOp(lmhead_mlir.get_tensor_type([1, self.hidden_size]),
+                input_op = top.MulConstOp(lmhead_mlir.get_tensor_type([rows, self.hidden_size]),
                                           input_op,
                                           const_val=self.dim_model_base / self.hidden_size,
                                           loc=self.get_loc(lmhead + ".scale", lmhead_mlir),
@@ -849,9 +880,12 @@ class LlmConverter(BaseConverter):
                 weight_op = lmhead_mlir.create_weight_op(norm_path, [1, self.hidden_size])
                 input_op = self.rms_norm(lmhead_mlir, input_op, norm)
 
-            w_shape = [self.vocab_size, self.hidden_size]
+            # weight stays [vocab, H] as the left operand so its memory layout is
+            # identical to the embedding table (tied weights are deduplicated by
+            # model_tool --combine).
+            w_shape = [vocab, self.hidden_size]
             weight_op = lmhead_mlir.create_weight_op(lmhead + ".weight", w_shape)
-            lmhead_op = top.MatMulOp(lmhead_mlir.get_tensor_type([self.vocab_size, 1]),
+            lmhead_op = top.MatMulOp(lmhead_mlir.get_tensor_type([vocab, rows]),
                                      weight_op,
                                      input_op,
                                      lmhead_mlir.none_op,
@@ -859,25 +893,32 @@ class LlmConverter(BaseConverter):
                                      right_transpose=True,
                                      loc=self.get_loc(lmhead, lmhead_mlir),
                                      ip=lmhead_mlir.insert_point).output
-            lmhead_op = top.ReshapeOp(lmhead_mlir.get_tensor_type([1, self.vocab_size]),
-                                      lmhead_op,
-                                      loc=self.get_loc(lmhead + ".reshape", lmhead_mlir),
-                                      ip=lmhead_mlir.insert_point).output
+            if rows == 1:
+                lmhead_op = top.ReshapeOp(lmhead_mlir.get_tensor_type([1, vocab]),
+                                          lmhead_op,
+                                          loc=self.get_loc(lmhead + ".reshape", lmhead_mlir),
+                                          ip=lmhead_mlir.insert_point).output
+            else:
+                lmhead_op = top.PermuteOp(lmhead_mlir.get_tensor_type([rows, vocab]),
+                                          lmhead_op,
+                                          order=[1, 0],
+                                          loc=self.get_loc(lmhead + ".permute", lmhead_mlir),
+                                          ip=lmhead_mlir.insert_point).output
             # Gemma4 logit softcapping
             if self.llm_type == LlmType.GEMMA4:
                 softcap = getattr(self.llm_config, 'final_logit_softcapping', None)
                 if softcap is not None:
-                    lmhead_op = top.MulConstOp(lmhead_mlir.get_tensor_type([1, self.vocab_size]),
+                    lmhead_op = top.MulConstOp(lmhead_mlir.get_tensor_type([rows, vocab]),
                                                lmhead_op,
                                                const_val=1.0 / softcap,
                                                loc=self.get_loc(lmhead + ".softcap_div",
                                                                 lmhead_mlir),
                                                ip=lmhead_mlir.insert_point).output
-                    lmhead_op = top.TanhOp(lmhead_mlir.get_tensor_type([1, self.vocab_size]),
+                    lmhead_op = top.TanhOp(lmhead_mlir.get_tensor_type([rows, vocab]),
                                            lmhead_op,
                                            loc=self.get_loc(lmhead + ".softcap_tanh", lmhead_mlir),
                                            ip=lmhead_mlir.insert_point).output
-                    lmhead_op = top.MulConstOp(lmhead_mlir.get_tensor_type([1, self.vocab_size]),
+                    lmhead_op = top.MulConstOp(lmhead_mlir.get_tensor_type([rows, vocab]),
                                                lmhead_op,
                                                const_val=softcap,
                                                loc=self.get_loc(lmhead + ".softcap_mul",
@@ -885,7 +926,7 @@ class LlmConverter(BaseConverter):
                                                ip=lmhead_mlir.insert_point).output
 
             if self.lmhead_with_topk:
-                topk_op = top.TopKOp(*lmhead_mlir.get_tensor_type([[1, 1], [1, 1]]),
+                topk_op = top.TopKOp(*lmhead_mlir.get_tensor_type([[rows, 1], [rows, 1]]),
                                      lmhead_op,
                                      axis=1,
                                      K=1,
@@ -948,7 +989,18 @@ class LlmConverter(BaseConverter):
         if not self.embedding_disk:
             gen_embedding_by_length("embedding", self.max_input_length)
             gen_embedding_by_length("embedding_cache", 1)
-        gen_lm_head()
+        if self.do_mtp:
+            # Trunk verify head: full vocabulary, K rows. Draft head: one row,
+            # optionally the first mtp_vocab_size token ids.
+            gen_lm_head(rows=self.mtp_k)
+            if self.mtp_vocab_size > 0:
+                mtp_lmhead_npz = "mtp_lm_head_top_weights.npz"
+                np.savez(mtp_lmhead_npz, **{lmhead_path: lmhead_data[:self.mtp_vocab_size]})
+                gen_lm_head("mtp_lm_head", rows=1, vocab=self.mtp_vocab_size, npz=mtp_lmhead_npz)
+            else:
+                gen_lm_head("mtp_lm_head", rows=1)
+        else:
+            gen_lm_head()
         if self.do_lora:
             gen_embedding_lora_by_length("embedding_lora", self.max_input_length)
             gen_embedding_lora_by_length("embedding_cache_lora", 1)
@@ -1781,6 +1833,12 @@ class LlmConverter(BaseConverter):
             num_split += 1
         return num_split
 
+    def gen_mtp_mlir(self):
+        """Generate the MTP (NextN draft head) nets ``mtp_block`` /
+        ``mtp_block_cache``. Only converters whose model ships an MTP head
+        override this; the default rejects ``--mtp``."""
+        raise NotImplementedError(f"--mtp is not supported for {self.llm_type}")
+
     def gen_block_mlir(self, idx: int):
         return self._gen_block_mlir_impl(idx)
 
@@ -2460,6 +2518,75 @@ class LlmConverter(BaseConverter):
             '--quant_input',
         ])
 
+    def compile_mtp_lm_head(self):
+        name = "mtp_lm_head"
+        if self.register_bmodel(name):
+            return
+        self.submit_deploy_task(name, [
+            f'--quantize {self.half_precision_quantize}',
+            '--quant_input',
+        ])
+
+    def compile_lm_head_full(self):
+        # full-vocab fallback verify head for the truncated-vocab MTP path:
+        # the runtime launches it only when a verify token is out of range.
+        # Its weight is the tied-embedding prefix of lm_head's (identical
+        # bytes), so model_tool --combine dedups it and the bmodel stores
+        # one copy.
+        name = "lm_head_full"
+        if self.register_bmodel(name, with_size=False):
+            return
+        self.submit_deploy_task(name, [
+            f'--quantize {self.half_precision_quantize}',
+            '--quant_input',
+        ])
+
+    def compile_mtp(self):
+        """Compile the MTP draft-head nets (``mtp_block`` prefill, ``mtp_block_cache``
+        decode). Both share ``mtp_top_weights.npz`` and use the same GGUF-aware
+        quantize args as the trunk blocks (pseudo layer id ``"mtp"``)."""
+        quantize_param = self.quantize
+        extra_deploy_args = []
+        if isinstance(self.loader, GGUFModelHandle):
+            quantize_param, extra_deploy_args = self.loader.compile_block_args(self, "mtp")
+        base_args = [f'--quantize {quantize_param}']
+        if not isinstance(self.loader, GGUFModelHandle):
+            base_args.append(f'--q_group_size {self.q_group_size}')
+        common = base_args + extra_deploy_args + ['--quant_input', '--quant_output']
+        symmetric = self._get_block_symmetric("mtp")
+        name = "mtp_block"
+        if not self.register_bmodel(name, with_size=False):
+            self.submit_deploy_task(name, common, symmetric=symmetric, dynamic=True)
+        name = "mtp_block_cache"
+        if not self.register_bmodel(name):
+            self.submit_deploy_task(name, common, symmetric=symmetric, addr_mode='io_alone')
+
+    def compile_block_verify(self, layer_id):
+        """Compile ``block_verify_{layer_id}`` (K-token speculative verification
+        net). Shares the block weight file; weights are counted once via
+        ``block_cache``. No ``--same_addr``: the state inputs must stay intact so
+        the runtime can pick one of the per-step state outputs to commit."""
+        name = f"block_verify_{layer_id}"
+        if not os.path.exists(os.path.join(name, f"{name}.mlir")):
+            return
+        if self.register_bmodel(name, with_size=False):
+            return
+        quantize_param = self.quantize
+        extra_deploy_args = []
+        if isinstance(self.loader, GGUFModelHandle):
+            quantize_param, extra_deploy_args = self.loader.compile_block_args(self,
+                                                                               layer_id,
+                                                                               is_cache=True)
+        base_args = [f'--quantize {quantize_param}']
+        if not isinstance(self.loader, GGUFModelHandle):
+            base_args.append(f'--q_group_size {self.q_group_size}')
+        self.submit_deploy_task(
+            name,
+            base_args + extra_deploy_args + ['--quant_input', '--quant_output'],
+            symmetric=self._get_block_symmetric(layer_id),
+            addr_mode='io_alone',
+        )
+
     def compile_greedy_head(self):
         name = "greedy_head"
         if self.register_bmodel(name):
@@ -2758,6 +2885,9 @@ class LlmConverter(BaseConverter):
                 lambda: self.compile_common("embedding_cache_lora", with_size=False, io_alone=True))
 
         self.all_compiles.append(self.compile_lm_head)
+        if self.do_mtp:
+            self.all_compiles.append(self.compile_mtp_lm_head)
+            self.all_compiles.append(self.compile_mtp)
 
         if not self.lmhead_with_topk:
             self.all_compiles.append(self.compile_greedy_head)
@@ -2769,12 +2899,18 @@ class LlmConverter(BaseConverter):
                 self.all_compiles.append(lambda i=i: self.compile_block_cache(i))
                 if self.use_history_kv:
                     self.all_compiles.append(lambda i=i: self.compile_block_kv(i))
+                if self.do_mtp:
+                    self.all_compiles.append(lambda i=i: self.compile_block_verify(i))
         else:
             self.all_compiles.append(lambda i=0: self.compile_block(i))
             self.all_compiles.append(lambda i=0: self.compile_block_cache(i))
+            if self.do_mtp:
+                self.all_compiles.append(lambda i=0: self.compile_block_verify(i))
             if self.llm_type in (LlmType.QWEN3_5, LlmType.QWEN3_5_MOE):
                 self.all_compiles.append(lambda i=3: self.compile_block(i))
                 self.all_compiles.append(lambda i=3: self.compile_block_cache(i))
+                if self.do_mtp:
+                    self.all_compiles.append(lambda i=3: self.compile_block_verify(i))
         for func in self.all_compiles:
             func()
 

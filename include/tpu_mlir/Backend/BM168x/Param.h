@@ -2484,6 +2484,9 @@ typedef struct recurrent_gated_delta_rule_spec {
   int d;
   bool use_qk_l2norm;
   float scale;
+  // 1: the op has an explicit new_state output (out_spec[1]); the input state
+  // is left untouched. 0: update recurrent_state (in_spec[5]) in place.
+  int has_state_out;
 } recurrent_gated_delta_rule_spec_t;
 
 typedef struct w8a8_block_matmul_spec {

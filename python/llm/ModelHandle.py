@@ -692,7 +692,10 @@ def create_gguf_config(gguf_reader,
     head_dim = key_len if key_len else (hidden_size //
                                         num_attention_heads if num_attention_heads else 64)
     intermediate_size = ffn if ffn else 3072
-    num_hidden_layers = layers if layers else 28
+    # GGUF `block_count` includes NextN/MTP draft layers (if any); the trunk
+    # layer count is block_count - nextn_predict_layers.
+    nextn_layers = int(get_val(f"{architecture}.nextn_predict_layers") or 0)
+    num_hidden_layers = (layers - nextn_layers) if layers else 28
     rms_norm_eps = eps if eps else 1e-6
     rope_theta = rope if rope else 1000000.0
     if vocab is None:
@@ -805,12 +808,22 @@ def create_gguf_config(gguf_reader,
         ssm_conv_kernel = get_val(f"{architecture}.ssm.conv_kernel") or 4
         ssm_state_size = get_val(f"{architecture}.ssm.state_size") or 128
         ssm_group_count = get_val(f"{architecture}.ssm.group_count") or 16
+        # llama.cpp (Qwen3Next / Qwen3.5 converter) stores:
+        #   ssm.group_count    = linear_num_key_heads
+        #   ssm.time_step_rank = linear_num_value_heads
+        #   ssm.inner_size     = linear_num_value_heads * linear_value_head_dim
+        # Qwen3.5 has more value heads than key heads (e.g. 32 vs 16), so the
+        # value-head count must not be taken from group_count.
+        ssm_num_v_heads = get_val(f"{architecture}.ssm.time_step_rank")
+        if not ssm_num_v_heads:
+            ssm_inner = get_val(f"{architecture}.ssm.inner_size")
+            ssm_num_v_heads = (ssm_inner // ssm_state_size) if ssm_inner else ssm_group_count
         extra_kwargs["full_attention_interval"] = full_attention_interval
         extra_kwargs["linear_conv_kernel_dim"] = ssm_conv_kernel
         extra_kwargs["linear_key_head_dim"] = ssm_state_size
         extra_kwargs["linear_value_head_dim"] = ssm_state_size
         extra_kwargs["linear_num_key_heads"] = ssm_group_count
-        extra_kwargs["linear_num_value_heads"] = ssm_group_count
+        extra_kwargs["linear_num_value_heads"] = ssm_num_v_heads
         extra_kwargs["layer_types"] = text_layer_types
         extra_kwargs["text_config"] = Config(
             vocab_size=vocab_size,
@@ -829,13 +842,17 @@ def create_gguf_config(gguf_reader,
             linear_key_head_dim=ssm_state_size,
             linear_value_head_dim=ssm_state_size,
             linear_num_key_heads=ssm_group_count,
-            linear_num_value_heads=ssm_group_count,
+            linear_num_value_heads=ssm_num_v_heads,
             attn_output_gate=True,
             mamba_ssm_dtype="float32",
             model_type="qwen3_5_text",
             tie_word_embeddings=not _has_output_weight,
             partial_rotary_factor=0.25,
+            mtp_num_hidden_layers=nextn_layers,
+            mtp_use_dedicated_embeddings=False,
         )
+        extra_kwargs["mtp_num_hidden_layers"] = nextn_layers
+        extra_kwargs["mtp_use_dedicated_embeddings"] = False
 
     config = Config(
         vocab_size=vocab_size,
@@ -1570,7 +1587,11 @@ class GGUFModelHandle(ModelHandle):
         model_q_group_size = conv.q_group_size
         from .gguf_compat import GGMLQuantizationType
 
-        for idx in range(num_layers):
+        block_ids = list(range(num_layers))
+        # NextN / MTP draft layer is tracked under the pseudo block id "mtp".
+        if getattr(conv, 'do_mtp', False):
+            block_ids.append("mtp")
+        for idx in block_ids:
             layer_info = self.layer_quant_infos.get(f"block.{idx}")
             linear_paths = self._get_linear_paths_for_block(conv, idx)
             has_mismatch = False
@@ -1629,7 +1650,16 @@ class GGUFModelHandle(ModelHandle):
                            num_layers)
             logger.warning("  Fallback block indices: %s", fallback_blocks)
 
-    def _get_linear_paths_for_block(self, conv, idx: int):
+    def _get_linear_paths_for_block(self, conv, idx):
+        if idx == "mtp":
+            TOP_PATH = f'{conv.model_info.weights[LlmList.MTP_LAYERS]}.0.'
+            paths = [conv.model_info.weights[LlmList.MTP_FC]]
+            for key in [
+                    LlmList.Q_PROJ, LlmList.K_PROJ, LlmList.V_PROJ, LlmList.O_PROJ,
+                    LlmList.MLP_GATE, LlmList.MLP_UP, LlmList.MLP_DOWN
+            ]:
+                paths.append(TOP_PATH + conv.model_info.weights[key])
+            return paths
         TOP_PATH = f'{conv.model_info.weights[LlmList.LAYERS]}.{idx}.'
         paths = []
         for key in [
@@ -1947,6 +1977,14 @@ class GGUFModelHandle(ModelHandle):
                 if val is not None:
                     text_config_dict[hf_key] = val
 
+            # block_count includes NextN/MTP layers; the trunk depth excludes them.
+            nextn_layers = int(get_gguf_val(f"{gguf_arch_for_keys}.nextn_predict_layers") or 0)
+            if nextn_layers > 0 and "num_hidden_layers" in text_config_dict:
+                text_config_dict["num_hidden_layers"] -= nextn_layers
+            if arch == "qwen35":
+                text_config_dict["mtp_num_hidden_layers"] = nextn_layers
+                text_config_dict["mtp_use_dedicated_embeddings"] = False
+
             if "hidden_size" in text_config_dict and "num_attention_heads" in text_config_dict:
                 text_config_dict["head_dim"] = text_config_dict["hidden_size"] // text_config_dict[
                     "num_attention_heads"]
@@ -2013,6 +2051,14 @@ class GGUFModelHandle(ModelHandle):
             if ssm_group_count is not None:
                 text_config_dict["linear_num_key_heads"] = ssm_group_count
                 text_config_dict["linear_num_value_heads"] = ssm_group_count
+            # value heads: ssm.time_step_rank (preferred) or inner_size / state_size
+            ssm_num_v_heads = get_gguf_val(f"{arch}.ssm.time_step_rank")
+            if not ssm_num_v_heads:
+                ssm_inner = get_gguf_val(f"{arch}.ssm.inner_size")
+                if ssm_inner and ssm_state_size:
+                    ssm_num_v_heads = ssm_inner // ssm_state_size
+            if ssm_num_v_heads:
+                text_config_dict["linear_num_value_heads"] = ssm_num_v_heads
 
             if arch == "qwen35":
                 text_config_dict["mamba_ssm_dtype"] = "float32"
@@ -2452,7 +2498,9 @@ class GGUFModelHandle(ModelHandle):
             else:
                 block_idx_match = re.search(r'model\.layers\.(\d+)', path)
                 block_idx = int(block_idx_match.group(1)) if block_idx_match else -1
-                if block_idx >= 0 and self._blocks_full_float_fallback.get(block_idx, False):
+                if path.startswith("mtp."):
+                    block_idx = "mtp"
+                if block_idx != -1 and self._blocks_full_float_fallback.get(block_idx, False):
                     tensor_gs = get_quant_type_group_size(
                         tensor_info.get('quant_type')) if tensor_info.get('quant_type') else 32
                     logger.warning(
@@ -2479,6 +2527,7 @@ class GGUFModelHandle(ModelHandle):
                                                                                    transpose=False)
 
                     if converted['is_quantized']:
+                        self._unpermute_quantized_vheads(path, converted)
                         weight_dict[path + ".qweight"] = converted['qweight']
                         weight_shape = converted['qweight'].shape
                         weight_dict[path + ".scales"] = converted['scales']
@@ -2493,8 +2542,13 @@ class GGUFModelHandle(ModelHandle):
                             'pre_transposed': converted.get('pre_transposed', False),
                         }
                     else:
-                        weight_dict[path + ".weight"] = converted['weight']
-                        weight_shape = converted['weight'].shape
+                        # Unconvertible quant type (e.g. Q5_K) dequantized to float:
+                        # convert_to_llmconv_format(transpose=False) returns the
+                        # GGUF [out, in] orientation, but the plain MatMul weight
+                        # must be [in, out] like every other float linear weight.
+                        weight_dict[path + ".weight"] = np.ascontiguousarray(
+                            np.transpose(converted['weight'], (1, 0)))
+                        weight_shape = weight_dict[path + ".weight"].shape
         else:
             weight_path = path + ".weight"
             if self.model.is_exist(weight_path):
@@ -2559,6 +2613,37 @@ class GGUFModelHandle(ModelHandle):
                 K = weight_data.shape[1]
                 N = weight_data.shape[0]
                 conv.set_linear_lora_weight(weight_dict, path, K, N)
+
+    def _unpermute_quantized_vheads(self, path: str, converted: dict):
+        """Undo llama.cpp's value-head ordering on a converted (packed) linear
+        weight of a Qwen3.5 GatedDeltaNet layer. Float tensors are handled in
+        GGUFQuantLoad.read(); packed tensors are reordered here on the
+        qweight / scales / qzeros arrays, whose layout is [out, in/pack] and
+        [out, in/group_size] respectively."""
+        spec = self.model.vhead_perm_spec(path) if hasattr(self.model, "vhead_perm_spec") else None
+        if spec is None:
+            return
+        if converted.get('pre_transposed', False):
+            raise RuntimeError(f"{path}: value-head un-permutation does not support "
+                               "pre-transposed packed weights")
+        kind, offset, per_head = spec
+        bits = converted['bits']
+        gs = converted['group_size']
+        names = ['qweight', 'scales'] + (['qzeros'] if 'qzeros' in converted else [])
+        if kind == "out":
+            for n in names:
+                converted[n] = self.model.permute_vheads_axis(converted[n], 0, offset, per_head)
+            return
+        # kind == "in": permute columns; each head spans per_head input elements.
+        pack = 8 // bits
+        if per_head % pack != 0 or per_head % gs != 0 or offset % pack != 0 or offset % gs != 0:
+            raise RuntimeError(f"{path}: cannot un-permute value heads of {bits}-bit weight "
+                               f"with group_size={gs} (head_dim={per_head})")
+        converted['qweight'] = self.model.permute_vheads_axis(converted['qweight'], 1,
+                                                              offset // pack, per_head // pack)
+        for n in names[1:]:
+            converted[n] = self.model.permute_vheads_axis(converted[n], 1, offset // gs,
+                                                          per_head // gs)
 
     def set_common_weight(self, conv, path: str, weight_dict: dict, type=None):
 

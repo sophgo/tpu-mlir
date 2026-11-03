@@ -1333,6 +1333,11 @@ def Tpu_RecurrentGatedDeltaRuleOp : Tpu_Op<"RecurrentGatedDeltaRule"> {
     d: head dimension.;
     use_qk_l2norm: whether to apply L2 normalization to query and key.;
     scale: scaling factor applied to query.;
+
+    5.outputs
+    attn_out: attention output.;
+    new_state(optional): updated recurrent state; when NoneType the kernel updates
+      recurrent_state in place.;
   }];
 
   let arguments = (ins
@@ -1349,7 +1354,7 @@ def Tpu_RecurrentGatedDeltaRuleOp : Tpu_Op<"RecurrentGatedDeltaRule"> {
     F64Attr:$scale
   );
 
-  let results = (outs AnyTensor:$attn_out);
+  let results = (outs AnyTensor:$attn_out, AnyTensorOrNone:$new_state);
 }
 
 def Tpu_ConcatSliceOp : Tpu_Op<"ConcatSlice"> {

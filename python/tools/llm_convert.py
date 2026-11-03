@@ -123,6 +123,51 @@ def auto_out_dir(model_path, chip, quantize, llm_only=False):
     return name
 
 
+def check_mtp_args(args, config, loader, model_type, class_name):
+    """Validate the v1 MTP (speculative decoding) constraints and that the
+    model actually ships an MTP head."""
+    if class_name != "Qwen3_5Converter":
+        raise ValueError(
+            "--mtp is only supported for Qwen3.5 models, got model_type '{}'".format(model_type))
+    text_config = getattr(config, "text_config", config)
+    mtp_layers = int(getattr(text_config, "mtp_num_hidden_layers", 0) or 0)
+    if mtp_layers < 1:
+        raise ValueError("--mtp requires a model with MTP weights (config.mtp_num_hidden_layers "
+                         ">= 1), got {}".format(mtp_layers))
+    if mtp_layers > 1:
+        raise ValueError(
+            "--mtp only supports a single MTP layer, got mtp_num_hidden_layers={}".format(
+                mtp_layers))
+    if not loader.is_exist("mtp.fc.weight") and not loader.is_exist("mtp.fc"):
+        raise ValueError("--mtp requires the MTP head weights (mtp.fc / blk.{L}.nextn.eh_proj) "
+                         "but they are missing from '{}'".format(args.model_path))
+    if args.mtp_draft_len < 1:
+        raise ValueError("--mtp_draft_len must be >= 1, got {}".format(args.mtp_draft_len))
+    if args.mtp_vocab_size < 0:
+        raise ValueError("--mtp_vocab_size must be >= 0, got {}".format(args.mtp_vocab_size))
+    vocab_size = int(getattr(text_config, "vocab_size", 0) or 0)
+    if vocab_size and args.mtp_vocab_size > vocab_size:
+        raise ValueError("--mtp_vocab_size ({}) exceeds the model vocab size ({})".format(
+            args.mtp_vocab_size, vocab_size))
+    unsupported = []
+    if args.use_history_kv:
+        unsupported.append("--use_history_kv")
+    if args.do_sample:
+        unsupported.append("--do_sample")
+    if args.lora_max_rank > 0:
+        unsupported.append("--lora_max_rank")
+    if args.batch > 1:
+        unsupported.append("--batch > 1")
+    if args.num_device > 1:
+        unsupported.append("--num_device > 1")
+    if args.chunk_length > 0:
+        unsupported.append("--chunk_length")
+    if unsupported:
+        raise ValueError("--mtp (v1) does not support: {}. It is limited to greedy decoding "
+                         "without history KV on a single device with batch 1.".format(
+                             ", ".join(unsupported)))
+
+
 if __name__ == '__main__':
     # yapf: disable
     parser = argparse.ArgumentParser(description='llm_exporter', formatter_class=argparse.RawTextHelpFormatter)
@@ -201,6 +246,19 @@ if __name__ == '__main__':
     parser.add_argument('--dry_run', action='store_true',
                         help='resolve the configuration, print it, and exit without '
                              'invoking the converter')
+    parser.add_argument('--mtp', action='store_true',
+                        help='compile the MTP (multi-token prediction / NextN) draft head for '
+                             'speculative decoding. Adds mtp_block / mtp_block_cache / '
+                             'block_verify_i nets and makes lm_head score draft_len+1 rows. '
+                             'Requires a model that ships MTP weights (e.g. Qwen3.5). v1: greedy '
+                             'decoding, no --use_history_kv / --do_sample / lora, batch 1, 1 device.')
+    parser.add_argument('--mtp_draft_len', type=int, default=1,
+                        help='number of draft tokens proposed per step (K = draft_len + 1 tokens '
+                             'are verified in one launch), default 1')
+    parser.add_argument('--mtp_vocab_size', type=int, default=0,
+                        help='truncate only mtp_lm_head to the first N token ids. '
+                             'The trunk lm_head stays the full vocabulary. '
+                             '0 keeps mtp_lm_head on the full vocabulary too')
     parser.add_argument("-V", "--version", action='version', version='%(prog)s ' + pymlir.__version__)
     parser.add_argument('-o', '--out_dir', type=str, default=None,
                         help='output mlir/bmodel path. If unset, defaults to '
@@ -343,19 +401,28 @@ if __name__ == '__main__':
         print("Info: forcing --dynamic for model_type '{}'".format(model_type))
         args.dynamic = True
 
+    if args.mtp:
+        check_mtp_args(args, config, loader, model_type, class_name)
+
     if args.dry_run:
         print("=== llm_convert dry-run ===")
         for k in ("model_path", "model_type:" + model_type, "out_dir", "chip", "quantize",
                   "seq_length", "max_input_length", "max_shape", "max_pixels", "num_device",
                   "distribute_strategy", "num_core", "batch", "dynamic", "embedding_disk",
                   "do_sample", "use_history_kv", "lora_max_rank", "symmetric", "vit_quantize",
-                  "vit_calibration_table", "llm_only"):
+                  "vit_calibration_table", "llm_only", "mtp", "mtp_draft_len", "mtp_vocab_size"):
             if ":" in k:
                 key, value = k.split(":", 1)
                 print("  {:<22} = {}".format(key, value))
             else:
                 print("  {:<22} = {}".format(k, getattr(args, k)))
         print("  converter             = {}.{}".format(module_name, class_name))
+        if args.mtp:
+            K = args.mtp_draft_len + 1
+            print("  mtp nets              = mtp_block, mtp_block_cache, block_verify_i (K={}), "
+                  "lm_head [{},H]->[{},1]{}".format(
+                      K, K, K, ", mtp_lm_head (vocab {})".format(args.mtp_vocab_size)
+                      if args.mtp_vocab_size > 0 else ""))
         import sys
         sys.exit(0)
 

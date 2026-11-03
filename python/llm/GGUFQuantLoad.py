@@ -37,6 +37,24 @@ NS_PREFIXES = {
     "standard": ("model.layers.{N}", "blk.{N}"),
     "vlm": ("model.language_model.layers.{N}", "blk.{N}"),
     "internvl": ("language_model.model.layers.{N}", "blk.{N}"),
+    # NextN / MTP draft layers: HF `mtp.layers.{i}` is stored by llama.cpp as
+    # `blk.{L+i}` where L is the trunk layer count (block_count - nextn_predict_layers).
+    "mtp": ("mtp.layers.{N}", "blk.{N+L}"),
+}
+
+# HF `mtp.*` scalars -> GGUF `blk.{L}.nextn.*` (DeepSeek-V3 NextN spelling).
+# `{L}` is substituted with the trunk layer count at load time.
+MTP_TOP_LEVEL = {
+    "mtp.fc": ComponentSpec("blk.{L}.nextn.eh_proj.weight", None, True, False),
+    "mtp.pre_fc_norm_embedding": ComponentSpec("blk.{L}.nextn.enorm.weight", None, True, False),
+    "mtp.pre_fc_norm_hidden": ComponentSpec("blk.{L}.nextn.hnorm.weight", None, True, False),
+    "mtp.norm": ComponentSpec("blk.{L}.nextn.shared_head_norm.weight", None, True, False),
+}
+
+# When the GGUF omits a NextN tensor, fall back to the trunk tensor it shares
+# (Qwen3.5 shares lm_head / final norm between trunk and MTP head).
+MTP_GGUF_FALLBACKS = {
+    "blk.{L}.nextn.shared_head_norm.weight": "output_norm.weight",
 }
 
 BASE_LLM_COMPONENTS = {
@@ -93,12 +111,16 @@ ARCH_NAME_MAPS = {
         "components": {
             **BASE_LLM_COMPONENTS,
             "mlp.gate": ComponentSpec("ffn_gate_inp.weight", None, True, False),
-            "mlp.experts.expert_id.gate_proj": ComponentSpec("ffn_gate_exps.weight", None, True, False),
+            "mlp.experts.expert_id.gate_proj": ComponentSpec("ffn_gate_exps.weight", None, True,
+                                                             False),
             "mlp.experts.expert_id.up_proj": ComponentSpec("ffn_up_exps.weight", None, True, False),
-            "mlp.experts.expert_id.down_proj": ComponentSpec("ffn_down_exps.weight", None, True, False),
-            "mlp.shared_experts.gate_proj": ComponentSpec("ffn_gate_shexp.weight", None, True, False),
+            "mlp.experts.expert_id.down_proj": ComponentSpec("ffn_down_exps.weight", None, True,
+                                                             False),
+            "mlp.shared_experts.gate_proj": ComponentSpec("ffn_gate_shexp.weight", None, True,
+                                                          False),
             "mlp.shared_experts.up_proj": ComponentSpec("ffn_up_shexp.weight", None, True, False),
-            "mlp.shared_experts.down_proj": ComponentSpec("ffn_down_shexp.weight", None, True, False),
+            "mlp.shared_experts.down_proj": ComponentSpec("ffn_down_shexp.weight", None, True,
+                                                          False),
         },
         "top_level": {
             "model.embed_tokens": ComponentSpec("token_embd.weight", None, True, False),
@@ -163,7 +185,7 @@ ARCH_NAME_MAPS = {
         "vision_deepstack": True,
     },
     "qwen35": {
-        "prefixes": ["standard", "vlm"],
+        "prefixes": ["standard", "vlm", "mtp"],
         "components": {
             **BASE_LLM_COMPONENTS,
             "post_attention_layernorm":
@@ -200,6 +222,7 @@ ARCH_NAME_MAPS = {
             "model.norm": ComponentSpec("output_norm.weight", None, True, False),
             "model.language_model.norm": ComponentSpec("output_norm.weight", None, True, False),
             "lm_head": ComponentSpec("token_embd.weight", None, True, False),
+            **MTP_TOP_LEVEL,
         },
         "vision_flat_prefix": "model.visual",
         "vision_flat": {
@@ -461,8 +484,19 @@ class GGUFQuantLoad:
             raise ValueError(f"GGUF architecture '{self.arch}' not supported. "
                              f"Add a mapping entry to ARCH_NAME_MAPS. "
                              f"Supported: {sorted(ARCH_NAME_MAPS.keys())}")
+        # Trunk layer count (excludes NextN/MTP layers); used to resolve `{L}`
+        # placeholders in MTP tensor templates.
+        self.num_trunk_layers = int(self.metadata.get("num_hidden_layers", 0) or 0)
+        self.nextn_predict_layers = int(self.metadata.get("nextn_predict_layers", 0) or 0)
         self._regex_map = _build_regex_map(arch_entry)
+        self._regex_map = [(r, t.replace("{L}", str(self.num_trunk_layers)))
+                           for r, t in self._regex_map]
+        self._gguf_fallbacks = {
+            k.replace("{L}", str(self.num_trunk_layers)): v
+            for k, v in MTP_GGUF_FALLBACKS.items()
+        }
         self._has_deepstack = arch_entry.get("vision_deepstack", False)
+        self._vhead_perm = self._init_vhead_perm()
 
     def load_mmproj(self, mmproj_path: str):
         """Load mmproj GGUF file for vision models.
@@ -566,6 +600,15 @@ class GGUFQuantLoad:
                 if field:
                     metadata[param_name] = field.contents()
 
+        # block_count includes NextN/MTP draft layers; expose the trunk depth as
+        # num_hidden_layers and keep the MTP depth separately.
+        nextn_key = get_arch_key("{arch}.nextn_predict_layers")
+        nextn_field = self.reader.get_field(nextn_key) if nextn_key else None
+        nextn = int(nextn_field.contents()) if nextn_field else 0
+        metadata["nextn_predict_layers"] = nextn
+        if nextn > 0 and "num_hidden_layers" in metadata:
+            metadata["num_hidden_layers"] = int(metadata["num_hidden_layers"]) - nextn
+
         return metadata
 
     def _build_tensor_map(self) -> Dict[str, ReaderTensor]:
@@ -640,9 +683,17 @@ class GGUFQuantLoad:
                 groups = match.groups()
                 if groups:
                     layer_idx = groups[0]
-                    mapped = gguf_template.replace("{N}", layer_idx)
+                    # `{N+L}`: MTP layer index offset by the trunk layer count.
+                    mapped = gguf_template.replace("{N+L}",
+                                                   str(int(layer_idx) + self.num_trunk_layers))
+                    mapped = mapped.replace("{N}", layer_idx)
                 else:
                     mapped = gguf_template
+                if mapped not in self.tensor_map and mapped in self._gguf_fallbacks:
+                    fallback = self._gguf_fallbacks[mapped]
+                    logger.debug("_map_key_to_gguf: '%s' missing, fallback to '%s'", mapped,
+                                 fallback)
+                    mapped = fallback
                 logger.debug("_map_key_to_gguf: '%s' -> '%s'", key, mapped)
                 return mapped
 
@@ -788,9 +839,95 @@ class GGUFQuantLoad:
                 split_data = self._dequantize_tensor(gguf_name + s)
                 data = np.concatenate([data, split_data], axis=0)
 
+        data = self.unpermute_vheads(key, data)
+
         with self._cache_lock:
             self.tensor_cache[key] = data
         return data
+
+    # ------------------------------------------------------------------
+    # llama.cpp value-head ordering for GatedDeltaNet (Qwen3-Next / Qwen3.5)
+    # ------------------------------------------------------------------
+    # HF orders the value heads as [k_head][rep] (q/k are repeat_interleave'd),
+    # llama.cpp stores them as [rep][k_head] (q/k are tiled with ggml_repeat).
+    # convert_hf_to_gguf.py therefore permutes every tensor indexed by value
+    # head: the v part of in_proj_qkv / conv1d, in_proj_z, in_proj_a/b, A_log,
+    # dt_bias and the input columns of out_proj. tpu-mlir's kernels follow the
+    # HF convention (v head h <-> k head h // rep), so undo that permutation
+    # on load whenever num_v_heads != num_k_heads.
+    _VHEAD_KEY_RE = re.compile(
+        r"linear_attn\.(A_log|dt_bias|in_proj_a|in_proj_b|in_proj_z|in_proj_qkv|out_proj|conv1d)"
+        r"(\.weight|\.bias)?$")
+
+    def _init_vhead_perm(self):
+        if self.arch != "qwen35":
+            return None
+        arch = self.arch
+        d = self.metadata.get(f"{arch}.ssm.state_size")
+        nk = self.metadata.get(f"{arch}.ssm.group_count")
+        nv = self.metadata.get(f"{arch}.ssm.time_step_rank")
+        if not nv:
+            inner = self.metadata.get(f"{arch}.ssm.inner_size")
+            nv = (inner // d) if (inner and d) else None
+        if not (d and nk and nv) or nv % nk != 0 or nv // nk <= 1:
+            return None
+        nk, nv, d = int(nk), int(nv), int(d)
+        rep = nv // nk
+        # hf head (kh*rep + r) <- gguf head (r*nk + kh)
+        head_idx = np.arange(nv).reshape(rep, nk).T.reshape(-1)
+        logger.info(
+            "GGUF %s: value heads stored in llama.cpp order (nk=%d, nv=%d); "
+            "un-permuting to HF order on load", arch, nk, nv)
+        return {"nk": nk, "nv": nv, "d": d, "rep": rep, "head_idx": head_idx}
+
+    def vhead_perm_spec(self, key: str):
+        """Return (axis_kind, offset_elems, elems_per_head) describing how the
+        tensor ``key`` must be un-permuted, or None when it is not affected.
+        axis_kind: "out" = along the output/row dim, "in" = along the input dim."""
+        if self._vhead_perm is None:
+            return None
+        m = self._VHEAD_KEY_RE.search(key)
+        if not m:
+            return None
+        comp = m.group(1)
+        p = self._vhead_perm
+        nk, d = p["nk"], p["d"]
+        if comp in ("A_log", "dt_bias", "in_proj_a", "in_proj_b"):
+            return ("out", 0, 1)
+        if comp == "in_proj_z":
+            return ("out", 0, d)
+        if comp in ("in_proj_qkv", "conv1d"):
+            return ("out", 2 * nk * d, d)
+        if comp == "out_proj":
+            return ("in", 0, d)
+        return None
+
+    def permute_vheads_axis(self, arr: np.ndarray, axis: int, offset: int, per_head: int):
+        """Reorder ``arr`` along ``axis`` from llama.cpp to HF value-head order.
+        ``offset`` elements at the beginning of the axis are left untouched and
+        each head spans ``per_head`` consecutive elements."""
+        p = self._vhead_perm
+        nv = p["nv"]
+        arr = np.moveaxis(arr, axis, 0)
+        head = arr[offset:offset + nv * per_head]
+        assert head.shape[0] == nv * per_head, (arr.shape, offset, per_head, nv)
+        head = head.reshape(nv, per_head, *arr.shape[1:])[p["head_idx"]]
+        head = head.reshape(nv * per_head, *arr.shape[1:])
+        out = np.concatenate([arr[:offset], head, arr[offset + nv * per_head:]], axis=0)
+        return np.ascontiguousarray(np.moveaxis(out, 0, axis))
+
+    def unpermute_vheads(self, key: str, data: np.ndarray) -> np.ndarray:
+        """Apply the value-head un-permutation to a dequantized float tensor in
+        GGUF orientation ([out, in] for matrices)."""
+        spec = self.vhead_perm_spec(key)
+        if spec is None:
+            return data
+        kind, offset, per_head = spec
+        if kind == "out":
+            return self.permute_vheads_axis(data, 0, offset, per_head)
+        if data.ndim != 2:
+            raise RuntimeError(f"unexpected shape {data.shape} for {key}")
+        return self.permute_vheads_axis(data, 1, offset, per_head)
 
     def _dequantize_tensor(self, gguf_name: str) -> np.ndarray:
         """Dequantize a single GGUF tensor by name and return float32 data."""

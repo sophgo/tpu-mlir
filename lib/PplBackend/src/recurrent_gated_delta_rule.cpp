@@ -23,10 +23,11 @@ extern "C" {
 // Global GenInterface
 // ======================================
 void recurrent_gated_delta_rule_tiling(
-    gaddr_t ptr_out, gaddr_t ptr_Q, gaddr_t ptr_K, gaddr_t ptr_V, gaddr_t ptr_g,
-    gaddr_t ptr_beta, gaddr_t ptr_last_recurrent_state, int B, float scale,
-    int core_num, int num_k_heads, int num_v_heads, int d, int use_qk_l2norm,
-    int32_t dtype, int &block_h) {
+    gaddr_t ptr_out, gaddr_t ptr_new_state, gaddr_t ptr_Q, gaddr_t ptr_K,
+    gaddr_t ptr_V, gaddr_t ptr_g, gaddr_t ptr_beta,
+    gaddr_t ptr_last_recurrent_state, int B, float scale, int core_num,
+    int num_k_heads, int num_v_heads, int d, int use_qk_l2norm, int32_t dtype,
+    int &block_h) {
   auto func = dtype == DTYPE_BFP16 ? recurrent_gated_delta_rule_bf16
                                    : recurrent_gated_delta_rule_f16;
   block_h = num_k_heads / core_num / 2;
@@ -36,9 +37,9 @@ void recurrent_gated_delta_rule_tiling(
   int ret = 0;
   while (block_h > 0) {
     printf("RecurrentGatedDeltaRule try block_h:%d/%d\n", block_h, num_k_heads);
-    ret = func(ptr_out, ptr_last_recurrent_state, ptr_Q, ptr_K, ptr_V, ptr_g,
-               ptr_beta, B, scale, core_num, num_k_heads, num_v_heads, d,
-               use_qk_l2norm, block_h);
+    ret = func(ptr_out, ptr_new_state, ptr_last_recurrent_state, ptr_Q, ptr_K,
+               ptr_V, ptr_g, ptr_beta, B, scale, core_num, num_k_heads,
+               num_v_heads, d, use_qk_l2norm, block_h);
     if (ret == PplL2AddrAssignErr || ret == PplLocalAddrAssignErr) {
       block_h = block_h / 2;
     } else {
@@ -52,21 +53,31 @@ void recurrent_gated_delta_rule_tiling(
   }
 }
 
+// Address the updated state is written to: the explicit new_state output when
+// present, otherwise the recurrent_state input (in-place update).
+static inline gaddr_t
+recurrent_gated_delta_rule_state_out(recurrent_gated_delta_rule_spec_t *p,
+                                     tensor_spec_t *in_spec,
+                                     tensor_spec_t *out_spec) {
+  return p->has_state_out ? out_spec[1].addr : in_spec[5].addr;
+}
+
 // static interface
 void api_recurrent_gated_delta_rule_global(void *param, size_t param_size,
                                            void *input, void *output) {
   auto *_param = (recurrent_gated_delta_rule_spec_t *)param;
   tensor_spec_t *in_spec = (tensor_spec_t *)input;
   tensor_spec_t *out_spec = (tensor_spec_t *)output;
-  auto func = in_spec[0].dtype == DTYPE_BFP16 ? recurrent_gated_delta_rule_bf16
-                                              : recurrent_gated_delta_rule_f16;
   const int core_num = get_core_num();
+  const gaddr_t state_out =
+      recurrent_gated_delta_rule_state_out(_param, in_spec, out_spec);
   int block_h = 0;
   recurrent_gated_delta_rule_tiling(
-      out_spec[0].addr, in_spec[0].addr, in_spec[1].addr, in_spec[2].addr,
-      in_spec[3].addr, in_spec[4].addr, in_spec[5].addr, in_spec[0].shape[0],
-      _param->scale, core_num, _param->num_k_heads, _param->num_v_heads,
-      _param->d, _param->use_qk_l2norm ? 1 : 0, in_spec[0].dtype, block_h);
+      out_spec[0].addr, state_out, in_spec[0].addr, in_spec[1].addr,
+      in_spec[2].addr, in_spec[3].addr, in_spec[4].addr, in_spec[5].addr,
+      in_spec[0].shape[0], _param->scale, core_num, _param->num_k_heads,
+      _param->num_v_heads, _param->d, _param->use_qk_l2norm ? 1 : 0,
+      in_spec[0].dtype, block_h);
 }
 
 // dynamic interface
@@ -79,16 +90,20 @@ int api_dyn_recurrent_gated_delta_rule_global(void *param, void *input,
   auto func = in_spec->dtype == DTYPE_BFP16
                   ? fill_recurrent_gated_delta_rule_bf16_struct
                   : fill_recurrent_gated_delta_rule_f16_struct;
+  const gaddr_t state_out =
+      recurrent_gated_delta_rule_state_out(_param, in_spec, out_spec);
   int block_h = _param->num_k_heads;
   if (buffer != nullptr) {
     recurrent_gated_delta_rule_tiling(
-        out_spec[0].addr, in_spec[0].addr, in_spec[1].addr, in_spec[2].addr,
-        in_spec[3].addr, in_spec[4].addr, in_spec[5].addr, in_spec[0].shape[0],
-        _param->scale, core_num, _param->num_k_heads, _param->num_v_heads,
-        _param->d, _param->use_qk_l2norm ? 1 : 0, in_spec[0].dtype, block_h);
+        out_spec[0].addr, state_out, in_spec[0].addr, in_spec[1].addr,
+        in_spec[2].addr, in_spec[3].addr, in_spec[4].addr, in_spec[5].addr,
+        in_spec[0].shape[0], _param->scale, core_num, _param->num_k_heads,
+        _param->num_v_heads, _param->d, _param->use_qk_l2norm ? 1 : 0,
+        in_spec[0].dtype, block_h);
   }
-  return func(out_spec[0].addr,
-              in_spec[5].addr, // core_attn_out, last_recurrent_state
+  return func(out_spec[0].addr, // core_attn_out
+              state_out, // new_state (== last_recurrent_state if in place)
+              in_spec[5].addr, // last_recurrent_state
               in_spec[0].addr, in_spec[1].addr, in_spec[2].addr,
               in_spec[3].addr, in_spec[4].addr, // Q, K, V, g, beta
               in_spec[0].shape[0], _param->scale, core_num, _param->num_k_heads,

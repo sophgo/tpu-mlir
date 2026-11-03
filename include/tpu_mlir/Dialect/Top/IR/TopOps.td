@@ -1149,6 +1149,14 @@ def Top_RecurrentGatedDeltaRuleOp : Top_Op<"RecurrentGatedDeltaRule"> {
     d: head dimension.;
     use_qk_l2norm: whether to apply L2 normalization to query and key.;
     scale: scaling factor applied to query.;
+
+    5.outputs
+    attn_out: attention output with shape (B, 1, num_v_heads, v_head_dim).;
+    new_state(optional): the updated recurrent state, same shape as recurrent_state.
+      When omitted (NoneType) the backend kernel updates recurrent_state in place;
+      when present the input state is left untouched and the updated state is
+      written to this output (needed when several steps are chained in one graph,
+      e.g. multi-token speculative verification).;
   }];
 
   let arguments = (ins
@@ -1165,7 +1173,7 @@ def Top_RecurrentGatedDeltaRuleOp : Top_Op<"RecurrentGatedDeltaRule"> {
     F64Attr:$scale
   );
 
-  let results = (outs AnyTensor:$attn_out);
+  let results = (outs AnyTensor:$attn_out, AnyTensorOrNone:$new_state);
 }
 
 def Top_ConcatSliceOp : Top_Op<"ConcatSlice"> {

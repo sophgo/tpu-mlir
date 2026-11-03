@@ -134,6 +134,18 @@ LogicalResult tpu::RecurrentGatedDeltaRuleOp::inference(InferenceParameter &p) {
     F16(p.outputs[0], p.outputs[0], num_elem);
   }
 
+  // Optional explicit state output (otherwise the backend updates in place).
+  if (!module::isNone(getNewState()) && p.outputs.size() > 1 &&
+      p.outputs[1] != nullptr) {
+    std::memcpy(p.outputs[1], state.data(), state_total * sizeof(float));
+    auto state_type = module::getStorageType(getNewState());
+    if (state_type.isBF16()) {
+      BF16(p.outputs[1], p.outputs[1], state_total);
+    } else if (state_type.isF16()) {
+      F16(p.outputs[1], p.outputs[1], state_total);
+    }
+  }
+
   return success();
 }
 

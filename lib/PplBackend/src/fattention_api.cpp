@@ -47,7 +47,11 @@ static void fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
   int ret = 0;
   int keep_dim = 0;
   bool is_mha = q_head == kv_head;
-  bool is_decode = qm == 1;
+  // Decode is one query row. MTP verify is a handful of rows (K = 2..10)
+  // against the same long KV cache. The prefill tile sets block_k ~= qm,
+  // which splits that cache into tiny DMAs. Keep the bulk KV tile whenever
+  // the query is this short. block_m stays 1; the decode kernel loops over qm.
+  bool is_decode = qm >= 1 && qm <= 10;
   bool is_fp16 = dtype == DTYPE_FP16;
   int npu_num, npu_size;
   get_chip_info(&npu_num, &npu_size);
@@ -57,6 +61,7 @@ static void fattention_tiling(gaddr_t ptr_dst, gaddr_t ptr_q, gaddr_t ptr_k,
   int safe_core_num = std::max(1, core_num);
   int head_rep = std::max(1, q_head / kv_head);
   if (is_decode) {
+    // qm > 1 still uses this bulk KV tile, once per query row.
     block_m = 1;
     // For decode we want at least 2 iterations of the `_k` loop so that
     // `ppl::enable_pipeline()` can overlap the K/V loads of iter N+1 with

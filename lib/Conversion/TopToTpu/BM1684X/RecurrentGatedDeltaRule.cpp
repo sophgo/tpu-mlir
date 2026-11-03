@@ -46,8 +46,9 @@ void RecurrentGatedDeltaRuleLowering::LoweringF8(
 
 void RecurrentGatedDeltaRuleLowering::LoweringQuantized(
     PatternRewriter &rewriter, top::RecurrentGatedDeltaRuleOp op) const {
-  lowering_common<tpu::RecurrentGatedDeltaRuleOp>(rewriter, op.getOperation(),
-                                                  op.getAttnOut().getType());
+  lowering_common<tpu::RecurrentGatedDeltaRuleOp>(
+      rewriter, op.getOperation(),
+      std::vector<Type>{op.getAttnOut().getType(), op.getNewState().getType()});
 }
 
 } // namespace bm1684x
