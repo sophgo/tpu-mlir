@@ -57,7 +57,7 @@ if __name__ == '__main__':
     parser.add_argument('--min_layer_cos', type=float, default=0.99, help='minimum cos of layer')
     parser.add_argument('--max_float_layers', type=int, default=5, help='num of float layers in search qtable')
     parser.add_argument('--chip', '--processor', default='bm1684x', type=str,
-                        choices=['bm1684x', 'bm1684', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv190x', 'cv186x', 'bm1688', 'bm1690', 'cv184x', 'sgtpuv8', 'sg2262'],
+                        choices=['bm1684x', 'bm1684', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv190x', 'cv186x', 'bm1688', 'bm1690', 'cv184x', 'cv84x6', 'sg2262'],
                         help='chip platform name')
     parser.add_argument('--fp_type', default='auto', type=str,choices=['auto', 'F16', 'F32', 'BF16'],
                         help='float type of mix precision')
@@ -98,12 +98,15 @@ if __name__ == '__main__':
               f'{args.chip} does not support INT4; switching default chip to bm1688.')
         args.chip = 'bm1688'
 
-    # F4/F8 (DYN) mix modes target sg2262. Switch the chip so the DYN fp4/fp8
-    # lowering does not abort on an unsupported chip.
+    # F4/F8 (DYN) mix modes require a chip with the dynamic-quant A16MatMul path
+    # (4/8-bit weights, q_group_size a multiple of 32). Keep the chip when it has
+    # that path; otherwise fall back to sg2262 so the DYN fp4/fp8 lowering does
+    # not abort on an unsupported chip.
+    _FP4_CAPABLE_CHIPS = {'sg2262', 'cv84x6'}
     if args.mix_mode in ('wf4af16dyn_wf8af16dyn', 'wf4abf16dyn_wf8abf16dyn') \
-            and args.chip != 'sg2262':
-        print(f'WARNING: mix_mode {args.mix_mode} targets sg2262; switching chip '
-              f'from {args.chip} to sg2262.')
+            and args.chip not in _FP4_CAPABLE_CHIPS:
+        print(f'WARNING: mix_mode {args.mix_mode} requires FP4 dynamic-quant support, but chip '
+              f'{args.chip} does not support it; switching chip to sg2262.')
         args.chip = 'sg2262'
 
     dump_list = True if 'dump_list' in args.debug_cmd else False
