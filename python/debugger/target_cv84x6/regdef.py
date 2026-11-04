@@ -2230,6 +2230,8 @@ class CDMA_send_reg(atomic_reg):
         ("src_hsize", ctypes.c_uint64, 32),
         ("src_wsize", ctypes.c_uint64, 32),
         ("src_start_addr_l32", ctypes.c_uint64, 32),
+        ("reserved1", ctypes.c_uint64, 64),
+        ("reserved2", ctypes.c_uint64, 64),
     ]
 
     intr_en: int
@@ -2250,8 +2252,10 @@ class CDMA_send_reg(atomic_reg):
     src_hsize: int
     src_wsize: int
     src_start_addr_l32: int
+    reserved1: int
+    reserved2: int
 
-    length: int = 256
+    length: int = 384
 
 
 class CDMA_read_reg(atomic_reg):
@@ -2449,6 +2453,9 @@ class CDMA_receive_reg(atomic_reg):
         ("dst_hsize", ctypes.c_uint64, 32),
         ("dst_wsize", ctypes.c_uint64, 32),
         ("dst_start_addr_l32", ctypes.c_uint64, 32),
+        ("dst_start_addr_ext_h10", ctypes.c_uint64, 10),
+        ("reserved1", ctypes.c_uint64, 54),
+        ("reserved2", ctypes.c_uint64, 64),
     ]
 
     intr_en: int
@@ -2468,8 +2475,11 @@ class CDMA_receive_reg(atomic_reg):
     dst_hsize: int
     dst_wsize: int
     dst_start_addr_l32: int
+    dst_start_addr_ext_h10: int
+    reserved1: int
+    reserved2: int
 
-    length: int = 256
+    length: int = 384
 
 
 class sCDMA_sys_reg(atomic_reg):

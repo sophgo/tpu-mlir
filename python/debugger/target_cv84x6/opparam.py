@@ -810,6 +810,7 @@ def sCW_sBC_converter(context: "CV84X6Context", reg: sCW_sBC_reg):
 @opparam_converter_regitstry("sRQ&sDQ")
 def sRQ_sDQ_converter(context: "CV84X6Context", reg: sRQ_sDQ_reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
+    gsize = 0
     opd0 = dict(
         address=reg.opd0_addr,
         dtype=(reg.opt_opd0_prec, reg.opt_opd0_sign),
@@ -875,9 +876,17 @@ def sRQ_sDQ_converter(context: "CV84X6Context", reg: sRQ_sDQ_reg):
             opd3["address"] = reg.opd2_addr  # scale
             opd3["dtype"] = DType.si8
             opds = [opd0, opd1, opd3, opd2]
+    elif reg.tsk_eu_typ == 5:  # dq_2 (group dequant, used by AWQ/GPTQ)
+        gsize = 1 << ((reg.opd2_n_str & 0x3) + 5)
+        assert gsize in (32, 64, 128, 256)
+        opd1["dtype"] = DType.si32
+        opd1["shape"] = (n, c, h, div_up(w, gsize))
+        opds = [opd0, opd1]
     else:
-        raise KeyError("Should not be here.")
+        raise KeyError(f"sRQ&sDQ tsk_eu_typ={reg.tsk_eu_typ} is not supported.")
     attr = dict(round_mode=reg.opd2_n_str)
+    if reg.tsk_eu_typ == 5:
+        attr = dict(gsize=gsize)
     operands = [get_value(context, **x) for x in opds]
     results = [get_value(context, **res0)]
 

@@ -649,6 +649,7 @@ class ar_op(TiuCmd):
         14: "arith.cast",
         15: "arith.add_satu",
         16: "arith.sub_satu",
+        17: "arith.clamp",
         18: "arith.mac",
         19: "arith.copy",
         20: "arith.mul_satu",
@@ -658,6 +659,9 @@ class ar_op(TiuCmd):
         26: "arith.abs",
         27: "arith.fsub_abs",
         28: "arith.copy_mb",
+        29: "arith.get_first_one",
+        30: "arith.get_first_zero",
+        31: "arith.fuse_mul_cast",
     }
     description = "arithmetic"
 
