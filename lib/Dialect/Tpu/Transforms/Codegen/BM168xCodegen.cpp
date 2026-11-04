@@ -2110,13 +2110,20 @@ static bool run_multi_core(FuncOp func) {
   if (getRunMode(func) == RunMode::TPU_DYNAMIC) {
     bool data_dependent_shape = false;
     func.walk([&](Operation *op) {
-      if (isa<tpu::NonZeroOp, tpu::NmsOp, tpu::SortOp, tpu::TopKOp,
-              tpu::YoloDetectionOp, tpu::DetectionOutputOp, tpu::RoiAlignOp>(
-              op) ||
+      if (isa<tpu::NonZeroOp, tpu::NmsOp, tpu::SortOp, tpu::YoloDetectionOp,
+              tpu::DetectionOutputOp, tpu::RoiAlignOp>(op) ||
           op->hasTrait<trait::ShapeProducer>() ||
           op->hasTrait<trait::ShapeConsumer>()) {
         data_dependent_shape = true;
         return WalkResult::interrupt();
+      }
+      // TopK with a compile-time constant K (kT operand is empty) has a
+      // statically known output shape and is not a runtime shape producer.
+      if (auto topkOp = dyn_cast<tpu::TopKOp>(op)) {
+        if (topkOp.getKT()) {
+          data_dependent_shape = true;
+          return WalkResult::interrupt();
+        }
       }
       return WalkResult::advance();
     });
