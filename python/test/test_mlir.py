@@ -1096,7 +1096,7 @@ class MLIR_IR_TESTER(object):
         QS = 1024
         KS = 1024
         D = 256
-        MASK_SIZE = get_tpu_info(self.chip).npu_num * 4
+        MASK_SIZE = get_tpu_info(self.chip).npu_num * 8
         Q_HEAD = 32
         KV_HEAD = 8
         input_shapes = [

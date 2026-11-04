@@ -153,18 +153,6 @@ class MiniCPMV4_6Converter(Qwen3_5Converter):
             extra_args = [f'--quantize {vit_q}', '--quant_output']
             self.submit_deploy_task(name, extra_args, dynamic=True)
 
-    @override
-    def load_pretrained(self, config):
-        # 4.7 GPTQ: config tie_word_embeddings=False (lm_head untied), but the
-        # checkpoint does not physically store lm_head.weight — HF falls back
-        # to tied embedding at runtime. Force tie so LlmConverter reads the
-        # embedding as lm_head and merges the two nets (identical result).
-        if getattr(config, "version", None) == 4.7:
-            config.tie_word_embeddings = True
-            if hasattr(config, "text_config"):
-                config.text_config.tie_word_embeddings = True
-        super().load_pretrained(config)
-
     # ======================== _build_vit (shared builder) ========================
 
     def _build_vit(self, mode):
@@ -524,16 +512,9 @@ class MiniCPMV4_6Converter(Qwen3_5Converter):
                                            loc=L(f"{vm}.reshape_2x2"),
                                            ip=ip).output
             else:
-                # 4.6: Reshape back: [N_win,4,D] → [N,D]
-                out_flat_46 = top.ReshapeOp(T([N, D]),
-                                            out_op,
-                                            shape=[-1, D],
-                                            loc=L(f"{vm}.reshape_back"),
-                                            ip=ip).output
-
-                # Reverse reorder: [N, D] gather axis=0
+                # 4.6: reverse reorder: [N, D] gather axis=0
                 restored = top.GatherOp(T([N, D]),
-                                        out_flat_46,
+                                        out_flat,
                                         rev_idx_op,
                                         axis=0,
                                         loc=L(f"{vm}.gather_reverse"),

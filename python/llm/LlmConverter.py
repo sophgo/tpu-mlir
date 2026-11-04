@@ -59,7 +59,7 @@ class LlmConverter(BaseConverter):
         self.symmetric = args.symmetric
         self.chip = args.chip
         self.tpu_info = get_tpu_info(self.chip)
-        self.MASK_SIZE = self.tpu_info.npu_num * 4
+        self.MASK_SIZE = self.tpu_info.npu_num * 8
         self.embedding_disk = args.embedding_disk
         self.dynamic = args.dynamic
         self.use_history_kv = args.use_history_kv
