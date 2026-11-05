@@ -1,18 +1,18 @@
 === cv84x6 ===
-commit beb04c0cafece6ef9b371b41bb866e49f902c2df
-Author: zunshi.liu <zunshi.liu@sophgo.com>
-Date:   Mon Oct 26 18:38:03 2026 +0800
+commit 8cd4e86abf7c059a79ce473397c38abf1f429676
+Author: jincan.qi <jincan.qi@sophgo.com>
+Date:   Tue Nov 3 17:31:14 2026 +0800
 
-    [bm1684x2][cv] fix cw_trans ops and local-mem sizing in cv rotate/transpose/hist/axpy
+    fix: secure a16matmul split-K reduction
     
-    bm1684x2 has no GDMA cw_trans, so cv_rotate/cv_transpose switch to
-    tpu_bdc_cw_trans with the aligned local strides; also fix cv_rotate 270's
-    out-of-range output offset and its partial lane group handling, correct
-    hist_balance1's local memory reservation, and make cv_calc_hist size its
-    uint8 staging and FP32 tile from the real per-lane usage (alignment,
-    partial-channel address and inter-block sync included).
+    - Accumulate each core's partial output in a private L2 window slot.
+    - Serialize reduction on core 0 and overlap subsequent stores with merges
+      using ping-pong slot sets.
+    - Select split-K using a compute and bandwidth cycle model while preserving
+      whole quantization groups per core.
+    - Add a tpuDNN A16MatMul regression with all-ones and random-input checks.
     
-    Change-Id: Iafcc737c1e61baf94cc2d7939ab0549e3ca1f704
+    Change-Id: I25a6f28e415975a996e9a26a58604e15fc2136cf
 === bm1684x ===
 commit 99fb6f9d2c6c920724782950ac71a95289ae5d33
 Author: junliang.liu <junliang.liu@sophgo.com>
