@@ -73,7 +73,19 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op,
       new_types.push_back(out.getType());
     }
   }
-  rewriter.replaceOpWithNewOp<tpu::InterpOp>(op, new_types, operands, attrs);
+  auto new_op =
+      rewriter.create<tpu::InterpOp>(op->getLoc(), new_types, operands, attrs);
+  // Restore the quantized output type that the float lowering loses.
+  rewriter.setInsertionPointAfter(new_op);
+  Value new_v = new_op.getOutput();
+  if (module::isUniformQuantized(op.getOutput())) {
+    auto name = module::getName(op.getOutput()).str() + "_requant";
+    auto loc = NameLoc::get(rewriter.getStringAttr(name));
+    auto cast_op =
+        rewriter.create<tpu::CastOp>(loc, op.getOutput().getType(), new_v);
+    new_v = cast_op.getOutput();
+  }
+  rewriter.replaceOp(op, new_v);
   return;
 }
 
