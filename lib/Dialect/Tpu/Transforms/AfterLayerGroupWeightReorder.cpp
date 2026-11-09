@@ -8,8 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
-#include "tpu_mlir/Backend/Arch.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace llvm;
@@ -169,108 +167,6 @@ struct UpsampleWeightReorderPattern : public OpRewritePattern<tpu::UpsampleOp> {
   }
 };
 
-
-// The multi-core API slices the output columns, so it wants the weight
-// contiguous as [N, K]; a grouped matmul keeps [K, N]. Mirror the firmware
-// split rule (nodechip_batch_matmul_fix8b.c and get_core_split_info()) to know
-// which of the two applies.
-static bool firmwareSplitsOnN(const matmul_attr_t &p, bool is_int8) {
-  const int64_t core_num = module::getCoreNum();
-  if (core_num <= 1 || p.batch >= core_num) {
-    return false; // SPLIT_CORE_B: the batch is sliced and the weight is shared
-  }
-  const int64_t m_total = p.M * p.batch;
-  if (is_int8) {
-    return m_total < core_num * Arch::NPU_NUM || m_total < p.N;
-  }
-  // First order memory cost with the firmware bandwidth constants (DDR 68,
-  // L2 128 B/cycle); a tie picks N, as get_core_split_info() does.
-  const int64_t l_size = m_total * p.K * 2;
-  const int64_t r_size = p.K * p.N * 2;
-  const int64_t y_size = m_total * p.N * 4;
-  const int64_t cost_m = l_size / core_num + r_size + y_size / core_num;
-  const int64_t cost_n = l_size + r_size / core_num + y_size / core_num;
-  return cost_n <= cost_m;
-}
-
-// Run after the layer group pass so that the layout follows the final dispatch:
-// an out-of-group matmul goes through the multi-core API, a grouped one through
-// the local API which never re-reads the weight per output column.
-struct TransposeMatMulRightWeightPattern
-    : public OpRewritePattern<tpu::MatMulOp> {
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::MatMulOp op,
-                                PatternRewriter &rewriter) const override {
-    if (!module::isMultiCoreArch() || module::isOpInBlock(op.getOperation())) {
-      return failure();
-    }
-    auto multicore = op->getAttr("multicore");
-    if (!multicore || !multicore.cast<BoolAttr>().getValue()) {
-      return failure();
-    }
-    auto p = op.parseParam();
-    if (op.getRightTranspose() || p.hdim_is_batch || p.left_transpose ||
-        p.output_transpose) {
-      return failure();
-    }
-    auto right = op.getRight();
-    auto weight_op = right.getDefiningOp<top::WeightOp>();
-    auto stype = module::getStorageType(right);
-    const bool is_int8 = stype.isInteger(8);
-    if (!weight_op || !right.hasOneUse() ||
-        (!is_int8 && !stype.isF16() && !stype.isBF16()) ||
-        !firmwareSplitsOnN(p, is_int8)) {
-      return failure();
-    }
-    auto right_shape = module::getShape(right);
-    if (right_shape.size() < 2 || right_shape[right_shape.size() - 2] != p.K ||
-        right_shape[right_shape.size() - 1] != p.N) {
-      return failure();
-    }
-    std::vector<int64_t> new_shape(right_shape.begin(), right_shape.end());
-    new_shape[right_shape.size() - 2] = p.N;
-    new_shape[right_shape.size() - 1] = p.K;
-    auto new_type =
-        RankedTensorType::get(new_shape, module::getElementType(right));
-    // Keep the name: the layer group cache is keyed on it.
-    auto name = module::getName(weight_op.getOperation());
-    if (is_int8) {
-      auto data = weight_op.read<int8_t>();
-      std::vector<int8_t> transposed(data->size());
-      for (int64_t k = 0; k < p.K; ++k) {
-        for (int64_t n = 0; n < p.N; ++n) {
-          transposed[n * p.K + k] = data->at(k * p.N + n);
-        }
-      }
-      if (module::getWeightInMemFlag()) {
-        weight_op.setInlineBytesAttr(rewriter.getStringAttr(
-            std::string((char *)transposed.data(), transposed.size())));
-      } else {
-        module::weightFile().deleteTensor(name);
-        module::weightFile().addTensor(name, &transposed, new_type);
-      }
-    } else {
-      auto data = weight_op.read<uint16_t>();
-      std::vector<uint16_t> transposed(data->size());
-      for (int64_t k = 0; k < p.K; ++k) {
-        for (int64_t n = 0; n < p.N; ++n) {
-          transposed[n * p.K + k] = data->at(k * p.N + n);
-        }
-      }
-      if (module::getWeightInMemFlag()) {
-        weight_op.setInlineBytesAttr(rewriter.getStringAttr(std::string(
-            (char *)transposed.data(), transposed.size() * sizeof(uint16_t))));
-      } else {
-        module::weightFile().deleteTensor(name);
-        module::weightFile().addTensor(name, &transposed, new_type);
-      }
-    }
-    right.setType(new_type);
-    op->setAttr("right_transpose", BoolAttr::get(op->getContext(), true));
-    return success();
-  }
-};
-
 class AfterLayerGroupWeightReorderPass
     : public AfterLayerGroupWeightReorderBase<
           AfterLayerGroupWeightReorderPass> {
@@ -283,8 +179,7 @@ public:
     for (auto s : *modules) {
       for (auto func : s.getOps<FuncOp>()) {
         RewritePatternSet patterns(&ctx);
-        patterns.add<UpsampleWeightReorderPattern,
-                     TransposeMatMulRightWeightPattern>(&ctx);
+        patterns.add<UpsampleWeightReorderPattern>(&ctx);
         auto config = GreedyRewriteConfig();
         config.maxIterations = 1; // apply each pattern only once.
         applyPatternsAndFoldGreedily(func, std::move(patterns), config);
