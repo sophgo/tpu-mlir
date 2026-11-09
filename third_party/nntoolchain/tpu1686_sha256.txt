@@ -1,18 +1,15 @@
 === cv84x6 ===
-commit 8cd4e86abf7c059a79ce473397c38abf1f429676
-Author: jincan.qi <jincan.qi@sophgo.com>
-Date:   Tue Nov 3 17:31:14 2026 +0800
+commit c0a0d5943ccda8388caa0f2bb26f726eae94a252
+Author: yujia liu <yujia.liu@sophgo.com>
+Date:   Mon Nov 9 10:39:38 2026 +0800
 
-    fix: secure a16matmul split-K reduction
+    [fix][bm1684x2] fix requant and fullnet offsets
     
-    - Accumulate each core's partial output in a private L2 window slot.
-    - Serialize reduction on core 0 and overlap subsequent stores with merges
-      using ping-pong slot sets.
-    - Select split-K using a compute and bandwidth cycle model while preserving
-      whole quantization groups per core.
-    - Add a tpuDNN A16MatMul regression with all-ones and random-input checks.
+    - Fix fused per-channel requant coefficient offset on bm1684x2.
+    - Compute multi-fullnet block offsets from block headers.
+    - Verified on bm1684x and board.
     
-    Change-Id: I25a6f28e415975a996e9a26a58604e15fc2136cf
+    Change-Id: I11960a20dc240b5c20a096853373b2825b62a617
 === bm1684x ===
 commit 99fb6f9d2c6c920724782950ac71a95289ae5d33
 Author: junliang.liu <junliang.liu@sophgo.com>
