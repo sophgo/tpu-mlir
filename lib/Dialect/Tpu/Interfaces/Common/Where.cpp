@@ -147,7 +147,13 @@ ArrayAttr tpu::WhereOp::getIndexingMaps() {
   auto out_map = AffineMap::getMultiDimIdentityMap(num_dims, ctx);
   auto empty_map = AffineMap::get(num_dims, 0, ctx);
   for (int i = 0; i < num_operands - 1; i++) {
-    if (!isa<top::NoneOp>(getOperand(i).getDefiningOp())) {
+    // An operand may be a block argument (e.g. a value promoted across a
+    // subnet boundary); it then has no defining op. Calling isa<> on a null
+    // Operation* is undefined behavior, so fall back to the value type.
+    auto def_op = getOperand(i).getDefiningOp();
+    bool is_none = def_op ? isa<top::NoneOp>(def_op)
+                          : isa<mlir::NoneType>(getOperand(i).getType());
+    if (!is_none) {
       indexingMaps.push_back(out_map);
     } else {
       indexingMaps.push_back(empty_map);
