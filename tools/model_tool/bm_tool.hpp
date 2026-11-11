@@ -11,6 +11,7 @@
 #include "flatbuffers/util.h"
 #include "tpu_mlir/Builder/BM168x/bmodel.hpp"
 #include "tpu_mlir/Builder/BM168x/bmodel_fbs.h"
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <set>
@@ -571,6 +572,33 @@ inline void update_addr_1688(uint32_t *cmd, uint64_t coeff_limit,
   }
 }
 
+// CV84X6 address: 5-bit region tag and 40-bit offset.
+inline void update_addr_cv84x6(uint32_t *cmd, uint64_t coeff_limit,
+                               const int64_t ctx_offset,
+                               std::vector<addr_update_t> &addr_v) {
+  const uint32_t ADDR_HIGH_MASK = 0x1fff; // tag(5 bit) + offset bit[39:32]
+  uint64_t addr =
+      ((uint64_t)(cmd[1] & ADDR_HIGH_MASK) << 32) | ((uint64_t)cmd[0]);
+  if ((addr >> 40) != 1) {
+    return;
+  }
+  uint64_t fix_addr = addr;
+  for (const auto &update : addr_v) {
+    if (addr >= update.addr && addr - update.addr < update.size) {
+      fix_addr += update.offset;
+      break;
+    }
+  }
+  if ((fix_addr >> 40) != 1) {
+    FATAL("CV84X6 coefficient relocation exceeds its 40-bit region");
+  }
+  if (fix_addr != addr) {
+    cmd[0] = fix_addr & 0xffffffff;
+    cmd[1] = (cmd[1] & ~ADDR_HIGH_MASK) |
+             ((uint32_t)((fix_addr >> 32) & ADDR_HIGH_MASK));
+  }
+}
+
 void update_cmd(uint32_t *cmd, bool last_cmd, uint64_t coeff_limit,
                 int64_t ctx_offset, std::vector<addr_update_t> &addr_v,
                 std::string arch) {
@@ -600,6 +628,20 @@ void update_cmd(uint32_t *cmd, bool last_cmd, uint64_t coeff_limit,
         update_addr_1688(cmd + 20, coeff_limit, ctx_offset, addr_v);
       }
     }
+  } else if ("CV84X6" == arch) {
+    if (!last_cmd) {
+      // CV84X6 keeps 5 bits of cmd type, and DMA_sys carries no start address
+      int cmd_type = (cmd[1] & 0x1f);
+      if (cmd_type == 6)
+        return;
+      update_addr_cv84x6(cmd + 16, coeff_limit, ctx_offset, addr_v);
+      update_addr_cv84x6(cmd + 18, coeff_limit, ctx_offset, addr_v);
+      // fix index_tensor or mask_tensor addr
+      if (cmd_type == 2 || cmd_type == 7 || cmd_type == 8 || cmd_type == 0xa ||
+          cmd_type == 0xb) {
+        update_addr_cv84x6(cmd + 20, coeff_limit, ctx_offset, addr_v);
+      }
+    }
   } else {
     FATAL("Unkown BM TPU");
   }
@@ -621,6 +663,13 @@ static uint32_t get_gdma_cmd_len(const uint8_t *gdma_buffer,
     // sys end
     if (last_cmd) {
       len = (start_offset + 16 - 1 + 128) / 128 - start_offset;
+    }
+  } else if ("CV84X6" == arch) {
+    uint32_t cmd_head[2] = {0};
+    memcpy(cmd_head, gdma_buffer + start_offset, sizeof(cmd_head));
+    // CV84X6 DMA_sys is 16 bytes; other commands are 96 bytes.
+    if ((cmd_head[1] & 0x1f) == 0x6) { // DMA_sys
+      len = 16;
     }
   } else if ("BM1684X" == arch) {
     // sys end
@@ -645,7 +694,9 @@ void update_cmd_group(
   for (uint32_t i = 0; i < cmd_group.size(); i++) {
     gdam_total_cmd_byte += cmd_group[i]->gdma_cmd_byte;
   }
-  if (gdam_total_cmd_byte > 0) {
+  // CV84X6 also needs to copy BDC-only command groups.
+  if (gdam_total_cmd_byte > 0 ||
+      model_ctx->model()->chip()->str() == "CV84X6") {
     for (uint32_t group_idx = 0; group_idx < cmd_group.size(); group_idx++) {
       uint64_t gdma_offset = 0;
       // copy bdc command, do not change
@@ -1021,6 +1072,9 @@ static void combine_bmodels_coeff(ModelGen &model_gen,
     auto &model_info = model_vec[model_idx];
     auto model = model_info->model_ctx->model();
     auto param = model->net()->Get(0)->parameter()->Get(0);
+    if (model->chip()->str() == "CV84X6") {
+      device_num = std::max(device_num, model->device_num());
+    }
     // check model is signal net, signal stage. or combined model
     assert(model->net()->size() == 1 &&
                model->net()->Get(0)->parameter()->size() == 1 ||
@@ -1062,8 +1116,8 @@ static void combine_bmodels_coeff(ModelGen &model_gen,
            dynamic_coeff_size);
     dynamic_base_size += dynamic_coeff_size;
     // update addr_v
-    if (model->chip()->str() == "BM1684X") {
-      // BM1684X save real address. addr = base_addr + offset;
+    if (model->chip()->str() == "BM1684X" || model->chip()->str() == "CV84X6") {
+      // Include the coefficient base address, including the CV84X6 region tag.
       auto cur_coeff_addr = param->coeff_mem()->address();
       for (int i = 0; i < addr_update_v[model_idx].size(); ++i) {
         addr_update_v[model_idx][i].addr += cur_coeff_addr;
@@ -1148,10 +1202,13 @@ static void combine_bmodels_coeff(ModelGen &model_gen,
         if (cur_coeff_addr != coeff_addr) {
           FATAL("Failed to combine coeff. Coeff base addr is not same.");
         }
-        int64_t ctx_offset =
-            coeff_addr + base_size -
-            (param->io_size > 0 ? param->io_addr : param->ctx_addr);
-        ctx_offset = ctx_offset > 0 ? ctx_offset : 0;
+        // CV84X6 coefficient and neuron regions have independent base tags.
+        int64_t ctx_offset = 0;
+        if (model->chip()->str() != "CV84X6") {
+          ctx_offset = coeff_addr + base_size -
+                       (param->io_size > 0 ? param->io_addr : param->ctx_addr);
+          ctx_offset = ctx_offset > 0 ? ctx_offset : 0;
+        }
         // update static cmd
         uint64_t coeff_limit =
             param->io_size > 0 ? param->io_addr : param->ctx_addr;
