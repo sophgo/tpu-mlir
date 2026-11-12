@@ -14,6 +14,14 @@ namespace bm1684x {
 
 void MatMulLowering::LoweringF32(PatternRewriter &rewriter,
                                  top::MatMulOp op) const {
+  // CV84X6 MM2 NT does not support FP32 arithmetic. Keep the surrounding
+  // graph in FP32, but lower a right-transposed FP32 MatMul to F16; the type
+  // verification pass inserts F32->F16 casts for the inputs and an F16->F32
+  // cast for FP32 users.
+  if (module::isCV84X6() && op.getRightTranspose()) {
+    LoweringF16(rewriter, op);
+    return;
+  }
   lowering_common_f32<tpu::MatMulOp>(rewriter, op, 5);
 }
 

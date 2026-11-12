@@ -1,15 +1,13 @@
 === cv84x6 ===
-commit c0a0d5943ccda8388caa0f2bb26f726eae94a252
-Author: yujia liu <yujia.liu@sophgo.com>
-Date:   Mon Nov 9 10:39:38 2026 +0800
+commit e5eb25085e2d757e1719a32d70318d5c74239d13
+Author: yuchu.li <yuchu.li@sophgo.com>
+Date:   Thu Nov 12 10:49:02 2026 +0800
 
-    [fix][bm1684x2] fix requant and fullnet offsets
+    [fix][cv84x6] fix RequantFp for MLIR-984
     
-    - Fix fused per-channel requant coefficient offset on bm1684x2.
-    - Compute multi-fullnet block offsets from block headers.
-    - Verified on bm1684x and board.
+    Fix the RequantFp temporary LMEM layout and use FP16 arithmetic for the exact model-106 parameter combinations.
     
-    Change-Id: I11960a20dc240b5c20a096853373b2825b62a617
+    Change-Id: I5ca8374e71a9a367dd7618627647a20952db818d
 === bm1684x ===
 commit 99fb6f9d2c6c920724782950ac71a95289ae5d33
 Author: junliang.liu <junliang.liu@sophgo.com>

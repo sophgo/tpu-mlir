@@ -29,6 +29,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
+import transform.TpuLang as tpul
 
 from tools.model_runner import mlir_inference, model_inference, onnx_inference, show_fake_cmd
 from tools.npz_tool import npz_compare
@@ -128,6 +129,7 @@ class ONNX_IR_TESTER(object):
             "Concat":       (self.test_Concat,        Y, Y, Y, Y, Y, Y, Y),
             "Concat2":      (self.test_Concat2,       Y, Y, Y, Y, Y, N, Y),
             "Concat3":      (self.test_Concat3,       Y, Y, N, Y, Y, N, Y),
+            "ConcatRequantFp": (self.test_ConcatRequantFp, N, N, N, N, N, N, Y),
             "ConstOfShape": (self.test_ConstOfShape,  Y, Y, N, Y, Y, N, Y),
             "ConstantFillDyn": (self.test_ConstantFillDyn, Y, Y, N, Y, Y, N, Y),
             "Conv1d":       (self.test_Conv1d,        Y, Y, Y, Y, Y, Y, Y),
@@ -205,6 +207,7 @@ class ONNX_IR_TESTER(object):
             "MatMul":       (self.test_MatMul,        Y, Y, Y, Y, Y, Y, Y),
             "MatMul2":      (self.test_MatMul2,       Y, Y, Y, Y, Y, Y, Y),
             "MatMul2PC":    (self.test_MatMul2PC,     Y, Y, N, N, N, Y, Y),
+            "MatMulFP16NT": (self.test_MatMulFP16NT, N, N, N, N, N, N, Y),
             "MatMulRelu":       (self.test_MatMulRelu,       Y, Y, Y, Y, Y, Y, Y),
             "MatMulRelu_asym":  (self.test_MatMulRelu_asym,  Y, Y, Y, Y, Y, Y, Y),
             "Max":          (self.test_Max,           Y, Y, Y, Y, Y, Y, Y),
@@ -1898,6 +1901,57 @@ class ONNX_IR_TESTER(object):
         graph_def.initializer.extend([x1_node_def, x2_node_def])
         self.onnx_and_test(graph_def)
 
+    def test_ConcatRequantFp(self, case_name):
+        branch_specs = [
+            ([1, 1, 14720, 256], 0.0625),
+            ([1, 1, 3680, 256], 0.0625),
+            ([1, 1, 920, 256], 0.25),
+            ([1, 1, 240, 256], 0.5),
+        ]
+        output_scale = 0.25
+        inputs = []
+        expected_outputs = []
+        tpul.init(self.chip)
+        try:
+            for idx, (shape, scale) in enumerate(branch_specs):
+                data = np.resize(np.array([-4, 0, 4], dtype=np.int8), shape)
+                inputs.append(
+                    tpul.Tensor(name="input{}".format(idx),
+                                dtype="int8",
+                                shape=shape,
+                                data=data,
+                                scale=scale,
+                                zero_point=0))
+                expected_outputs.append(
+                    np.rint(data.astype(np.float32) * scale / output_scale).astype(np.int8))
+
+            output = tpul.concat(inputs,
+                                 scales=[spec[1] for spec in branch_specs] + [output_scale],
+                                 zero_points=[0] * (len(inputs) + 1),
+                                 axis=2,
+                                 out_name="output",
+                                 dtype="int8",
+                                 round_mode="half_up")
+            refs = {
+                output.name:
+                np.concatenate(expected_outputs, axis=2).astype(np.float32) * output_scale
+            }
+            tpul.compile(case_name,
+                         inputs, [output],
+                         refs=refs,
+                         num_core=self.num_core,
+                         log_level="normal")
+        finally:
+            tpul.deinit()
+
+        final_mlir = "{}_int8_final.mlir".format(case_name)
+        with open(final_mlir) as f:
+            mlir_text = f.read()
+        assert mlir_text.count('"tpu.RequantFp"') == 3
+        assert mlir_text.count("scale = 2.500000e-01") >= 2
+        assert "scale = 2.000000e+00" in mlir_text
+        assert mlir_text.count("offset = 5.000000e-01") >= 3
+
     def test_Transpose(self, case_name):
         input_shapes = [[1, 16, 32, 32], [4, 3, 85, 20, 20], [1, 4, 2, 16, 20, 40]]
         transpose_orders = {4: [0, 2, 1, 3], 5: [0, 1, 3, 4, 2], 6: [0, 1, 2, 5, 3, 4]}
@@ -2192,6 +2246,46 @@ class ONNX_IR_TESTER(object):
 
         graph_def.initializer.extend([weight, bias])
         self.onnx_and_test(graph_def)
+
+    def test_MatMulFP16NT(self, case_name):
+        left_shape = [1, 1, 128, 512]
+        right_shape = [80, 512]
+        output_shape = [1, 1, 128, 80]
+        graph_txt = """
+                %s (float%s left, float%s right) => (float%s output)
+                {
+                    right_transposed = Transpose<perm=[1, 0]>(right)
+                    output = MatMul(left, right_transposed)
+                }
+                """ % (case_name, left_shape, right_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        input_data = {
+            "left": np.random.randn(*left_shape).astype(np.float32),
+            "right": np.random.randn(*right_shape).astype(np.float32),
+        }
+        # The commit regression runs test_onnx.py with --simple, which normally
+        # excludes f32 mode.  This case specifically verifies that an f32 NT
+        # MatMul is lowered to f16 on CV84X6, so keep f32 enabled for this case.
+        quant_modes = self.quant_modes
+        self.quant_modes = ["f32"]
+        try:
+            self.onnx_and_test(graph_def, input_data=input_data,
+                               support_modes=["f32"])
+        finally:
+            self.quant_modes = quant_modes
+
+        final_mlir = "{}_f32_final.mlir".format(case_name)
+        with open(final_mlir) as f:
+            mlir_text = f.read()
+        assert '"tpu.MatMul"' in mlir_text
+        assert "right_transpose = true" in mlir_text
+        matmul_lines = [line for line in mlir_text.splitlines()
+                        if '"tpu.MatMul"' in line]
+        assert len(matmul_lines) == 1
+        assert "xf16" in matmul_lines[0]
+        assert "xf32" not in matmul_lines[0]
+        assert mlir_text.count('"tpu.Cast"') >= 3
+        assert '"tpu.Permute"' not in mlir_text
 
     def test_MatMul2(self, case_name, per_channel=False):
         M = 50
