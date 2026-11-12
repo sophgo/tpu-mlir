@@ -245,6 +245,121 @@ ARCH_NAME_MAPS = {
         },
         "vision_deepstack": True,
     },
+    # Qwen3.5-MoE GGUF mappings, including packed experts.
+    "qwen35moe": {
+        "prefixes": ["standard", "vlm", "mtp"],
+        "components": {
+            **BASE_LLM_COMPONENTS,
+            "post_attention_layernorm":
+            ComponentSpec("post_attention_norm.weight", None, True, False),
+            "self_attn.q_norm":
+            ComponentSpec("attn_q_norm.weight", None, True, False),
+            "self_attn.k_norm":
+            ComponentSpec("attn_k_norm.weight", None, True, False),
+            "linear_attn.in_proj_a":
+            ComponentSpec("ssm_alpha.weight", None, True, False),
+            "linear_attn.in_proj_a.bias":
+            ComponentSpec("ssm_dt.bias", None, False, False),
+            "linear_attn.in_proj_b":
+            ComponentSpec("ssm_beta.weight", None, True, False),
+            "linear_attn.in_proj_qkv":
+            ComponentSpec("attn_qkv.weight", None, True, False),
+            "linear_attn.in_proj_z":
+            ComponentSpec("attn_gate.weight", None, True, False),
+            "linear_attn.out_proj":
+            ComponentSpec("ssm_out.weight", None, True, False),
+            "linear_attn.norm":
+            ComponentSpec("ssm_norm.weight", None, True, False),
+            "linear_attn.conv1d":
+            ComponentSpec("ssm_conv1d.weight", None, True, False),
+            "linear_attn.dt_bias":
+            ComponentSpec("ssm_dt.bias", None, True, False),
+            "linear_attn.A_log":
+            ComponentSpec("ssm_a", None, True, False),
+            # MoE (HF Qwen3.5-MoE / MiniCPM-V-4.7 text tower)
+            "mlp.gate":
+            ComponentSpec("ffn_gate_inp.weight", None, True, False),
+            "mlp.shared_expert_gate":
+            ComponentSpec("ffn_gate_inp_shexp.weight", None, True, False),
+            "mlp.shared_expert.gate_proj":
+            ComponentSpec("ffn_gate_shexp.weight", None, True, False),
+            "mlp.shared_expert.up_proj":
+            ComponentSpec("ffn_up_shexp.weight", None, True, False),
+            "mlp.shared_expert.down_proj":
+            ComponentSpec("ffn_down_shexp.weight", None, True, False),
+            # Packed MoE weights.
+            "mlp.experts.expert_id.gate_proj":
+            ComponentSpec("ffn_gate_exps.weight", None, True, False),
+            "mlp.experts.expert_id.up_proj":
+            ComponentSpec("ffn_up_exps.weight", None, True, False),
+            "mlp.experts.expert_id.down_proj":
+            ComponentSpec("ffn_down_exps.weight", None, True, False),
+        },
+        "top_level": {
+            "model.embed_tokens": ComponentSpec("token_embd.weight", None, True, False),
+            "model.language_model.embed_tokens": ComponentSpec("token_embd.weight", None, True,
+                                                               False),
+            "model.norm": ComponentSpec("output_norm.weight", None, True, False),
+            "model.language_model.norm": ComponentSpec("output_norm.weight", None, True, False),
+            # Untied lm_head (MiniCPM-V-4.7-35B-A3B ships output.weight as Q6_K).
+            "lm_head": ComponentSpec("output.weight", None, True, False),
+            **MTP_TOP_LEVEL,
+        },
+        # Vision tower mapping is attached from the minicpmv4_7 mmproj entry below.
+        "vision_deepstack": False,
+    },
+    # MiniCPM-V mmproj mappings.
+    "minicpmv4_7": {
+        "prefixes": [],
+        "components": {},
+        "top_level": {},
+        "vision_flat_prefix": "model.vision_tower",
+        "vision_flat": {
+            "embeddings.patch_embedding":
+            ComponentSpec("v.patch_embd.weight", "v.patch_embd.bias", True, True),
+            "embeddings.position_embedding":
+            ComponentSpec("v.position_embd.weight", None, True, False),
+            "post_layernorm":
+            ComponentSpec("v.post_ln.weight", "v.post_ln.bias", True, True),
+            "vit_merger.layer_norm1":
+            ComponentSpec("v.vit_merger.ln1.weight", "v.vit_merger.ln1.bias", True, True),
+            "vit_merger.self_attn.q_proj":
+            ComponentSpec("v.vit_merger.attn_q.weight", "v.vit_merger.attn_q.bias", True, True),
+            "vit_merger.self_attn.k_proj":
+            ComponentSpec("v.vit_merger.attn_k.weight", "v.vit_merger.attn_k.bias", True, True),
+            "vit_merger.self_attn.v_proj":
+            ComponentSpec("v.vit_merger.attn_v.weight", "v.vit_merger.attn_v.bias", True, True),
+            "vit_merger.self_attn.out_proj":
+            ComponentSpec("v.vit_merger.attn_out.weight", "v.vit_merger.attn_out.bias", True, True),
+            "vit_merger.pre_norm":
+            ComponentSpec("v.vit_merger.ds_ln.weight", "v.vit_merger.ds_ln.bias", True, True),
+            "vit_merger.linear_1":
+            ComponentSpec("v.vit_merger.ds_ffn_up.weight", "v.vit_merger.ds_ffn_up.bias", True,
+                          True),
+            "vit_merger.linear_2":
+            ComponentSpec("v.vit_merger.ds_ffn_down.weight", "v.vit_merger.ds_ffn_down.bias", True,
+                          True),
+        },
+        "vision_block_prefix": ("model.vision_tower.encoder.layers.{N}", "v.blk.{N}"),
+        "vision_blocks": {
+            "layer_norm1": ComponentSpec("ln1.weight", "ln1.bias", True, True),
+            "layer_norm2": ComponentSpec("ln2.weight", "ln2.bias", True, True),
+            "self_attn.q_proj": ComponentSpec("attn_q.weight", "attn_q.bias", True, True),
+            "self_attn.k_proj": ComponentSpec("attn_k.weight", "attn_k.bias", True, True),
+            "self_attn.v_proj": ComponentSpec("attn_v.weight", "attn_v.bias", True, True),
+            "self_attn.out_proj": ComponentSpec("attn_out.weight", "attn_out.bias", True, True),
+            "mlp.fc1": ComponentSpec("ffn_up.weight", "ffn_up.bias", True, True),
+            "mlp.fc2": ComponentSpec("ffn_down.weight", "ffn_down.bias", True, True),
+        },
+        "vision_projector": {
+            "model.merger.mlp.0.pre_norm":
+            ComponentSpec("mm.input_norm.weight", "mm.input_norm.bias", True, True),
+            "model.merger.mlp.0.linear_1":
+            ComponentSpec("mm.up.weight", "mm.up.bias", True, True),
+            "model.merger.mlp.0.linear_2":
+            ComponentSpec("mm.down.weight", "mm.down.bias", True, True),
+        },
+    },
     "internvl_chat": {
         "prefixes": ["internvl"],
         "components": BASE_LLM_COMPONENTS,
@@ -388,7 +503,7 @@ def _build_regex_map(arch_entry):
         llm_prefix_r = _prefix_to_regex(llm_prefix_t)
 
         for llm_sub, spec in arch_entry.get("components", {}).items():
-            llm_sub_r = re.escape(llm_sub)
+            llm_sub_r = re.escape(llm_sub).replace("expert_id", r"(\d+)")
             full_llm_r = llm_prefix_r + "\\." + llm_sub_r
 
             if spec.gguf_name.startswith("__"):
@@ -542,20 +657,36 @@ class GGUFQuantLoad:
                     "mmproj architecture '%s' not in ARCH_NAME_MAPS, "
                     "vision key mapping may not work", mmproj_arch)
 
-        # Auto-detect VLM type from mmproj tensor names when arch is "clip"
+        # Auto-detect VLM type from mmproj metadata / tensor names when arch is "clip"
         if mmproj_arch == "clip":
-            has_attn_q = any(
-                t.startswith("v.blk") and "attn_q.weight" in t for t in self.tensor_map)
-            if not has_attn_q:
-                for vlm_arch in ["qwen3vl", "qwen35"]:
-                    vlm_entry = ARCH_NAME_MAPS.get(vlm_arch)
-                    if vlm_entry:
-                        extra = _build_regex_map(vlm_entry)
-                        self._regex_map.extend(extra)
-                        if vlm_entry.get("vision_deepstack", False):
-                            self._has_deepstack = True
-                        logger.info("Added %d vision patterns from '%s' for clip mmproj",
-                                    len(extra), vlm_arch)
+            projector_type = None
+            proj_field = self.mmproj_reader.get_field("clip.projector_type")
+            if proj_field is not None:
+                try:
+                    projector_type = proj_field.contents()
+                except Exception:
+                    projector_type = None
+            if projector_type in ("minicpmv4_6", "minicpmv4_7"):
+                # MiniCPM-V projector: separate Q/K/V + vit_merger + mm.up/down.
+                vlm_entry = ARCH_NAME_MAPS.get("minicpmv4_7")
+                if vlm_entry:
+                    extra = _build_regex_map(vlm_entry)
+                    self._regex_map.extend(extra)
+                    logger.info("Added %d MiniCPM-V vision patterns (projector_type=%s)",
+                                len(extra), projector_type)
+            else:
+                has_attn_q = any(
+                    t.startswith("v.blk") and "attn_q.weight" in t for t in self.tensor_map)
+                if not has_attn_q:
+                    for vlm_arch in ["qwen3vl", "qwen35"]:
+                        vlm_entry = ARCH_NAME_MAPS.get(vlm_arch)
+                        if vlm_entry:
+                            extra = _build_regex_map(vlm_entry)
+                            self._regex_map.extend(extra)
+                            if vlm_entry.get("vision_deepstack", False):
+                                self._has_deepstack = True
+                            logger.info("Added %d vision patterns from '%s' for clip mmproj",
+                                        len(extra), vlm_arch)
 
     def _extract_metadata(self) -> Dict:
         """Extract model metadata from GGUF file.
@@ -755,12 +886,16 @@ class GGUFQuantLoad:
             return None
 
         tensor = self.tensor_map[gguf_name]
+        shape = tuple(tensor.shape)
+        expert_id = self._moe_expert_id(key)
+        if expert_id is not None and len(shape) == 3:
+            shape = shape[:-1]
 
         info = {
             "name":
             gguf_name,
             "shape":
-            tuple(tensor.shape),
+            shape,
             "quant_type":
             tensor.tensor_type,
             "is_quantized":
@@ -770,6 +905,8 @@ class GGUFQuantLoad:
                 GGMLQuantizationType.BF16,
             ],
         }
+        if expert_id is not None:
+            info["expert_id"] = expert_id
 
         return info
 
@@ -827,6 +964,33 @@ class GGUFQuantLoad:
         if not gguf_name or gguf_name not in self.tensor_map:
             raise RuntimeError(f"Can't find key: {key} (mapped from: {key})")
 
+        expert_id = self._moe_expert_id(key)
+        if expert_id is not None:
+            # Dequantize one expert at a time to reduce memory use.
+            from gguf.quants import dequantize
+            tensor = self.tensor_map[gguf_name]
+            shape = tuple(tensor.shape)
+            if len(shape) != 3:
+                raise RuntimeError(f"Expected packed 3D MoE tensor for {key}, got shape {shape}")
+            shape2d = shape[:-1]
+            raw = tensor.data[expert_id]
+            # Raw [E, B, A] maps to logical [A, B, E].
+            if tensor.tensor_type in (GGMLQuantizationType.F32, GGMLQuantizationType.F16,
+                                      GGMLQuantizationType.BF16):
+                data = raw
+                if tensor.tensor_type == GGMLQuantizationType.F16:
+                    data = data.view(np.float16).astype(np.float32)
+                elif tensor.tensor_type == GGMLQuantizationType.BF16:
+                    data = (data.view(np.uint16).astype(np.uint32) << 16).view(np.float32)
+                data = np.reshape(data, (shape2d[1], shape2d[0]))
+            else:
+                data = np.reshape(dequantize(raw, tensor.tensor_type), (shape2d[1], shape2d[0]))
+            data = np.ascontiguousarray(np.transpose(data, (1, 0)))
+            data = self.unpermute_vheads(key, data)
+            with self._cache_lock:
+                self.tensor_cache[key] = data
+            return data
+
         data = self._dequantize_tensor(gguf_name)
 
         split_suffixes = [".1", ".2", ".3", ".4", ".5", ".6", ".7"]
@@ -838,6 +1002,10 @@ class GGUFQuantLoad:
             for s in existing_suffixes:
                 split_data = self._dequantize_tensor(gguf_name + s)
                 data = np.concatenate([data, split_data], axis=0)
+
+        # Shared-expert gate expects shape [1, hidden].
+        if data.ndim == 1 and gguf_name.endswith("ffn_gate_inp_shexp.weight"):
+            data = data.reshape(1, -1)
 
         data = self.unpermute_vheads(key, data)
 
@@ -860,7 +1028,7 @@ class GGUFQuantLoad:
         r"(\.weight|\.bias)?$")
 
     def _init_vhead_perm(self):
-        if self.arch != "qwen35":
+        if self.arch not in ("qwen35", "qwen35moe"):
             return None
         arch = self.arch
         d = self.metadata.get(f"{arch}.ssm.state_size")
@@ -879,6 +1047,13 @@ class GGUFQuantLoad:
             "GGUF %s: value heads stored in llama.cpp order (nk=%d, nv=%d); "
             "un-permuting to HF order on load", arch, nk, nv)
         return {"nk": nk, "nv": nv, "d": d, "rep": rep, "head_idx": head_idx}
+
+    _EXPERT_KEY_RE = re.compile(r"\.experts\.(\d+)\.(gate|up|down)_proj")
+
+    def _moe_expert_id(self, key: str) -> Optional[int]:
+        """Return the expert index encoded in an HF MoE weight key, or None."""
+        m = self._EXPERT_KEY_RE.search(key)
+        return int(m.group(1)) if m else None
 
     def vhead_perm_spec(self, key: str):
         """Return (axis_kind, offset_elems, elems_per_head) describing how the
@@ -1027,6 +1202,13 @@ class GGUFQuantLoad:
             raise RuntimeError(f"Can't find key: {key}")
 
         tensor = self.tensor_map[gguf_name]
+        expert_id = self._moe_expert_id(key)
+        original_shape = tuple(tensor.shape)
+        raw = tensor.data
+        # Experts are on raw axis 0 but the last logical axis.
+        if expert_id is not None and len(original_shape) == 3:
+            original_shape = original_shape[:-1]
+            raw = raw[expert_id]
 
         if tensor.tensor_type in [
                 GGMLQuantizationType.F32, GGMLQuantizationType.F16, GGMLQuantizationType.BF16
@@ -1038,10 +1220,10 @@ class GGUFQuantLoad:
                 "quant_type": tensor.tensor_type,
                 "is_quantized": True,
                 "block_size": self._get_block_size(tensor.tensor_type),
-                "data_shape": tensor.data.shape,
-                "original_shape": tuple(tensor.shape),
+                "data_shape": raw.shape,
+                "original_shape": original_shape,
             }
-            return tensor.data.copy(), quant_info
+            return raw.copy(), quant_info
 
     def _get_block_size(self, quant_type: GGMLQuantizationType) -> int:
         """Get block size for quantization type."""

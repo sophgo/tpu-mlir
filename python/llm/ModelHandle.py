@@ -684,6 +684,8 @@ def create_gguf_config(gguf_reader,
     rope = get_val(f"{architecture}.rope.freq_base")
     layers = get_val(f"{architecture}.block_count")
     eps = get_val(f"{architecture}.attention.layer_norm_epsilon")
+    if eps is None:
+        eps = get_val(f"{architecture}.attention.layer_norm_rms_epsilon")
     vocab = get_val(f"{architecture}.vocab_size")
 
     hidden_size = emb if emb else 1024
@@ -798,7 +800,9 @@ def create_gguf_config(gguf_reader,
     # LlamaConfig/GemmaConfig/Qwen3_5Config); downstream code only reads attributes,
     # uses .get() / `in`, and checks isinstance(..., dict), so Config is a drop-in.
     extra_kwargs = {}
-    if arch_lower == 'qwen35':
+    is_qwen35_family = arch_lower in ('qwen35', 'qwen35moe')
+    is_qwen35_moe = arch_lower == 'qwen35moe'
+    if is_qwen35_family:
         full_attention_interval = get_val(f"{architecture}.full_attention_interval") or 4
         text_layer_types = [
             "full_attention" if
@@ -818,14 +822,13 @@ def create_gguf_config(gguf_reader,
         if not ssm_num_v_heads:
             ssm_inner = get_val(f"{architecture}.ssm.inner_size")
             ssm_num_v_heads = (ssm_inner // ssm_state_size) if ssm_inner else ssm_group_count
-        extra_kwargs["full_attention_interval"] = full_attention_interval
-        extra_kwargs["linear_conv_kernel_dim"] = ssm_conv_kernel
-        extra_kwargs["linear_key_head_dim"] = ssm_state_size
-        extra_kwargs["linear_value_head_dim"] = ssm_state_size
-        extra_kwargs["linear_num_key_heads"] = ssm_group_count
-        extra_kwargs["linear_num_value_heads"] = ssm_num_v_heads
-        extra_kwargs["layer_types"] = text_layer_types
-        extra_kwargs["text_config"] = Config(
+        # MoE FF dim doubles as the shared-expert intermediate when dense FFN
+        # length is absent (MiniCPM-V-4.7 / Qwen3.5-MoE GGUF).
+        _expert_ff = get_val(f"{architecture}.expert_feed_forward_length")
+        _shared_ff = get_val(f"{architecture}.expert_shared_feed_forward_length")
+        if ffn is None and (_expert_ff is not None or _shared_ff is not None):
+            intermediate_size = int(_shared_ff or _expert_ff)
+        text_cfg_kwargs = dict(
             vocab_size=vocab_size,
             hidden_size=hidden_size,
             intermediate_size=intermediate_size,
@@ -845,14 +848,39 @@ def create_gguf_config(gguf_reader,
             linear_num_value_heads=ssm_num_v_heads,
             attn_output_gate=True,
             mamba_ssm_dtype="float32",
-            model_type="qwen3_5_text",
+            model_type="qwen3_5_moe_text" if is_qwen35_moe else "qwen3_5_text",
             tie_word_embeddings=not _has_output_weight,
             partial_rotary_factor=0.25,
             mtp_num_hidden_layers=nextn_layers,
             mtp_use_dedicated_embeddings=False,
         )
+        if is_qwen35_moe:
+            _expert_count = int(get_val(f"{architecture}.expert_count") or 0)
+            text_cfg_kwargs.update(
+                num_experts=_expert_count,
+                num_experts_per_tok=int(get_val(f"{architecture}.expert_used_count") or 1),
+                moe_intermediate_size=int(_expert_ff or intermediate_size),
+                shared_expert_intermediate_size=int(_shared_ff or _expert_ff or intermediate_size),
+                norm_topk_prob=True,
+                decoder_sparse_step=1,
+                mlp_only_layers=[],
+            )
+        extra_kwargs["full_attention_interval"] = full_attention_interval
+        extra_kwargs["linear_conv_kernel_dim"] = ssm_conv_kernel
+        extra_kwargs["linear_key_head_dim"] = ssm_state_size
+        extra_kwargs["linear_value_head_dim"] = ssm_state_size
+        extra_kwargs["linear_num_key_heads"] = ssm_group_count
+        extra_kwargs["linear_num_value_heads"] = ssm_num_v_heads
+        extra_kwargs["layer_types"] = text_layer_types
+        extra_kwargs["text_config"] = Config(**text_cfg_kwargs)
         extra_kwargs["mtp_num_hidden_layers"] = nextn_layers
         extra_kwargs["mtp_use_dedicated_embeddings"] = False
+        if is_qwen35_moe:
+            extra_kwargs["num_experts"] = text_cfg_kwargs["num_experts"]
+            extra_kwargs["num_experts_per_tok"] = text_cfg_kwargs["num_experts_per_tok"]
+            extra_kwargs["moe_intermediate_size"] = text_cfg_kwargs["moe_intermediate_size"]
+            extra_kwargs["shared_expert_intermediate_size"] = text_cfg_kwargs[
+                "shared_expert_intermediate_size"]
 
     config = Config(
         vocab_size=vocab_size,
@@ -868,21 +896,22 @@ def create_gguf_config(gguf_reader,
         hidden_act="silu",
         torch_dtype=dtype_str,
         dtype=dtype_str,
-        tie_word_embeddings=(not _has_output_weight if arch_lower == 'qwen35' else True),
+        tie_word_embeddings=(not _has_output_weight if is_qwen35_family else True),
         **extra_kwargs,
     )
     # Mirror transformers' standardize_rope_params so config.rope_parameters exists;
     # the mrope post-processing below relies on it being present and updatable.
     config.rope_parameters = Config(build_rope_parameters(config))
-    if arch_lower == 'qwen35':
-        config.model_type = "qwen3_5"
+    if is_qwen35_family:
+        config.model_type = "qwen3_5_moe" if is_qwen35_moe else "qwen3_5"
         if 'text_config' in config:
             config.text_config.rope_parameters = Config(build_rope_parameters(config.text_config))
     else:
         config.model_type = architecture
-    # MoE fields for deepseek2-ocr / DeepseekV2 (read from GGUF metadata)
+    # MoE fields for deepseek2-ocr / DeepseekV2 (read from GGUF metadata).
+    # qwen35moe already populated MoE fields on text_config above.
     _expert_count = get_val(f"{architecture}.expert_count")
-    if _expert_count is not None:
+    if _expert_count is not None and not is_qwen35_moe:
         config.n_routed_experts = int(_expert_count)
         config.expert_count = int(_expert_count)
         config.num_experts = int(_expert_count)
@@ -918,7 +947,7 @@ def create_gguf_config(gguf_reader,
             "mrope_interleaved": True,
             "rope_type": "default",
         })
-        if arch_lower == 'qwen35':
+        if is_qwen35_family:
             config.rope_parameters["partial_rotary_factor"] = 0.25
             if hasattr(config, 'text_config'):
                 config.text_config.rope_parameters = _dict_to_config(config.rope_parameters)
@@ -931,6 +960,66 @@ def create_gguf_config(gguf_reader,
                 is_internvl = True
                 config.model_type = "internvl_chat"
         _attach_vision_config(config, mmproj_reader, hidden_size)
+        # MiniCPM-V routing is determined by mmproj projector_type.
+        _proj_field = mmproj_reader.get_field("clip.projector_type")
+        _proj_type = None
+        if _proj_field is not None:
+            try:
+                _proj_type = _proj_field.contents()
+            except Exception:
+                _proj_type = None
+        if _proj_type in ("minicpmv4_6", "minicpmv4_7"):
+            config.model_type = _proj_type
+            config.version = 4.7 if _proj_type == "minicpmv4_7" else 4.6
+            config.merge_kernel_size = [2, 2]
+            config.merger_times = 1
+            config.downsample_mode = "16x"
+            config.insert_layer_id = 6
+            config.mrope_mode = "canvas"
+            _ps = getattr(getattr(config, "vision_config", None), "patch_size", None)
+            config.patch_size = int(_ps or 14)
+            config.image_size = int(
+                getattr(getattr(config, "vision_config", None), "image_size", None) or 448)
+            wa_field = mmproj_reader.get_field("clip.vision.wa_layer_indexes")
+            if wa_field is not None:
+                try:
+                    wa = wa_field.contents()
+                    if isinstance(wa, (list, tuple)) and wa:
+                        config.insert_layer_id = int(wa[0])
+                except Exception:
+                    pass
+            # Resolve special vision token IDs.
+            _tok_field = gguf_reader.get_field("tokenizer.ggml.tokens")
+            _tokens = []
+            if _tok_field is not None:
+                try:
+                    _tokens = _tok_field.contents() or []
+                except Exception:
+                    _tokens = []
+
+            def _token_id(name, default):
+                for i, tok in enumerate(_tokens):
+                    if isinstance(tok, bytes):
+                        tok = tok.decode("utf-8", errors="replace")
+                    if tok == name:
+                        return i
+                return default
+
+            config.image_token_id = _token_id("<|image_pad|>", 248056)
+            config.video_token_id = _token_id("<|video_pad|>", 248057)
+            if hasattr(config, "vision_config") and config.vision_config is not None:
+                vc = config.vision_config
+                vc.model_type = f"{_proj_type}_vision"
+                vc.insert_layer_id = config.insert_layer_id
+                vc.window_kernel_size = [2, 2]
+                if getattr(vc, "num_hidden_layers", None) is None:
+                    vc.num_hidden_layers = getattr(vc, "depth", 27)
+                if getattr(vc, "num_attention_heads", None) is None:
+                    vc.num_attention_heads = getattr(vc, "num_heads", 16)
+                if getattr(vc, "num_channels", None) is None:
+                    vc.num_channels = 3
+                if getattr(vc, "layer_norm_eps", None) is None:
+                    vc.layer_norm_eps = 1e-6
         if is_internvl:
             config.model_type = "qwen2"
             config.tie_word_embeddings = not _has_output_weight
@@ -1035,7 +1124,8 @@ def _attach_vision_config(config, mmproj_reader, llm_hidden_size):
             out_hidden_size=llm_hidden_size,
             fullatt_block_indexes=deepstack_visual_indexes,
         )
-    elif llm_arch in ('qwen3_5', 'qwen35'):
+    elif llm_arch in ('qwen3_5', 'qwen35', 'qwen3_5_moe', 'qwen35moe', 'minicpmv4_6',
+                      'minicpmv4_7'):
         vision_config = Config(
             depth=clip_vision_depth if clip_vision_depth else 24,
             hidden_size=clip_vision_hidden_size if clip_vision_hidden_size else 1024,
@@ -1043,14 +1133,21 @@ def _attach_vision_config(config, mmproj_reader, llm_hidden_size):
             intermediate_size=clip_vision_intermediate_size
             if clip_vision_intermediate_size else 4096,
             num_heads=clip_vision_num_heads if clip_vision_num_heads else 16,
+            num_attention_heads=clip_vision_num_heads if clip_vision_num_heads else 16,
+            num_hidden_layers=clip_vision_depth if clip_vision_depth else 24,
+            num_channels=3,
             in_channels=3,
             patch_size=patch_size,
+            image_size=image_size,
+            layer_norm_eps=clip_vision_layer_norm_eps if clip_vision_layer_norm_eps else 1e-6,
             spatial_merge_size=clip_vision_spatial_merge_size
             if clip_vision_spatial_merge_size else 2,
             temporal_patch_size=2,
             out_hidden_size=llm_hidden_size,
             num_position_embeddings=num_position_embeddings,
             deepstack_visual_indexes=deepstack_visual_indexes,
+            window_kernel_size=[2, 2],
+            insert_layer_id=6,
         )
     elif llm_arch in ('qwen2vl', 'qwen2_vl'):
         vision_config = Config(
@@ -1240,6 +1337,18 @@ PREPROCESSOR_SIZE_TABLE = {
         'image_processor_type': 'Qwen2VLImageProcessorFast',
         'video_processor_type': 'Qwen2VLVideoProcessor',
     },
+    'minicpmv4_6': {
+        'processor_class': 'MiniCPMV4_6Processor',
+        'image_processor_type': 'MiniCPMV4_6ImageProcessor',
+        'video_processor_type': 'MiniCPMV4_6VideoProcessor',
+        'minicpm_preprocessor': True,
+    },
+    'minicpmv4_7': {
+        'processor_class': 'MiniCPMV4_7Processor',
+        'image_processor_type': 'MiniCPMV4_6ImageProcessor',
+        'video_processor_type': 'MiniCPMV4_6VideoProcessor',
+        'minicpm_preprocessor': True,
+    },
     'internvl_chat': {
         'processor_class': 'InternVLProcessor',
         'image_processor_type': 'CLIPFeatureExtractor',
@@ -1286,8 +1395,49 @@ def _generate_preprocessor_configs(llm_arch, mmproj_reader, config_dir):
 
     import json
 
-    if arch_info.get('clip_preprocessor'):
+    if arch_info.get('clip_preprocessor') or arch_info.get('minicpm_preprocessor'):
         image_size = get_clip_val("clip.vision.image_size") or 448
+        if arch_info.get('minicpm_preprocessor'):
+            max_slice_nums = get_clip_val("clip.vision.max_slice_nums") or 9
+            image_config = {
+                "do_convert_rgb": True,
+                "do_normalize": True,
+                "do_rescale": True,
+                "do_resize": True,
+                "downsample_mode": "16x",
+                "image_mean": image_mean,
+                "image_processor_type": arch_info['image_processor_type'],
+                "image_std": image_std,
+                "max_slice_nums": max_slice_nums,
+                "mrope_mode": "canvas",
+                "patch_size": patch_size,
+                "resample": 3,
+                "rescale_factor": 1 / 255,
+                "scale_resolution": image_size,
+                "slice_mode": True,
+                "use_image_id": True,
+            }
+            video_config = {
+                **image_config, "do_sample_frames": True,
+                "max_num_frames": 128,
+                "return_metadata": False,
+                "stack_frames": 1
+            }
+            video_config.pop("image_processor_type")
+            video_config["video_processor_type"] = arch_info['video_processor_type']
+            processor_dict = {
+                "image_processor": image_config,
+                "video_processor": video_config,
+                "processor_class": arch_info['processor_class'],
+            }
+            for filename, data in [('preprocessor_config.json', image_config),
+                                   ('video_preprocessor_config.json', video_config),
+                                   ('processor_config.json', processor_dict)]:
+                config_path = os.path.join(config_dir, filename)
+                with open(config_path, 'w') as f:
+                    json.dump(data, f, indent=2)
+                logger.info("Saved %s to %s", filename, config_path)
+            return
         preprocessor_dict = {
             "crop_size": image_size,
             "do_center_crop": True,
@@ -1365,6 +1515,7 @@ class GGUFModelHandle(ModelHandle):
         "llama3": "llama",
         "qwen3": "qwen3",
         "qwen35": "qwen3_5",
+        "qwen35moe": "qwen3_5_moe",
         "qwen2": "qwen2",
         "qwen2_moe": "qwen2_moe",
         "gemma": "gemma",
@@ -1372,7 +1523,17 @@ class GGUFModelHandle(ModelHandle):
         "chatglm": "chatglm",
     }
 
-    VLM_ARCHS = {"qwen3vl", "qwen2vl", "qwen2_5vl", "mllama", "qwen35", "internvl_chat"}
+    VLM_ARCHS = {
+        "qwen3vl",
+        "qwen2vl",
+        "qwen2_5vl",
+        "mllama",
+        "qwen35",
+        "qwen35moe",
+        "internvl_chat",
+        "minicpmv4_6",
+        "minicpmv4_7",
+    }
 
     def __init__(self, model_path: str, args=None):
         self.model = GGUFQuantLoad(model_path)
@@ -1388,6 +1549,8 @@ class GGUFModelHandle(ModelHandle):
         self._blocks_full_float_fallback = {}
         self._block_quant_info = {}
         self._mixed_quant_fallback = False
+        self._tensor_widen_targets = {}
+        self.layer_quant_infos = {}
 
     def load_mmproj(self, mmproj_path: str):
         """Load mmproj GGUF file for vision models.
@@ -1435,6 +1598,11 @@ class GGUFModelHandle(ModelHandle):
         test_tensors = [
             "model.layers.0.self_attn.q_proj.weight",
             "model.layers.0.mlp.gate_proj.weight",
+            "model.language_model.layers.0.self_attn.q_proj.weight",
+            "model.language_model.layers.3.self_attn.q_proj.weight",
+            "model.language_model.layers.0.mlp.shared_expert.gate_proj.weight",
+            "model.language_model.layers.0.mlp.experts.0.gate_proj.weight",
+            "model.language_model.layers.0.linear_attn.in_proj_qkv.weight",
         ]
 
         quantized_count = 0
@@ -1508,14 +1676,18 @@ class GGUFModelHandle(ModelHandle):
             qt = tensor.tensor_type
             if qt in FLOAT_TYPES:
                 continue
-            if name.startswith("model.visual."):
+            if name.startswith("model.visual.") or name.startswith("v."):
                 key = "vit"
             elif name.startswith("model.layers."):
                 m = re.match(r'model\.layers\.(\d+)', name)
                 key = f"block.{m.group(1)}" if m else name
-            elif name.startswith("model.token_embd"):
+            elif name.startswith("blk."):
+                # Native GGUF block tensors (qwen35 / qwen35moe / llama.cpp).
+                m = re.match(r'blk\.(\d+)\.', name)
+                key = f"block.{m.group(1)}" if m else name
+            elif name.startswith("model.token_embd") or name == "token_embd.weight":
                 key = "embedding"
-            elif name.startswith("model.output"):
+            elif name.startswith("model.output") or name == "output.weight":
                 key = "lm_head"
             else:
                 continue
@@ -1765,18 +1937,26 @@ class GGUFModelHandle(ModelHandle):
             return decode_token(tokens_list[token_id])
 
         model_type = type(self).ARCH_TO_MODEL_TYPE.get(arch, arch)
+        # Keep the MiniCPM-V model type selected from mmproj.
+        cfg_model_type = getattr(conv.config, "model_type", None)
+        if cfg_model_type in ("minicpmv4_6", "minicpmv4_7"):
+            model_type = cfg_model_type
 
         arch_to_tokenizer_class = {
             "qwen3": "Qwen2Tokenizer",
             "qwen35": "Qwen2Tokenizer",
+            "qwen35moe": "Qwen2Tokenizer",
             "qwen2": "Qwen2Tokenizer",
             "llama": "LlamaTokenizer",
             "llama3": "LlamaTokenizer",
             "gemma": "GemmaTokenizer",
             "gemma2": "GemmaTokenizerFast",
             "internvl_chat": "Qwen2Tokenizer",
+            "minicpmv4_6": "Qwen2Tokenizer",
+            "minicpmv4_7": "Qwen2Tokenizer",
         }
-        tokenizer_class = arch_to_tokenizer_class.get(arch)
+        tokenizer_class = arch_to_tokenizer_class.get(arch) or arch_to_tokenizer_class.get(
+            model_type)
         if tokenizer_class is None:
             tokenizer_class = "Qwen2Tokenizer" if arch.startswith("qwen") else "LlamaTokenizer"
 
@@ -1923,6 +2103,50 @@ class GGUFModelHandle(ModelHandle):
                     "vision_end_token_id": "<|vision_end|>",
                 },
             },
+            "qwen35moe": {
+                "model_type": "qwen3_5_moe",
+                "architectures": "Qwen3_5MoeForConditionalGeneration",
+                "text_model_type": "qwen3_5_moe_text",
+                "vision_model_type": "qwen3_5",
+                "vlm_tokens": {
+                    "image_token_id": "<|image_pad|>",
+                    "video_token_id": "<|video_pad|>",
+                    "vision_start_token_id": "<|vision_start|>",
+                    "vision_end_token_id": "<|vision_end|>",
+                },
+            },
+            "minicpmv4_7": {
+                "model_type": "minicpmv4_7",
+                "architectures": "MiniCPMV",
+                "text_model_type": "qwen3_5_moe_text",
+                "vision_model_type": "minicpmv4_7_vision",
+                "vlm_tokens": {
+                    "image_token_id": "<|image_pad|>",
+                    "video_token_id": "<|video_pad|>",
+                    "image_start_token_id": "<image>",
+                    "image_end_token_id": "</image>",
+                    "slice_start_token_id": "<slice>",
+                    "slice_end_token_id": "</slice>",
+                    "image_id_start_token_id": "<image_id>",
+                    "image_id_end_token_id": "</image_id>",
+                },
+            },
+            "minicpmv4_6": {
+                "model_type": "minicpmv4_6",
+                "architectures": "MiniCPMV",
+                "text_model_type": "qwen3_5_text",
+                "vision_model_type": "minicpmv4_6_vision",
+                "vlm_tokens": {
+                    "image_token_id": "<|image_pad|>",
+                    "video_token_id": "<|video_pad|>",
+                    "image_start_token_id": "<image>",
+                    "image_end_token_id": "</image>",
+                    "slice_start_token_id": "<slice>",
+                    "slice_end_token_id": "</slice>",
+                    "image_id_start_token_id": "<image_id>",
+                    "image_id_end_token_id": "</image_id>",
+                },
+            },
             "qwen2vl": {
                 "model_type": "qwen2_vl",
                 "architectures": "Qwen2VLForConditionalGeneration",
@@ -1948,7 +2172,7 @@ class GGUFModelHandle(ModelHandle):
             },
         }
 
-        vlm_info = VLM_CONFIG_ARCHS.get(arch)
+        vlm_info = VLM_CONFIG_ARCHS.get(model_type) or VLM_CONFIG_ARCHS.get(arch)
 
         _base_gguf_config_keys = [
             (f"{gguf_arch_for_keys}.embedding_length", "hidden_size"),
@@ -1981,13 +2205,17 @@ class GGUFModelHandle(ModelHandle):
             nextn_layers = int(get_gguf_val(f"{gguf_arch_for_keys}.nextn_predict_layers") or 0)
             if nextn_layers > 0 and "num_hidden_layers" in text_config_dict:
                 text_config_dict["num_hidden_layers"] -= nextn_layers
-            if arch == "qwen35":
+            if arch in ("qwen35", "qwen35moe"):
                 text_config_dict["mtp_num_hidden_layers"] = nextn_layers
                 text_config_dict["mtp_use_dedicated_embeddings"] = False
 
             if "hidden_size" in text_config_dict and "num_attention_heads" in text_config_dict:
-                text_config_dict["head_dim"] = text_config_dict["hidden_size"] // text_config_dict[
-                    "num_attention_heads"]
+                key_len = get_gguf_val(f"{gguf_arch_for_keys}.attention.key_length")
+                if key_len is not None:
+                    text_config_dict["head_dim"] = int(key_len)
+                else:
+                    text_config_dict["head_dim"] = text_config_dict[
+                        "hidden_size"] // text_config_dict["num_attention_heads"]
 
             for key in ["bos_token_id", "eos_token_id", "pad_token_id"]:
                 if key in special_token_id_map:
@@ -1997,22 +2225,39 @@ class GGUFModelHandle(ModelHandle):
             text_config_dict["initializer_range"] = 0.02
             _has_output = any(t.name == "output.weight" for t in self.model.reader.tensors)
             text_config_dict["tie_word_embeddings"] = not _has_output if arch in (
-                "qwen35", "internvl_chat") else True
+                "qwen35", "qwen35moe", "internvl_chat") else True
             text_config_dict["use_cache"] = True
             text_config_dict["attention_bias"] = False
             text_config_dict["attention_dropout"] = 0.0
-            if arch == "qwen35":
+            if arch in ("qwen35", "qwen35moe"):
                 text_config_dict["attn_output_gate"] = True
             text_config_dict["model_type"] = vlm_info["text_model_type"]
             text_config_dict["dtype"] = "bfloat16"
             text_config_dict["vocab_size"] = len(tokens_list)
+
+            if arch == "qwen35moe":
+                expert_count = get_gguf_val(f"{gguf_arch_for_keys}.expert_count")
+                expert_ff = get_gguf_val(f"{gguf_arch_for_keys}.expert_feed_forward_length")
+                shared_ff = get_gguf_val(f"{gguf_arch_for_keys}.expert_shared_feed_forward_length")
+                if expert_count is not None:
+                    text_config_dict["num_experts"] = int(expert_count)
+                    text_config_dict["num_experts_per_tok"] = int(
+                        get_gguf_val(f"{gguf_arch_for_keys}.expert_used_count") or 1)
+                    text_config_dict["moe_intermediate_size"] = int(expert_ff or 1)
+                    text_config_dict["shared_expert_intermediate_size"] = int(shared_ff or expert_ff
+                                                                              or 1)
+                    text_config_dict["intermediate_size"] = text_config_dict[
+                        "shared_expert_intermediate_size"]
+                    text_config_dict["norm_topk_prob"] = True
+                    text_config_dict["decoder_sparse_step"] = 1
+                    text_config_dict["mlp_only_layers"] = []
 
             dimension_sections = get_gguf_val(f"{arch}.rope.dimension_sections")
             if dimension_sections is not None:
                 mrope_section = dimension_sections[:3] if len(
                     dimension_sections) >= 3 else dimension_sections
                 mrope_section_list = list(mrope_section)
-                if arch == "qwen35":
+                if arch in ("qwen35", "qwen35moe"):
                     text_config_dict["rope_parameters"] = {
                         "rope_theta": text_config_dict.get("rope_theta", 10000000),
                         "mrope_interleaved": True,
@@ -2060,10 +2305,8 @@ class GGUFModelHandle(ModelHandle):
             if ssm_num_v_heads:
                 text_config_dict["linear_num_value_heads"] = ssm_num_v_heads
 
-            if arch == "qwen35":
+            if arch in ("qwen35", "qwen35moe"):
                 text_config_dict["mamba_ssm_dtype"] = "float32"
-
-            if arch == "qwen35":
                 text_config_dict["partial_rotary_factor"] = 0.25
                 text_config_dict.pop("rope_theta", None)
 
@@ -2128,7 +2371,21 @@ class GGUFModelHandle(ModelHandle):
                     config_dict["ps_version"] = "v2"
             else:
                 config_dict["text_config"] = text_config_dict
-                config_dict["tie_word_embeddings"] = not _has_output if arch == "qwen35" else True
+                config_dict["tie_word_embeddings"] = not _has_output if arch in (
+                    "qwen35", "qwen35moe") else True
+                if model_type in ("minicpmv4_6", "minicpmv4_7"):
+                    for attr, default in (
+                        ("version", 4.7 if model_type == "minicpmv4_7" else 4.6),
+                        ("merge_kernel_size", [2, 2]),
+                        ("merger_times", 1),
+                        ("downsample_mode", "16x"),
+                        ("insert_layer_id", 6),
+                        ("mrope_mode", "canvas"),
+                        ("patch_size", 14),
+                        ("image_size", 448),
+                    ):
+                        val = getattr(conv.config, attr, None)
+                        config_dict[attr] = default if val is None else val
 
             for token_key, token_str in vlm_info["vlm_tokens"].items():
                 for idx in range(len(tokens_list)):
@@ -2184,7 +2441,7 @@ class GGUFModelHandle(ModelHandle):
                     'image_size', 'spatial_merge_size', 'in_channels', 'temporal_patch_size',
                     'num_position_embeddings', 'layer_norm_eps', 'hidden_act', 'projector_type',
                     'deepstack_visual_indexes', 'out_hidden_size', 'mlp_ratio', 'embed_dim',
-                    'window_size', 'fullatt_block_indexes'
+                    'window_size', 'fullatt_block_indexes', 'window_kernel_size', 'insert_layer_id'
             ]:
                 val = getattr(vision_config, attr, None)
                 if val is not None:
@@ -2283,7 +2540,8 @@ class GGUFModelHandle(ModelHandle):
             False,
         }
 
-        if model_type in ("qwen3_5", "qwen35", "qwen3_vl"):
+        if model_type in ("qwen3_5", "qwen35", "qwen3_5_moe", "qwen35moe", "qwen3_vl",
+                          "minicpmv4_6", "minicpmv4_7"):
             tokenizer_config_dict["pretokenize_regex"] = (
                 "(?i:'s|'t|'re|'ve|'m|'ll|'d)|"
                 "[^\\r\\n\\p{L}\\p{N}]?[\\p{L}\\p{M}]+|"
@@ -2301,6 +2559,12 @@ class GGUFModelHandle(ModelHandle):
                 ("video_token_id", "video_token"),
                 ("vision_start_token_id", "vision_bos_token"),
                 ("vision_end_token_id", "vision_eos_token"),
+                ("image_start_token_id", "image_start_token"),
+                ("image_end_token_id", "image_end_token"),
+                ("slice_start_token_id", "slice_start_token"),
+                ("slice_end_token_id", "slice_end_token"),
+                ("image_id_start_token_id", "image_id_start_token"),
+                ("image_id_end_token_id", "image_id_end_token"),
             ]:
                 token_str = vlm_info["vlm_tokens"].get(config_key)
                 if token_str:
@@ -2496,7 +2760,7 @@ class GGUFModelHandle(ModelHandle):
                     weight_dict[path + ".weight"] = np.ascontiguousarray(np.transpose(data, (1, 0)))
                 weight_shape = weight_dict[path + ".weight"].shape
             else:
-                block_idx_match = re.search(r'model\.layers\.(\d+)', path)
+                block_idx_match = re.search(r'(?:language_model\.)?layers\.(\d+)', path)
                 block_idx = int(block_idx_match.group(1)) if block_idx_match else -1
                 if path.startswith("mtp."):
                     block_idx = "mtp"

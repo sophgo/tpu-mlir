@@ -365,6 +365,16 @@ if __name__ == '__main__':
                                         args.quantize,
                                         args.seq_length,
                                         mmproj_reader=mmproj_reader)
+            proj_field = mmproj_reader.get_field("clip.projector_type")
+            if proj_field is not None:
+                try:
+                    proj_type = proj_field.contents()
+                except Exception:
+                    proj_type = None
+                if proj_type in ("minicpmv4_6", "minicpmv4_7"):
+                    model_type = proj_type
+                    print("Detected MiniCPM-V projector_type={}, "
+                          "override model_type to {}".format(proj_type, model_type))
         else:
             config = create_gguf_config(reader, args.quantize, args.seq_length)
     else:

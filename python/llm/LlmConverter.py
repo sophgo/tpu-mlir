@@ -1906,10 +1906,14 @@ class LlmConverter(BaseConverter):
                 gate_z = weight_dict[real_experts_gate + ".qzeros"]
                 up_z = weight_dict[real_experts_up + ".qzeros"]
                 down_z = weight_dict[real_experts_down + ".qzeros"]
-                if self.quant_mode == "compressed-tensors" and self.quant_bits == 4:
-                    gate_z = self._pack_int4_along_last(gate_z)
-                    up_z = self._pack_int4_along_last(up_z)
-                    down_z = self._pack_int4_along_last(down_z)
+                if self.quant_bits == 4:
+                    gate_groups = self.hidden_size // self.q_group_size
+                    down_groups = self.moe_intermediate_size // self.q_group_size
+                    if (self.quant_mode == "compressed-tensors" or gate_z.shape[-1] == gate_groups):
+                        gate_z = self._pack_int4_along_last(gate_z)
+                        up_z = self._pack_int4_along_last(up_z)
+                    if (self.quant_mode == "compressed-tensors" or down_z.shape[-1] == down_groups):
+                        down_z = self._pack_int4_along_last(down_z)
                 experts_gate_qzeros_list.append(gate_z)
                 experts_up_qzeros_list.append(up_z)
                 experts_down_qzeros_list.append(down_z)
