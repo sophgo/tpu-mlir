@@ -1,5 +1,5 @@
 === cv84x6 ===
-commit e5eb25085e2d757e1719a32d70318d5c74239d13
+commit b1275ed2cd92260db2c2f18996be73c4d351f6eb
 Author: yuchu.li <yuchu.li@sophgo.com>
 Date:   Thu Nov 12 10:49:02 2026 +0800
 
