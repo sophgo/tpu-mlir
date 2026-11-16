@@ -1,13 +1,19 @@
 === cv84x6 ===
-commit b1275ed2cd92260db2c2f18996be73c4d351f6eb
-Author: yuchu.li <yuchu.li@sophgo.com>
-Date:   Thu Nov 12 10:49:02 2026 +0800
+Source base: b1275ed2cd92260db2c2f18996be73c4d351f6eb
+Source commit: fd68eca5b3a87d2760258c962a09acfbd5848827 (minimized SenseVoiceSmall A13; source-identical to build revision ad1537e4b7fe668aaa86393e7521ce178b222862).
+Cumulative backend patch SHA256: 09fac9272f21f292e63102e982804672343fe3cd259b18df34e728e44a6bc64d
 
-    [fix][cv84x6] fix RequantFp for MLIR-984
-    
-    Fix the RequantFp temporary LMEM layout and use FP16 arithmetic for the exact model-106 parameter combinations.
-    
-    Change-Id: I5ca8374e71a9a367dd7618627647a20952db818d
+    - Retain BatchMatMul common.Y_dtype, skipped-core Select broadcast shape publication, and global output synchronization/polling.
+    - Original BMM shape helper, FC controller, public Select API and DEBUG dump code match the source base.
+    - Build current backend/firmware archives, then link cmodel/kernel with PPL RELEASE. Do not use historical build_cmodel libraries.
+    - Acceptance logs and source patches: jira/2610/sensevoicesmall/__test__/minimal_1116/A13_original_debug_dump (final validation recorded there).
+
+SHA256 libbackend_cv84x6.so 76fce1548560e444dab4259860a9e67cecc788fffa754ad95f21563a2079f811
+SHA256 libcmodel_cv84x6.so 69c6f1cedeb675e3f027e0c185bc3ee5b8d5b4dd819148b14c0b240c01dd88bc
+SHA256 libcv84x6_kernel_module.so 7de3e261dec796c1f8bed6d9bacdc173f293d85411b629adab99a406d85259ae
+SHA256 libcmodel_cv84x6.a 40b793022fa71899760b9628e3ffff008b04acae2c038af0b08f640b1ab08036
+SHA256 libcv84x6_kernel_module.a d7de042c765482f17a41bf465f0989530930fa99b3db96e725c2ee48dad5fc68
+
 === bm1684x ===
 commit 99fb6f9d2c6c920724782950ac71a95289ae5d33
 Author: junliang.liu <junliang.liu@sophgo.com>

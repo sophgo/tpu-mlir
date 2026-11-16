@@ -396,11 +396,7 @@ uint64_t dynamic_layer::get_core_mask() {
   if (module::isOpInBlock(op_) == true) {
     UNREACHABLE_OP("dynamic_layer::get_core_mask not support op in block", op_);
   }
-  if (op_->hasAttrOfType<BoolAttr>("multicore") &&
-      op_->getAttrOfType<BoolAttr>("multicore").getValue() == true) {
-    auto n = module::getCoreNum();
-    return (1ULL << n) - 1;
-  }
+  // Dynamic params omit num_core; static multicore would race on buffers.
   if (op_->hasAttrOfType<IntegerAttr>(CodegenAttr::CORE_ID)) {
     int core_id =
         op_->getAttrOfType<IntegerAttr>(CodegenAttr::CORE_ID).getInt();
@@ -515,10 +511,10 @@ uint32_t push_back_layer_global_tensor(
   }
 
   /*TODO process shape layer*/
-  ir_tensor_info.tensor_type =
-      module::isWeight(v) ? IR_TENSOR_TYPE_COEFF
-                          : module::isShapeRelatedOp(v) ? IR_TENSOR_TYPE_SHAPE
-                                                        : IR_TENSOR_TYPE_NEURON;
+  ir_tensor_info.tensor_type = module::isWeight(v) ? IR_TENSOR_TYPE_COEFF
+                               : module::isShapeRelatedOp(v)
+                                   ? IR_TENSOR_TYPE_SHAPE
+                                   : IR_TENSOR_TYPE_NEURON;
 
   ir_tensor_info.is_io_tensor = 0;
   if (is_layer_in) {

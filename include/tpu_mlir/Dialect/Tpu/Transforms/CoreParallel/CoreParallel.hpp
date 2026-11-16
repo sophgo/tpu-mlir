@@ -68,11 +68,11 @@ T getValidIndex(ArrayRef<T> dims, ArrayRef<T> strides) {
     index += a * b;
   return index;
 }
-#endif // CORE_PARALLEL_HPP
-
 std::optional<SmallVector<Type>> getSplitTypes(Attribute valueMap, Value value,
                                                ArrayRef<int64_t> shapeParallel,
-                                               int splitDim, int splitMax);
+                                               int splitDim, int splitMax,
+                                               int *actualAxis = nullptr);
 tpu::CoreParallelOp forAll(IndexingMapsInterface op, int offset, int num_core);
+#endif // CORE_PARALLEL_HPP
 } // namespace tpu
 } // namespace tpu_mlir

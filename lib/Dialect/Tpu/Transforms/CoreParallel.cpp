@@ -26,7 +26,8 @@ namespace tpu {
 // but we only need to create 2 opd0<1x...> and opd1<32x...>
 std::optional<SmallVector<Type>> getSplitTypes(Attribute valueMap, Value value,
                                                ArrayRef<int64_t> shapeParallel,
-                                               int splitDim, int splitMax) {
+                                               int splitDim, int splitMax,
+                                               int *actualAxis) {
   auto vMap = cast<AffineMapAttr>(valueMap).getValue();
   auto context = valueMap.getContext();
   int index;
@@ -51,6 +52,9 @@ std::optional<SmallVector<Type>> getSplitTypes(Attribute valueMap, Value value,
     if (!find)
       return std::nullopt;
   }
+  // CoreSplit needs the operand axis, not the iteration-space axis.
+  if (actualAxis)
+    *actualAxis = index;
   auto shape = SmallVector<int64_t>(module::getShape(value));
   int parallelSpace = 1;
   for (int i = 0; i < index; i++) {
@@ -158,8 +162,9 @@ tpu::CoreParallelOp forAll(IndexingMapsInterface op, int offset = 0,
   SmallVector<SmallVector<int64_t, 4>, 4> operandsStride;
   for (auto [index, valueMap, value] :
        llvm::enumerate(operandsMap, op->getOperands())) {
+    int actualAxis = splitDim;
     if (auto outTypes = getSplitTypes(valueMap, value, ArrayRef(shapeParallel),
-                                      splitDim, splitMax)) {
+                                      splitDim, splitMax, &actualAxis)) {
       std::vector<Location> locs_v;
       for (int i = 0; i < outTypes->size(); i++) {
         auto name = module::getName(value) + "_split_" + Twine(i).str();
@@ -167,8 +172,8 @@ tpu::CoreParallelOp forAll(IndexingMapsInterface op, int offset = 0,
       }
       auto nameLoc = FusedLoc::get(rewriter.getContext(), locs_v);
       std::vector<NamedAttribute> attrs;
-      attrs.push_back(
-          rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(splitDim)));
+      attrs.push_back(rewriter.getNamedAttr(
+          "axis", rewriter.getSI32IntegerAttr(actualAxis)));
       auto new_op = rewriter.create<tpu::CoreSplitOp>(
           nameLoc, TypeRange(outTypes.value()), value, attrs);
       splitOps.push_back(new_op.getOperation());

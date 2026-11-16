@@ -131,6 +131,12 @@ LogicalResult tpu::WhereOp::LocalGenSupport() {
     llvm::errs() << "1684 Where not support local\n";
     return failure();
   }
+  if (module::isDynamic()) {
+    for (auto value : getOperands().take_front(3))
+      if (!module::isNone(value) &&
+          module::getShape(value) != module::getShape(getOutput()))
+        return failure();
+  }
   return success();
 }
 
@@ -154,7 +160,14 @@ ArrayAttr tpu::WhereOp::getIndexingMaps() {
     bool is_none = def_op ? isa<top::NoneOp>(def_op)
                           : isa<mlir::NoneType>(getOperand(i).getType());
     if (!is_none) {
-      indexingMaps.push_back(out_map);
+      auto shape = module::getShape(getOperand(i));
+      auto dim_diff = num_dims - shape.size();
+      SmallVector<AffineExpr> indices;
+      for (int j = dim_diff; j < num_dims; j++)
+        indices.push_back(shape[j - dim_diff] == 1
+                              ? getAffineConstantExpr(1, ctx)
+                              : getAffineDimExpr(j, ctx));
+      indexingMaps.push_back(AffineMap::get(num_dims, 0, indices, ctx));
     } else {
       indexingMaps.push_back(empty_map);
     }

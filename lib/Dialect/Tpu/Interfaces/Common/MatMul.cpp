@@ -79,13 +79,18 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
     p.K = b_s[b_dims - 2];
   }
 
-  if (p.left_transpose) {
-    if (p.hdim_is_batch) {
+  if (p.hdim_is_batch) {
+    if (p.left_transpose || module::isBM1684XFamily() ||
+        module::isBM1690Family()) {
+      // BM168x hdim layout is [B0, M, B1, K]; CV18xx left-transpose swaps B1/M.
       p.M = a_s[a_dims - 3];
     } else {
-      // trans hw
-      p.M = a_s[a_dims - 1];
+      // CV18xx hdim layout is [B0, B1, M, K].
+      p.M = a_s[a_dims - 2];
     }
+  } else if (p.left_transpose) {
+    // trans hw
+    p.M = a_s[a_dims - 1];
   } else {
     p.M = a_s[a_dims - 2];
   }
@@ -331,13 +336,18 @@ matmul_attr_t tpu::MatMulOp::dynparseParam() {
     p.K = b_s[b_dims - 2];
   }
 
-  if (p.left_transpose) {
-    if (p.hdim_is_batch) {
+  if (p.hdim_is_batch) {
+    if (p.left_transpose || module::isBM1684XFamily() ||
+        module::isBM1690Family()) {
+      // BM168x hdim layout is [B0, M, B1, K]; CV18xx left-transpose swaps B1/M.
       p.M = a_s[a_dims - 3];
     } else {
-      // trans hw
-      p.M = a_s[a_dims - 1];
+      // CV18xx hdim layout is [B0, B1, M, K].
+      p.M = a_s[a_dims - 2];
     }
+  } else if (p.left_transpose) {
+    // trans hw
+    p.M = a_s[a_dims - 1];
   } else {
     p.M = a_s[a_dims - 2];
   }
