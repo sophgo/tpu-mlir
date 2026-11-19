@@ -861,12 +861,12 @@ mlir2graph.py
    $ mlir2graph.py \
      --mlir netname.mlir
 
-对较大的 mlir 文件，dot 文件使用原始的渲染算法可能会消耗较长的时间，可以添加 --is_big 参数，会减少算法的迭代时间，出图更快：
+对较大的 mlir 文件，dot 文件使用原始的渲染算法可能会消耗较长的时间，可以添加 --isbig 参数，会减少算法的迭代时间，出图更快：
 
 .. code-block:: shell
 
    $ mlir2graph.py \
-     --mlir netname.mlir --is_big
+     --mlir netname.mlir --isbig
 
 支持的功能如下:
 
@@ -878,7 +878,7 @@ mlir2graph.py
      - 描述
    * - mlir
      - 任意 mlir 文件
-   * - is_big
+   * - isbig
      - 是否是比较大的 mlir 文件，没有明确指标，一般靠人为根据渲染用时判断
    * - failed_keys
      - 对比失败的节点名列表，多个用 "," 隔开，在渲染后对应节点会渲染为红色
