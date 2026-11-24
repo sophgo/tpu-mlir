@@ -68,6 +68,10 @@ def getCustomFormat(pixel_format, channel_format):
 class DeployTool:
 
     def __init__(self, args):
+        self.sensevoice_unpadded = getattr(args, "sensevoice_unpadded", False)
+        if self.sensevoice_unpadded and not (args.chip == "cv84x6" and args.dynamic and
+                args.num_core == 1 and args.num_device == 1 and args.quantize.upper() == "F16"):
+            raise ValueError("--sensevoice_unpadded requires CV84X6, dynamic FP16, one device and one core")
         self.mlir_file = args.mlir
         self.chip = args.chip
         self.includeWeight = args.includeWeight
@@ -288,6 +292,7 @@ class DeployTool:
                                      mute=self.mute,
                                      matmul_perchannel=self.matmul_perchannel,
                                      gelu_mode=self.gelu_mode,
+                                     sensevoice_unpadded=self.sensevoice_unpadded,
                                      log_level="normal" if self.log_level == 0 else "simple")
             if self.do_validate and not self.enable_maskrcnn:
                 self.validate_tpu_mlir()
@@ -520,6 +525,7 @@ class DeployTool:
                     bmodel_path=self.bmodel_path,
                     final_mlir=self.final_mlir,
                     dynamic=self.dynamic,
+                    sensevoice_unpadded=self.sensevoice_unpadded,
                     quant_input=self.quant_input,
                     quant_output=self.quant_output,
                     quant_input_list=self.quant_input_list,
@@ -705,6 +711,8 @@ if __name__ == '__main__':
                         choices=['auto', 'true', 'false'],
                         help="whether layer groups force group by cores")
     # ========== Compiler Options ==============
+    parser.add_argument("--sensevoice_unpadded", action="store_true",
+                        help="Specialize the 2024-07-17 SenseVoice export for B=1, x_length=T")
     parser.add_argument("--dynamic", action='store_true', help="do compile dynamic")
     parser.add_argument("--opt", default=2, type=int, choices=[1, 2, 3], help="Optimization level")
     parser.add_argument("--layer_group_config", default="", type=str, help="layer group config file, if not set, use default config")
