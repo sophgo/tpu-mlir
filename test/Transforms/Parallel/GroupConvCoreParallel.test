@@ -1,0 +1,1 @@
+// RUN: python3 %S/Inputs/group_conv_core_parallel.py tpuc-opt
