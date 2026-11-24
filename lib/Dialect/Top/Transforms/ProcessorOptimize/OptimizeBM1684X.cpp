@@ -9,6 +9,7 @@
 
 #include "Common.h"
 #include "tpu_mlir/Conversion/TopToTpu/TopToTpu.h"
+#include <cmath>
 #include <future>
 #include <utility>
 #include <vector>
@@ -16,6 +17,120 @@
 namespace tpu_mlir {
 
 namespace bm1684x {
+
+// DFL projection after the importer has canonicalized the ONNX transposes:
+//   [N,D,K,S] -> Permute(0,2,1,3) -> Softmax(axis=1)
+//            -> Conv(weight=[0,...,K-1], shape=[1,K,1,1]) -> [N,1,D,S]
+// Keep K innermost for Softmax and reduce before restoring the output layout:
+//   [N,D,K,S] -> Permute(0,1,3,2) -> Softmax(axis=3)
+//            -> Reshape(N*D*S,K) -> MatMul(K,1) -> Reshape(N,1,D,S).
+// This avoids the large single-core permutation used by the Conv path. The
+// two-dimensional MatMul also avoids unnecessary batched projection/layouts.
+class DFLProjectionToMatMul : public OpRewriterPatternEx<top::ConvOp> {
+public:
+  DFLProjectionToMatMul(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::ConvOp>(context, "DFLProjectionToMatMul",
+                                       benefit) {}
+
+protected:
+  LogicalResult
+  matchAndRewriteImpl(top::ConvOp op,
+                      mlir::PatternRewriter &rewriter) const override {
+    // Limit the initial rollout to the measured static FP16 four-core target.
+    // Calibrated/quantized graphs and high-precision modes need separate tests.
+    if (!module::isCV84X6() || module::getCoreNum() != 4 ||
+        module::getMode() != module::Mode::F16 || module::isDynamic() ||
+        module::isHighPrecision())
+      return failure();
+    auto softmax = op.getInput().getDefiningOp<top::SoftmaxOp>();
+    auto weight = op.getFilter().getDefiningOp<top::WeightOp>();
+    if (!softmax || !softmax->hasOneUse() || !weight ||
+        !module::isNone(op.getBias()) || op.getDoRelu() || op.getGroup() != 1 ||
+        softmax.getAxis() != 1 || softmax.getLog() ||
+        softmax.getBeta().convertToDouble() != 1.0)
+      return failure();
+    auto permute = softmax.getInput().getDefiningOp<top::PermuteOp>();
+    if (!permute || !permute->hasOneUse())
+      return failure();
+    auto input = permute.getInput();
+    auto inputType = dyn_cast<RankedTensorType>(input.getType());
+    auto outputType = dyn_cast<RankedTensorType>(op.getOutput().getType());
+    auto weightType = dyn_cast<RankedTensorType>(op.getFilter().getType());
+    if (!inputType || !outputType || !weightType ||
+        !inputType.hasStaticShape() || inputType.getRank() != 4 ||
+        !inputType.getElementType().isF32() ||
+        !outputType.getElementType().isF32() ||
+        !weightType.getElementType().isF32() ||
+        !module::getElementType(softmax.getOutput()).isF32() ||
+        !module::getElementType(softmax.getInput()).isF32())
+      return failure();
+    auto shape = inputType.getShape();
+    if (llvm::any_of(shape, [](int64_t d) { return d <= 0; }) || shape[2] < 2)
+      return failure();
+    const int64_t n = shape[0], d = shape[1], k = shape[2], s = shape[3];
+    auto arrayEquals = [](ArrayAttr attr, ArrayRef<int64_t> expected) {
+      return attr && ArrayRef<int64_t>(*module::getI64Array(attr)) == expected;
+    };
+    if (!arrayEquals(permute.getOrder(), {0, 2, 1, 3}) ||
+        !arrayEquals(op.getKernelShape(), {1, 1}) ||
+        !arrayEquals(op.getStrides(), {1, 1}) ||
+        !arrayEquals(op.getPads(), {0, 0, 0, 0}) ||
+        (op.getDilations().has_value() &&
+         !arrayEquals(op.getDilations().value(), {1, 1})) ||
+        op.getInserts().has_value() || op.getAutoPad().has_value() ||
+        op.getDynweightReorderd() ||
+        module::getShape(permute.getOutput()) != ArrayRef<int64_t>({n, k, d, s}) ||
+        module::getShape(softmax.getOutput()) != ArrayRef<int64_t>({n, k, d, s}) ||
+        outputType.getShape() != ArrayRef<int64_t>({n, 1, d, s}) ||
+        weightType.getShape() != ArrayRef<int64_t>({1, k, 1, 1}))
+      return failure();
+    auto weights = weight.read<float>();
+    if (weights->size() != k)
+      return failure();
+    for (int64_t i = 0; i < k; ++i)
+      if (weights->at(i) != static_cast<float>(i))
+        return failure();
+
+    const int64_t rows = inputType.getNumElements() / k;
+    auto name = module::getName(op.getOperation()).str();
+    auto loc = [&](StringRef suffix) {
+      return NameLoc::get(rewriter.getStringAttr(name + suffix.str()));
+    };
+    auto type = [&](ArrayRef<int64_t> dims) {
+      return RankedTensorType::get(dims, inputType.getElementType());
+    };
+    rewriter.setInsertionPoint(op);
+    auto layout = rewriter.create<top::PermuteOp>(
+        loc("_dfl_layout"), type({n, d, s, k}), ValueRange{input},
+        ArrayRef<NamedAttribute>{rewriter.getNamedAttr(
+            "order", rewriter.getI64ArrayAttr({0, 1, 3, 2}))});
+    NamedAttrList softmaxAttrs(softmax->getAttrs());
+    softmaxAttrs.set("axis", rewriter.getSI32IntegerAttr(3));
+    auto probabilities = rewriter.create<top::SoftmaxOp>(
+        loc("_dfl_softmax"), layout.getOutput().getType(),
+        ValueRange{layout.getOutput()}, softmaxAttrs.getAttrs());
+    auto flat = rewriter.create<top::ReshapeOp>(
+        loc("_dfl_flatten"), type({rows, k}),
+        ValueRange{probabilities.getOutput()},
+        ArrayRef<NamedAttribute>{rewriter.getNamedAttr(
+            "shape", rewriter.getI64ArrayAttr({rows, k}))});
+    auto projectionType = type({k, 1});
+    auto projection = top::WeightOp::create<float>(
+        op, "dfl_projection", *weights, projectionType);
+    auto reduced = rewriter.create<top::MatMulOp>(
+        loc("_dfl_matmul"), type({rows, 1}),
+        ValueRange{flat.getOutput(), projection, module::getNoneOp(op)},
+        ArrayRef<NamedAttribute>{});
+    auto result = rewriter.create<top::ReshapeOp>(
+        op.getLoc(), outputType, ValueRange{reduced.getOutput()},
+        ArrayRef<NamedAttribute>{rewriter.getNamedAttr(
+            "shape", rewriter.getI64ArrayAttr(outputType.getShape()))});
+    rewriter.replaceOp(op, result.getOutput());
+    rewriter.eraseOp(softmax);
+    rewriter.eraseOp(permute);
+    return success();
+  }
+};
 
 // Unsqueeze -> Expand(Tile) -> Reshape -> Transpose(Permute) --> MatMul
 //                                                       Left -->
@@ -2748,6 +2863,161 @@ private:
   }
 };
 
+// A 1x1 projection produces two contiguous channel halves. Softmax across
+// those halves is [sigmoid(a-b), sigmoid(b-a)]. Fold the subtraction into
+// the constant projection so both gates can stay in a local layer group.
+class FoldRadix2Softmax : public OpRewriterPatternEx<top::SoftmaxOp> {
+public:
+  FoldRadix2Softmax(MLIRContext *context, int benefit)
+      : OpRewriterPatternEx(context, "FoldRadix2Softmax", benefit) {}
+
+private:
+  static bool equals(ArrayAttr attr, ArrayRef<int64_t> values) {
+    return attr && ArrayRef<int64_t>(*module::getI64Array(attr)) == values;
+  }
+
+  static bool hasShape(Value value, ArrayRef<int64_t> shape) {
+    auto type = dyn_cast<RankedTensorType>(value.getType());
+    return type && type.getElementType().isF32() && type.getShape() == shape;
+  }
+
+  // Only accept the two normalized, static NCHW channel slices.
+  static bool isHalf(top::SliceOp slice, int64_t n, int64_t c, int64_t start) {
+    if (!slice || !hasShape(slice.getOutput(), {n, c, 1, 1}) ||
+        !module::isNone(slice.getOffsetT()) ||
+        !module::isNone(slice.getEndsT()) ||
+        !module::isNone(slice.getStepsT()) || !slice.getAxes().empty() ||
+        !equals(slice.getHasparamConvertAxes(), {1}) ||
+        !equals(slice.getOffset(), {0, start, 0, 0}) ||
+        !equals(slice.getSteps(), {1, 1, 1, 1}))
+      return false;
+    auto ends = module::getI64Array(slice.getEnds());
+    return ends->size() == 4 && (*ends)[0] >= n && (*ends)[1] == start + c &&
+           (*ends)[2] >= 1 && (*ends)[3] >= 1;
+  }
+
+  // Read ordinary float constants without mutating them: filters and biases
+  // may be shared with a projection outside this match.
+  static bool foldHalves(Value value, std::vector<float> &diff) {
+    auto weight = value.getDefiningOp<top::WeightOp>();
+    if (!weight || llvm::any_of(weight->getAttrs(), [](NamedAttribute attr) {
+          return attr.getName().getValue() != "inline_bytes";
+        }))
+      return false;
+    auto data = weight.read<float>();
+    if (data->size() != 2 * diff.size())
+      return false;
+    for (size_t i = 0; i < diff.size(); ++i) {
+      float a = (*data)[i], b = (*data)[i + diff.size()];
+      diff[i] = a - b;
+      if (!std::isfinite(a) || !std::isfinite(b) || std::abs(a) > 65504.f ||
+          std::abs(b) > 65504.f || !std::isfinite(diff[i]) ||
+          std::abs(diff[i]) > 65504.f)
+        return false;
+    }
+    return true;
+  }
+
+  LogicalResult matchAndRewriteImpl(top::SoftmaxOp op,
+                                    PatternRewriter &rewriter) const override {
+    if (!module::isCV84X6() || module::getCoreNum() != 4 ||
+        module::getMode() != module::Mode::F16 || module::isDynamic() ||
+        module::isHighPrecision() || !module::isState(module::State::TOP_F32) ||
+        op.getAxis() != 1 || op.getLog() ||
+        op.getBeta().convertToDouble() != 1.0 || !op->hasOneUse())
+      return failure();
+
+    auto pack = op.getInput().getDefiningOp<top::PermuteOp>();
+    auto unpack = dyn_cast<top::ReshapeOp>(*op->user_begin());
+    if (!pack || !pack->hasOneUse() || !equals(pack.getOrder(), {0, 2, 1, 3}) ||
+        !unpack || unpack.getShapeT() || !llvm::hasNItems(unpack->getUses(), 2))
+      return failure();
+    auto pairs = pack.getInput().getDefiningOp<top::ReshapeOp>();
+    if (!pairs || !pairs->hasOneUse() || pairs.getShapeT())
+      return failure();
+    auto conv = pairs.getInput().getDefiningOp<top::ConvOp>();
+    if (!conv || !conv->hasOneUse() || conv.getDoRelu() ||
+        conv.getGroup() != 1 || conv.getWeightIsCoeff() != 1 ||
+        conv.getDynweightReorderd() || !equals(conv.getKernelShape(), {1, 1}) ||
+        !equals(conv.getStrides(), {1, 1}) ||
+        !equals(conv.getPads(), {0, 0, 0, 0}) ||
+        (conv.getDilations() && !equals(*conv.getDilations(), {1, 1})) ||
+        conv.getInserts() || conv.getAutoPad() ||
+        conv.getDoWinograd().value_or(false) || conv.getWeightBits() ||
+        conv.getInInt4Scale() || conv.getInInt4Zp() || conv.getOutInt8Scale() ||
+        conv.getOutInt8Zp())
+      return failure();
+
+    auto in = dyn_cast<RankedTensorType>(conv.getInput().getType());
+    auto out = dyn_cast<RankedTensorType>(conv.getOutput().getType());
+    if (!in || !out || !in.hasStaticShape() || !out.hasStaticShape() ||
+        in.getRank() != 4 || out.getRank() != 4 || out.getDimSize(1) % 2)
+      return failure();
+    const int64_t n = in.getDimSize(0), ic = in.getDimSize(1);
+    const int64_t c = out.getDimSize(1) / 2;
+    if (n <= 0 || ic <= 0 || c <= 0 ||
+        !hasShape(conv.getInput(), {n, ic, 1, 1}) ||
+        !hasShape(conv.getOutput(), {n, 2 * c, 1, 1}) ||
+        !hasShape(conv.getFilter(), {2 * c, ic, 1, 1}) ||
+        !hasShape(pairs.getOutput(), {n, 1, 2, c}) ||
+        !hasShape(pack.getOutput(), {n, 2, 1, c}) ||
+        !hasShape(op.getOutput(), {n, 2, 1, c}) ||
+        !hasShape(unpack.getOutput(), {n, 2 * c, 1, 1}))
+      return failure();
+
+    auto uses = unpack->getUsers();
+    auto it = uses.begin();
+    auto first = dyn_cast<top::SliceOp>(*it++);
+    auto second = dyn_cast<top::SliceOp>(*it);
+    if (!isHalf(first, n, c, 0))
+      std::swap(first, second);
+    if (!isHalf(first, n, c, 0) || !isHalf(second, n, c, c))
+      return failure();
+
+    std::vector<float> filterDiff(c * ic), biasDiff;
+    if (!foldHalves(conv.getFilter(), filterDiff))
+      return failure();
+    Value bias = conv.getBias();
+    if (!module::isNone(bias)) {
+      biasDiff.resize(c);
+      if (!hasShape(bias, {2 * c}) || !foldHalves(bias, biasDiff))
+        return failure();
+    }
+
+    auto filterType = RankedTensorType::get({c, ic, 1, 1}, in.getElementType());
+    auto filter =
+        top::WeightOp::create(conv, "radix2_filter", filterDiff, filterType);
+    if (!biasDiff.empty()) {
+      auto biasType = RankedTensorType::get({c}, in.getElementType());
+      bias = top::WeightOp::create(conv, "radix2_bias", biasDiff, biasType);
+    }
+    rewriter.setInsertionPoint(conv);
+    auto type = first.getOutput().getType();
+    auto delta = rewriter.create<top::ConvOp>(
+        module::getLocLike(conv.getOperation(), "radix2_difference"), type,
+        ValueRange{conv.getInput(), filter, bias}, conv->getAttrs());
+    auto neg = rewriter.create<top::MulConstOp>(
+        module::getLocLike(conv.getOperation(), "radix2_negative"), type,
+        ValueRange{delta.getOutput()},
+        ArrayRef<NamedAttribute>{rewriter.getNamedAttr(
+            "const_val", rewriter.getF64FloatAttr(-1.0))});
+    auto p0 = rewriter.create<top::SigmoidOp>(first.getLoc(), type,
+                                              ValueRange{delta.getOutput()},
+                                              ArrayRef<NamedAttribute>{});
+    auto p1 = rewriter.create<top::SigmoidOp>(second.getLoc(), type,
+                                              ValueRange{neg.getOutput()},
+                                              ArrayRef<NamedAttribute>{});
+    rewriter.replaceOp(first, p0.getOutput());
+    rewriter.replaceOp(second, p1.getOutput());
+    rewriter.eraseOp(unpack);
+    rewriter.eraseOp(op);
+    rewriter.eraseOp(pack);
+    rewriter.eraseOp(pairs);
+    rewriter.eraseOp(conv);
+    return success();
+  }
+};
+
 class RewriteLayerNormAxisOnly : public OpRewriterPatternEx<top::LayerNormOp> {
 public:
   RewriteLayerNormAxisOnly(mlir::MLIRContext *context, int benefit)
@@ -2912,6 +3182,12 @@ namespace top {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns,
                                      const std::vector<RewriterRule> &rules) {
+  bool enableDFL = true;
+  for (const auto &rule : rules)
+    if (rule.pattern_name == "DFLProjectionToMatMul")
+      enableDFL = getParam<int>(rule.params, "use_pattern", 1) != 0;
+  if (enableDFL)
+    patterns->add<DFLProjectionToMatMul>(patterns->getContext(), 10);
   patterns->add<MergeScale2Conv>(patterns->getContext(), /*PatternBenefit*/ 9);
   patterns
       ->add<ChatGLM3ToGQAAttention, ConvertMatMulWithRightTranspose,
@@ -2922,6 +3198,14 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns,
             ConcatReduceSum2AddReshape, ConvertToRSqrt, ConvertToSquare,
             ConvertToQGELU, InterpNearst2Matmul, ForwardRequantInt,
             RewriteLayerNormAxisOnly>(patterns->getContext(), 8);
+  // Folding the two projections changes FP16 rounding. Enable per model.
+  for (const auto &rule : rules) {
+    if (rule.pattern_name == "FoldRadix2Softmax" &&
+        getParam<int>(rule.params, "use_pattern", 0) != 0) {
+      patterns->add<FoldRadix2Softmax>(patterns->getContext(), 10);
+      break;
+    }
+  }
 }
 } // namespace top
 } // namespace tpu_mlir

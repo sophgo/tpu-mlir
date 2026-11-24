@@ -14,6 +14,7 @@
 #include <mlir/Dialect/Linalg/Passes.h>
 
 namespace tpu_mlir {
+namespace tpu { void registerSenseVoiceUnpaddedPass(); }
 void registerAllDialects(mlir::DialectRegistry &registry) {
   registry
       .insert<mlir::tosa::TosaDialect, mlir::func::FuncDialect, top::TopDialect,
@@ -26,6 +27,7 @@ void registerAllPasses() {
   mlir::registerConversionPasses();
   top::registerTopPasses();
   tpu::registerTpuPasses();
+  tpu::registerSenseVoiceUnpaddedPass();
 }
 
 void registerToolPasses() { tpu::registerTruncIO(); }

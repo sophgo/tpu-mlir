@@ -1,0 +1,1 @@
+// RUN: python3 %S/Inputs/fold_radix2_softmax.py tpuc-opt

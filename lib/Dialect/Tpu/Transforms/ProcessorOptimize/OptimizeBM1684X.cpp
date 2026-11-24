@@ -2360,6 +2360,292 @@ struct ScatterElementsPattern
   }
 };
 
+// Match the explicit stable-softmax idiom without changing its arithmetic.
+// Only unbufferized, static floating-point tensors are considered here; mixed
+// precision, quantized, masked and shared-intermediate graphs are left intact.
+struct StableSoftmaxChain {
+  tpu::SubOp sub;
+  tpu::ReduceOp max;
+  Value scores;
+};
+
+static bool attentionPatternEnabled(const std::vector<RewriterRule> &rules,
+                                    StringRef name) {
+  for (const auto &rule : rules)
+    if (rule.pattern_name == name &&
+        getParam(rule.params, "use_pattern", 1) == 0)
+      return false;
+  return true;
+}
+
+static bool hasOnlyNoneOperandsAfter(Operation *op, unsigned first) {
+  for (auto v : op->getOperands().drop_front(first))
+    if (!module::isNone(v))
+      return false;
+  return true;
+}
+
+static bool matchStableSoftmax(tpu::SoftmaxOp softmax,
+                               StableSoftmaxChain &chain) {
+  if (!softmax || softmax.getLog() ||
+      softmax.getBeta().convertToDouble() != 1.0 ||
+      !hasOnlyNoneOperandsAfter(softmax, 1))
+    return false;
+  auto type = softmax.getInput().getType().dyn_cast<RankedTensorType>();
+  if (!type || type.getRank() != 4 || !type.hasStaticShape() ||
+      type.getEncoding() ||
+      llvm::any_of(type.getShape(), [](int64_t d) { return d <= 0; }) ||
+      softmax.getOutput().getType() != type)
+    return false;
+  auto elem = type.getElementType();
+  if (!elem.isF16() && !elem.isBF16() && !elem.isF32())
+    return false;
+  auto axis = softmax.getAxis();
+  if (axis != 3 && axis != -1)
+    return false;
+  auto sub = softmax.getInput().getDefiningOp<tpu::SubOp>();
+  if (!sub || sub.getInputs().size() != 2 || !sub->hasOneUse() ||
+      sub.getDoRelu() || sub.getIsReverse() || sub->hasAttr("ginfo") ||
+      sub.getInputs()[0].getType() != type)
+    return false;
+  if (auto coeff = sub.getCoeffAttr()) {
+    auto values = module::getF64Array(coeff);
+    if (values->size() != 2 || (*values)[0] != 1.0 || (*values)[1] != 1.0)
+      return false;
+  }
+  auto max = sub.getInputs()[1].getDefiningOp<tpu::ReduceOp>();
+  if (!max || !max->hasOneUse() || max.getMode() != "ReduceMax" ||
+      !max.getKeepdims() || !hasOnlyNoneOperandsAfter(max, 1) ||
+      max.getInput() != sub.getInputs()[0])
+    return false;
+  auto axes = module::getI64Array(max.getAxes());
+  if (axes->size() != 1 || ((*axes)[0] != 3 && (*axes)[0] != -1))
+    return false;
+  auto reduceShape = type.getShape().vec();
+  reduceShape.back() = 1;
+  if (max.getOutput().getType() != RankedTensorType::get(reduceShape, elem))
+    return false;
+  chain = {sub, max, max.getInput()};
+  return true;
+}
+
+static bool hasOnlyStableSoftmaxUsers(Value scores,
+                                      StableSoftmaxChain chain) {
+  return std::distance(scores.use_begin(), scores.use_end()) == 2 &&
+         llvm::all_of(scores.getUsers(), [&](Operation *user) {
+           return user == chain.sub.getOperation() ||
+                  user == chain.max.getOperation();
+         });
+}
+
+static bool isAttentionPermute(tpu::PermuteOp op, ArrayRef<int64_t> order) {
+  if (!op || !op->hasOneUse() || !hasOnlyNoneOperandsAfter(op, 1))
+    return false;
+  auto actual = module::getI64Array(op.getOrder());
+  return ArrayRef<int64_t>(*actual) == order;
+}
+
+// Fuse an explicit stable-softmax attention before MatMulHdimBatchPattern
+// changes its layouts. Preserve Q's low-precision scaling: commute MulConst
+// only through the Q permutation, never through QK's MatMul. The fused kernel
+// still changes softmax/accumulation rounding, as other FAttention fusions do.
+class StableSoftmaxFAttentionPattern
+    : public OpRewriterPatternEx<tpu::MatMulOp> {
+public:
+  StableSoftmaxFAttentionPattern(MLIRContext *context, int benefit,
+                                 const std::vector<RewriterRule> &rules)
+      : OpRewriterPatternEx<tpu::MatMulOp>(
+            context, "StableSoftmaxFAttentionPattern", benefit),
+        enabled(
+            attentionPatternEnabled(rules, "StableSoftmaxFAttentionPattern") &&
+            attentionPatternEnabled(rules, "MatMul2FAttention")) {}
+
+  LogicalResult matchAndRewriteImpl(tpu::MatMulOp pv,
+                                    PatternRewriter &rewriter) const override {
+    if (!enabled ||
+        (!module::isBM1684X() && !module::isBM1688() &&
+         !module::isBM1690Family()) ||
+        !plainMatMul(pv) || !pv->hasOneUse())
+      return failure();
+    auto elem = module::getStorageType(pv.getOutput());
+    if (!elem.isF16() && !elem.isBF16())
+      return failure();
+    auto outPermute = dyn_cast<tpu::PermuteOp>(*pv->user_begin());
+    if (!isAttentionPermute(outPermute, {0, 2, 1, 3}))
+      return failure();
+    auto reshape = dyn_cast<tpu::ReshapeOp>(*outPermute->user_begin());
+    if (!reshape)
+      return failure();
+    auto softmax = pv.getInput().getDefiningOp<tpu::SoftmaxOp>();
+    StableSoftmaxChain chain;
+    if (!matchStableSoftmax(softmax, chain) || !softmax->hasOneUse() ||
+        !hasOnlyStableSoftmaxUsers(chain.scores, chain))
+      return failure();
+    auto qk = chain.scores.getDefiningOp<tpu::MatMulOp>();
+    if (!qk || !plainMatMul(qk))
+      return failure();
+    auto qScale = qk.getInput().getDefiningOp<tpu::MulConstOp>();
+    Value qValue = qk.getInput();
+    if (qScale) {
+      if (!qScale->hasOneUse() || qScale.getDoRelu() ||
+          qScale->hasAttr("ginfo") ||
+          !std::isfinite(qScale.getConstVal().convertToDouble()) ||
+          qScale.getInput().getType() != qScale.getOutput().getType())
+        return failure();
+      qValue = qScale.getInput();
+    }
+    auto q = qValue.getDefiningOp<tpu::PermuteOp>();
+    auto k = qk.getRight().getDefiningOp<tpu::PermuteOp>();
+    auto v = pv.getRight().getDefiningOp<tpu::PermuteOp>();
+    if (!isAttentionPermute(q, {0, 2, 1, 3}) ||
+        !isAttentionPermute(k, {0, 2, 3, 1}) ||
+        !isAttentionPermute(v, {0, 2, 1, 3}))
+      return failure();
+    auto qType = q.getInput().getType().dyn_cast<RankedTensorType>();
+    auto kType = k.getInput().getType().dyn_cast<RankedTensorType>();
+    auto vType = v.getInput().getType().dyn_cast<RankedTensorType>();
+    if (!qType || !kType || !vType || qType.getRank() != 4 ||
+        kType.getRank() != 4 || vType.getRank() != 4 ||
+        !qType.hasStaticShape() || !kType.hasStaticShape() ||
+        qType.getEncoding() || kType.getEncoding() ||
+        qType.getElementType() != elem || kType.getElementType() != elem ||
+        vType != kType)
+      return failure();
+    auto qs = qType.getShape();
+    auto ks = kType.getShape();
+    int64_t batch = qs[0], mq = qs[1], heads = qs[2], dim = qs[3], mk = ks[1];
+    // Start with MHA, including pruned head counts and unequal Q/K lengths.
+    // GQA, masks and mixed precision continue through the existing patterns.
+    if (batch <= 0 || mq <= 0 || heads <= 0 || dim <= 0 || dim > 128 ||
+        mk < 4 || ks[0] != batch || ks[2] != heads || ks[3] != dim)
+      return failure();
+    auto tensor = [&](ArrayRef<int64_t> shape) {
+      return RankedTensorType::get(shape, elem);
+    };
+    if (q.getOutput().getType() != tensor({batch, heads, mq, dim}) ||
+        k.getOutput().getType() != tensor({batch, heads, dim, mk}) ||
+        v.getOutput().getType() != tensor({batch, heads, mk, dim}) ||
+        qk.getOutput().getType() != tensor({batch, heads, mq, mk}) ||
+        pv.getOutput().getType() != tensor({batch, heads, mq, dim}) ||
+        outPermute.getOutput().getType() != tensor({batch, mq, heads, dim}))
+      return failure();
+    auto outType = reshape.getOutput().getType();
+    bool keepDims = outType == tensor({batch, mq, heads, dim});
+    if (!keepDims && outType != tensor({batch, mq, heads * dim}))
+      return failure();
+
+    rewriter.setInsertionPoint(reshape);
+    Value queries = q.getInput();
+    if (qScale) {
+      queries = rewriter.create<tpu::MulConstOp>(
+          qScale.getLoc(), qType, ValueRange{queries}, qScale->getAttrs());
+    }
+    auto none = module::getNoneOp(pv);
+    SmallVector<NamedAttribute> attrs{
+        rewriter.getNamedAttr("scale", rewriter.getF64FloatAttr(1.0)),
+        rewriter.getNamedAttr("batch", rewriter.getI64IntegerAttr(batch)),
+        rewriter.getNamedAttr("q_head", rewriter.getI64IntegerAttr(heads)),
+        rewriter.getNamedAttr("kv_head", rewriter.getI64IntegerAttr(heads)),
+        rewriter.getNamedAttr("dim", rewriter.getI64IntegerAttr(dim)),
+        rewriter.getNamedAttr("mq", rewriter.getI64IntegerAttr(mq)),
+        rewriter.getNamedAttr("mk", rewriter.getI64IntegerAttr(mk)),
+        rewriter.getNamedAttr("keep_dims", rewriter.getBoolAttr(keepDims))};
+    rewriter.replaceOpWithNewOp<tpu::FAttentionOp>(
+        reshape, outType,
+        ValueRange{queries, k.getInput(), v.getInput(), none, none}, attrs);
+    rewriter.eraseOp(outPermute);
+    rewriter.eraseOp(pv);
+    rewriter.eraseOp(softmax);
+    rewriter.eraseOp(chain.sub);
+    rewriter.eraseOp(chain.max);
+    rewriter.eraseOp(qk);
+    if (qScale)
+      rewriter.eraseOp(qScale);
+    rewriter.eraseOp(q);
+    rewriter.eraseOp(k);
+    rewriter.eraseOp(v);
+    return success();
+  }
+
+private:
+  bool enabled;
+  static bool plainMatMul(tpu::MatMulOp op) {
+    return !op.getLeftTranspose() && !op.getRightTranspose() &&
+           !op.getOutputTranspose() && !op.getHdimIsBatch() &&
+           op.getKeepDims() && !op.getDoRelu() && !op.getFuseRq() &&
+           !op.getIsLora() && op.getDqType() == "NONE" &&
+           !op->hasAttr("ginfo") && hasOnlyNoneOperandsAfter(op, 2);
+  }
+};
+
+// Permute -> ReduceMax/Sub/Softmax -> inverse Permute. The permutations may
+// reorder outer axes but must preserve the contiguous normalization axis.
+// This fallback preserves the explicit max subtraction and all scalar math.
+class PermuteStableSoftmaxPattern : public OpRewriterPatternEx<tpu::PermuteOp> {
+public:
+  PermuteStableSoftmaxPattern(MLIRContext *context, int benefit,
+                              const std::vector<RewriterRule> &rules)
+      : OpRewriterPatternEx<tpu::PermuteOp>(
+            context, "PermuteStableSoftmaxPattern", benefit),
+        enabled(attentionPatternEnabled(rules, "PermuteStableSoftmaxPattern")) {
+  }
+
+  LogicalResult matchAndRewriteImpl(tpu::PermuteOp last,
+                                    PatternRewriter &rewriter) const override {
+    if (!enabled || !hasOnlyNoneOperandsAfter(last, 1))
+      return failure();
+    auto softmax = last.getInput().getDefiningOp<tpu::SoftmaxOp>();
+    StableSoftmaxChain chain;
+    if (!matchStableSoftmax(softmax, chain) || !softmax->hasOneUse() ||
+        !hasOnlyStableSoftmaxUsers(chain.scores, chain))
+      return failure();
+    auto first = chain.scores.getDefiningOp<tpu::PermuteOp>();
+    if (!first || !hasOnlyNoneOperandsAfter(first, 1))
+      return failure();
+    auto order = module::getI64Array(first.getOrder());
+    auto inverse = module::getI64Array(last.getOrder());
+    if (order->size() != 4 || inverse->size() != 4 || order->back() != 3 ||
+        first.getInput().getType() != last.getOutput().getType())
+      return failure();
+    auto inputType = first.getInput().getType().dyn_cast<RankedTensorType>();
+    auto permutedType = first.getOutput().getType().cast<RankedTensorType>();
+    if (!inputType || inputType.getRank() != 4 || !inputType.hasStaticShape() ||
+        inputType.getEncoding() ||
+        inputType.getElementType() != permutedType.getElementType())
+      return failure();
+    SmallVector<bool, 4> seen(4, false);
+    for (int i = 0; i < 4; ++i) {
+      auto axis = (*order)[i];
+      if (axis < 0 || axis >= 4 || seen[axis] || (*inverse)[axis] != i ||
+          permutedType.getDimSize(i) != inputType.getDimSize(axis))
+        return failure();
+      seen[axis] = true;
+    }
+    auto reduceShape = inputType.getShape().vec();
+    reduceShape.back() = 1;
+    auto reduceType =
+        RankedTensorType::get(reduceShape, inputType.getElementType());
+    rewriter.updateRootInPlace(chain.max, [&] {
+      chain.max->setOperand(0, first.getInput());
+      chain.max.getOutput().setType(reduceType);
+    });
+    rewriter.updateRootInPlace(chain.sub, [&] {
+      chain.sub->setOperand(0, first.getInput());
+      chain.sub.getOutput().setType(inputType);
+    });
+    rewriter.updateRootInPlace(softmax, [&] {
+      softmax.getOutput().setType(inputType);
+      softmax->setLoc(last.getLoc());
+    });
+    rewriter.replaceOp(last, softmax.getOutput());
+    rewriter.eraseOp(first);
+    return success();
+  }
+
+private:
+  bool enabled;
+};
+
 // permute + (mulconst) + add + cast + softmax + cast + permute
 // -> add + cast + softmax + cast
 struct PermuteFuseAddSoftmax : public OpRewriterPatternEx<tpu::PermuteOp> {
@@ -7440,9 +7726,16 @@ public:
 
 namespace tpu {
 using namespace bm1684x;
+// Run whole-attention matching before layout rewrites can obscure Q/K/V.
+void populateAttentionBM1684XPatterns(RewritePatternSet *patterns,
+                                     const std::vector<RewriterRule> &rules) {
+  patterns->add<StableSoftmaxFAttentionPattern>(patterns->getContext(), 11, rules);
+}
+
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns,
                                      const std::vector<RewriterRule> &rules) {
   auto ctx = patterns->getContext();
+  patterns->add<PermuteStableSoftmaxPattern>(ctx, 10, rules);
   patterns->add<FuseLutLutPattern, FuseLutCastPattern>(ctx, 10);
   patterns->add<MatMulRequantIntFusion>(ctx, 10);
   patterns->add<LargePadConvPattern, ConvToMatMulPattern>(ctx, 9);

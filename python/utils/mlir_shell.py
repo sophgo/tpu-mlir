@@ -610,7 +610,8 @@ def mlir_lowering(top_mlir: str,
                   mute: bool = False,
                   log_level: str = "normal",
                   matmul_perchannel: bool = False,
-                  gelu_mode: str = "normal"):
+                  gelu_mode: str = "normal",
+                  sensevoice_unpadded: bool = False):
     mode = mode.upper()
     cmd = ["tpuc-opt", top_mlir]
     weight_name = tpu_mlir[:-len(".mlir")] + "_weights.npz"
@@ -621,6 +622,8 @@ def mlir_lowering(top_mlir: str,
                                quantize_table, weight_name, customization_format, fuse_preprocess,
                                aligned_input, high_precision, do_winograd, q_group_size,
                                q_symmetric, addr_mode, matmul_perchannel, gelu_mode)
+    if sensevoice_unpadded:
+        options.insert(options.index("--processor-top-optimize"), "--sensevoice-unpadded")
     cmd.extend(options)
     cmd.extend(["-o", tpu_mlir])
     log_file = ""
@@ -1000,6 +1003,7 @@ def mlir_to_model(
     lghash_dir: str = "",
     enable_affine: bool = False,
     rvti: bool = False,
+    sensevoice_unpadded: bool = False,
 ):
     if command_mem is None:
         command_mem = {}
@@ -1009,6 +1013,9 @@ def mlir_to_model(
         quant_input, quant_output, quant_input_list, quant_output_list, quant_output_bf16=quant_output_bf16, quant_input_int8=quant_input_int8, quant_output_int8=quant_output_int8
     )
     cmd.extend(options)
+
+    if sensevoice_unpadded:
+        cmd.append("--sensevoice-unpadded")
 
     # yapf: enable
 

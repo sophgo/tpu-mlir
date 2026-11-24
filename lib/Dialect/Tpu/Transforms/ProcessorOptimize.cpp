@@ -26,6 +26,9 @@ extern void populateOptimizeBM1684Patterns(RewritePatternSet *patterns);
 extern void
 populateOptimizeBM1684XPatterns(RewritePatternSet *patterns,
                                 const std::vector<RewriterRule> &rules);
+extern void
+populateAttentionBM1684XPatterns(RewritePatternSet *patterns,
+                               const std::vector<RewriterRule> &rules);
 extern void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns);
 
 class ProcessorOptimizePass
@@ -44,6 +47,10 @@ public:
     auto mOp = getOperation();
     RewritePatternSet patterns(mOp.getContext());
     if (module::isBM1684XFamily() || module::isBM1690Family()) {
+      // Whole-attention fusion must precede the MatMul/Permute layout rules.
+      RewritePatternSet attentionPatterns(mOp.getContext());
+      populateAttentionBM1684XPatterns(&attentionPatterns, rules);
+      applyPatternsAndFoldGreedily(mOp, std::move(attentionPatterns));
       populateOptimizeBM1684XPatterns(&patterns, rules);
     } else if (module::isCV18xx()) {
       populateOptimizeCV18XXPatterns(&patterns);

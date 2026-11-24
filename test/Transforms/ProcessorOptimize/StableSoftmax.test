@@ -1,0 +1,1 @@
+// RUN: python3 %S/Inputs/stable_softmax.py tpuc-opt

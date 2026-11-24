@@ -12,10 +12,110 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include <cmath>
+#include <limits>
+#include <unordered_map>
 using namespace llvm;
 
 namespace tpu_mlir {
 namespace tpu {
+
+// Keep the host-shape producer: a plain Weight is serialized as DYNAMIC_COEFF
+// and cannot replace the host_data expected by shape consumers.
+static bool isSmallHostShapeConstant(top::WeightOp weight) {
+  auto type = weight.getOutput().getType().dyn_cast<RankedTensorType>();
+  if (!type || !type.hasStaticShape() || type.getEncoding() ||
+      type.getNumElements() <= 0 || type.getNumElements() > 64 ||
+      weight.getDoCompress().value_or(false) ||
+      (weight.getStoreMode().has_value() &&
+       weight.getStoreMode().value() != "1N"))
+    return false;
+  auto elemType = type.getElementType();
+  return elemType.isF32() ||
+         (elemType.isInteger(32) && !elemType.isUnsignedInteger(32));
+}
+
+static void foldConstantHostShapeCasts(Block &block) {
+  for (auto &op : llvm::make_early_inc_range(block)) {
+    auto castOp = dyn_cast<tpu::ShapeCastOp>(&op);
+    if (!castOp)
+      continue;
+    auto hostOp = castOp.getInput().getDefiningOp<tpu::Device2HostOp>();
+    if (!hostOp || hostOp->getBlock() != &block)
+      continue;
+    auto weight = hostOp.getInput().getDefiningOp<top::WeightOp>();
+    if (!weight || !isSmallHostShapeConstant(weight))
+      continue;
+    auto inputType = weight.getOutput().getType().cast<RankedTensorType>();
+    auto outputType = castOp.getOutput().getType().cast<RankedTensorType>();
+    auto outputElemType = outputType.getElementType();
+    if (!inputType.getElementType().isF32() ||
+        hostOp.getOutput().getType() != inputType || outputType.getEncoding() ||
+        inputType.getShape() != outputType.getShape() ||
+        !outputElemType.isInteger(32) || outputElemType.isUnsignedInteger(32))
+      continue;
+
+    auto data = weight.read<float>();
+    std::vector<int32_t> converted;
+    converted.reserve(data->size());
+    for (float value : *data) {
+      // Restrict this first implementation to exact integer constants. In
+      // particular, do not round fractions or cast NaN/out-of-range values.
+      double v = value;
+      if (!std::isfinite(v) || std::trunc(v) != v ||
+          v < std::numeric_limits<int32_t>::min() ||
+          v > std::numeric_limits<int32_t>::max())
+        break;
+      converted.push_back(static_cast<int32_t>(v));
+    }
+    if (converted.size() != data->size())
+      continue;
+
+    auto newWeight =
+        top::WeightOp::create(castOp, "const_shape_i32", converted, outputType);
+    OpBuilder builder(castOp);
+    auto newHost = builder.create<tpu::Device2HostOp>(
+        castOp.getLoc(), outputType, ValueRange{newWeight});
+    castOp.getOutput().replaceAllUsesWith(newHost.getOutput());
+    castOp.erase();
+    if (hostOp->use_empty())
+      hostOp.erase();
+    // The original FP32 weight/host value may still have non-cast consumers.
+    if (weight->use_empty())
+      weight.erase();
+  }
+}
+
+static void deduplicateConstantHostShapes(Block &block) {
+  std::unordered_map<std::string, Value> constants;
+  for (auto &op : llvm::make_early_inc_range(block)) {
+    auto hostOp = dyn_cast<tpu::Device2HostOp>(&op);
+    if (!hostOp)
+      continue;
+    auto weight = hostOp.getInput().getDefiningOp<top::WeightOp>();
+    if (!weight || !isSmallHostShapeConstant(weight) ||
+        weight.getOutput().getType() != hostOp.getOutput().getType())
+      continue;
+    auto data = weight.read_as_byte();
+    std::string key;
+    llvm::raw_string_ostream stream(key);
+    weight.getOutput().getType().print(stream);
+    stream << '|';
+    hostOp->getAttrDictionary().print(stream);
+    stream.flush();
+    key.append(reinterpret_cast<const char *>(data->data()), data->size());
+    auto result = constants.emplace(std::move(key), hostOp.getOutput());
+    if (result.second)
+      continue;
+    // The canonical definition is earlier in this same block. Never merge
+    // across control-flow regions, where dominance and lifetime may differ.
+    hostOp.getOutput().replaceAllUsesWith(result.first->second);
+    hostOp.erase();
+    if (weight->use_empty())
+      weight.erase();
+  }
+}
+
 static void WeightFolder(Operation *op) {
   // if the op is in the region of other op, don't do WeightFolder
 
@@ -178,6 +278,14 @@ public:
     auto mOp = getOperation();
 
     for (auto func : mOp.getOps<FuncOp>()) {
+      if (module::getState() == module::State::TPU_LOWERED &&
+          (module::isBM1684XFamily() || module::isBM1690Family()) &&
+          fold_const_shape) {
+        for (auto &block : func.getBody()) {
+          foldConstantHostShapeCasts(block);
+          deduplicateConstantHostShapes(block);
+        }
+      }
       func.walk([&](InferenceInterface op) {
         // LLVM_DEBUG(llvm::dbgs() << "weight infer: " << op << "\n";);
         if (false == removeIfNoUse(op)) {
