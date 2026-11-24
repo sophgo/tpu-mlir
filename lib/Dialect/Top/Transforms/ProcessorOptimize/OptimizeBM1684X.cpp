@@ -17,6 +17,120 @@ namespace tpu_mlir {
 
 namespace bm1684x {
 
+// DFL projection after the importer has canonicalized the ONNX transposes:
+//   [N,D,K,S] -> Permute(0,2,1,3) -> Softmax(axis=1)
+//            -> Conv(weight=[0,...,K-1], shape=[1,K,1,1]) -> [N,1,D,S]
+// Keep K innermost for Softmax and reduce before restoring the output layout:
+//   [N,D,K,S] -> Permute(0,1,3,2) -> Softmax(axis=3)
+//            -> Reshape(N*D*S,K) -> MatMul(K,1) -> Reshape(N,1,D,S).
+// This avoids the large single-core permutation used by the Conv path. The
+// two-dimensional MatMul also avoids unnecessary batched projection/layouts.
+class DFLProjectionToMatMul : public OpRewriterPatternEx<top::ConvOp> {
+public:
+  DFLProjectionToMatMul(mlir::MLIRContext *context, int benefit)
+      : OpRewriterPatternEx<top::ConvOp>(context, "DFLProjectionToMatMul",
+                                       benefit) {}
+
+protected:
+  LogicalResult
+  matchAndRewriteImpl(top::ConvOp op,
+                      mlir::PatternRewriter &rewriter) const override {
+    // Limit the initial rollout to the measured static FP16 four-core target.
+    // Calibrated/quantized graphs and high-precision modes need separate tests.
+    if (!module::isCV84X6() || module::getCoreNum() != 4 ||
+        module::getMode() != module::Mode::F16 || module::isDynamic() ||
+        module::isHighPrecision())
+      return failure();
+    auto softmax = op.getInput().getDefiningOp<top::SoftmaxOp>();
+    auto weight = op.getFilter().getDefiningOp<top::WeightOp>();
+    if (!softmax || !softmax->hasOneUse() || !weight ||
+        !module::isNone(op.getBias()) || op.getDoRelu() || op.getGroup() != 1 ||
+        softmax.getAxis() != 1 || softmax.getLog() ||
+        softmax.getBeta().convertToDouble() != 1.0)
+      return failure();
+    auto permute = softmax.getInput().getDefiningOp<top::PermuteOp>();
+    if (!permute || !permute->hasOneUse())
+      return failure();
+    auto input = permute.getInput();
+    auto inputType = dyn_cast<RankedTensorType>(input.getType());
+    auto outputType = dyn_cast<RankedTensorType>(op.getOutput().getType());
+    auto weightType = dyn_cast<RankedTensorType>(op.getFilter().getType());
+    if (!inputType || !outputType || !weightType ||
+        !inputType.hasStaticShape() || inputType.getRank() != 4 ||
+        !inputType.getElementType().isF32() ||
+        !outputType.getElementType().isF32() ||
+        !weightType.getElementType().isF32() ||
+        !module::getElementType(softmax.getOutput()).isF32() ||
+        !module::getElementType(softmax.getInput()).isF32())
+      return failure();
+    auto shape = inputType.getShape();
+    if (llvm::any_of(shape, [](int64_t d) { return d <= 0; }) || shape[2] < 2)
+      return failure();
+    const int64_t n = shape[0], d = shape[1], k = shape[2], s = shape[3];
+    auto arrayEquals = [](ArrayAttr attr, ArrayRef<int64_t> expected) {
+      return attr && ArrayRef<int64_t>(*module::getI64Array(attr)) == expected;
+    };
+    if (!arrayEquals(permute.getOrder(), {0, 2, 1, 3}) ||
+        !arrayEquals(op.getKernelShape(), {1, 1}) ||
+        !arrayEquals(op.getStrides(), {1, 1}) ||
+        !arrayEquals(op.getPads(), {0, 0, 0, 0}) ||
+        (op.getDilations().has_value() &&
+         !arrayEquals(op.getDilations().value(), {1, 1})) ||
+        op.getInserts().has_value() || op.getAutoPad().has_value() ||
+        op.getDynweightReorderd() ||
+        module::getShape(permute.getOutput()) != ArrayRef<int64_t>({n, k, d, s}) ||
+        module::getShape(softmax.getOutput()) != ArrayRef<int64_t>({n, k, d, s}) ||
+        outputType.getShape() != ArrayRef<int64_t>({n, 1, d, s}) ||
+        weightType.getShape() != ArrayRef<int64_t>({1, k, 1, 1}))
+      return failure();
+    auto weights = weight.read<float>();
+    if (weights->size() != k)
+      return failure();
+    for (int64_t i = 0; i < k; ++i)
+      if (weights->at(i) != static_cast<float>(i))
+        return failure();
+
+    const int64_t rows = inputType.getNumElements() / k;
+    auto name = module::getName(op.getOperation()).str();
+    auto loc = [&](StringRef suffix) {
+      return NameLoc::get(rewriter.getStringAttr(name + suffix.str()));
+    };
+    auto type = [&](ArrayRef<int64_t> dims) {
+      return RankedTensorType::get(dims, inputType.getElementType());
+    };
+    rewriter.setInsertionPoint(op);
+    auto layout = rewriter.create<top::PermuteOp>(
+        loc("_dfl_layout"), type({n, d, s, k}), ValueRange{input},
+        ArrayRef<NamedAttribute>{rewriter.getNamedAttr(
+            "order", rewriter.getI64ArrayAttr({0, 1, 3, 2}))});
+    NamedAttrList softmaxAttrs(softmax->getAttrs());
+    softmaxAttrs.set("axis", rewriter.getSI32IntegerAttr(3));
+    auto probabilities = rewriter.create<top::SoftmaxOp>(
+        loc("_dfl_softmax"), layout.getOutput().getType(),
+        ValueRange{layout.getOutput()}, softmaxAttrs.getAttrs());
+    auto flat = rewriter.create<top::ReshapeOp>(
+        loc("_dfl_flatten"), type({rows, k}),
+        ValueRange{probabilities.getOutput()},
+        ArrayRef<NamedAttribute>{rewriter.getNamedAttr(
+            "shape", rewriter.getI64ArrayAttr({rows, k}))});
+    auto projectionType = type({k, 1});
+    auto projection = top::WeightOp::create<float>(
+        op, "dfl_projection", *weights, projectionType);
+    auto reduced = rewriter.create<top::MatMulOp>(
+        loc("_dfl_matmul"), type({rows, 1}),
+        ValueRange{flat.getOutput(), projection, module::getNoneOp(op)},
+        ArrayRef<NamedAttribute>{});
+    auto result = rewriter.create<top::ReshapeOp>(
+        op.getLoc(), outputType, ValueRange{reduced.getOutput()},
+        ArrayRef<NamedAttribute>{rewriter.getNamedAttr(
+            "shape", rewriter.getI64ArrayAttr(outputType.getShape()))});
+    rewriter.replaceOp(op, result.getOutput());
+    rewriter.eraseOp(softmax);
+    rewriter.eraseOp(permute);
+    return success();
+  }
+};
+
 // Unsqueeze -> Expand(Tile) -> Reshape -> Transpose(Permute) --> MatMul
 //                                                       Left -->
 // To
@@ -2912,6 +3026,12 @@ namespace top {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns,
                                      const std::vector<RewriterRule> &rules) {
+  bool enableDFL = true;
+  for (const auto &rule : rules)
+    if (rule.pattern_name == "DFLProjectionToMatMul")
+      enableDFL = getParam<int>(rule.params, "use_pattern", 1) != 0;
+  if (enableDFL)
+    patterns->add<DFLProjectionToMatMul>(patterns->getContext(), 10);
   patterns->add<MergeScale2Conv>(patterns->getContext(), /*PatternBenefit*/ 9);
   patterns
       ->add<ChatGLM3ToGQAAttention, ConvertMatMulWithRightTranspose,
