@@ -22,6 +22,10 @@ def WeightFold : Pass<"weight-fold", "ModuleOp"> {
   let summary = "fold weight if all input of an operation is weight";
   let constructor = "createWeightFoldPass()";
   let dependentDialects = ["TpuDialect"];
+  let options = [
+    Option<"fold_const_shape", "fold-const-shape", "bool", /*default=*/"true",
+           "Fold constant host-shape casts and deduplicate small host constants.">
+  ];
 }
 
 def WeightReorder : Pass<"weight-reorder", "ModuleOp"> {

@@ -1,0 +1,1 @@
+// RUN: python3 %S/Inputs/const_host_shape.py tpuc-opt
